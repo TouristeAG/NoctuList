@@ -166,7 +166,6 @@
     <string name="color_theme_rich_brown">棕色</string>
     <string name="color_theme_sunset_mist">霧色</string>
     <string name="color_theme_feminist_violet">紫羅蘭</string>
-
     <string name="color_theme_custom">自訂</string>
     <string name="color_theme_customize">自訂主題顏色</string>    
     <!-- Restart Dialog -->
@@ -258,61 +257,45 @@
     <string name="other_notes_placeholder">其他附加說明…</string>
     <string name="update_shift_type">更新輪班類型</string>
     <string name="stellar_benefits_info_title">福利速查</string>
-
     <string name="benefits_help_dialog_title">福利速查</string>
     <string name="benefits_help_dialog_subtitle">Collectif Nocturne · 2026-27</string>
     <string name="benefits_help_intro">照實際班次選。恆星模式自動算；手動模式自己填。</string>
-
     <string name="benefits_help_tab_modes">模式</string>
     <string name="benefits_help_tab_nova">班次類型</string>
     <string name="benefits_help_tab_extras">加成與時間</string>
-
     <string name="benefits_help_app_stellar">開啟班次工作 → 選 Nova 類型\n開啟 Orion 工作 → 任期年（下一年 Veteran）\n飲品、名單、未來入場次數 → 自動算</string>
     <string name="benefits_help_app_manual">自己填天數、飲品、酒吧折扣\u0025、邀請、額外項目\n表格外的感謝用\n已在恆星裡算過的同一班次別重複計</string>
-
     <string name="benefits_help_section_profité_title">Profité / non-profité</string>
     <string name="benefits_help_section_profité_body">僅預設班次 + 開啟「能否享受當晚」。\n與是否付費入場無關：只看排班時間是否仍讓人能享受當晚。\n其他 Nova 類型沒有這項。</string>
-
     <string name="benefits_help_section_nova_title">Nova（班次工作）- 權益一覽</string>
     <string name="benefits_help_nova_profité_title">預設班次 - profité</string>
     <string name="benefits_help_nova_profité_rationale">僅限活動當晚。</string>
     <string name="benefits_help_nova_profité_perks">免費入場 + 1 名同伴 - 活動當晚\n酒吧 50\u0025 - 活動當晚\n2 杯免費飲品（約 10 CHF）- 活動當晚</string>
-
     <string name="benefits_help_nova_non_profité_title">預設班次 - non-profité</string>
     <string name="benefits_help_nova_non_profité_rationale">當晚權益 + 一季免費入場（+1 同伴）。</string>
     <string name="benefits_help_nova_non_profité_perks">與 profité 相同的當晚權益\n另 + 1 次季票免費入場 + 1 同伴（應用程式內追蹤）</string>
-
     <string name="benefits_help_nova_photo_title">攝影 / 錄影（當晚）</string>
     <string name="benefits_help_nova_photo_rationale">大致同預設 non-profité。</string>
     <string name="benefits_help_nova_photo_perks">免費入場 + 1 名同伴 - 涵蓋當晚\n酒吧 50\u0025 - 涵蓋當晚\n2 杯免費飲品（約 10 CHF）- 涵蓋當晚\n1 次季票免費入場 + 1 同伴</string>
-
     <string name="benefits_help_nova_meeting_title">會議</string>
     <string name="benefits_help_nova_meeting_rationale">一個月內 3 場會議仍算 Galaxie - Orion 除外（會議不計）。</string>
     <string name="benefits_help_nova_meeting_perks">1 次季票免費入場 + 1 同伴\n1 杯免費飲品（約 5 CHF）</string>
-
     <string name="benefits_help_nova_gd_event_title">平面設計 - 單場活動</string>
     <string name="benefits_help_nova_gd_event_rationale">當晚邏輯同攝影/錄影。</string>
     <string name="benefits_help_nova_gd_event_perks">免費入場 + 1 同伴 - 活動當晚\n酒吧 50\u0025 - 活動當晚\n2 杯免費飲品（約 10 CHF）- 活動當晚\n1 次季票免費入場 + 1 同伴</string>
-
     <string name="benefits_help_nova_gd_asso_title">平面設計 - 協會整體</string>
     <string name="benefits_help_nova_gd_asso_rationale">不綁單場派對 → 多飲品，無酒吧\u0025。</string>
     <string name="benefits_help_nova_gd_asso_perks">2 次季票免費入場，各 +1 同伴\n4 杯免費飲品（約 20 CHF）</string>
-
     <string name="benefits_help_section_galaxie_title">Galaxie</string>
     <string name="benefits_help_section_galaxie_body">同一自然月內 3 次貢獻（班次 + 會議）\nOrion：會議不計入這 3 次\n該月：所有活動免費入場 + 整月酒吧 50\u0025 + 多 1 杯飲品\n與單次班次權益疊加</string>
-
     <string name="benefits_help_section_orion_title">Orion</string>
     <string name="benefits_help_section_orion_body">把工作標為 Orion\n自任期起 1 年：免費入場 + 酒吧 50\u0025 + 1 名同伴\n270 CHF 內部錢包（T 恤 + 飲品預算）</string>
-
     <string name="benefits_help_section_veteran_title">Veteran</string>
     <string name="benefits_help_section_veteran_body">Orion 後那一年\n仍有免費入場 + 酒吧 50\u0025\n錢包隨任期結束停</string>
-
     <string name="benefits_help_section_timing_title">應用程式何時啟用權益</string>
     <string name="benefits_help_section_timing_body">當晚權益 = 場地的活動日（設定裡「換日時間」）\n未來入場從同一時刻起可用\nOrion / Galaxie / Veteran 時間窗更長</string>
-
     <string name="benefits_help_footer_title">小提醒</string>
     <string name="benefits_help_footer_bullets">Profité / non-profité - 排班是否仍讓人享受當晚（與入場無關）\n酒吧 50\u0025 跟 Lightspeed 價格走\nGalaxie 與班次權益可疊</string>
-
     <string name="nova_job_type_label">Nova 權益類型</string>
     <string name="nova_type_default_shift">預設輪班</string>
     <string name="nova_type_meeting">會議</string>
@@ -359,10 +342,19 @@
     <string name="temp_guest_event_date_label">活動日期</string>
     <string name="temp_guest_contact_phone_label">緊急聯絡電話</string>
     <string name="temp_guest_chip_label">臨時</string>
-    <string name="temp_guest_timeline_button">未來 / 歷史</string>
-    <string name="temp_guest_timeline_title">臨時賓客名單</string>
+    <string name="temp_guest_timeline_button">今晚 · 未來 · 歷史</string>
+    <string name="temp_guest_timeline_title">今晚 · 未來 · 歷史</string>
     <string name="temp_guest_tab_temp">臨時</string>
     <string name="temp_guest_tab_volunteer">志工</string>
+    <string name="temp_guest_none_volunteers">此篩選下沒有志工。</string>
+    <string name="temp_guest_subsection_volunteers">志工</string>
+    <string name="temp_guest_none_remaining">今晚名單上的人都已入場。</string>
+    <string name="temp_guest_section_remaining">尚未入場</string>
+    <string name="temp_guest_tonight_tracking">已入場 / 今晚總數</string>
+    <string name="temp_guest_tonight_title">今晚臨時嘉賓</string>
+    <string name="temp_guest_tab_history">歷史</string>
+    <string name="temp_guest_tab_future">未來</string>
+    <string name="temp_guest_tab_tonight">今晚</string>
     <string name="temp_guest_range_label">範圍</string>
     <string name="temp_guest_range_three_days">前後 3 天</string>
     <string name="temp_guest_range_three_days_short">±3天</string>
@@ -378,14 +370,14 @@
     <string name="temp_guest_range_one_year_short">1年</string>
     <string name="temp_guest_range_all_time">全部時間</string>
     <string name="temp_guest_range_all_time_short">全部</string>
-    <string name="temp_guest_section_upcoming">未來賓客</string>
-    <string name="temp_guest_section_past">歷史記錄</string>
-    <string name="temp_guest_none_upcoming">此篩選下沒有未來的臨時賓客。</string>
-    <string name="temp_guest_none_past">此篩選下沒有過去的臨時賓客。</string>
+    <string name="temp_guest_section_upcoming">未來臨時嘉賓</string>
+    <string name="temp_guest_section_past">過往臨時嘉賓</string>
+    <string name="temp_guest_none_upcoming">此篩選下沒有未來的臨時嘉賓。</string>
+    <string name="temp_guest_none_past">此篩選下沒有過往臨時嘉賓。</string>
     
     <!-- App Information -->
     <string name="app_info_title">應用程式資訊</string>
-    <string name="app_version">NoctuList 2.1.1</string>
+    <string name="app_version">NoctuList 2.1.2</string>
     <string name="app_designed_for">專為 Collectif Nocturne 場地設計</string>
     <string name="app_developed_full">為 Collectif Nocturne 開發，開發者：Leonardo Mondada</string>
     <string name="last_sync">上次更新：%s</string>
@@ -907,6 +899,7 @@
     <!-- Additional Volunteer Panel Strings -->
     <string name="expired">已過期</string>
     <string name="benefit_details">福利詳情</string>
+    <string name="access_details">通行詳情</string>
     <string name="more_shifts">⋯ 以及 %d 個更多班次</string>
     <string name="years_old">%d 歲</string>
     
@@ -1274,7 +1267,6 @@
     <string name="external_reader_test_success_title">讀卡機正常</string>
     <string name="external_reader_test_failure_title">測試失敗</string>
     <string name="external_reader_test_close">關閉</string>
-
     <string name="ble_reader_picker_title">選擇藍牙 NFC 讀卡機</string>
     <string name="ble_reader_picker_subtitle">請確認 ACR1255U-J1 已開機且在附近。ACR 讀卡機會優先顯示。</string>
     <string name="ble_reader_scanning">正在掃描藍牙裝置…</string>
@@ -1360,4 +1352,125 @@
     <string name="theme_hue_label">色相（彩虹）：%1$d°</string>
     <string name="theme_luminosity_label">亮度：%1$d%%</string>
     <string name="theme_saturation_label">飽和度：%1$d%%</string>
+
+    <!-- Temporary guests (Firebase) -->
+    <string name="temp_guest_access_settings_title">臨時嘉賓權限</string>
+    <string name="temp_guest_access_settings_description">為每個場地定義可授予的特殊權限（舞台、後台、VIP…）。僅在 Firebase 後端可用。</string>
+    <string name="temp_guest_access_no_venue">尚無啟用的場地。先建立一個再定義其權限。</string>
+    <string name="temp_guest_access_venue_empty">此場地沒有特殊權限。</string>
+    <string name="temp_guest_access_venue_count">已設定 %1$d 項權限。</string>
+    <string name="temp_guest_access_add">新增權限</string>
+    <string name="temp_guest_access_add_title">在 %1$s 新增權限</string>
+    <string name="temp_guest_access_name_label">權限名稱</string>
+    <string name="temp_guest_access_duplicate">該權限在此場地已存在。</string>
+    <string name="temp_guest_access_remove_title">刪除此權限？</string>
+    <string name="temp_guest_access_remove_message">「%1$s」將從所有擁有它的臨時嘉賓中移除。</string>
+    <string name="temp_guest_credits_setting_title">臨時嘉賓的信用帳戶</string>
+    <string name="temp_guest_credits_setting_description">讓臨時嘉賓像常駐嘉賓一樣擁有吧台餘額。預設關閉。</string>
+    <string name="temp_guest_contact_email_label">聯絡電郵</string>
+    <string name="temp_guest_contact_email_hint">接收該名單全部 QR Code 的藝人或經紀人。</string>
+    <string name="temp_guest_venue_label">場地</string>
+    <string name="temp_guest_venue_placeholder">選擇場地</string>
+    <string name="temp_guest_access_person_label">特殊權限</string>
+    <string name="date_format_european_placeholder">日日/月月/年年年年</string>
+    <string name="date_shortcut_today">今天</string>
+    <string name="date_shortcut_this_friday">本週五</string>
+    <string name="date_shortcut_this_saturday">本週六</string>
+    <string name="temp_guest_accesses_title">已授權權限</string>
+    <string name="temp_guest_no_access">無特殊權限</string>
+    <string name="temp_guest_entry_status_label">入場</string>
+    <string name="temp_guest_entry_validated_at">%1$s 已入場</string>
+    <string name="temp_guest_entry_not_yet">尚未入場</string>
+    <string name="temp_guest_validate_entry">確認入場</string>
+    <string name="temp_guest_entry_single_use_hint">一次性入場：確認後該嘉賓將離開今晚的名單。</string>
+    <string name="temp_guest_email_tab">藝人名單</string>
+    <string name="temp_guest_send_choice_title">要傳送哪些 QR Code？</string>
+    <string name="temp_guest_send_choice_all">%1$s 的整份名單</string>
+    <string name="temp_guest_send_choice_all_description">一封郵件包含當晚的 %1$d 個 QR Code。</string>
+    <string name="temp_guest_send_choice_single">僅此人</string>
+    <string name="temp_guest_send_choice_single_description">一個 QR Code，傳送到你現在輸入的電郵。</string>
+    <string name="temp_guest_scan_title">臨時嘉賓</string>
+    <string name="temp_guest_scan_already_used">入場已於 %1$s 使用</string>
+    <string name="temp_guest_scan_wrong_day">該名單不是今晚的。</string>
+    <string name="temp_guest_section_validated">已入場</string>
+    <string name="temp_guest_validated_count">已確認 %1$d / %2$d</string>
+    <string name="temp_guest_none_validated">今晚還沒有人入場。</string>
+    <string name="institution_settings_firebase_admin_only">同步的機構設定（貨幣、郵件、信用緩衝、照片、鏡像）只能由 Firebase 組織管理員修改。</string>
+    <string name="temp_guest_email_html_header">藝人來賓名單</string>
+    <string name="temp_guest_email_subject_default">您的來賓名單 QR 碼</string>
+    <string name="temp_guest_email_content_before_default">您好！\n\n這是您來賓名單的 QR 碼。請分別轉發給相應的人員，或在入口出示。</string>
+    <string name="temp_guest_email_content_after_default">每個碼僅限入場一次。今晚見！</string>
+    <string name="temp_guest_send_choice_message">該來賓名單包含多人。</string>
+    <string name="temp_guest_scan_venue">場地</string>
+    <string name="temp_guest_scan_no_access">該場地沒有特殊通行權限。</string>
+    <string name="temp_guest_entry_validated_short">已入場</string>
+    <string name="guest_form_create">建立表單</string>
+    <string name="guest_form_create_title">藝人嘉賓名單表單</string>
+    <string name="guest_form_event_name">活動名稱</string>
+    <string name="guest_form_artist">藝人 / 機構</string>
+    <string name="guest_form_max_guests">人數上限</string>
+    <string name="guest_form_allow_multiple">允許多次提交</string>
+    <string name="guest_form_allow_multiple_hint">連結在到期日前保持開放。每次提交都會新建一筆待審記錄。</string>
+    <string name="guest_form_expiry_label">表單關閉時間（最遲活動後 3 天刪除）</string>
+    <string name="guest_form_expiry_after_response">提交後</string>
+    <string name="guest_form_expiry_day_before">活動前一天</string>
+    <string name="guest_form_expiry_event_day">活動當天</string>
+    <string name="guest_form_expiry_day_after">活動隔日</string>
+    <string name="guest_form_expiry_manual">自選日期（最多活動後 3 天）</string>
+    <string name="guest_form_include_logo">包含協會標誌</string>
+    <string name="guest_form_include_logo_missing">請在設定 → 郵件中上傳（與 QR 郵件共用同一標誌）。</string>
+    <string name="guest_form_guest_logo">第二個標誌（選用）</string>
+    <string name="guest_form_guest_logo_hint">藝人、專輯或受邀機構。顯示在你們的標誌旁邊。</string>
+    <string name="guest_form_guest_logo_change">更換標誌</string>
+    <string name="guest_form_guest_logo_add">新增標誌</string>
+    <string name="guest_form_logo_shape">形狀</string>
+    <string name="guest_form_logo_shape_square">方形</string>
+    <string name="guest_form_logo_shape_rounded">圓角方形</string>
+    <string name="guest_form_logo_shape_circle">圓形</string>
+    <string name="guest_form_logo_invert">反轉顏色</string>
+    <string name="guest_form_ask_email">詢問聯絡電子郵件</string>
+    <string name="guest_form_ask_phone">詢問緊急電話</string>
+    <string name="guest_form_prefill_email">預填電子郵件</string>
+    <string name="guest_form_prefill_phone">預填緊急電話</string>
+    <string name="guest_form_offered_access">可申請的通行權限</string>
+    <string name="guest_form_offered_access_hint">申請不保證通過——當晚由你們決定。</string>
+    <string name="guest_form_create_action">建立表單</string>
+    <string name="guest_form_link_title">表單已就緒</string>
+    <string name="guest_form_link_body">把這個唯一連結發給 %1$s。在過期或提交前有效。</string>
+    <string name="guest_form_link_body_multi">把這個唯一連結發給 %1$s。到期前保持有效；每次提交都會新建一筆待審記錄。</string>
+    <string name="guest_form_copy_link">複製連結</string>
+    <string name="guest_form_link_copied">已複製</string>
+    <string name="guest_form_pending_title">待審核嘉賓名單</string>
+    <string name="guest_form_pending_one">%1$s 已提交嘉賓名單</string>
+    <string name="guest_form_pending_many">%1$d 份嘉賓名單待處理</string>
+    <string name="guest_form_pending_cta">點一下以審核</string>
+    <string name="guest_form_review_title">審核 — %1$s</string>
+    <string name="guest_form_review_response_hint">多次提交表單中的一筆回覆。接受或拒絕只關閉本筆。</string>
+    <string name="guest_form_review_accept">通過</string>
+    <string name="guest_form_review_reject">拒絕</string>
+    <string name="guest_form_review_empty">這份回答裡沒有名字。</string>
+    <string name="guest_form_person_n">第 %1$d 人</string>
+    <string name="guest_form_settings_title">藝人嘉賓名單表單（選用）</string>
+    <string name="guest_form_settings_body">藝人在公開頁面提交嘉賓名單（Firebase Hosting，免費）。請透過 Firebase 安裝指南發布一次網站。</string>
+    <string name="guest_form_enable">啟用藝人嘉賓名單表單</string>
+    <string name="guest_form_site_url">網站：%1$s</string>
+    <string name="guest_form_export">匯出表單網站</string>
+    <string name="guest_form_export_done">壓縮檔已儲存。解壓後執行下方指令。</string>
+    <string name="guest_form_export_android">發布需在電腦上完成。在桌面版 NoctuList 開啟本指南，匯出壓縮檔，然後從第 3 步繼續。</string>
+    <string name="guest_form_deploy_commands">npm install -g firebase-tools\nfirebase login\nfirebase deploy --only hosting --project YOUR_PROJECT_ID</string>
+    <string name="firebase_tutorial_forms_optional_title">選用：公開嘉賓名單表單（Firebase Hosting）</string>
+    <string name="firebase_tutorial_forms_optional_body">在本 Firebase 專案上發布一次表單網站（免費 Hosting）。之後 NoctuList 裡每個表單只是一個唯一連結，無需再開終端機。</string>
+    <string name="guest_form_step1">1. 在設定 → Firebase → 選用功能中，開啟藝人嘉賓名單表單。</string>
+    <string name="guest_form_step2">2. 在電腦上點「匯出表單網站」，儲存並解壓。資料夾中須有 index.html 和 firebase.json。</string>
+    <string name="guest_form_step3">3. 從 https://nodejs.org 安裝 Node.js LTS 22 或 24（綠色 LTS 按鈕，不要 Current）。安裝後重新開啟終端機。</string>
+    <string name="guest_form_step4">4. 開啟終端機。輸入 cd，空白鍵，把解壓資料夾拖進視窗，按 Enter。</string>
+    <string name="guest_form_step5">5. 複製下方指令，貼到終端機並按 Enter。用擁有此 Firebase 專案的 Google 帳號登入。</string>
+    <string name="guest_form_step6">6. 終端機顯示 “Deploy complete!” 後網站即上線。之後在 NoctuList 建立表單即可，無需再部署。</string>
+    <string name="guest_form_terminal_caption">在終端機執行的指令</string>
+    <string name="guest_form_copy_commands">複製指令</string>
+    <string name="guest_form_commands_copied">指令已複製</string>
+    <string name="guest_form_terminal_title">終端機</string>
+    <string name="guest_form_project_id_hint">將 YOUR_PROJECT_ID 替換為設定 → Firebase 中的 Project ID。</string>
+    <string name="guest_form_offered_access_pick_venue">請先選擇場地。</string>
+    <string name="guest_form_offered_access_empty">此場地沒有特殊通行權限。</string>
 </resources>

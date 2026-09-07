@@ -44,6 +44,25 @@ actual class PlatformFileManager actual constructor(private val context: Platfor
 
     actual fun clearEmailLogoFile(): Boolean = false
 
+    private fun emailLogoPath(): File = File(context.androidContext.filesDir, "email_logo.png")
+
+    /** A `file://` URI, because the e-mail code reads the logo through the content resolver. */
+    actual fun saveEmailLogoBytes(bytes: ByteArray?): String? {
+        val destination = emailLogoPath()
+        if (bytes == null) {
+            runCatching { destination.delete() }
+            return null
+        }
+        return runCatching {
+            destination.parentFile?.mkdirs()
+            destination.writeBytes(bytes)
+            android.net.Uri.fromFile(destination).toString()
+        }.getOrNull()
+    }
+
+    actual fun readEmailLogoBytes(): ByteArray? =
+        runCatching { emailLogoPath().takeIf { it.exists() }?.readBytes() }.getOrNull()
+
     private fun walletPassCertificatePath(): File =
         File(context.androidContext.filesDir, "wallet_pass_certificate.p12")
 

@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.eventmanager.app.data.models.Job
 import com.eventmanager.app.data.models.Volunteer
 import com.eventmanager.app.data.utils.VolunteerActivityManager
 import com.eventmanager.app.resources.Res
@@ -39,13 +40,18 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun ActiveVolunteersDialog(
     volunteers: List<Volunteer>,
+    jobs: List<Job> = emptyList(),
     onDismiss: () -> Unit,
 ) {
-    val activeVolunteers = remember(volunteers) {
-        volunteers.filter { VolunteerActivityManager.isVolunteerActive(it) }
+    // Activity is derived from shifts (same as dashboard), not the stored isActive / lastShiftDate alone.
+    val jobsByVolunteer = remember(jobs) {
+        VolunteerActivityManager.groupJobsByVolunteerId(jobs)
     }
-    val inactiveVolunteers = remember(volunteers) {
-        volunteers.filter { !VolunteerActivityManager.isVolunteerActive(it) }
+    val activeVolunteers = remember(volunteers, jobsByVolunteer) {
+        volunteers.filter { VolunteerActivityManager.isVolunteerActive(it, jobsByVolunteer[it.id]) }
+    }
+    val inactiveVolunteers = remember(volunteers, jobsByVolunteer) {
+        volunteers.filter { !VolunteerActivityManager.isVolunteerActive(it, jobsByVolunteer[it.id]) }
     }
 
     AlertDialog(
@@ -74,6 +80,7 @@ fun ActiveVolunteersDialog(
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     items(activeVolunteers, key = { it.id }) { volunteer ->
+                        val volunteerJobs = jobsByVolunteer[volunteer.id]
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 Icons.Default.CheckCircle,
@@ -85,7 +92,7 @@ fun ActiveVolunteersDialog(
                             Column {
                                 Text(volunteer.name, style = MaterialTheme.typography.bodyMedium)
                                 Text(
-                                    VolunteerActivityManager.getActivityStatusText(volunteer),
+                                    VolunteerActivityManager.getActivityStatusText(volunteer, volunteerJobs),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -102,6 +109,7 @@ fun ActiveVolunteersDialog(
                             )
                         }
                         items(inactiveVolunteers, key = { "inactive-${it.id}" }) { volunteer ->
+                            val volunteerJobs = jobsByVolunteer[volunteer.id]
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
                                     Icons.Default.Cancel,
@@ -113,7 +121,7 @@ fun ActiveVolunteersDialog(
                                 Column {
                                     Text(volunteer.name, style = MaterialTheme.typography.bodyMedium)
                                     Text(
-                                        VolunteerActivityManager.getActivityStatusText(volunteer),
+                                        VolunteerActivityManager.getActivityStatusText(volunteer, volunteerJobs),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )

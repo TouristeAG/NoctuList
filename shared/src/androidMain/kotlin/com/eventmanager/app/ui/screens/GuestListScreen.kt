@@ -37,6 +37,14 @@ import com.eventmanager.app.ui.components.GuestBarDiscountField
 import com.eventmanager.app.ui.components.ProfilePhotoFormPicker
 import com.eventmanager.app.ui.components.rememberGuestBarDiscountEnabled
 import com.eventmanager.app.ui.components.rememberProfilePhotosUploadEnabled
+import com.eventmanager.app.ui.components.rememberTemporaryGuestFeatures
+import com.eventmanager.app.ui.components.temporaryEntryValidatedLabel
+import com.eventmanager.app.ui.components.EventDatePickerField
+import com.eventmanager.app.ui.components.GuestFormCreatorDialog
+import com.eventmanager.app.ui.components.GuestFormPendingCard
+import com.eventmanager.app.ui.components.TemporaryGuestAccessSelector
+import com.eventmanager.app.ui.components.TemporaryGuestNameCard
+import com.eventmanager.app.ui.components.TemporaryGuestVenueDropdown
 import com.eventmanager.app.ui.components.fullScreenDialogProperties
 import com.eventmanager.app.ui.utils.*
 import com.eventmanager.app.R
@@ -130,6 +138,9 @@ actual fun GuestListScreen(
     var searchText by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf<String?>(null) }
     var showTemporaryGuestsTimeline by remember { mutableStateOf(false) }
+    var showGuestFormCreator by remember { mutableStateOf(false) }
+    val guestFormsEnabled by viewModel?.guestFormsEnabled?.collectAsState()
+        ?: remember { mutableStateOf(false) }
     
     val isCompact = isCompactScreen()
     val isPhone = !isTablet()
@@ -151,6 +162,7 @@ actual fun GuestListScreen(
     val zone = GuestListDefaultZoneId
     val offsetHours = settingsManager.getDateChangeOffsetHours()
     val effectiveToday = rememberGuestListEffectiveToday(zone = zone, offsetHours = offsetHours)
+    val temporaryGuestFeatures = rememberTemporaryGuestFeatures(viewModel)
 
     val allOrgsMode = viewModel?.isFirebaseAllOrgsMode() == true
     val mergedVenueNames = remember(venues, allOrgsMode) {
@@ -169,6 +181,9 @@ actual fun GuestListScreen(
             if (guest.isTemporaryGuest) {
                 val eventTs = guest.temporaryEventDate ?: continue
                 if (Instant.ofEpochMilli(eventTs).atZone(zone).toLocalDate() != effectiveToday) continue
+                // A single-use entry that has been consumed belongs to the "Already in" box, not
+                // to tonight's door list.
+                if (guest.temporaryEntryValidated) continue
             }
 
             if (!MultiOrgMerge.matchesGuestVenueSelection(guest, selectedVenueName, venues, allOrgsMode)) continue
@@ -215,6 +230,14 @@ actual fun GuestListScreen(
     val refreshTemporaryGuestsLatest by rememberUpdatedState(onRefreshTemporaryGuests)
     LaunchedEffect(Unit) {
         refreshTemporaryGuestsLatest()
+    }
+    LaunchedEffect(guestFormsEnabled, viewModel) {
+        if (!guestFormsEnabled || viewModel == null) return@LaunchedEffect
+        viewModel.refreshGuestFormsFromRemote()
+        while (true) {
+            kotlinx.coroutines.delay(12_000L)
+            viewModel.refreshGuestFormsFromRemote()
+        }
     }
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -370,6 +393,11 @@ actual fun GuestListScreen(
                     .fillMaxWidth()
                     .weight(1f)
             ) {
+                if (!readOnly && viewModel != null) {
+                    item(key = "guest_form_pending") {
+                        GuestFormPendingCard(viewModel = viewModel, isPhone = isPhone)
+                    }
+                }
                 items(
                     items = filteredGuests,
                     key = { guest -> 
@@ -536,6 +564,12 @@ actual fun GuestListScreen(
                         }
                     )
                 }
+
+                if (!readOnly && viewModel != null) {
+                    item(key = "guest_form_pending") {
+                        GuestFormPendingCard(viewModel = viewModel, isPhone = isPhone)
+                    }
+                }
                 
                 items(
                     items = filteredGuests,
@@ -692,6 +726,12 @@ actual fun GuestListScreen(
                         }
                     )
                 }
+
+                if (!readOnly && viewModel != null) {
+                    item(key = "guest_form_pending") {
+                        GuestFormPendingCard(viewModel = viewModel, isPhone = isPhone)
+                    }
+                }
                 
                 items(
                     items = filteredGuests,
@@ -733,7 +773,8 @@ actual fun GuestListScreen(
                     showVolunteerBenefits = v
                 }
             },
-            onDismiss = { showTemporaryGuestsTimeline = false }
+            onDismiss = { showTemporaryGuestsTimeline = false },
+            temporaryFeaturesEnabled = temporaryGuestFeatures.enabled,
         )
     }
 
@@ -744,6 +785,13 @@ actual fun GuestListScreen(
             onDismiss = { showAddDialog = false },
             profilePhotosEnabled = rememberProfilePhotosUploadEnabled(viewModel),
             barDiscountEnabled = rememberGuestBarDiscountEnabled(viewModel),
+            temporaryFeaturesEnabled = temporaryGuestFeatures.enabled,
+            venueAccesses = temporaryGuestFeatures.venueAccesses,
+            guestFormsEnabled = guestFormsEnabled,
+            onCreateForm = {
+                showAddDialog = false
+                showGuestFormCreator = true
+            },
             onConfirmPermanent = { name, email, phoneNumber, invitations, venueName, notes, barDiscountPercent, photoBytes ->
                 val newGuest = Guest(
                     name = name,
@@ -761,6 +809,15 @@ actual fun GuestListScreen(
                 onAddTemporaryGuests(batch)
                 showAddDialog = false
             }
+        )
+    }
+
+    if (showGuestFormCreator && viewModel != null) {
+        GuestFormCreatorDialog(
+            viewModel = viewModel,
+            venues = venues,
+            venueAccesses = temporaryGuestFeatures.venueAccesses,
+            onDismiss = { showGuestFormCreator = false },
         )
     }
     
@@ -905,6 +962,8 @@ actual fun GuestListScreen(
             venues = venues,
             profilePhotosEnabled = rememberProfilePhotosUploadEnabled(viewModel),
             barDiscountEnabled = rememberGuestBarDiscountEnabled(viewModel),
+            temporaryFeaturesEnabled = temporaryGuestFeatures.enabled,
+            venueAccesses = temporaryGuestFeatures.venueAccesses,
             viewModel = viewModel,
             onDismiss = { showEditGuestDialog = null },
             onConfirm = { updatedGuest ->
@@ -1266,7 +1325,9 @@ private fun TemporaryGuestsTimelineDialog(
     jobTypeConfigs: List<JobTypeConfig>,
     onGuestClick: (Guest) -> Unit,
     onVolunteerEntryClick: (String) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    /** Firebase only: shows the Tonight tracking tab (entered / total). */
+    temporaryFeaturesEnabled: Boolean = false,
 ) {
     val context = LocalContext.current
     val settingsManager = remember { settingsManagerFor(context) }
@@ -1276,7 +1337,12 @@ private fun TemporaryGuestsTimelineDialog(
 
     var searchText by remember { mutableStateOf("") }
     var selectedRange by remember { mutableStateOf(TempGuestRange.THREE_DAYS) }
-    var selectedPage by remember { mutableStateOf(0) }
+    val tabTonight = 0
+    val tabFuture = if (temporaryFeaturesEnabled) 1 else 0
+    val tabHistory = if (temporaryFeaturesEnabled) 2 else 1
+    var selectedTab by remember(temporaryFeaturesEnabled) {
+        mutableStateOf(if (temporaryFeaturesEnabled) tabTonight else tabFuture)
+    }
     val rangeToShortLabel = remember(context) {
         mapOf(
             TempGuestRange.THREE_DAYS to context.getString(TempGuestRangeShortLabel.THREE_DAYS.labelRes),
@@ -1321,8 +1387,35 @@ private fun TemporaryGuestsTimelineDialog(
         }
     }
 
-    val futureAndPastGuests = remember(filtered, effectiveToday) {
-        filtered.partition { (_, eventDate) -> !eventDate.isBefore(effectiveToday) }
+    // Tonight's guests: entered vs still outside (Firebase tracking only).
+    val tonightEntered = remember(filtered, effectiveToday, temporaryFeaturesEnabled) {
+        if (!temporaryFeaturesEnabled) {
+            emptyList()
+        } else {
+            filtered.filter { (guest, eventDate) ->
+                eventDate == effectiveToday && guest.temporaryEntryValidated
+            }.map { it.first }.sortedByDescending { it.temporaryEntryValidatedAt }
+        }
+    }
+    val tonightRemaining = remember(filtered, effectiveToday, temporaryFeaturesEnabled) {
+        if (!temporaryFeaturesEnabled) {
+            emptyList()
+        } else {
+            filtered.filter { (guest, eventDate) ->
+                eventDate == effectiveToday && !guest.temporaryEntryValidated
+            }.map { it.first }.sortedBy { it.name.lowercase() }
+        }
+    }
+    val tonightTotal = tonightEntered.size + tonightRemaining.size
+
+    // With Firebase tracking, tonight is only on the Tonight tab. Without it, today stays in Future.
+    val futureAndPastGuests = remember(filtered, effectiveToday, temporaryFeaturesEnabled) {
+        val futurePred: (LocalDate) -> Boolean = if (temporaryFeaturesEnabled) {
+            { date -> date.isAfter(effectiveToday) }
+        } else {
+            { date -> !date.isBefore(effectiveToday) }
+        }
+        filtered.partition { (_, eventDate) -> futurePred(eventDate) }
     }
     val futureGuests = remember(futureAndPastGuests) {
         futureAndPastGuests.first.map { it.first }
@@ -1330,7 +1423,9 @@ private fun TemporaryGuestsTimelineDialog(
     }
 
     val pastGuests = remember(futureAndPastGuests) {
-        futureAndPastGuests.second.map { it.first }
+        futureAndPastGuests.second
+            .filter { (_, eventDate) -> eventDate.isBefore(effectiveToday) }
+            .map { it.first }
             .sortedWith(compareByDescending<Guest> { it.temporaryEventDate ?: Long.MIN_VALUE }.thenBy { it.name.lowercase() })
     }
 
@@ -1525,16 +1620,23 @@ private fun TemporaryGuestsTimelineDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                TabRow(selectedTabIndex = selectedPage) {
+                TabRow(selectedTabIndex = selectedTab) {
+                    if (temporaryFeaturesEnabled) {
+                        Tab(
+                            selected = selectedTab == tabTonight,
+                            onClick = { selectedTab = tabTonight },
+                            text = { Text(context.getString(R.string.temp_guest_tab_tonight)) },
+                        )
+                    }
                     Tab(
-                        selected = selectedPage == 0,
-                        onClick = { selectedPage = 0 },
-                        text = { Text(context.getString(R.string.temp_guest_tab_temp)) }
+                        selected = selectedTab == tabFuture,
+                        onClick = { selectedTab = tabFuture },
+                        text = { Text(context.getString(R.string.temp_guest_tab_future)) },
                     )
                     Tab(
-                        selected = selectedPage == 1,
-                        onClick = { selectedPage = 1 },
-                        text = { Text(context.getString(R.string.temp_guest_tab_volunteer)) }
+                        selected = selectedTab == tabHistory,
+                        onClick = { selectedTab = tabHistory },
+                        text = { Text(context.getString(R.string.temp_guest_tab_history)) },
                     )
                 }
 
@@ -1547,24 +1649,103 @@ private fun TemporaryGuestsTimelineDialog(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(bottom = 16.dp)
                 ) {
-                    if (selectedPage == 0) {
+                    if (temporaryFeaturesEnabled && selectedTab == tabTonight) {
+                        item {
+                            TimelineSectionHeader(
+                                title = context.getString(R.string.temp_guest_tonight_title),
+                                count = tonightEntered.size,
+                                isFuture = false,
+                                countLabel = context.getString(
+                                    R.string.temp_guest_validated_count,
+                                    tonightEntered.size,
+                                    tonightTotal,
+                                ),
+                                highlighted = true,
+                            )
+                        }
+                        item {
+                            Text(
+                                context.getString(R.string.temp_guest_tonight_tracking),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        item {
+                            TimelineSectionHeader(
+                                title = context.getString(R.string.temp_guest_section_validated),
+                                count = tonightEntered.size,
+                                isFuture = false,
+                                highlighted = true,
+                            )
+                        }
+                        if (tonightEntered.isEmpty()) {
+                            item {
+                                Text(
+                                    context.getString(R.string.temp_guest_none_validated),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        } else {
+                            items(
+                                items = tonightEntered,
+                                key = { guest -> "temp_entered_${guestStableKey(guest)}" },
+                            ) { guest ->
+                                TemporaryGuestTimelineItem(
+                                    guest = guest,
+                                    onClick = { onGuestClick(guest) },
+                                    showEntryValidation = true,
+                                )
+                            }
+                        }
+                        item {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            TimelineSectionHeader(
+                                title = context.getString(R.string.temp_guest_section_remaining),
+                                count = tonightRemaining.size,
+                                isFuture = true,
+                            )
+                        }
+                        if (tonightRemaining.isEmpty()) {
+                            item {
+                                Text(
+                                    context.getString(R.string.temp_guest_none_remaining),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        } else {
+                            items(
+                                items = tonightRemaining,
+                                key = { guest -> "temp_remain_${guestStableKey(guest)}" },
+                            ) { guest ->
+                                TemporaryGuestTimelineItem(
+                                    guest = guest,
+                                    onClick = { onGuestClick(guest) },
+                                )
+                            }
+                        }
+                    } else if (selectedTab == tabFuture) {
                         item {
                             TimelineSectionHeader(
                                 title = context.getString(R.string.temp_guest_section_upcoming),
                                 count = futureGuests.size,
-                                isFuture = true
+                                isFuture = true,
                             )
                         }
                         if (futureGuests.isEmpty()) {
-                            item { Text(context.getString(R.string.temp_guest_none_upcoming), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                            item {
+                                Text(
+                                    context.getString(R.string.temp_guest_none_upcoming),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         } else {
                             items(
                                 items = futureGuests,
-                                key = { guest -> "temp_future_${guestStableKey(guest)}_${guest.temporaryEventDate}" }
+                                key = { guest -> "temp_future_${guestStableKey(guest)}_${guest.temporaryEventDate}" },
                             ) { guest ->
                                 TemporaryGuestTimelineItem(
                                     guest = guest,
-                                    onClick = { onGuestClick(guest) }
+                                    onClick = { onGuestClick(guest) },
                                 )
                             }
                         }
@@ -1572,42 +1753,52 @@ private fun TemporaryGuestsTimelineDialog(
                         item {
                             Spacer(modifier = Modifier.height(12.dp))
                             TimelineSectionHeader(
-                                title = context.getString(R.string.temp_guest_section_past),
-                                count = pastGuests.size,
-                                isFuture = false
+                                title = context.getString(R.string.temp_guest_subsection_volunteers),
+                                count = futureVolunteerEntries.size,
+                                isFuture = true,
                             )
                         }
-                        if (pastGuests.isEmpty()) {
-                            item { Text(context.getString(R.string.temp_guest_none_past), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        if (futureVolunteerEntries.isEmpty()) {
+                            item {
+                                Text(
+                                    context.getString(R.string.temp_guest_none_volunteers),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         } else {
                             items(
-                                items = pastGuests,
-                                key = { guest -> "temp_past_${guestStableKey(guest)}_${guest.temporaryEventDate}" }
-                            ) { guest ->
-                                TemporaryGuestTimelineItem(
-                                    guest = guest,
-                                    onClick = { onGuestClick(guest) }
+                                items = futureVolunteerEntries,
+                                key = { entry -> "vol_future_${entry.volunteerId}_${entry.accessStartDate}_${entry.accessEndDate}" },
+                            ) { entry ->
+                                VolunteerTimelineItem(
+                                    entry = entry,
+                                    onClick = { onVolunteerEntryClick(entry.volunteerId) },
                                 )
                             }
                         }
                     } else {
                         item {
                             TimelineSectionHeader(
-                                title = context.getString(R.string.temp_guest_section_upcoming),
-                                count = futureVolunteerEntries.size,
-                                isFuture = true
+                                title = context.getString(R.string.temp_guest_section_past),
+                                count = pastGuests.size,
+                                isFuture = false,
                             )
                         }
-                        if (futureVolunteerEntries.isEmpty()) {
-                            item { Text(context.getString(R.string.temp_guest_none_upcoming), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        if (pastGuests.isEmpty()) {
+                            item {
+                                Text(
+                                    context.getString(R.string.temp_guest_none_past),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         } else {
                             items(
-                                items = futureVolunteerEntries,
-                                key = { entry -> "vol_future_${entry.volunteerId}_${entry.accessStartDate}_${entry.accessEndDate}" }
-                            ) { entry ->
-                                VolunteerTimelineItem(
-                                    entry = entry,
-                                    onClick = { onVolunteerEntryClick(entry.volunteerId) }
+                                items = pastGuests,
+                                key = { guest -> "temp_past_${guestStableKey(guest)}_${guest.temporaryEventDate}" },
+                            ) { guest ->
+                                TemporaryGuestTimelineItem(
+                                    guest = guest,
+                                    onClick = { onGuestClick(guest) },
                                 )
                             }
                         }
@@ -1615,21 +1806,26 @@ private fun TemporaryGuestsTimelineDialog(
                         item {
                             Spacer(modifier = Modifier.height(12.dp))
                             TimelineSectionHeader(
-                                title = context.getString(R.string.temp_guest_section_past),
+                                title = context.getString(R.string.temp_guest_subsection_volunteers),
                                 count = pastVolunteerEntries.size,
-                                isFuture = false
+                                isFuture = false,
                             )
                         }
                         if (pastVolunteerEntries.isEmpty()) {
-                            item { Text(context.getString(R.string.temp_guest_none_past), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                            item {
+                                Text(
+                                    context.getString(R.string.temp_guest_none_volunteers),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         } else {
                             items(
                                 items = pastVolunteerEntries,
-                                key = { entry -> "vol_past_${entry.volunteerId}_${entry.accessStartDate}_${entry.accessEndDate}" }
+                                key = { entry -> "vol_past_${entry.volunteerId}_${entry.accessStartDate}_${entry.accessEndDate}" },
                             ) { entry ->
                                 VolunteerTimelineItem(
                                     entry = entry,
-                                    onClick = { onVolunteerEntryClick(entry.volunteerId) }
+                                    onClick = { onVolunteerEntryClick(entry.volunteerId) },
                                 )
                             }
                         }
@@ -1644,11 +1840,14 @@ private fun TemporaryGuestsTimelineDialog(
 @Composable
 private fun TemporaryGuestTimelineItem(
     guest: Guest,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    /** Replaces the event date with the entry time and marks the avatar as checked in. */
+    showEntryValidation: Boolean = false,
 ) {
     val eventDateText = remember(guest.temporaryEventDate) {
         guest.temporaryEventDate?.let { com.eventmanager.app.data.utils.DateTimeUtils.formatGenevaDateOnly(it) } ?: "-"
     }
+    val entryTimeText = temporaryEntryValidatedLabel(guest)
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -1665,15 +1864,30 @@ private fun TemporaryGuestTimelineItem(
             Card(
                 modifier = Modifier.size(42.dp),
                 shape = androidx.compose.foundation.shape.CircleShape,
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                colors = CardDefaults.cardColors(
+                    containerColor = if (showEntryValidation) {
+                        MaterialTheme.colorScheme.tertiaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.primaryContainer
+                    }
+                )
             ) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = guest.name.take(1).uppercase(),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
+                    if (showEntryValidation) {
+                        Icon(
+                            Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    } else {
+                        Text(
+                            text = guest.name.take(1).uppercase(),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
                 }
             }
             Spacer(modifier = Modifier.width(12.dp))
@@ -1691,7 +1905,7 @@ private fun TemporaryGuestTimelineItem(
             }
             Spacer(modifier = Modifier.width(12.dp))
             Text(
-                text = eventDateText,
+                text = if (showEntryValidation && entryTimeText != null) entryTimeText else eventDateText,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -1756,17 +1970,20 @@ private fun VolunteerTimelineItem(
 private fun TimelineSectionHeader(
     title: String,
     count: Int,
-    isFuture: Boolean
+    isFuture: Boolean,
+    /** Overrides the plain count, e.g. "3 / 12" for tonight's validated entries. */
+    countLabel: String? = null,
+    highlighted: Boolean = false,
 ) {
-    val containerColor = if (isFuture) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        MaterialTheme.colorScheme.secondaryContainer
+    val containerColor = when {
+        highlighted -> MaterialTheme.colorScheme.tertiaryContainer
+        isFuture -> MaterialTheme.colorScheme.primaryContainer
+        else -> MaterialTheme.colorScheme.secondaryContainer
     }
-    val contentColor = if (isFuture) {
-        MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        MaterialTheme.colorScheme.onSecondaryContainer
+    val contentColor = when {
+        highlighted -> MaterialTheme.colorScheme.onTertiaryContainer
+        isFuture -> MaterialTheme.colorScheme.onPrimaryContainer
+        else -> MaterialTheme.colorScheme.onSecondaryContainer
     }
 
     Card(
@@ -1788,7 +2005,7 @@ private fun TimelineSectionHeader(
                 color = contentColor
             )
             Text(
-                text = count.toString(),
+                text = countLabel ?: count.toString(),
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
                 color = contentColor
@@ -1810,46 +2027,6 @@ private fun guestStableKey(guest: Guest): String {
     return "$typePrefix:f_${guest.lastModified}_${guest.name}_${guest.venueName}_${guest.invitations}_${guest.temporaryEventDate}"
 }
 
-/**
- * Normalizes date typing to ISO [yyyy-MM-dd] for Google Sheets: takes up to 8 digits
- * (YYYYMMDD) and inserts hyphens after the year and month. Pasted values with slashes
- * or other separators are reduced to digits first.
- */
-private fun formatTemporaryGuestDateInput(raw: String): String {
-    val digits = raw.filter { it.isDigit() }.take(8)
-    return when (digits.length) {
-        0 -> ""
-        in 1..4 -> digits
-        in 5..6 -> "${digits.substring(0, 4)}-${digits.substring(4)}"
-        else -> "${digits.substring(0, 4)}-${digits.substring(4, 6)}-${digits.substring(6)}"
-    }
-}
-
-/** Keeps the caret after auto-inserted hyphens by mapping “digits before caret” in [incoming] to [formattedText]. */
-private fun cursorAfterIsoDateFormat(formattedText: String, incoming: TextFieldValue): TextRange {
-    val sel = incoming.selection
-    val caret = (
-        if (sel.start == sel.end) sel.start
-        else kotlin.math.max(sel.start, sel.end)
-        ).coerceIn(0, incoming.text.length)
-    val digitsBefore = incoming.text.take(caret).count { it.isDigit() }
-    if (digitsBefore <= 0) {
-        return TextRange(0)
-    }
-    var seen = 0
-    for (i in formattedText.indices) {
-        if (formattedText[i].isDigit()) {
-            seen++
-            if (seen == digitsBefore) {
-                val pos = (i + 1).coerceIn(0, formattedText.length)
-                return TextRange(pos, pos)
-            }
-        }
-    }
-    val end = formattedText.length
-    return TextRange(end, end)
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddGuestDialog(
@@ -1859,6 +2036,10 @@ fun AddGuestDialog(
     onConfirmTemporary: (ManualTemporaryGuestBatch) -> Unit,
     profilePhotosEnabled: Boolean = false,
     barDiscountEnabled: Boolean = false,
+    temporaryFeaturesEnabled: Boolean = false,
+    venueAccesses: List<VenueAccess> = emptyList(),
+    guestFormsEnabled: Boolean = false,
+    onCreateForm: () -> Unit = {},
 ) {
     val context = LocalContext.current
     var selectedTab by remember { mutableStateOf(0) }
@@ -1874,29 +2055,33 @@ fun AddGuestDialog(
     var pendingPhotoBytes by remember { mutableStateOf<ByteArray?>(null) }
 
     var temporaryArtist by remember { mutableStateOf("") }
-    var temporaryEventDateTf by remember { mutableStateOf(TextFieldValue("")) }
+    var temporaryEventDateMillis by remember { mutableStateOf<Long?>(null) }
     var temporaryEmergencyPhone by remember { mutableStateOf("") }
+    var temporaryContactEmail by remember { mutableStateOf("") }
     var temporaryComments by remember { mutableStateOf("") }
+    var temporaryVenueName by remember { mutableStateOf<String?>(null) }
+    var temporaryBarDiscount by remember { mutableStateOf("0") }
     val temporaryGuestNames = remember { mutableStateListOf("") }
+    val temporaryGuestAccessIds = remember { mutableStateListOf(emptySet<String>()) }
 
     val isCompact = isCompactScreen()
     val scrollState = rememberScrollState()
     val isTabletDevice = isTablet()
 
     val activeVenues = remember(venues) { venues.filter { it.isActive } }
+    val selectedVenueAccesses = remember(venueAccesses, temporaryVenueName) {
+        temporaryVenueName?.let { VenueAccessCatalog.forVenue(venueAccesses, it) }.orEmpty()
+    }
 
-    val parsedTempEventDate = remember(temporaryEventDateTf.text) {
-        runCatching {
-            LocalDate.parse(temporaryEventDateTf.text.trim(), DateTimeFormatter.ISO_LOCAL_DATE)
-        }.getOrNull()
-    }
-    val temporaryEventDateMillis = remember(parsedTempEventDate) {
-        parsedTempEventDate?.atStartOfDay(GuestListDefaultZoneId)?.toInstant()?.toEpochMilli()
-    }
-    val trimmedTempNames = temporaryGuestNames.map { it.trim() }.filter { it.isNotEmpty() }
+    val trimmedTempEntries = temporaryGuestNames.mapIndexed { index, rawName ->
+        ManualTemporaryGuestEntry(
+            name = rawName.trim(),
+            accessIds = temporaryGuestAccessIds.getOrElse(index) { emptySet() },
+        )
+    }.filter { it.name.isNotEmpty() }
     val temporaryFormValid = temporaryEventDateMillis != null &&
         temporaryArtist.trim().isNotEmpty() &&
-        trimmedTempNames.isNotEmpty()
+        trimmedTempEntries.isNotEmpty()
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -2065,19 +2250,18 @@ fun AddGuestDialog(
                                 onClearPending = { pendingPhotoBytes = null },
                             )
                         } else {
-                            OutlinedTextField(
-                                value = temporaryEventDateTf,
-                                onValueChange = { incoming ->
-                                    val formatted = formatTemporaryGuestDateInput(incoming.text)
-                                    temporaryEventDateTf = TextFieldValue(
-                                        formatted,
-                                        cursorAfterIsoDateFormat(formatted, incoming)
-                                    )
-                                },
-                                label = { Text(context.getString(R.string.temp_guest_event_date_label)) },
-                                placeholder = { Text("YYYY-MM-DD") },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true
+                            if (guestFormsEnabled) {
+                                OutlinedButton(
+                                    onClick = onCreateForm,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(context.getString(R.string.guest_form_create))
+                                }
+                            }
+                            EventDatePickerField(
+                                selectedDateMillis = temporaryEventDateMillis,
+                                onDateSelected = { temporaryEventDateMillis = it },
+                                label = context.getString(R.string.temp_guest_event_date_label),
                             )
 
                             OutlinedTextField(
@@ -2095,50 +2279,78 @@ fun AddGuestDialog(
                                 singleLine = true
                             )
 
-                            temporaryGuestNames.forEachIndexed { index, guestNameValue ->
-                                Row(
+                            if (temporaryFeaturesEnabled) {
+                                OutlinedTextField(
+                                    value = temporaryContactEmail,
+                                    onValueChange = { temporaryContactEmail = it },
+                                    label = { Text(context.getString(R.string.temp_guest_contact_email_label)) },
+                                    supportingText = {
+                                        Text(context.getString(R.string.temp_guest_contact_email_hint))
+                                    },
                                     modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    OutlinedTextField(
-                                        value = guestNameValue,
-                                        onValueChange = { temporaryGuestNames[index] = it },
-                                        label = {
-                                            Text(
-                                                if (index == 0) {
-                                                    context.getString(R.string.guest_name)
-                                                } else {
-                                                    context.getString(R.string.add_guest_additional_name_label, index + 1)
-                                                }
-                                            )
-                                        },
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    if (index > 0) {
-                                        IconButton(
-                                            onClick = {
-                                                if (temporaryGuestNames.size > 1) {
-                                                    temporaryGuestNames.removeAt(index)
-                                                }
-                                            }
-                                        ) {
-                                            Icon(
-                                                Icons.Default.Delete,
-                                                contentDescription = context.getString(R.string.delete)
-                                            )
+                                    singleLine = true
+                                )
+                            }
+
+                            temporaryGuestNames.forEachIndexed { index, guestNameValue ->
+                                TemporaryGuestNameCard(
+                                    name = guestNameValue,
+                                    onNameChange = { temporaryGuestNames[index] = it },
+                                    label = if (index == 0) {
+                                        context.getString(R.string.guest_name)
+                                    } else {
+                                        context.getString(R.string.add_guest_additional_name_label, index + 1)
+                                    },
+                                    venueAccesses = selectedVenueAccesses,
+                                    selectedAccessIds = temporaryGuestAccessIds.getOrElse(index) { emptySet() },
+                                    onToggleAccess = { accessId ->
+                                        val current = temporaryGuestAccessIds.getOrElse(index) { emptySet() }
+                                        temporaryGuestAccessIds[index] = if (current.contains(accessId)) {
+                                            current - accessId
+                                        } else {
+                                            current + accessId
                                         }
-                                    }
-                                }
+                                    },
+                                    onRemove = if (index > 0) {
+                                        {
+                                            if (temporaryGuestNames.size > 1) {
+                                                temporaryGuestNames.removeAt(index)
+                                                temporaryGuestAccessIds.removeAt(index)
+                                            }
+                                        }
+                                    } else {
+                                        null
+                                    },
+                                )
                             }
 
                             TextButton(
-                                onClick = { temporaryGuestNames.add("") },
+                                onClick = {
+                                    temporaryGuestNames.add("")
+                                    temporaryGuestAccessIds.add(emptySet())
+                                },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Icon(Icons.Default.Add, contentDescription = null)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(context.getString(R.string.add_guest_add_another_name))
+                            }
+
+                            if (temporaryFeaturesEnabled) {
+                                TemporaryGuestVenueDropdown(
+                                    venues = activeVenues,
+                                    selectedVenueName = temporaryVenueName,
+                                    onVenueSelected = { picked ->
+                                        if (picked != temporaryVenueName) {
+                                            // Accesses belong to a venue, so a venue change cannot
+                                            // keep grants that no longer exist there.
+                                            temporaryGuestAccessIds.indices.forEach {
+                                                temporaryGuestAccessIds[it] = emptySet()
+                                            }
+                                        }
+                                        temporaryVenueName = picked
+                                    },
+                                )
                             }
 
                             OutlinedTextField(
@@ -2148,6 +2360,13 @@ fun AddGuestDialog(
                                 modifier = Modifier.fillMaxWidth(),
                                 maxLines = 3
                             )
+
+                            if (barDiscountEnabled) {
+                                GuestBarDiscountField(
+                                    value = temporaryBarDiscount,
+                                    onValueChange = { temporaryBarDiscount = it },
+                                )
+                            }
                         }
                     }
 
@@ -2183,7 +2402,14 @@ fun AddGuestDialog(
                                             artistName = temporaryArtist.trim(),
                                             emergencyContactPhone = temporaryEmergencyPhone.trim(),
                                             comments = temporaryComments.trim(),
-                                            guestNames = trimmedTempNames
+                                            guests = trimmedTempEntries,
+                                            venueName = temporaryVenueName.orEmpty(),
+                                            contactEmail = temporaryContactEmail.trim(),
+                                            barDiscountPercent = if (barDiscountEnabled) {
+                                                temporaryBarDiscount.toIntOrNull() ?: 0
+                                            } else {
+                                                0
+                                            },
                                         )
                                     )
                                 }
@@ -2212,6 +2438,8 @@ fun EditGuestDialog(
     onConfirm: (Guest) -> Unit,
     profilePhotosEnabled: Boolean = false,
     barDiscountEnabled: Boolean = false,
+    temporaryFeaturesEnabled: Boolean = false,
+    venueAccesses: List<VenueAccess> = emptyList(),
     viewModel: EventManagerViewModel? = null,
 ) {
     val context = LocalContext.current
@@ -2225,18 +2453,12 @@ fun EditGuestDialog(
     var barDiscount by remember { mutableStateOf(guest.barDiscountPercent.toString()) }
     var temporaryArtistName by remember { mutableStateOf(guest.temporaryArtistName) }
     var temporaryContactPhone by remember { mutableStateOf(guest.temporaryContactPhone) }
-    var temporaryEventDateTf by remember {
-        mutableStateOf(
-            run {
-                val initial = guest.temporaryEventDate?.let {
-                    Instant.ofEpochMilli(it).atZone(GuestListDefaultZoneId).toLocalDate()
-                        .format(DateTimeFormatter.ISO_LOCAL_DATE)
-                } ?: ""
-                val end = initial.length
-                TextFieldValue(initial, TextRange(end, end))
-            }
-        )
+    var temporaryContactEmail by remember { mutableStateOf(guest.temporaryContactEmail) }
+    var temporaryEventDateMillis by remember { mutableStateOf(guest.temporaryEventDate) }
+    var temporaryVenueName by remember {
+        mutableStateOf(guest.temporaryVenueName.ifBlank { null })
     }
+    var temporaryAccessIds by remember { mutableStateOf(guest.temporaryAccessIdSet()) }
     var showVenueDropdown by remember { mutableStateOf(false) }
     var pendingPhotoBytes by remember { mutableStateOf<ByteArray?>(null) }
 
@@ -2246,6 +2468,9 @@ fun EditGuestDialog(
     
     // Memoize active venues to avoid repeated filtering
     val activeVenues = remember(venues) { venues.filter { it.isActive } }
+    val selectedVenueAccesses = remember(venueAccesses, temporaryVenueName) {
+        temporaryVenueName?.let { VenueAccessCatalog.forVenue(venueAccesses, it) }.orEmpty()
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -2317,19 +2542,10 @@ fun EditGuestDialog(
                                 modifier = Modifier.fillMaxWidth()
                             )
 
-                            OutlinedTextField(
-                                value = temporaryEventDateTf,
-                                onValueChange = { incoming ->
-                                    val formatted = formatTemporaryGuestDateInput(incoming.text)
-                                    temporaryEventDateTf = TextFieldValue(
-                                        formatted,
-                                        cursorAfterIsoDateFormat(formatted, incoming)
-                                    )
-                                },
-                                label = { Text(context.getString(R.string.temp_guest_event_date_label)) },
-                                placeholder = { Text("YYYY-MM-DD") },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true
+                            EventDatePickerField(
+                                selectedDateMillis = temporaryEventDateMillis,
+                                onDateSelected = { temporaryEventDateMillis = it },
+                                label = context.getString(R.string.temp_guest_event_date_label),
                             )
 
                             OutlinedTextField(
@@ -2339,6 +2555,49 @@ fun EditGuestDialog(
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true
                             )
+
+                            if (temporaryFeaturesEnabled) {
+                                OutlinedTextField(
+                                    value = temporaryContactEmail,
+                                    onValueChange = { temporaryContactEmail = it },
+                                    label = { Text(context.getString(R.string.temp_guest_contact_email_label)) },
+                                    supportingText = {
+                                        Text(context.getString(R.string.temp_guest_contact_email_hint))
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true
+                                )
+
+                                TemporaryGuestVenueDropdown(
+                                    venues = activeVenues,
+                                    selectedVenueName = temporaryVenueName,
+                                    onVenueSelected = { picked ->
+                                        if (picked != temporaryVenueName) {
+                                            temporaryAccessIds = emptySet()
+                                        }
+                                        temporaryVenueName = picked
+                                    },
+                                )
+
+                                if (selectedVenueAccesses.isNotEmpty()) {
+                                    Text(
+                                        text = context.getString(R.string.temp_guest_access_person_label),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    TemporaryGuestAccessSelector(
+                                        venueAccesses = selectedVenueAccesses,
+                                        selectedAccessIds = temporaryAccessIds,
+                                        onToggleAccess = { accessId ->
+                                            temporaryAccessIds = if (temporaryAccessIds.contains(accessId)) {
+                                                temporaryAccessIds - accessId
+                                            } else {
+                                                temporaryAccessIds + accessId
+                                            }
+                                        },
+                                    )
+                                }
+                            }
                         } else {
                             OutlinedTextField(
                                 value = email,
@@ -2420,7 +2679,7 @@ fun EditGuestDialog(
                             modifier = Modifier.fillMaxWidth(),
                             maxLines = 3
                         )
-                        if (!isTemporaryGuest && barDiscountEnabled) {
+                        if (barDiscountEnabled && (!isTemporaryGuest || temporaryFeaturesEnabled)) {
                             GuestBarDiscountField(
                                 value = barDiscount,
                                 onValueChange = { barDiscount = it },
@@ -2447,13 +2706,6 @@ fun EditGuestDialog(
                             .padding(16.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        val parsedTempEventDate = if (isTemporaryGuest) {
-                            runCatching {
-                                LocalDate.parse(temporaryEventDateTf.text.trim(), DateTimeFormatter.ISO_LOCAL_DATE)
-                            }.getOrNull()
-                        } else {
-                            null
-                        }
                         TextButton(onClick = onDismiss) {
                             Text(context.getString(R.string.cancel))
                         }
@@ -2465,7 +2717,27 @@ fun EditGuestDialog(
                                         notes = notes,
                                         temporaryArtistName = temporaryArtistName,
                                         temporaryContactPhone = temporaryContactPhone,
-                                        temporaryEventDate = parsedTempEventDate?.atStartOfDay(GuestListDefaultZoneId)?.toInstant()?.toEpochMilli()
+                                        temporaryEventDate = temporaryEventDateMillis,
+                                        temporaryContactEmail = if (temporaryFeaturesEnabled) {
+                                            temporaryContactEmail.trim()
+                                        } else {
+                                            guest.temporaryContactEmail
+                                        },
+                                        temporaryVenueName = if (temporaryFeaturesEnabled) {
+                                            temporaryVenueName.orEmpty()
+                                        } else {
+                                            guest.temporaryVenueName
+                                        },
+                                        temporaryAccessIds = if (temporaryFeaturesEnabled) {
+                                            encodeTemporaryAccessIds(temporaryAccessIds)
+                                        } else {
+                                            guest.temporaryAccessIds
+                                        },
+                                        barDiscountPercent = if (barDiscountEnabled && temporaryFeaturesEnabled) {
+                                            barDiscount.toIntOrNull() ?: 0
+                                        } else {
+                                            guest.barDiscountPercent
+                                        },
                                     )
                                 } else {
                                     val invitationCount = invitations.toIntOrNull() ?: 1
@@ -2490,7 +2762,7 @@ fun EditGuestDialog(
                                     pendingPhotoBytes?.let { viewModel?.uploadProfilePhotoForGuest(updatedGuest, it) }
                                 }
                             },
-                            enabled = name.isNotBlank() && (!isTemporaryGuest || parsedTempEventDate != null)
+                            enabled = name.isNotBlank() && (!isTemporaryGuest || temporaryEventDateMillis != null)
                         ) {
                             Text(context.getString(R.string.update_guest))
                         }

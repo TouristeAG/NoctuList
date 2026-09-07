@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.eventmanager.app.data.models.Job
 import com.eventmanager.app.data.models.Volunteer
 import com.eventmanager.app.data.utils.VolunteerActivityManager
 import com.eventmanager.app.ui.utils.*
@@ -23,19 +24,26 @@ import com.eventmanager.app.ui.utils.*
 @Composable
 fun CleanupInactiveVolunteersDialog(
     volunteers: List<Volunteer>,
+    jobs: List<Job> = emptyList(),
     onConfirm: (Int) -> Unit, // Int represents years of inactivity
     onDismiss: () -> Unit
 ) {
     val platformContext = LocalPlatformContext.current
     var selectedYears by remember { mutableStateOf(4) } // Default to 4 years
     var showPreview by remember { mutableStateOf(false) }
-    
+    val jobsByVolunteer = remember(jobs) {
+        VolunteerActivityManager.groupJobsByVolunteerId(jobs)
+    }
+
     // Calculate volunteers that would be deleted based on selected years
-    // For volunteers who have worked: check days since last shift
+    // For volunteers who have worked: check days since last shift (from jobs when needed)
     // For volunteers who never worked: check days since last profile modification
-    val volunteersToDelete = remember(selectedYears) {
+    val volunteersToDelete = remember(selectedYears, volunteers, jobsByVolunteer) {
         volunteers.filter { volunteer ->
-            val daysSinceLastActivity = VolunteerActivityManager.getDaysSinceLastActivity(volunteer)
+            val daysSinceLastActivity = VolunteerActivityManager.getDaysSinceLastActivity(
+                volunteer,
+                jobsByVolunteer[volunteer.id],
+            )
             daysSinceLastActivity != null && daysSinceLastActivity >= (selectedYears * 365L)
         }
     }
@@ -151,7 +159,10 @@ fun CleanupInactiveVolunteersDialog(
                                         )
                                         Spacer(modifier = Modifier.weight(1f))
                                         Text(
-                                            text = VolunteerActivityManager.getActivityStatusText(volunteer),
+                                            text = VolunteerActivityManager.getActivityStatusText(
+                                                volunteer,
+                                                jobsByVolunteer[volunteer.id],
+                                            ),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onErrorContainer
                                         )

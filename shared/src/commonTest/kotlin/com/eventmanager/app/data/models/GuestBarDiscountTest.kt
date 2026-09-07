@@ -31,9 +31,14 @@ class GuestBarDiscountTest {
     }
 
     @Test
-    fun activeBarDiscount_skipsVolunteerBenefitAndTemporaryRows() {
+    fun activeBarDiscount_skipsVolunteerBenefitRows() {
         assertEquals(0, guest(30, volunteerBenefit = true).activeBarDiscountPercent(firebaseBackend = true))
-        assertEquals(0, guest(30, temporary = true).activeBarDiscountPercent(firebaseBackend = true))
+    }
+
+    @Test
+    fun activeBarDiscount_appliesToTemporaryGuestsOnFirebaseOnly() {
+        assertEquals(30, guest(30, temporary = true).activeBarDiscountPercent(firebaseBackend = true))
+        assertEquals(0, guest(30, temporary = true).activeBarDiscountPercent(firebaseBackend = false))
     }
 
     @Test

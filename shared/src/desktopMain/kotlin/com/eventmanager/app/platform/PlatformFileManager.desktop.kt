@@ -69,6 +69,22 @@ actual class PlatformFileManager actual constructor(private val context: Platfor
         true
     }.getOrDefault(false)
 
+    actual fun saveEmailLogoBytes(bytes: ByteArray?): String? {
+        val destination = emailLogoPath()
+        if (bytes == null) {
+            runCatching { destination.delete() }
+            return null
+        }
+        return runCatching {
+            destination.parentFile?.mkdirs()
+            destination.writeBytes(bytes)
+            destination.absolutePath
+        }.getOrNull()
+    }
+
+    actual fun readEmailLogoBytes(): ByteArray? =
+        runCatching { emailLogoPath().takeIf { it.exists() }?.readBytes() }.getOrNull()
+
     private fun walletPassCertificatePath(): File = File(context.appDataDir, "wallet_pass_certificate.p12")
 
     actual fun getWalletPassCertificateFile(): File? = walletPassCertificatePath().takeIf { it.exists() }

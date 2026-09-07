@@ -35,7 +35,9 @@ import com.eventmanager.app.ui.components.NfcUidMatchOption
 import com.eventmanager.app.ui.components.OrgColorDot
 import com.eventmanager.app.ui.components.ScannerMatch
 import com.eventmanager.app.ui.components.ScannerIdentityCard
+import com.eventmanager.app.ui.components.EntryConfirmControl
 import com.eventmanager.app.ui.components.VolunteerFutureEntriesSection
+import com.eventmanager.app.ui.components.temporaryEntryValidatedLabel
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 
@@ -64,6 +66,16 @@ sealed class BilleterieScanResult {
     ) : BilleterieScanResult()
 
     data class GuestFound(val guest: Guest) : BilleterieScanResult()
+
+    /**
+     * Firebase-only. A temporary guest holds one entry, so the screen shows their venue accesses
+     * and either offers to burn that entry or reports that it is already gone.
+     */
+    data class TemporaryGuestFound(
+        val guest: Guest,
+        val accesses: List<VenueAccess>,
+        val alreadyValidated: Boolean,
+    ) : BilleterieScanResult()
 
     data class ScanError(val message: String) : BilleterieScanResult()
 }
@@ -373,6 +385,7 @@ fun BilleterieScanResult.scannedFirebaseOrgId(): String? = when (this) {
     is BilleterieScanResult.TicketsAvailable -> volunteer.firebaseOrgId.takeIf { it.isNotBlank() }
     is BilleterieScanResult.NoEntry -> volunteer.firebaseOrgId.takeIf { it.isNotBlank() }
     is BilleterieScanResult.GuestFound -> guest.firebaseOrgId.takeIf { it.isNotBlank() }
+    is BilleterieScanResult.TemporaryGuestFound -> guest.firebaseOrgId.takeIf { it.isNotBlank() }
     is BilleterieScanResult.ScanError -> null
 }
 
@@ -415,6 +428,7 @@ fun BilleterieScanResultOverlay(
     onScanNext: () -> Unit,
     onCloseToMenu: () -> Unit,
     viewModel: EventManagerViewModel? = null,
+    onValidateTemporaryGuest: (Guest) -> Unit = {},
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         when (result) {
@@ -446,6 +460,14 @@ fun BilleterieScanResultOverlay(
             is BilleterieScanResult.GuestFound -> BilleterieGuestFoundContent(
                 guest = result.guest,
                 viewModel = viewModel,
+                onScanNext = onScanNext,
+            )
+            is BilleterieScanResult.TemporaryGuestFound -> BilleterieTemporaryGuestContent(
+                guest = result.guest,
+                accesses = result.accesses,
+                alreadyValidated = result.alreadyValidated,
+                viewModel = viewModel,
+                onValidate = { onValidateTemporaryGuest(result.guest) },
                 onScanNext = onScanNext,
             )
             is BilleterieScanResult.ScanError -> BilleterieScanErrorContent(
@@ -941,6 +963,179 @@ private fun BilleterieGuestFoundContent(
         Spacer(modifier = Modifier.height(32.dp))
 
         BilleterieScanNextButton(onScanNext)
+    }
+}
+
+/**
+ * Temporary guest result. Green while the single entry is still available, amber once it has been
+ * used — the accesses stay visible either way, since the door still needs to know where the person
+ * is allowed to go.
+ */
+@Composable
+private fun BilleterieTemporaryGuestContent(
+    guest: Guest,
+    accesses: List<VenueAccess>,
+    alreadyValidated: Boolean,
+    viewModel: EventManagerViewModel?,
+    onValidate: () -> Unit,
+    onScanNext: () -> Unit,
+) {
+    var validated by remember(guest.nanoId) { mutableStateOf(alreadyValidated) }
+    val background = if (validated) Color(0xFF8D6E00) else SuccessGreen
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(background)
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Icon(
+            if (validated) Icons.Default.History else Icons.Default.CheckCircle,
+            contentDescription = null,
+            modifier = Modifier.size(88.dp),
+            tint = Color.White,
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = stringResource(Res.string.temp_guest_scan_title),
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            textAlign = TextAlign.Center,
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        ScannerIdentityCard(
+            name = guest.name,
+            photoUrl = guest.profilePhotoUrl,
+            photoPath = guest.resolvedProfilePhotoPath(),
+            orgLabel = {
+                BilleterieScannerScannedOrgLabel(
+                    viewModel = viewModel,
+                    orgId = guest.firebaseOrgId,
+                    lightOnColoredBackground = true,
+                )
+            },
+            extraLines = listOfNotNull(
+                guest.temporaryArtistName.takeIf { it.isNotBlank() },
+                guest.temporaryVenueName.takeIf { it.isNotBlank() },
+            ),
+            lightOnDark = true,
+        )
+
+        val barDiscount = guest.barDiscountPercent.coerceIn(0, 100)
+        val hasNonAccessBenefits = barDiscount > 0
+        if (accesses.isNotEmpty() || hasNonAccessBenefits) {
+            Spacer(modifier = Modifier.height(20.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.16f)),
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Text(
+                        text = stringResource(
+                            if (hasNonAccessBenefits) Res.string.benefit_details
+                            else Res.string.access_details,
+                        ),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White,
+                    )
+                    accesses.forEach { access ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Icon(
+                                Icons.Default.VpnKey,
+                                contentDescription = null,
+                                modifier = Modifier.size(22.dp),
+                                tint = Color.White,
+                            )
+                            Text(
+                                text = access.name,
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                            )
+                        }
+                    }
+                    if (barDiscount > 0) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Icon(
+                                Icons.Default.LocalBar,
+                                contentDescription = null,
+                                modifier = Modifier.size(22.dp),
+                                tint = Color.White,
+                            )
+                            Text(
+                                text = stringResource(Res.string.bar_discount, barDiscount),
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        if (validated) {
+            Text(
+                text = temporaryEntryValidatedLabel(guest)?.let {
+                    stringResource(Res.string.temp_guest_scan_already_used, it)
+                } ?: stringResource(Res.string.temp_guest_entry_validated_short),
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White,
+                textAlign = TextAlign.Center,
+            )
+        } else {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.16f)),
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Text(
+                        text = stringResource(Res.string.temp_guest_entry_single_use_hint),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.9f),
+                    )
+                    EntryConfirmControl(
+                        onConfirm = {
+                            validated = true
+                            onValidate()
+                        },
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(28.dp))
+
+        BilleterieScanNextButton(onScanNext)
+
+        Spacer(modifier = Modifier.height(24.dp))
     }
 }
 

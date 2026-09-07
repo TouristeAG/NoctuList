@@ -73,19 +73,19 @@ import com.eventmanager.app.data.sync.JsonKeyInfo
 import com.eventmanager.app.data.sync.settingsManagerFor
 import com.eventmanager.app.data.sync.SettingsManager
 import com.eventmanager.app.data.sync.formatDateTime
-import com.eventmanager.app.data.utils.getActivityStatusText
-import com.eventmanager.app.data.utils.VolunteerActivityManager
 import com.eventmanager.app.data.utils.AppIconManager
 import com.eventmanager.app.data.models.Guest
 import com.eventmanager.app.data.models.Volunteer
 import com.eventmanager.app.ui.viewmodel.EventManagerViewModel
 import com.eventmanager.app.ui.platform.AppAppearanceState
 import com.eventmanager.app.ui.components.FactoryResetSettingsSection
+import com.eventmanager.app.ui.components.TemporaryGuestAccessSettingsSection
 import com.eventmanager.app.ui.components.BackgroundAnimationSettingsSection
 import com.eventmanager.app.ui.components.BackgroundAnimationSettingsTarget
 import com.eventmanager.app.ui.components.ColorThemePicker
 import com.eventmanager.app.ui.components.ScrollBehaviorPicker
 import com.eventmanager.app.ui.components.ThemeModePicker
+import com.eventmanager.app.ui.components.ActiveVolunteersDialog
 import com.eventmanager.app.ui.components.CleanupInactiveVolunteersDialog
 import com.eventmanager.app.ui.components.SyncStatusDialog
 import kotlinx.coroutines.launch
@@ -547,6 +547,10 @@ private fun EmailSettingsContent(
     context: android.content.Context,
     onSyncedSettingChanged: () -> Unit = {},
     editable: Boolean = true,
+    /** The artist guest list tab only exists on Firebase, like the rest of the feature. */
+    temporaryFeaturesEnabled: Boolean = false,
+    /** Keep the e-mail logo and the institution / form logo in sync. */
+    onInstitutionLogoBytes: (ByteArray?) -> Unit = {},
 ) {
     // Cache string resources to avoid repeated lookups
     val strings = remember {
@@ -591,12 +595,24 @@ private fun EmailSettingsContent(
         )
     }
     
-    // Tab state: 0 = Volunteer, 1 = Guest
+    // Temporary guest (artist guest list) defaults
+    val tempStrings = remember {
+        GuestEmailSettingsStrings(
+            subjectDefault = context.getString(R.string.temp_guest_email_subject_default),
+            contentBeforeDefault = context.getString(R.string.temp_guest_email_content_before_default),
+            contentAfterDefault = context.getString(R.string.temp_guest_email_content_after_default)
+        )
+    }
+
+    // Tab state: 0 = Volunteer, 1 = Guest, 2 = artist guest list (Firebase only)
     var selectedTabIndex by remember { mutableStateOf(0) }
-    val tabLabels = listOf(
-        context.getString(R.string.email_tab_volunteer),
-        context.getString(R.string.email_tab_guest)
-    )
+    val tabLabels = remember(temporaryFeaturesEnabled) {
+        buildList {
+            add(context.getString(R.string.email_tab_volunteer))
+            add(context.getString(R.string.email_tab_guest))
+            if (temporaryFeaturesEnabled) add(context.getString(R.string.temp_guest_email_tab))
+        }
+    }
     
     // Volunteer email settings
     var volunteerSubject by remember { mutableStateOf(strings.subjectDefault) }
@@ -609,7 +625,13 @@ private fun EmailSettingsContent(
     var guestContentBefore by remember { mutableStateOf(guestStrings.contentBeforeDefault) }
     var guestIncludeQr by remember { mutableStateOf(true) }
     var guestContentAfter by remember { mutableStateOf(guestStrings.contentAfterDefault) }
-    
+
+    // Artist guest list email settings
+    var tempSubject by remember { mutableStateOf(tempStrings.subjectDefault) }
+    var tempContentBefore by remember { mutableStateOf(tempStrings.contentBeforeDefault) }
+    var tempIncludeQr by remember { mutableStateOf(true) }
+    var tempContentAfter by remember { mutableStateOf(tempStrings.contentAfterDefault) }
+
     // Shared settings
     var emailSignature by remember { mutableStateOf(strings.signatureDefault) }
     var emailAssociationName by remember { mutableStateOf("Collectif Nocturne") }
@@ -630,7 +652,15 @@ private fun EmailSettingsContent(
         guestContentBefore = settingsManager.getGuestEmailContentBefore().ifEmpty { guestStrings.contentBeforeDefault }
         guestIncludeQr = settingsManager.isGuestEmailIncludeQrEnabled()
         guestContentAfter = settingsManager.getGuestEmailContentAfter().ifEmpty { guestStrings.contentAfterDefault }
-        
+
+        // Artist guest list settings
+        tempSubject = settingsManager.getTemporaryGuestEmailSubject().ifEmpty { tempStrings.subjectDefault }
+        tempContentBefore =
+            settingsManager.getTemporaryGuestEmailContentBefore().ifEmpty { tempStrings.contentBeforeDefault }
+        tempIncludeQr = settingsManager.isTemporaryGuestEmailIncludeQrEnabled()
+        tempContentAfter =
+            settingsManager.getTemporaryGuestEmailContentAfter().ifEmpty { tempStrings.contentAfterDefault }
+
         // Shared settings
         emailSignature = settingsManager.getEmailSignature().ifEmpty { strings.signatureDefault }
         emailAssociationName = settingsManager.getEmailAssociationName()
@@ -669,6 +699,10 @@ private fun EmailSettingsContent(
             }
             emailLogoUri = selectedUri.toString()
             settingsManager.saveEmailLogoUri(selectedUri.toString())
+            val bytes = runCatching {
+                context.contentResolver.openInputStream(selectedUri)?.use { it.readBytes() }
+            }.getOrNull()
+            onInstitutionLogoBytes(bytes)
         }
     }
     
@@ -709,7 +743,11 @@ private fun EmailSettingsContent(
                     icon = {
                         if (selectedTabIndex == index) {
                             Icon(
-                                imageVector = if (index == 0) Icons.Default.VolunteerActivism else Icons.Default.Person,
+                                imageVector = when (index) {
+                                    0 -> Icons.Default.VolunteerActivism
+                                    1 -> Icons.Default.Person
+                                    else -> Icons.Default.Groups
+                                },
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp)
                             )
@@ -746,6 +784,34 @@ private fun EmailSettingsContent(
                 onContentAfterChange = { 
                     volunteerContentAfter = it
                     debouncedSave { settingsManager.saveEmailContentAfter(it) }
+                },
+                strings = strings,
+                enabled = editable,
+            )
+        } else if (selectedTabIndex == 2) {
+            // Artist guest list: one mail carrying every temporary guest's QR code
+            GuestEmailFields(
+                subject = tempSubject,
+                onSubjectChange = {
+                    tempSubject = it
+                    debouncedSave { settingsManager.saveTemporaryGuestEmailSubject(it) }
+                },
+                contentBefore = tempContentBefore,
+                onContentBeforeChange = {
+                    tempContentBefore = it
+                    debouncedSave { settingsManager.saveTemporaryGuestEmailContentBefore(it) }
+                },
+                includeQr = tempIncludeQr,
+                onIncludeQrChange = {
+                    if (!editable) return@GuestEmailFields
+                    tempIncludeQr = it
+                    settingsManager.setTemporaryGuestEmailIncludeQrEnabled(it)
+                    onSyncedSettingChanged()
+                },
+                contentAfter = tempContentAfter,
+                onContentAfterChange = {
+                    tempContentAfter = it
+                    debouncedSave { settingsManager.saveTemporaryGuestEmailContentAfter(it) }
                 },
                 strings = strings,
                 enabled = editable,
@@ -932,6 +998,7 @@ private fun EmailSettingsContent(
                                 onClick = {
                                     emailLogoUri = ""
                                     settingsManager.saveEmailLogoUri("")
+                                    onInstitutionLogoBytes(null)
                                 },
                                 colors = ButtonDefaults.outlinedButtonColors(
                                     contentColor = MaterialTheme.colorScheme.error
@@ -1567,6 +1634,11 @@ actual fun SettingsScreen(
         backendType = settingsManager.getBackendType(),
         isFirebaseOrgAdmin = isFirebaseOrgAdmin,
     )
+    val catalogVenues by viewModel.venues.collectAsState()
+    val activeVenues = remember(catalogVenues) { catalogVenues.filter { it.isActive } }
+    val temporaryGuestAccesses by viewModel.temporaryGuestVenueAccesses.collectAsState()
+    val temporaryGuestCreditsEnabled by viewModel.temporaryGuestCreditsEnabled.collectAsState()
+    val temporaryGuestFeaturesEnabled = viewModel.isTemporaryGuestFeaturesEnabled()
     val firebaseAuthService = remember {
         com.eventmanager.app.data.remote.createFirebaseAuthService(platformContext)
             as? com.eventmanager.app.data.remote.AndroidFirebaseAuthService
@@ -1663,6 +1735,7 @@ actual fun SettingsScreen(
     val syncStatusMessage by viewModel.syncStatusMessage.collectAsState()
     val showSyncStatusDialog by viewModel.showSyncStatusDialog.collectAsState()
     val profilePhotosEnabled by viewModel.profilePhotosUploadEnabled.collectAsState()
+    val guestFormsEnabled by viewModel.guestFormsEnabled.collectAsState()
     val billeterieSendEnabled by viewModel.announcementsBilleterieSendEnabled.collectAsState()
     
     // Check if JSON key file exists on first load
@@ -1887,6 +1960,9 @@ actual fun SettingsScreen(
                     settingsManager = settingsManager,
                     profilePhotosEnabled = profilePhotosEnabled,
                     onProfilePhotosEnabledChange = { viewModel.setProfilePhotosEnabled(it) },
+                    guestFormsEnabled = guestFormsEnabled,
+                    onGuestFormsEnabledChange = { viewModel.setGuestFormsEnabled(it) },
+                    guestFormSiteOrigin = viewModel.guestFormSiteOrigin(),
                     projectId = settingsManager.getFirebaseProjectId(),
                     apiKey = settingsManager.getFirebaseApiKey(),
                     applicationId = settingsManager.getFirebaseApplicationId(),
@@ -2142,7 +2218,8 @@ actual fun SettingsScreen(
                 com.eventmanager.app.ui.components.SheetsMigrateToFirebaseButton(
                     onClick = {
                         migrationWizard = com.eventmanager.app.data.remote.MigrationDirection.SHEETS_TO_FIREBASE
-                    }
+                    },
+                    projectId = settingsManager.getFirebaseProjectId(),
                 )
             }
 
@@ -2396,6 +2473,8 @@ actual fun SettingsScreen(
                 context = context,
                 onSyncedSettingChanged = { viewModel.backupInstitutionSettingsToSheets() },
                 editable = canEditInstitutionSettings,
+                temporaryFeaturesEnabled = viewModel.isTemporaryGuestFeaturesEnabled(),
+                onInstitutionLogoBytes = { viewModel.setInstitutionLogo(it) },
             )
         }
 
@@ -4325,6 +4404,60 @@ actual fun SettingsScreen(
                 }
             }
         }
+
+        if (temporaryGuestFeaturesEnabled) {
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.VpnKey,
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = context.getString(R.string.temp_guest_access_settings_title),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    TemporaryGuestAccessSettingsSection(
+                        activeVenues = activeVenues,
+                        accesses = temporaryGuestAccesses,
+                        creditsEnabled = temporaryGuestCreditsEnabled,
+                        canEdit = canEditInstitutionSettings,
+                        onAddAccess = { venueName, name ->
+                            viewModel.addTemporaryGuestVenueAccess(venueName, name)
+                        },
+                        onRemoveAccess = { viewModel.removeTemporaryGuestVenueAccess(it) },
+                        onCreditsEnabledChange = { viewModel.setTemporaryGuestCreditsEnabled(it) },
+                    )
+
+                    if (!canEditInstitutionSettings) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = context.getString(R.string.institution_settings_firebase_admin_only),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
         }
         
         Spacer(modifier = Modifier.height(24.dp))
@@ -4624,6 +4757,7 @@ actual fun SettingsScreen(
             com.eventmanager.app.data.remote.BackendType.FIREBASE ->
                 com.eventmanager.app.ui.components.FirebaseSetupTutorialDialog(
                     onDismiss = { showInstructions = false },
+                    projectId = settingsManager.getFirebaseProjectId(),
                 )
             com.eventmanager.app.data.remote.BackendType.SHEETS ->
                 GoogleSheetsInstructionsDialog(
@@ -4643,6 +4777,7 @@ actual fun SettingsScreen(
     if (showActiveVolunteersDialog) {
         ActiveVolunteersDialog(
             volunteers = viewModel.volunteers.collectAsState().value,
+            jobs = viewModel.jobs.collectAsState().value,
             onDismiss = { showActiveVolunteersDialog = false }
         )
     }
@@ -4651,6 +4786,7 @@ actual fun SettingsScreen(
     if (showCleanupDialog) {
         CleanupInactiveVolunteersDialog(
             volunteers = viewModel.volunteers.collectAsState().value,
+            jobs = viewModel.jobs.collectAsState().value,
             onConfirm = { yearsInactive ->
                 viewModel.cleanupInactiveVolunteers(yearsInactive)
                 showCleanupDialog = false
@@ -4950,123 +5086,6 @@ fun InstructionStep(
             )
         }
     }
-}
-
-@Composable
-fun ActiveVolunteersDialog(
-    volunteers: List<Volunteer>,
-    onDismiss: () -> Unit
-) {
-    val context = LocalContext.current
-    val activeVolunteers = volunteers.filter { VolunteerActivityManager.isVolunteerActive(it) }
-    val inactiveVolunteers = volunteers.filter { !VolunteerActivityManager.isVolunteerActive(it) }
-    
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(context.getString(R.string.volunteer_activity_status))
-        },
-        text = {
-            Column {
-                Text(
-                    text = context.getString(R.string.active_volunteers_count, activeVolunteers.size),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color(0xFF4CAF50),
-                    fontWeight = FontWeight.Bold
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                Text(
-                    text = context.getString(R.string.inactive_volunteers_count, inactiveVolunteers.size),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color(0xFF9E9E9E),
-                    fontWeight = FontWeight.Bold
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 300.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    items(
-                        items = activeVolunteers,
-                        key = { volunteer -> volunteer.id }
-                    ) { volunteer ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Circle,
-                                contentDescription = "Active",
-                                modifier = Modifier.size(8.dp),
-                                tint = Color(0xFF4CAF50)
-                            )
-                            Text(
-                                text = volunteer.name,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Spacer(modifier = Modifier.weight(1f))
-                            Text(
-                                text = VolunteerActivityManager.getActivityStatusText(volunteer, context),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF4CAF50)
-                            )
-                        }
-                    }
-                    
-                    if (inactiveVolunteers.isNotEmpty()) {
-                        item {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = context.getString(R.string.inactive_volunteers_label),
-                                style = MaterialTheme.typography.labelLarge,
-                                color = Color(0xFF9E9E9E),
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        
-                        items(
-                            items = inactiveVolunteers,
-                            key = { volunteer -> volunteer.id }
-                        ) { volunteer ->
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Circle,
-                                    contentDescription = "Inactive",
-                                    modifier = Modifier.size(8.dp),
-                                    tint = Color(0xFF9E9E9E)
-                                )
-                                Text(
-                                    text = volunteer.name,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color(0xFF9E9E9E)
-                                )
-                                Spacer(modifier = Modifier.weight(1f))
-                                Text(
-                                    text = VolunteerActivityManager.getActivityStatusText(volunteer, context),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color(0xFF9E9E9E)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(context.getString(R.string.close))
-            }
-        }
-    )
 }
 
 @Composable

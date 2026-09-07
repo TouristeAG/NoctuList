@@ -95,8 +95,32 @@ class FirestoreCodecAndRulesShapeTest {
         val decoded = FirestoreJsonCodec.fromJsonObject(obj)
         assertEquals("Ada", decoded["name"])
         assertEquals(10.0, decoded["amount"])
-        // Envelope lastModified overwrites the flat duplicate when both exist.
-        assertEquals(10L, decoded["lastModified"])
+        // A public writer only touches flat fields; those must beat the stale envelope.
+        assertEquals(99L, decoded["lastModified"])
+    }
+
+    @Test
+    fun fromJsonObject_publicGuestFormAnswerBeatsStaleEnvelope() {
+        val envelope = FirestoreJsonCodec.toEnvelope(
+            mapOf(
+                "status" to "OPEN",
+                "submissionJson" to "",
+                "lastModified" to 10L,
+            ),
+        ).json
+        val obj = JsonObject(
+            mapOf(
+                "json" to JsonPrimitive(envelope),
+                "status" to JsonPrimitive("PENDING_REVIEW"),
+                "submissionJson" to JsonPrimitive("""{"people":[{"name":"Ada"}]}"""),
+                "submittedAt" to JsonPrimitive(99L),
+                "lastModified" to JsonPrimitive(99L),
+            ),
+        )
+        val decoded = FirestoreJsonCodec.fromJsonObject(obj)
+        assertEquals("PENDING_REVIEW", decoded["status"])
+        assertTrue((decoded["submissionJson"] as? String)?.contains("Ada") == true)
+        assertEquals(99L, decoded["lastModified"])
     }
 
     @Test
@@ -184,6 +208,28 @@ class FirestoreCodecAndRulesShapeTest {
             "institutionSettings must not be writable by every member",
         )
         assertTrue(rules.contains("allow update, delete: if false;"))
+        assertTrue(
+            rules.contains("match /orgs/{orgId}/guestForms/{formId}"),
+            "artist guest list forms need their own match block",
+        )
+        assertTrue(
+            rules.contains("isPublicMultiGuestFormCreate"),
+            "multi-response public create must be defined",
+        )
+        assertTrue(
+            rules.contains("allowMultipleResponses"),
+            "multi-response flag must appear in guest form rules",
+        )
+        assertTrue(
+            rules.contains("request.resource.data.status == 'PENDING_REVIEW'"),
+            "a public answer may only move the form to PENDING_REVIEW",
+        )
+        assertTrue(
+            rules.contains(
+                ".hasOnly(['status', 'submissionJson', 'submittedAt', 'lastModified', 'sourceDeviceId'])",
+            ),
+            "a public answer must not rewrite venue, accesses or logos",
+        )
     }
 
     @Test

@@ -45,4 +45,20 @@ class VolunteerActivityManagerTest {
         assertTrue(VolunteerActivityManager.isVolunteerActive(volunteer, listOf(job)))
         assertFalse(VolunteerActivityManager.isVolunteerActive(volunteer))
     }
+
+    @Test
+    fun daysSinceLastActivityUsesJobsWhenLastShiftDateMissing() {
+        val now = System.currentTimeMillis()
+        val volunteer = volunteer(isActiveFlag = false, lastShiftDate = null)
+        val job = Job(
+            volunteerId = volunteer.id,
+            jobType = JobType.OTHER,
+            jobTypeName = "Bar",
+            venueName = "Main",
+            date = now - 2L * 24 * 60 * 60 * 1000,
+            shiftTime = ShiftTime.BEFORE_MIDNIGHT,
+        )
+        val days = VolunteerActivityManager.getDaysSinceLastActivity(volunteer, listOf(job))
+        assertTrue(days != null && days in 1L..3L)
+    }
 }

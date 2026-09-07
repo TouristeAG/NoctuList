@@ -3,12 +3,35 @@ package com.eventmanager.app.email
 enum class QrEmailProfile {
     Volunteer,
     Guest,
+
+    /** One mail carrying the whole artist guest list, so it can hold several QR codes. */
+    TempGuest,
 }
 
 enum class QrEmailTheme {
     Volunteer,
     Guest,
+    TempGuest,
 }
+
+/**
+ * One QR block in the mail. [contentId] must match the inline attachment's Content-ID, and
+ * [base64] is the fallback used when the mail is rendered without attachments.
+ */
+data class QrEmailCode(
+    val holderName: String,
+    val contentId: String = "qrcode",
+    val base64: String? = null,
+)
+
+/**
+ * One person's QR to put in a mail, before any image is rendered. A single-entry list reproduces
+ * the classic one-code mail exactly.
+ */
+data class QrEmailRecipientCode(
+    val holderName: String,
+    val qrPayload: String,
+)
 
 data class QrEmailHtmlOptions(
     val holderName: String,
@@ -29,6 +52,11 @@ data class QrEmailHtmlOptions(
     val logoBase64: String? = null,
     val useContentId: Boolean = false,
     val theme: QrEmailTheme,
+    /**
+     * Several QR codes in one mail. Empty means the single code described by [holderName] and
+     * [qrCodeBase64], which renders exactly as it always has.
+     */
+    val qrCodes: List<QrEmailCode> = emptyList(),
 )
 
 object QrEmailHtmlBuilder {
@@ -36,10 +64,12 @@ object QrEmailHtmlBuilder {
         val headerGradient = when (options.theme) {
             QrEmailTheme.Volunteer -> "linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #a855f7 100%)"
             QrEmailTheme.Guest -> "linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)"
+            QrEmailTheme.TempGuest -> "linear-gradient(135deg, #f43f5e 0%, #e11d48 50%, #9f1239 100%)"
         }
         val qrBoxGradient = when (options.theme) {
             QrEmailTheme.Volunteer -> "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
             QrEmailTheme.Guest -> "linear-gradient(135deg, #10b981 0%, #059669 100%)"
+            QrEmailTheme.TempGuest -> "linear-gradient(135deg, #fb7185 0%, #e11d48 100%)"
         }
 
         fun String.toHtmlParagraphs(): String =
@@ -56,25 +86,25 @@ object QrEmailHtmlBuilder {
                     "<strong style=\"color: #1f2937; font-weight: 600;\">$line</strong>"
                 }
 
-        val qrSection = if (options.includeQr) {
-            """
-        <tr>
-            <td style="padding: 40px 40px; text-align: center; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);">
-                <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto; width: 100%; max-width: 300px;">
-                    <tr>
-                        <td style="background-color: #ffffff; padding: 32px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 2px solid #e2e8f0;">
-                            <div style="background: $qrBoxGradient; padding: 24px; border-radius: 12px; margin-bottom: 20px;">
-                                <table role="presentation" cellpadding="0" cellspacing="0" style="width: 200px; height: 200px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                                    <tr>
-                                        <td style="text-align: center; vertical-align: middle; padding: 10px;">
-                                            ${if (options.useContentId && options.includeQr) {
-                """<img src="cid:qrcode" 
+        val codes = options.qrCodes.ifEmpty {
+            listOf(
+                QrEmailCode(
+                    holderName = options.holderName,
+                    contentId = "qrcode",
+                    base64 = options.qrCodeBase64,
+                )
+            )
+        }
+
+        fun qrCard(code: QrEmailCode): String {
+            val image = if (options.useContentId) {
+                """<img src="cid:${code.contentId}" 
                                                      alt="QR Code" 
                                                      width="180" 
                                                      height="180" 
                                                      style="display: block; margin: 0 auto; border: none; max-width: 180px; max-height: 180px;">"""
-            } else if (options.qrCodeBase64 != null) {
-                """<img src="data:image/png;base64,${options.qrCodeBase64}" 
+            } else if (code.base64 != null) {
+                """<img src="data:image/png;base64,${code.base64}" 
                                                      alt="QR Code" 
                                                      width="180" 
                                                      height="180" 
@@ -90,22 +120,40 @@ object QrEmailHtmlBuilder {
                                                     </table>
                                                     <div style="color: #64748b; font-weight: 500;">${options.qrAttachmentText.replace("\n", "<br>")}</div>
                                                  </div>"""
-            }}
+            }
+            val note = if (code.base64 == null && !options.useContentId) {
+                """<p style="margin: 12px 0 0 0; font-size: 12px; color: #64748b; font-style: italic;">
+                                    ${options.qrAttachmentNote}
+                                </p>"""
+            } else ""
+            return """
+                <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto 16px auto; width: 100%; max-width: 300px;">
+                    <tr>
+                        <td style="background-color: #ffffff; padding: 32px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 2px solid #e2e8f0;">
+                            <div style="background: $qrBoxGradient; padding: 24px; border-radius: 12px; margin-bottom: 20px;">
+                                <table role="presentation" cellpadding="0" cellspacing="0" style="width: 200px; height: 200px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                                    <tr>
+                                        <td style="text-align: center; vertical-align: middle; padding: 10px;">
+                                            $image
                                         </td>
                                     </tr>
                                 </table>
                             </div>
                             <p style="margin: 0; font-size: 14px; color: #475569; font-weight: 500; letter-spacing: 0.3px;">
-                                ${options.holderName}
+                                ${code.holderName}
                             </p>
-                            ${if (options.qrCodeBase64 == null) {
-                """<p style="margin: 12px 0 0 0; font-size: 12px; color: #64748b; font-style: italic;">
-                                    ${options.qrAttachmentNote}
-                                </p>"""
-            } else ""}
+                            $note
                         </td>
                     </tr>
                 </table>
+            """.trimIndent()
+        }
+
+        val qrSection = if (options.includeQr) {
+            """
+        <tr>
+            <td style="padding: 40px 40px; text-align: center; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);">
+                ${codes.joinToString("\n") { qrCard(it) }}
             </td>
         </tr>
             """.trimIndent()

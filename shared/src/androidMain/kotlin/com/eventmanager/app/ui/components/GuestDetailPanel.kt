@@ -49,7 +49,13 @@ import com.eventmanager.app.R
 import com.eventmanager.app.data.sync.settingsManagerFor
 import com.eventmanager.app.data.sync.SettingsManager
 import com.eventmanager.app.data.sync.GmailAuthService
+import com.eventmanager.app.data.sync.GmailQrAttachment
 import com.eventmanager.app.data.sync.GmailSendService
+import com.eventmanager.app.email.MimeEmailBuilder
+import com.eventmanager.app.email.QrEmailCode
+import com.eventmanager.app.email.QrEmailHtmlBuilder
+import com.eventmanager.app.email.QrEmailHtmlOptions
+import com.eventmanager.app.email.QrEmailTheme
 import com.eventmanager.app.utils.DigitalWalletPassGenerator
 import android.widget.Toast
 import kotlinx.coroutines.launch
@@ -105,7 +111,12 @@ actual fun GuestDetailPanel(
     )
     var showQrDialog by remember { mutableStateOf(false) }
     var showNfcDialog by remember { mutableStateOf(false) }
-    
+
+    val temporaryGuestFeatures = rememberTemporaryGuestFeatures(viewModel)
+    val guestAccesses = remember(temporaryGuestFeatures.venueAccesses, guest) {
+        VenueAccessCatalog.resolve(temporaryGuestFeatures.venueAccesses, guest.temporaryAccessIdSet())
+    }
+
     ProfileEasterEggHost(
         enabled = leonardoEasterEggEnabled,
         modifier = modifier.fillMaxSize(),
@@ -174,12 +185,47 @@ actual fun GuestDetailPanel(
                             canExportPhoto = !readOnly,
                             onUploadPhoto = { bytes -> viewModel?.uploadProfilePhotoForGuest(guest, bytes) },
                             onRemovePhoto = { viewModel?.removeProfilePhotoForGuest(guest) },
-                            onShowQr = if (readOnly && !guest.isTemporaryGuest) {
+                            onShowQr = if (readOnly || guest.isTemporaryGuest) {
                                 { showQrDialog = true }
                             } else {
                                 null
-                            }
+                            },
+                            temporaryFeaturesEnabled = temporaryGuestFeatures.enabled,
+                            temporaryAccesses = guestAccesses,
                         )
+                    }
+
+                    // Single-use door validation, available to both Billeterie and Admin.
+                    if (guest.isTemporaryGuest &&
+                        temporaryGuestFeatures.enabled &&
+                        !guest.temporaryEntryValidated &&
+                        viewModel != null
+                    ) {
+                        item {
+                            TemporaryGuestEntrySection(
+                                guest = guest,
+                                onValidate = { viewModel.validateTemporaryGuestEntry(guest) },
+                            )
+                        }
+                    }
+
+                    if (!readOnly &&
+                        guest.isTemporaryGuest &&
+                        temporaryGuestFeatures.creditsEnabled &&
+                        onManualAccountAdjust != null &&
+                        viewModel != null
+                    ) {
+                        item {
+                            AccountInfoSection(
+                                balance = accountBalance,
+                                currencyCode = currencyCode,
+                                recentTransfers = recentTransfers,
+                                onManualAdjust = onManualAccountAdjust,
+                                viewModel = viewModel,
+                                allowAdjustment = true,
+                                compactAdjust = true
+                            )
+                        }
                     }
 
                     if (!readOnly && !guest.isTemporaryGuest && !guest.isVolunteerBenefit && onManualAccountAdjust != null && viewModel != null) {
@@ -235,8 +281,40 @@ actual fun GuestDetailPanel(
     var showEmailInputDialog by remember { mutableStateOf(false) }
     var emailInputValue by remember { mutableStateOf("") }
     var showGuestNoEmailStaffDialog by remember { mutableStateOf(false) }
+    var showTempSendChoiceDialog by remember { mutableStateOf(false) }
+    var tempSendScope by remember { mutableStateOf(TemporaryGuestSendScope.SinglePerson) }
 
-    val staffSafeGuestQrMode = readOnly && !guest.isTemporaryGuest
+    val staffSafeGuestQrMode = readOnly
+    val temporaryEnabled = temporaryGuestFeatures.enabled && guest.isTemporaryGuest
+    val temporaryBatch = remember(guest.nanoId, temporaryEnabled) {
+        if (temporaryEnabled) viewModel?.temporaryGuestBatch(guest).orEmpty() else emptyList()
+    }
+
+    /**
+     * Routes the "send by mail" action. Temporary guests first pick between the whole artist
+     * guest list and a single person, then reuse the regular address prompt.
+     */
+    fun requestGuestEmailSend() {
+        showQrDialog = false
+        when {
+            temporaryEnabled && temporaryBatch.size > 1 -> showTempSendChoiceDialog = true
+            temporaryEnabled -> {
+                tempSendScope = TemporaryGuestSendScope.WholeBatch
+                if (guest.temporaryContactEmail.isNotBlank()) {
+                    showEmailConfirmDialog = true
+                } else {
+                    emailInputValue = ""
+                    showEmailInputDialog = true
+                }
+            }
+            guest.email.isNotBlank() -> showEmailConfirmDialog = true
+            readOnly -> showGuestNoEmailStaffDialog = true
+            else -> {
+                emailInputValue = ""
+                showEmailInputDialog = true
+            }
+        }
+    }
 
     if (showQrDialog) {
         val tabletMaxWidth = getTabletConstrainedDialogMaxWidth()
@@ -290,14 +368,7 @@ actual fun GuestDetailPanel(
                             )
                             Spacer(modifier = Modifier.height(if (isPhone) 12.dp else 16.dp))
                             Button(
-                                onClick = {
-                                    showQrDialog = false
-                                    if (guest.email.isNotBlank()) {
-                                        showEmailConfirmDialog = true
-                                    } else {
-                                        showGuestNoEmailStaffDialog = true
-                                    }
-                                },
+                                onClick = { requestGuestEmailSend() },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(if (isTabletDevice) 48.dp else 64.dp)
@@ -378,14 +449,7 @@ actual fun GuestDetailPanel(
                                     Text(getStringResource(R.string.share))
                                 }
                                 OutlinedButton(
-                                    onClick = {
-                                        if (guest.email.isNotBlank()) {
-                                            showEmailConfirmDialog = true
-                                        } else {
-                                            emailInputValue = ""
-                                            showEmailInputDialog = true
-                                        }
-                                    },
+                                    onClick = { requestGuestEmailSend() },
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height(if (isTabletDevice) 48.dp else 64.dp)
@@ -418,6 +482,25 @@ actual fun GuestDetailPanel(
         }
     }
     
+    // Whole artist guest list, or just this person?
+    if (showTempSendChoiceDialog) {
+        TemporaryGuestSendChoiceDialog(
+            artistName = guest.temporaryArtistName.ifBlank { guest.name },
+            batchSize = temporaryBatch.size,
+            onDismiss = { showTempSendChoiceDialog = false },
+            onChoose = { scope ->
+                showTempSendChoiceDialog = false
+                tempSendScope = scope
+                if (scope == TemporaryGuestSendScope.WholeBatch && guest.temporaryContactEmail.isNotBlank()) {
+                    showEmailConfirmDialog = true
+                } else {
+                    emailInputValue = ""
+                    showEmailInputDialog = true
+                }
+            },
+        )
+    }
+
     // Email Input Dialog (for guests without email)
     if (showEmailInputDialog) {
         AlertDialog(
@@ -460,6 +543,10 @@ actual fun GuestDetailPanel(
                     onClick = {
                         if (emailInputValue.isNotBlank() && emailInputValue.contains("@")) {
                             showEmailInputDialog = false
+                            // Only the artist address is worth keeping; a one-off recipient is not.
+                            if (temporaryEnabled && tempSendScope == TemporaryGuestSendScope.WholeBatch) {
+                                viewModel?.setTemporaryGuestBatchContactEmail(guest, emailInputValue)
+                            }
                             showEmailConfirmDialog = true
                         }
                     },
@@ -485,8 +572,15 @@ actual fun GuestDetailPanel(
         val coroutineScope = rememberCoroutineScope()
         val isGmailAuthenticated = remember { gmailAuthService.isAccountSelected() }
         
+        val sendWholeBatch = temporaryEnabled && tempSendScope == TemporaryGuestSendScope.WholeBatch
         // Use either the guest's email or the manually entered email
-        val targetEmail = if (guest.email.isNotBlank()) guest.email else emailInputValue
+        val targetEmail = when {
+            sendWholeBatch && guest.temporaryContactEmail.isNotBlank() -> guest.temporaryContactEmail
+            temporaryEnabled -> emailInputValue
+            guest.email.isNotBlank() -> guest.email
+            else -> emailInputValue
+        }
+        val batchCodes = if (sendWholeBatch) temporaryBatch else listOf(guest)
         
         // Holder for authLauncher - needed to break circular dependency
         val authLauncherHolder = remember { mutableStateOf<androidx.activity.result.ActivityResultLauncher<Intent>?>(null) }
@@ -516,36 +610,66 @@ actual fun GuestDetailPanel(
                     return
                 }
                 
-                // Get email settings
-                val subject = settingsManager.getGuestEmailSubject().ifEmpty { 
-                    emailContext.getString(R.string.guest_email_subject_default) 
+                // Get email settings — temporary guests have their own artist-guest-list template
+                val subject = if (temporaryEnabled) {
+                    settingsManager.getTemporaryGuestEmailSubject().ifEmpty {
+                        emailContext.getString(R.string.temp_guest_email_subject_default)
+                    }
+                } else {
+                    settingsManager.getGuestEmailSubject().ifEmpty {
+                        emailContext.getString(R.string.guest_email_subject_default)
+                    }
                 }
-                val contentBefore = settingsManager.getGuestEmailContentBefore().ifEmpty { 
-                    emailContext.getString(R.string.guest_email_content_before_default) 
+                val contentBefore = if (temporaryEnabled) {
+                    settingsManager.getTemporaryGuestEmailContentBefore().ifEmpty {
+                        emailContext.getString(R.string.temp_guest_email_content_before_default)
+                    }
+                } else {
+                    settingsManager.getGuestEmailContentBefore().ifEmpty {
+                        emailContext.getString(R.string.guest_email_content_before_default)
+                    }
                 }
-                val includeQr = settingsManager.isGuestEmailIncludeQrEnabled()
-                val contentAfter = settingsManager.getGuestEmailContentAfter().ifEmpty { 
-                    emailContext.getString(R.string.guest_email_content_after_default) 
+                val includeQr = if (temporaryEnabled) {
+                    settingsManager.isTemporaryGuestEmailIncludeQrEnabled()
+                } else {
+                    settingsManager.isGuestEmailIncludeQrEnabled()
+                }
+                val contentAfter = if (temporaryEnabled) {
+                    settingsManager.getTemporaryGuestEmailContentAfter().ifEmpty {
+                        emailContext.getString(R.string.temp_guest_email_content_after_default)
+                    }
+                } else {
+                    settingsManager.getGuestEmailContentAfter().ifEmpty {
+                        emailContext.getString(R.string.guest_email_content_after_default)
+                    }
                 }
                 val signature = settingsManager.getGuestEmailSignature().ifEmpty { 
                     emailContext.getString(R.string.email_signature_default) 
                 }
-                val includeDigitalWalletPass = settingsManager.isEmailIncludeDigitalWalletPassEnabled()
+                // A grouped artist mail covers several people, so a single-holder pass is meaningless.
+                val includeDigitalWalletPass =
+                    settingsManager.isEmailIncludeDigitalWalletPassEnabled() && !temporaryEnabled
                 val includeLogo = settingsManager.isEmailIncludeLogoEnabled()
                 val logoUriString = settingsManager.getEmailLogoUri()
                 val associationName = settingsManager.getEmailAssociationName()
-                
-                // Generate QR code for guest (NanoID plain text for Lightspeed compatibility)
-                val qrBitmap = QRCodeUtils.generateQrImageBitmap(guest.nanoId, 512)
-                
-                // Save QR code file
-                var qrFile: File? = null
-                if (includeQr && qrBitmap != null) {
-                    qrFile = File(emailContext.cacheDir, "qr_code_guest_${guest.id}.png")
-                    val outputStream = FileOutputStream(qrFile)
-                    qrBitmap.asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, outputStream)
-                    outputStream.close()
-                }
+
+                // One PNG per code: a single-guest mail keeps the historic `qrcode` Content-ID.
+                val qrAttachments = if (includeQr) {
+                    batchCodes.mapIndexedNotNull { index, holder ->
+                        val bitmap = QRCodeUtils.generateQrImageBitmap(holder.nanoId, 512)
+                            ?: return@mapIndexedNotNull null
+                        val fileName = MimeEmailBuilder.qrFileNameFor(holder.name, index)
+                        val file = File(emailContext.cacheDir, "qr_${holder.nanoId}.png")
+                        FileOutputStream(file).use { stream ->
+                            bitmap.asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, stream)
+                        }
+                        GmailQrAttachment(
+                            file = file,
+                            contentId = if (batchCodes.size == 1) "qrcode" else "qrcode-$index",
+                            fileName = if (batchCodes.size == 1) "qr_code.png" else fileName,
+                        )
+                    }
+                } else emptyList()
 
                 val digitalWalletPassFile = if (includeDigitalWalletPass) {
                     DigitalWalletPassGenerator.createPassFile(
@@ -587,23 +711,58 @@ actual fun GuestDetailPanel(
                 }
                 
                 // Build HTML email with Content-ID references
-                val htmlEmail = buildGuestEmailHtml(
-                    guestName = guest.name,
-                    contentBefore = contentBefore,
-                    contentAfter = contentAfter,
-                    signature = signature,
-                    includeQr = includeQr,
-                    headerText = emailContext.getString(R.string.guest_email_html_header),
-                    footerText = emailContext.getString(R.string.guest_email_html_footer),
-                    qrAttachmentText = emailContext.getString(R.string.email_qr_attachment_text),
-                    qrAttachmentNote = emailContext.getString(R.string.email_qr_attachment_note),
-                    includeDigitalWalletPass = includeDigitalWalletPass,
-                    digitalWalletPassTitle = emailContext.getString(R.string.email_wallet_section_title),
-                    digitalWalletPassDescription = emailContext.getString(R.string.email_wallet_section_description),
-                    digitalWalletPassCompatibility = emailContext.getString(R.string.email_wallet_section_compatibility),
-                    includeLogo = includeLogo,
-                    useContentId = true
-                )
+                val htmlEmail = if (temporaryEnabled) {
+                    QrEmailHtmlBuilder.build(
+                        QrEmailHtmlOptions(
+                            holderName = if (sendWholeBatch) {
+                                guest.temporaryArtistName.ifBlank { guest.name }
+                            } else {
+                                guest.name
+                            },
+                            contentBefore = contentBefore,
+                            contentAfter = contentAfter,
+                            signature = signature,
+                            includeQr = includeQr,
+                            headerText = emailContext.getString(R.string.temp_guest_email_html_header),
+                            footerText = emailContext.getString(R.string.guest_email_html_footer),
+                            qrAttachmentText = emailContext.getString(R.string.email_qr_attachment_text),
+                            qrAttachmentNote = emailContext.getString(R.string.email_qr_attachment_note),
+                            includeDigitalWalletPass = false,
+                            digitalWalletPassTitle = "",
+                            digitalWalletPassDescription = "",
+                            digitalWalletPassCompatibility = "",
+                            includeLogo = includeLogo,
+                            useContentId = true,
+                            theme = QrEmailTheme.TempGuest,
+                            qrCodes = if (qrAttachments.size > 1) {
+                                qrAttachments.mapIndexed { index, attachment ->
+                                    QrEmailCode(
+                                        holderName = batchCodes[index].name,
+                                        contentId = attachment.contentId,
+                                    )
+                                }
+                            } else emptyList(),
+                        )
+                    )
+                } else {
+                    buildGuestEmailHtml(
+                        guestName = guest.name,
+                        contentBefore = contentBefore,
+                        contentAfter = contentAfter,
+                        signature = signature,
+                        includeQr = includeQr,
+                        headerText = emailContext.getString(R.string.guest_email_html_header),
+                        footerText = emailContext.getString(R.string.guest_email_html_footer),
+                        qrAttachmentText = emailContext.getString(R.string.email_qr_attachment_text),
+                        qrAttachmentNote = emailContext.getString(R.string.email_qr_attachment_note),
+                        includeDigitalWalletPass = includeDigitalWalletPass,
+                        digitalWalletPassTitle = emailContext.getString(R.string.email_wallet_section_title),
+                        digitalWalletPassDescription = emailContext.getString(R.string.email_wallet_section_description),
+                        digitalWalletPassCompatibility = emailContext.getString(R.string.email_wallet_section_compatibility),
+                        includeLogo = includeLogo,
+                        useContentId = true
+                    )
+                }
                 
                 // Plain text fallback
                 val plainTextEmail = buildString {
@@ -627,9 +786,10 @@ actual fun GuestDetailPanel(
                     subject = subject,
                     htmlContent = htmlEmail,
                     plainText = plainTextEmail,
-                    qrFile = qrFile,
+                    qrFile = null,
                     logoFile = logoFile,
-                    digitalWalletPassFile = digitalWalletPassFile
+                    digitalWalletPassFile = digitalWalletPassFile,
+                    qrAttachments = qrAttachments
                 )
                 
                 result.fold(
@@ -1062,7 +1222,9 @@ private fun GuestInformationSection(
     onUploadPhoto: (ByteArray) -> Unit = {},
     onRemovePhoto: () -> Unit = {},
     /** Billeterie permanent guest: open staff-safe QR dialog (blurred + API email only). */
-    onShowQr: (() -> Unit)? = null
+    onShowQr: (() -> Unit)? = null,
+    temporaryFeaturesEnabled: Boolean = false,
+    temporaryAccesses: List<VenueAccess> = emptyList(),
 ) {
     val context = LocalContext.current
     val responsivePadding = if (isPhone) getPhonePortraitCardPadding() else getResponsiveCardPadding()
@@ -1074,7 +1236,11 @@ private fun GuestInformationSection(
             guest = guest,
             isPhone = isPhone,
             onClose = onClose,
-            readOnly = readOnly
+            readOnly = readOnly,
+            temporaryFeaturesEnabled = temporaryFeaturesEnabled,
+            accesses = temporaryAccesses,
+            barDiscountPercent = barDiscountPercent,
+            onShowQr = onShowQr,
         )
     } else {
         Card(
@@ -1267,7 +1433,11 @@ private fun TemporaryGuestInformationSection(
     guest: Guest,
     isPhone: Boolean,
     onClose: () -> Unit,
-    readOnly: Boolean = false
+    readOnly: Boolean = false,
+    temporaryFeaturesEnabled: Boolean = false,
+    accesses: List<VenueAccess> = emptyList(),
+    barDiscountPercent: Int = 0,
+    onShowQr: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val responsivePadding = if (isPhone) getPhonePortraitCardPadding() else getResponsiveCardPadding()
@@ -1277,6 +1447,11 @@ private fun TemporaryGuestInformationSection(
     val artistText = guest.temporaryArtistName.ifBlank { "-" }
     val contactText = guest.temporaryContactPhone.ifBlank { "-" }
     val notesText = guest.notes.ifBlank { "-" }
+    val venueText = guest.temporaryVenueName.ifBlank { "-" }
+    val contactEmailText = guest.temporaryContactEmail.ifBlank { "-" }
+    val entryStatusText = temporaryEntryValidatedLabel(guest)
+        ?.let { context.getString(R.string.temp_guest_entry_validated_at, it) }
+        ?: context.getString(R.string.temp_guest_entry_not_yet)
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1333,71 +1508,116 @@ private fun TemporaryGuestInformationSection(
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
-                    IconButton(onClick = onClose) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = context.getString(R.string.close),
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (onShowQr != null) {
+                            IconButton(onClick = onShowQr) {
+                                Icon(
+                                    imageVector = Icons.Default.QrCode,
+                                    contentDescription = context.getString(R.string.qr_code),
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+                        IconButton(onClick = onClose) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = context.getString(R.string.close),
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(if (isPhone) 10.dp else 14.dp))
 
-            if (isPhone) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    DetailTile(
-                        label = context.getString(R.string.temp_guest_event_date_label),
-                        value = eventDateText,
-                        icon = Icons.Default.DateRange
+            val tiles = buildList {
+                add(
+                    Triple(
+                        context.getString(R.string.temp_guest_event_date_label),
+                        eventDateText,
+                        Icons.Default.DateRange,
                     )
-                    DetailTile(
-                        label = context.getString(R.string.temp_guest_artist_label),
-                        value = artistText,
-                        icon = Icons.Default.Group
+                )
+                add(
+                    Triple(
+                        context.getString(R.string.temp_guest_artist_label),
+                        artistText,
+                        Icons.Default.Group,
                     )
-                    DetailTile(
-                        label = context.getString(R.string.temp_guest_contact_phone_label),
-                        value = contactText,
-                        icon = Icons.Default.Phone
+                )
+                add(
+                    Triple(
+                        context.getString(R.string.temp_guest_contact_phone_label),
+                        contactText,
+                        Icons.Default.Phone,
                     )
-                    DetailTile(
-                        label = context.getString(R.string.notes),
-                        value = notesText,
-                        icon = Icons.AutoMirrored.Filled.Notes
+                )
+                if (temporaryFeaturesEnabled) {
+                    add(
+                        Triple(
+                            context.getString(R.string.temp_guest_contact_email_label),
+                            contactEmailText,
+                            Icons.Default.Email,
+                        )
                     )
+                    add(
+                        Triple(
+                            context.getString(R.string.temp_guest_venue_label),
+                            venueText,
+                            Icons.Default.LocationOn,
+                        )
+                    )
+                    add(
+                        Triple(
+                            context.getString(R.string.temp_guest_entry_status_label),
+                            entryStatusText,
+                            Icons.Default.CheckCircle,
+                        )
+                    )
+                    if (barDiscountPercent > 0) {
+                        add(
+                            Triple(
+                                context.getString(R.string.bar_discount_percent_label),
+                                "$barDiscountPercent%",
+                                Icons.Default.LocalOffer,
+                            )
+                        )
+                    }
                 }
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        DetailTile(
-                            label = context.getString(R.string.temp_guest_event_date_label),
-                            value = eventDateText,
-                            icon = Icons.Default.DateRange,
-                            modifier = Modifier.weight(1f)
-                        )
-                        DetailTile(
-                            label = context.getString(R.string.temp_guest_artist_label),
-                            value = artistText,
-                            icon = Icons.Default.Group,
-                            modifier = Modifier.weight(1f)
-                        )
+                add(
+                    Triple(
+                        context.getString(R.string.notes),
+                        notesText,
+                        Icons.AutoMirrored.Filled.Notes,
+                    )
+                )
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (isPhone) {
+                    tiles.forEach { (label, value, icon) ->
+                        DetailTile(label = label, value = value, icon = icon)
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        DetailTile(
-                            label = context.getString(R.string.temp_guest_contact_phone_label),
-                            value = contactText,
-                            icon = Icons.Default.Phone,
-                            modifier = Modifier.weight(1f)
-                        )
-                        DetailTile(
-                            label = context.getString(R.string.notes),
-                            value = notesText,
-                            icon = Icons.AutoMirrored.Filled.Notes,
-                            modifier = Modifier.weight(1f)
-                        )
+                } else {
+                    tiles.chunked(2).forEach { pair ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            pair.forEach { (label, value, icon) ->
+                                DetailTile(
+                                    label = label,
+                                    value = value,
+                                    icon = icon,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            // Keeps a lone trailing tile at half width instead of stretching it.
+                            if (pair.size == 1) Spacer(modifier = Modifier.weight(1f))
+                        }
                     }
+                }
+
+                if (temporaryFeaturesEnabled && accesses.isNotEmpty()) {
+                    TemporaryGuestAccessBlock(accesses = accesses)
                 }
             }
 

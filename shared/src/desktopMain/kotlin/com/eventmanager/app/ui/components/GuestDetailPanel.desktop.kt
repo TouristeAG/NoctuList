@@ -13,8 +13,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.eventmanager.app.data.models.AccountTransfer
 import com.eventmanager.app.data.models.Guest
+import com.eventmanager.app.data.models.VenueAccessCatalog
 import com.eventmanager.app.data.models.VenueEntity
 import com.eventmanager.app.data.models.activeBarDiscountPercent
+import com.eventmanager.app.data.models.temporaryAccessIdSet
+import com.eventmanager.app.data.models.temporaryEntryValidated
+import com.eventmanager.app.email.QrEmailRecipientCode
 import com.eventmanager.app.data.remote.hasStoredProfilePhoto
 import com.eventmanager.app.data.remote.resolvedProfilePhotoPath
 import com.eventmanager.app.data.sync.settingsManagerFor
@@ -52,13 +56,48 @@ actual fun GuestDetailPanel(
     var showEmailInput by remember { mutableStateOf(false) }
     var showNoEmailStaff by remember { mutableStateOf(false) }
     var emailInputValue by remember { mutableStateOf("") }
+    var showTempSendChoice by remember { mutableStateOf(false) }
+    var tempSendScope by remember { mutableStateOf(TemporaryGuestSendScope.SinglePerson) }
 
-    val staffSafeQrMode = readOnly && !guest.isTemporaryGuest
-    val targetEmail = if (guest.email.isNotBlank()) guest.email else emailInputValue
+    val tempFeatures = rememberTemporaryGuestFeatures(viewModel)
+    val temporaryEnabled = tempFeatures.enabled && guest.isTemporaryGuest
+    val guestAccesses = remember(guest.temporaryAccessIds, tempFeatures.venueAccesses) {
+        VenueAccessCatalog.resolve(tempFeatures.venueAccesses, guest.temporaryAccessIdSet())
+    }
+    val batch = remember(guest.nanoId, temporaryEnabled) {
+        if (temporaryEnabled) viewModel?.temporaryGuestBatch(guest).orEmpty() else emptyList()
+    }
+
+    val staffSafeQrMode = readOnly
+    val temporaryTargetEmail = if (tempSendScope == TemporaryGuestSendScope.WholeBatch &&
+        guest.temporaryContactEmail.isNotBlank()
+    ) {
+        guest.temporaryContactEmail
+    } else {
+        emailInputValue
+    }
+    val targetEmail = when {
+        temporaryEnabled -> temporaryTargetEmail
+        guest.email.isNotBlank() -> guest.email
+        else -> emailInputValue
+    }
 
     fun requestSendEmail() {
         showQrDialog = false
         when {
+            temporaryEnabled -> {
+                if (batch.size > 1) {
+                    showTempSendChoice = true
+                } else {
+                    tempSendScope = TemporaryGuestSendScope.WholeBatch
+                    if (guest.temporaryContactEmail.isNotBlank()) {
+                        showEmailConfirm = true
+                    } else {
+                        emailInputValue = ""
+                        showEmailInput = true
+                    }
+                }
+            }
             guest.email.isNotBlank() -> showEmailConfirm = true
             readOnly -> showNoEmailStaff = true
             else -> {
@@ -121,7 +160,7 @@ actual fun GuestDetailPanel(
                         }
                     }
                     Row {
-                        if (staffSafeQrMode || !readOnly && !guest.isTemporaryGuest) {
+                        if (readOnly || !guest.isTemporaryGuest || temporaryEnabled) {
                             IconButton(onClick = { showQrDialog = true }) {
                                 Icon(
                                     Icons.Default.QrCode,
@@ -145,7 +184,57 @@ actual fun GuestDetailPanel(
                     )
                     DesktopDetailField(stringResource(Res.string.temp_guest_artist_label), guest.temporaryArtistName.ifBlank { "-" })
                     DesktopDetailField(stringResource(Res.string.temp_guest_contact_phone_label), guest.temporaryContactPhone.ifBlank { "-" })
+                    if (temporaryEnabled) {
+                        DesktopDetailField(
+                            stringResource(Res.string.temp_guest_contact_email_label),
+                            guest.temporaryContactEmail.ifBlank { "-" },
+                        )
+                        DesktopDetailField(
+                            stringResource(Res.string.temp_guest_venue_label),
+                            guest.temporaryVenueName.ifBlank { "-" },
+                        )
+                        DesktopDetailField(
+                            stringResource(Res.string.temp_guest_entry_status_label),
+                            temporaryEntryValidatedLabel(guest)?.let {
+                                stringResource(Res.string.temp_guest_entry_validated_at, it)
+                            } ?: stringResource(Res.string.temp_guest_entry_not_yet),
+                        )
+                        val tempDiscount = guest.activeBarDiscountPercent(
+                            rememberGuestBarDiscountEnabled(viewModel)
+                        )
+                        if (tempDiscount > 0) {
+                            DesktopDetailField(
+                                stringResource(Res.string.bar_discount_percent_label),
+                                tempDiscount.toString(),
+                            )
+                        }
+                    }
                     DesktopDetailField(stringResource(Res.string.notes), guest.notes.ifBlank { "-" })
+                    if (temporaryEnabled && guestAccesses.isNotEmpty()) {
+                        Spacer(Modifier.height(8.dp))
+                        TemporaryGuestAccessBlock(accesses = guestAccesses)
+                    }
+                }
+
+                if (temporaryEnabled && !guest.temporaryEntryValidated && viewModel != null) {
+                    TemporaryGuestEntrySection(
+                        guest = guest,
+                        onValidate = { viewModel.validateTemporaryGuestEntry(guest) },
+                    )
+                }
+
+                if (temporaryEnabled && tempFeatures.creditsEnabled && !readOnly &&
+                    viewModel != null && onManualAccountAdjust != null
+                ) {
+                    AccountInfoSection(
+                        balance = accountBalance,
+                        currencyCode = currencyCode,
+                        recentTransfers = recentTransfers,
+                        onManualAdjust = onManualAccountAdjust,
+                        viewModel = viewModel,
+                        allowAdjustment = true,
+                        compactAdjust = true,
+                    )
                 }
             } else {
                 DesktopSectionCard(stringResource(Res.string.guest_information), Icons.Default.Person) {
@@ -258,6 +347,26 @@ actual fun GuestDetailPanel(
         )
     }
 
+    if (showTempSendChoice) {
+        TemporaryGuestSendChoiceDialog(
+            artistName = guest.temporaryArtistName.ifBlank { guest.name },
+            batchSize = batch.size,
+            onDismiss = { showTempSendChoice = false },
+            onChoose = { scope ->
+                showTempSendChoice = false
+                tempSendScope = scope
+                val known = scope == TemporaryGuestSendScope.WholeBatch &&
+                    guest.temporaryContactEmail.isNotBlank()
+                if (known) {
+                    showEmailConfirm = true
+                } else {
+                    emailInputValue = ""
+                    showEmailInput = true
+                }
+            },
+        )
+    }
+
     if (showEmailInput) {
         DesktopGuestEmailInputDialog(
             emailValue = emailInputValue,
@@ -265,21 +374,35 @@ actual fun GuestDetailPanel(
             onDismiss = { showEmailInput = false },
             onContinue = {
                 showEmailInput = false
+                // Only the artist address is worth keeping; a one-off recipient is not.
+                if (temporaryEnabled && tempSendScope == TemporaryGuestSendScope.WholeBatch) {
+                    viewModel?.setTemporaryGuestBatchContactEmail(guest, emailInputValue)
+                }
                 showEmailConfirm = true
             }
         )
     }
 
     if (showEmailConfirm && targetEmail.isNotBlank()) {
+        val sendWholeBatch = temporaryEnabled && tempSendScope == TemporaryGuestSendScope.WholeBatch
         DesktopEmailConfirmDialog(
-            profile = DesktopQrEmailProfile.Guest,
+            profile = if (temporaryEnabled) DesktopQrEmailProfile.TempGuest else DesktopQrEmailProfile.Guest,
             recipientEmail = targetEmail,
-            recipientName = guest.name,
+            recipientName = if (sendWholeBatch) {
+                guest.temporaryArtistName.ifBlank { guest.name }
+            } else {
+                guest.name
+            },
             qrPayload = guest.nanoId,
             settingsManager = settingsManager,
             platformContext = platformContext,
             onDismiss = { showEmailConfirm = false },
-            onSent = { showEmailConfirm = false }
+            onSent = { showEmailConfirm = false },
+            codes = if (sendWholeBatch) {
+                batch.map { QrEmailRecipientCode(holderName = it.name, qrPayload = it.nanoId) }
+            } else {
+                emptyList()
+            },
         )
     }
 

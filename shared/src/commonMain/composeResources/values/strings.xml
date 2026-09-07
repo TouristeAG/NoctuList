@@ -134,7 +134,7 @@
     <string name="checking_for_updates_title">Checking for updates</string>
     <string name="checking_for_updates_message">Contacting update server…</string>
     <string name="downloading_update">Downloading update…</string>
-    <string name="download_progress">Downloading: %1$d%%</string>
+    <string name="download_progress">Downloading: %1$d%</string>
     <string name="download_complete">Download complete</string>
     <string name="install_update">Install update</string>
     <string name="download_error_title">Download failed</string>
@@ -229,7 +229,7 @@
     <string name="manual_rewards_details">Manual Rewards Details</string>
     <string name="days_n">%1$d days</string>
     <string name="free_drinks_n">%1$d free drinks</string>
-    <string name="bar_discount_n">%1$d%% bar discount</string>
+    <string name="bar_discount_n">%1$d% bar discount</string>
     <string name="invites_n">%1$d invites</string>
     <string name="no_rewards_configured">No rewards configured</string>
     <!-- Shift Type Dialog -->
@@ -268,61 +268,45 @@
     <string name="other_notes_placeholder">Additional notes…</string>
     <string name="update_shift_type">Update Shift Type</string>
     <string name="stellar_benefits_info_title">Perks cheat sheet</string>
-
     <string name="benefits_help_dialog_title">Perks cheat sheet</string>
     <string name="benefits_help_dialog_subtitle">Collectif Nocturne · 2026-27</string>
     <string name="benefits_help_intro">Match the shift to what actually happened. Stellar = auto; Manual = you type it.</string>
-
     <string name="benefits_help_tab_modes">Modes</string>
     <string name="benefits_help_tab_nova">Shift types</string>
     <string name="benefits_help_tab_extras">Bonuses &amp; timing</string>
-
     <string name="benefits_help_app_stellar">Shift job on → pick a Nova type\nOrion job on → mandate year (Veteran the year after)\nDrinks, guest list, future entries → calculated for you</string>
     <string name="benefits_help_app_manual">You enter days, drinks, bar \u0025, guests, extras\nFor one-offs outside the usual grid\nDon't double-count the same real shift if it's already Stellar</string>
-
     <string name="benefits_help_section_profité_title">Profité / non-profité</string>
     <string name="benefits_help_section_profité_body">Default shift only, when “enjoy evening” is on.\nNot about entry: it is whether the shift hours still let the person enjoy the night or not.\nOther Nova types: this toggle is hidden.</string>
-
     <string name="benefits_help_section_nova_title">Nova perks (shift job)</string>
     <string name="benefits_help_nova_profité_title">Default shift - profité</string>
     <string name="benefits_help_nova_profité_rationale">That event night only.</string>
     <string name="benefits_help_nova_profité_perks">Free entry + 1 guest - event night\n50\u0025 bar - event night\n2 free drinks (~10 CHF) - event night</string>
-
     <string name="benefits_help_nova_non_profité_title">Default shift - non-profité</string>
     <string name="benefits_help_nova_non_profité_rationale">Night package + seasonal comp (+1 guest).</string>
     <string name="benefits_help_nova_non_profité_perks">Same event-night package as profité\nPlus 1 seasonal free entry + 1 guest (in app)</string>
-
     <string name="benefits_help_nova_photo_title">Photographer / videographer</string>
     <string name="benefits_help_nova_photo_rationale">Same ballpark as non-profité default.</string>
     <string name="benefits_help_nova_photo_perks">Free entry + 1 guest - covered night\n50\u0025 bar - covered night\n2 free drinks (~10 CHF) - covered night\n1 seasonal free entry + 1 guest</string>
-
     <string name="benefits_help_nova_meeting_title">Meeting</string>
     <string name="benefits_help_nova_meeting_rationale">3 meetings in a month still pump Galaxie - except Orion (meetings don't count).</string>
     <string name="benefits_help_nova_meeting_perks">1 seasonal free entry + 1 guest\n1 free drink (~5 CHF)</string>
-
     <string name="benefits_help_nova_gd_event_title">Graphic designer - one event</string>
     <string name="benefits_help_nova_gd_event_rationale">Same vibe as photo/video that night.</string>
     <string name="benefits_help_nova_gd_event_perks">Free entry + 1 guest - event night\n50\u0025 bar - event night\n2 free drinks (~10 CHF) - event night\n1 seasonal free entry + 1 guest</string>
-
     <string name="benefits_help_nova_gd_asso_title">Graphic designer - association-wide</string>
     <string name="benefits_help_nova_gd_asso_rationale">Not tied to one party → more drinks, no bar \u0025.</string>
     <string name="benefits_help_nova_gd_asso_perks">2 seasonal free entries + 1 guest each\n4 free drinks (~20 CHF)</string>
-
     <string name="benefits_help_section_galaxie_title">Galaxie</string>
     <string name="benefits_help_section_galaxie_body">3 contributions in the same calendar month (shifts + meetings)\nOrion: meetings don't count toward the 3\nThat month: free entry everywhere + 50\u0025 bar + 1 extra drink\nStacks with normal shift perks</string>
-
     <string name="benefits_help_section_orion_title">Orion</string>
     <string name="benefits_help_section_orion_body">Tag the job type as Orion\n1 year from mandate start: free entry + 50\u0025 bar + 1 guest\n270 CHF wallet (shirt pot + drink budget)</string>
-
     <string name="benefits_help_section_veteran_title">Veteran</string>
     <string name="benefits_help_section_veteran_body">Year after Orion\nStill: free entry + 50\u0025 bar\nWallet stops when the mandate ends</string>
-
     <string name="benefits_help_section_timing_title">When the app turns perks on</string>
     <string name="benefits_help_section_timing_body">Night-of perks = that venue's event day (Settings → day-change time)\nFuture entries unlock from the same moment\nOrion / Galaxie / Veteran use longer windows</string>
-
     <string name="benefits_help_footer_title">Heads-up</string>
     <string name="benefits_help_footer_bullets">Profité / non-profité - whether shift hours let you enjoy the night or not (not about entry)\nThe 50\u0025 bar rate tracks Lightspeed prices\nGalaxie stacks with shift perks</string>
-
     <string name="nova_job_type_label">Nova Benefits Type</string>
     <string name="nova_type_default_shift">Default shift</string>
     <string name="nova_type_meeting">Meeting</string>
@@ -456,7 +440,6 @@
     <string name="emoji_picker_choose">Choose</string>
     <string name="account_credit_tooltip">Add credit</string>
     <string name="account_debit_tooltip">Remove credit</string>
-
     <string name="search_venues_placeholder">Search venues...</string>
     <string name="venues_count">%1$d of %2$d venues</string>
     <string name="venue_name">Venue Name</string>
@@ -476,10 +459,19 @@
     <string name="temp_guest_event_date_label">Event date</string>
     <string name="temp_guest_contact_phone_label">Emergency contact phone</string>
     <string name="temp_guest_chip_label">Temp</string>
-    <string name="temp_guest_timeline_button">Future / History</string>
-    <string name="temp_guest_timeline_title">Temporary Guest Timeline</string>
+    <string name="temp_guest_timeline_button">Tonight · Future · History</string>
+    <string name="temp_guest_timeline_title">Tonight · Future · History</string>
     <string name="temp_guest_tab_temp">Temporary</string>
     <string name="temp_guest_tab_volunteer">Volunteer</string>
+    <string name="temp_guest_none_volunteers">No volunteers for this filter.</string>
+    <string name="temp_guest_subsection_volunteers">Volunteers</string>
+    <string name="temp_guest_none_remaining">Everyone on tonight's list has entered.</string>
+    <string name="temp_guest_section_remaining">Not in yet</string>
+    <string name="temp_guest_tonight_tracking">Entered / total for tonight</string>
+    <string name="temp_guest_tonight_title">Tonight's temporary guests</string>
+    <string name="temp_guest_tab_history">History</string>
+    <string name="temp_guest_tab_future">Future</string>
+    <string name="temp_guest_tab_tonight">Tonight</string>
     <string name="temp_guest_range_label">Range</string>
     <string name="temp_guest_range_three_days">+/- 3 days</string>
     <string name="temp_guest_range_three_days_short">±3d</string>
@@ -495,14 +487,14 @@
     <string name="temp_guest_range_one_year_short">1y</string>
     <string name="temp_guest_range_all_time">All time</string>
     <string name="temp_guest_range_all_time_short">All</string>
-    <string name="temp_guest_section_upcoming">Upcoming guests</string>
-    <string name="temp_guest_section_past">Past guests</string>
-    <string name="temp_guest_none_upcoming">No upcoming temporary guests for this filter.</string>
+    <string name="temp_guest_section_upcoming">Future temporary guests</string>
+    <string name="temp_guest_section_past">Past temporary guests</string>
+    <string name="temp_guest_none_upcoming">No future temporary guests for this filter.</string>
     <string name="temp_guest_none_past">No past temporary guests for this filter.</string>
     
     <!-- App Information -->
     <string name="app_info_title">App Information</string>
-    <string name="app_version">NoctuList 2.1.1</string>
+    <string name="app_version">NoctuList 2.1.2</string>
     <string name="app_designed_for">Designed for Collectif Nocturne venues</string>
     <!-- Single full sentence to avoid spacing issues across locales -->
     <string name="app_developed_full">Developed for the Collectif Nocturne by Leonardo Mondada</string>
@@ -886,7 +878,7 @@
     <string name="benefits_overview_info_button">Guide</string>
     <string name="benefits_overview_totals_section">Totals</string>
     <string name="benefits_overview_ranks_section">By rank</string>
-    <string name="benefits_overview_line_50_bar">50%% bar: %1$d</string>
+    <string name="benefits_overview_line_50_bar">50% bar: %1$d</string>
     <string name="benefits_overview_line_free_entry">Free entry: %1$d · %2$d inv.</string>
     <string name="benefits_overview_line_extraordinary">Extra: %1$d</string>
     <string name="benefits_overview_line_future_tickets">Tickets: %1$d · %2$d inv.</string>
@@ -896,7 +888,7 @@
     <string name="free_entry">✅ Free Entry</string>
     <string name="friend_invitation">👥 Friend Invitation</string>
     <string name="drink_tokens">🍺 %1$d Drink Tokens</string>
-    <string name="bar_discount">💰 %1$d%% Bar Discount</string>
+    <string name="bar_discount">💰 %1$d% Bar Discount</string>
     <string name="extraordinary_benefits">💎 Extraordinary Benefits</string>
     
     <!-- Shifts Screen -->
@@ -983,7 +975,7 @@
     <string name="nfc_uid_not_found">No volunteer or permanent guest found for NFC UID: %1$s</string>
     <string name="billeterie_nfc_no_match">No volunteer or permanent guest matches this card.</string>
     <string name="nfc_reader_error">NFC reader error: %1$s</string>
-    <string name="external_reader_bt_blocked_hint">Bluetooth access for the external reader was denied. Tap below to open Android app settings, then allow Bluetooth / Nearby devices for this app. If you already chose \"Don't ask again\", you must enable it there.</string>
+    <string name="external_reader_bt_blocked_hint">Bluetooth access for the external reader was denied. Tap below to open Android app settings, then allow Bluetooth / Nearby devices for this app. If you already chose "Don't ask again", you must enable it there.</string>
     <string name="open_app_settings_for_reader">Open app settings</string>
     <string name="last_nfc_uid_scanned">Last NFC UID scanned: %1$s</string>
     <string name="invalid_qr_or_nfc_data">Invalid QR/NFC data.</string>
@@ -1180,6 +1172,7 @@
     <!-- Additional Volunteer Panel Strings -->
     <string name="expired">Expired</string>
     <string name="benefit_details">Benefit Details</string>
+    <string name="access_details">Access details</string>
     <string name="more_shifts">… and %1$d more shifts</string>
     <string name="years_old">%1$d years old</string>
     
@@ -1399,7 +1392,7 @@
     <!-- Device Time/Date Error -->
     <string name="sync_error_device_time_title">⏰ Device Time/Date Incorrect</string>
     <string name="sync_error_device_time_message">Your device's time or date is incorrect. Google Sheets API requires accurate time synchronization to work properly.</string>
-    <string name="sync_error_device_time_solution">How to fix:\n\n1. Go to Settings\n2. Look for \"Date &amp; Time\" or \"System\"\n3. Enable \"Automatic date &amp; time\" or \"Set time automatically\"\n4. If not available, manually set the correct date and time\n5. Restart the app and try syncing again\n\nCommon on older tablets – please check your device settings!</string>
+    <string name="sync_error_device_time_solution">How to fix:\n\n1. Go to Settings\n2. Look for "Date &amp; Time" or "System"\n3. Enable "Automatic date &amp; time" or "Set time automatically"\n4. If not available, manually set the correct date and time\n5. Restart the app and try syncing again\n\nCommon on older tablets – please check your device settings!</string>
     <string name="sync_error_device_time_open_settings">Open Settings</string>
     
     <!-- Sleep/Resume Sync Warning -->
@@ -1548,7 +1541,6 @@
     <string name="firebase_project_configured_hidden">Firebase project configured (details hidden)</string>
     <string name="firebase_project_secrets_restricted">Project secrets are visible only if you are a local admin and a Firebase organization admin. Sign in with a Google account that has the Firebase admin role.</string>
     <string name="firebase_join_qr_restricted">Only local admins who also have Firebase organization admin can show the join QR and invitation code.</string>
-
     <string name="firebase_team_title">Invite colleagues (roles &amp; permissions)</string>
     <string name="firebase_team_body">Each person who uses Firebase must be registered as an org member with a role. Without this, Google Sign-In succeeds but Firestore blocks all reads and writes.</string>
     <string name="firebase_team_steps">1. Ask them to sign in with Google in this app once.\n2. In Firebase Console → Authentication → Users, copy their User UID (never shown in NoctuList).\n3. Paste the UID below, add their Google email if your org restricts domains, then tap a role button. You must be signed in as a Firebase organization admin.</string>
@@ -1620,7 +1612,6 @@
     <string name="firebase_tutorial_copy_storage_rules">Copy storage.rules to clipboard</string>
     <string name="firebase_tutorial_copy_storage_rules_done">Copied — paste into Storage → Rules, then Publish</string>
     <string name="firebase_tutorial_copy_storage_rules_error">Could not load rules — open firebase/storage.rules in the project instead</string>
-
     <string name="firebase_tutorial_fb_step1_title">1. Create or open the Firebase project</string>
     <string name="firebase_tutorial_fb_step1_body">1. Open https://console.firebase.google.com and sign in with an institution Google account that can manage the project.\n2. Click Add project (or select an existing one).\n3. If you already use Google Sheets on a Cloud project: choose “Use an existing Google Cloud project” and pick that same project — do not create a second empty project.\n4. Analytics is optional. Finish the wizard.\n5. Note the Project ID (Project settings → General). You will paste it into NoctuList.</string>
     <string name="firebase_tutorial_fb_step2_title">2. Create Firestore</string>
@@ -1638,7 +1629,6 @@ Scroll to “Authorized redirect URIs” and add ALL of these exactly (copy butt
   http://localhost:9090/Callback
 Optional origins (no path): http://localhost:8889 etc.
 → Save, wait about one minute, then retry Sign-In.\n\nContinue with step 6.</string>
-
     <string name="firebase_tutorial_cloud_step1_title">1. Open the Cloud project</string>
     <string name="firebase_tutorial_cloud_step1_body">1. Open https://console.cloud.google.com\n2. Top bar → project picker → select the institution project (the one for Sheets if you already use Sheets).\n3. Confirm Project ID (project name chip or IAM &amp; Admin → Settings). You will paste it into NoctuList.\n\nLink Firebase once if needed: https://console.firebase.google.com → Add project → “Use an existing Google Cloud project” → this same project. Do not create a brand-new empty project.</string>
     <string name="firebase_tutorial_cloud_step2_title">2. Enable Firestore</string>
@@ -1656,7 +1646,6 @@ Optional origins (no path): http://localhost:8889 etc.
 → Save, wait about one minute, then retry Sign-In.\n5. Copy Client ID and Client secret for step 5.</string>
     <string name="firebase_tutorial_cloud_step5_title">5. Copy values into NoctuList</string>
     <string name="firebase_tutorial_cloud_step5_body">A) Project ID — Cloud project picker / IAM &amp; Admin → Settings.\n\nB) API key — Credentials → API keys (existing Browser key, or Create credentials → API key once).\n\nC) Web client ID + secret — Credentials → OAuth 2.0 Client IDs → Web application (step 4). Paste both into NoctuList (secret = Desktop Sign-In).\n\nD) Application ID (appId)\n• Firebase Console → Project settings → General → Your apps → Web.\n• If none: Add app → Web once, nickname “NoctuList”, skip Hosting; copy appId from the config snippet.\n• Or paste the whole Firebase web config into NoctuList.\n\nContinue with step 6.</string>
-
     <string name="firebase_tutorial_step7_title">6. Fill NoctuList, then migrate / connect</string>
     <string name="firebase_tutorial_step7_body">In Admin Firebase sync or the migration dialog:\n• Organization ID — short shared name (example: noctulist-club). Same on every device.\n• Project ID, Application ID, API key, Web client ID, and Web client secret (Desktop and Android).\n• Or paste web config + fill Web client ID/secret, then use the join QR for other devices.\nSign in with Google (first admin becomes org admin). Only after Sign-In succeeds, start migration if switching from Sheets. Peers join via QR / follow — they should not retype secrets.</string>
     <string name="firebase_tutorial_step8_title">7. After setup</string>
@@ -1711,8 +1700,7 @@ Optional origins (no path): http://localhost:8889 etc.
     <string name="settings_category_animations">Animations &amp; Effects</string>
     <string name="settings_category_developer">Developer &amp; Debug</string>
     <string name="settings_category_maintenance">Maintenance</string>
-    
-        <string name="settings_category_catalog">Catalog &amp; venues</string>
+    <string name="settings_category_catalog">Catalog &amp; venues</string>
 <!-- App Icon Settings -->
     <string name="app_icon_title">App Icon</string>
     <string name="app_icon_description">Select your preferred icon style</string>
@@ -2049,7 +2037,6 @@ Optional origins (no path): http://localhost:8889 etc.
     <string name="external_reader_test_success_title">Reader OK</string>
     <string name="external_reader_test_failure_title">Reader test failed</string>
     <string name="external_reader_test_close">Close</string>
-
     <string name="ble_reader_picker_title">Pick Bluetooth NFC reader</string>
     <string name="ble_reader_picker_subtitle">Make sure the ACR1255U-J1 is powered on and nearby. ACR-class readers appear first.</string>
     <string name="ble_reader_section_acr_title">ACS NFC readers</string>
@@ -2169,6 +2156,126 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="rate_limit_write_requests">Write requests</string>
     <string name="rate_limit_write_value">300 per minute per project</string>
     <string name="theme_hue_label">Hue (rainbow): %1$d°</string>
-    <string name="theme_luminosity_label">Brightness: %1$d%%</string>
-    <string name="theme_saturation_label">Saturation: %1$d%%</string>
+    <string name="theme_luminosity_label">Brightness: %1$d%</string>
+    <string name="theme_saturation_label">Saturation: %1$d%</string>
+
+    <!-- Temporary guests (Firebase) -->
+    <string name="temp_guest_access_settings_title">Temporary guest accesses</string>
+    <string name="temp_guest_access_settings_description">Define the special accesses (stage, backstage, VIP…) that can be granted per venue. They are only available on the Firebase backend.</string>
+    <string name="temp_guest_access_no_venue">No active venue yet. Create one to define its accesses.</string>
+    <string name="temp_guest_access_venue_empty">No special access for this venue.</string>
+    <string name="temp_guest_access_venue_count">%1$d access(es) configured.</string>
+    <string name="temp_guest_access_add">New access</string>
+    <string name="temp_guest_access_add_title">New access at %1$s</string>
+    <string name="temp_guest_access_name_label">Access name</string>
+    <string name="temp_guest_access_duplicate">This access already exists at this venue.</string>
+    <string name="temp_guest_access_remove_title">Remove this access?</string>
+    <string name="temp_guest_access_remove_message">“%1$s” will be removed from every temporary guest who has it.</string>
+    <string name="temp_guest_credits_setting_title">Credit accounts for temporary guests</string>
+    <string name="temp_guest_credits_setting_description">Lets a temporary guest hold a bar balance, like a permanent guest. Off by default.</string>
+    <string name="temp_guest_contact_email_label">Contact email</string>
+    <string name="temp_guest_contact_email_hint">Artist or manager who receives every QR code of this guest list.</string>
+    <string name="temp_guest_venue_label">Venue</string>
+    <string name="temp_guest_venue_placeholder">Choose a venue</string>
+    <string name="temp_guest_access_person_label">Special accesses</string>
+    <string name="date_format_european_placeholder">DD/MM/YYYY</string>
+    <string name="date_shortcut_today">Today</string>
+    <string name="date_shortcut_this_friday">This Friday</string>
+    <string name="date_shortcut_this_saturday">This Saturday</string>
+    <string name="temp_guest_accesses_title">Authorized accesses</string>
+    <string name="temp_guest_no_access">No special access</string>
+    <string name="temp_guest_entry_status_label">Entry</string>
+    <string name="temp_guest_entry_validated_at">Entered at %1$s</string>
+    <string name="temp_guest_entry_not_yet">Not entered yet</string>
+    <string name="temp_guest_validate_entry">Validate entry</string>
+    <string name="temp_guest_entry_single_use_hint">Single-use entry: once validated, this guest leaves tonight’s list.</string>
+    <string name="temp_guest_email_tab">Artist guest list</string>
+    <string name="temp_guest_send_choice_title">Which QR codes should be sent?</string>
+    <string name="temp_guest_send_choice_all">Whole guest list of %1$s</string>
+    <string name="temp_guest_send_choice_all_description">One email with the %1$d QR codes of the night.</string>
+    <string name="temp_guest_send_choice_single">This person only</string>
+    <string name="temp_guest_send_choice_single_description">One QR code, to an address you enter now.</string>
+    <string name="temp_guest_scan_title">Temporary guest</string>
+    <string name="temp_guest_scan_already_used">Entry already used at %1$s</string>
+    <string name="temp_guest_scan_wrong_day">This guest list is not for tonight.</string>
+    <string name="temp_guest_section_validated">Already in</string>
+    <string name="temp_guest_validated_count">%1$d / %2$d validated</string>
+    <string name="temp_guest_none_validated">Nobody has entered yet tonight.</string>
+    <string name="temp_guest_email_html_header">Artist guest list</string>
+    <string name="temp_guest_email_subject_default">Your guest list QR codes</string>
+    <string name="temp_guest_email_content_before_default">Hello!\n\nHere are the QR codes for your guest list. Forward each one to the person concerned, or show them at the entrance.</string>
+    <string name="temp_guest_email_content_after_default">Each code is valid for a single entry. See you tonight!</string>
+    <string name="temp_guest_send_choice_message">This guest list has several people.</string>
+    <string name="temp_guest_scan_venue">Venue</string>
+    <string name="temp_guest_scan_no_access">No special access at this venue.</string>
+    <string name="temp_guest_entry_validated_short">Entered</string>
+    <string name="guest_form_create">Create a form</string>
+    <string name="guest_form_create_title">Artist guest list form</string>
+    <string name="guest_form_event_name">Event name</string>
+    <string name="guest_form_artist">Artist / institution</string>
+    <string name="guest_form_max_guests">Maximum number of people</string>
+    <string name="guest_form_allow_multiple">Allow multiple responses</string>
+    <string name="guest_form_allow_multiple_hint">The link stays open until the expiry date. Each submission creates a new review.</string>
+    <string name="guest_form_expiry_label">The form closes (removed at latest 3 days after the event)</string>
+    <string name="guest_form_expiry_after_response">After the answer</string>
+    <string name="guest_form_expiry_day_before">The day before</string>
+    <string name="guest_form_expiry_event_day">On the event day</string>
+    <string name="guest_form_expiry_day_after">The day after</string>
+    <string name="guest_form_expiry_manual">A chosen date (max. 3 days after the event)</string>
+    <string name="guest_form_include_logo">Association logo</string>
+    <string name="guest_form_include_logo_missing">Upload it in Settings → Email (same logo as on QR emails).</string>
+    <string name="guest_form_guest_logo">Second logo (optional)</string>
+    <string name="guest_form_guest_logo_hint">Artist, album or guest institution. Shown next to yours.</string>
+    <string name="guest_form_guest_logo_add">Add logo</string>
+    <string name="guest_form_guest_logo_change">Change logo</string>
+    <string name="guest_form_logo_shape">Shape</string>
+    <string name="guest_form_logo_shape_square">Square</string>
+    <string name="guest_form_logo_shape_rounded">Rounded</string>
+    <string name="guest_form_logo_shape_circle">Circle</string>
+    <string name="guest_form_logo_invert">Invert colors</string>
+    <string name="guest_form_ask_email">Ask for contact email</string>
+    <string name="guest_form_ask_phone">Ask for emergency phone</string>
+    <string name="guest_form_prefill_email">Prefill email</string>
+    <string name="guest_form_prefill_phone">Prefill emergency phone</string>
+    <string name="guest_form_offered_access">Accesses they may request</string>
+    <string name="guest_form_offered_access_hint">A request is never a guarantee — you decide on the night.</string>
+    <string name="guest_form_create_action">Create the form</string>
+    <string name="guest_form_link_title">Form ready</string>
+    <string name="guest_form_link_body">Send this unique link to %1$s. It works until the form expires or they answer.</string>
+    <string name="guest_form_link_body_multi">Send this unique link to %1$s. It stays open until the expiry date; each answer creates a new review.</string>
+    <string name="guest_form_copy_link">Copy the link</string>
+    <string name="guest_form_link_copied">Copied</string>
+    <string name="guest_form_pending_title">Guest list to review</string>
+    <string name="guest_form_pending_one">%1$s sent their guest list</string>
+    <string name="guest_form_pending_many">%1$d guest lists waiting</string>
+    <string name="guest_form_pending_cta">Tap to review</string>
+    <string name="guest_form_review_title">Review — %1$s</string>
+    <string name="guest_form_review_response_hint">One response from a multi-response form. Accepting or refusing closes only this answer.</string>
+    <string name="guest_form_review_accept">Accept</string>
+    <string name="guest_form_review_reject">Refuse</string>
+    <string name="guest_form_review_empty">No names in this answer.</string>
+    <string name="guest_form_person_n">Person %1$d</string>
+    <string name="guest_form_settings_title">Artist guest list forms (optional)</string>
+    <string name="guest_form_settings_body">Artists submit their guest list on a public page (Firebase Hosting, free). Publish the site once from the Firebase setup guide.</string>
+    <string name="guest_form_enable">Enable artist guest list forms</string>
+    <string name="guest_form_site_url">Site: %1$s</string>
+    <string name="guest_form_export">Export the form site</string>
+    <string name="guest_form_export_done">Zip saved. Unzip it, then run the commands below.</string>
+    <string name="guest_form_export_android">Publishing requires a computer. Open this guide in NoctuList on desktop, export the zip, then continue from step 3.</string>
+    <string name="guest_form_deploy_commands">npm install -g firebase-tools\nfirebase login\nfirebase deploy --only hosting --project YOUR_PROJECT_ID</string>
+    <string name="firebase_tutorial_forms_optional_title">Optional: public guest list forms (Firebase Hosting)</string>
+    <string name="firebase_tutorial_forms_optional_body">Publish the form site once on this Firebase project (free Hosting). Then each form in NoctuList is a unique link — no Terminal again.</string>
+    <string name="guest_form_step1">1. In Settings → Firebase → optional features, enable artist guest list forms.</string>
+    <string name="guest_form_step2">2. On a computer, tap “Export the form site”, save the zip and unzip it. The folder must contain index.html and firebase.json.</string>
+    <string name="guest_form_step3">3. Install Node.js LTS 22 or 24 from https://nodejs.org (green LTS button, not Current). Reopen Terminal after installing.</string>
+    <string name="guest_form_step4">4. Open Terminal. Type cd, space, drag the unzipped folder into the window, press Enter.</string>
+    <string name="guest_form_step5">5. Copy the commands below, paste into Terminal, press Enter. Sign in with the Google account that owns this Firebase project.</string>
+    <string name="guest_form_step6">6. When Terminal shows “Deploy complete!”, the site is live. Create forms in NoctuList afterwards — no further deploy.</string>
+    <string name="guest_form_terminal_caption">Commands to run in Terminal</string>
+    <string name="guest_form_copy_commands">Copy commands</string>
+    <string name="guest_form_commands_copied">Commands copied</string>
+    <string name="guest_form_terminal_title">Terminal</string>
+    <string name="guest_form_project_id_hint">Replace YOUR_PROJECT_ID with the Project ID from Settings → Firebase.</string>
+    <string name="guest_form_offered_access_pick_venue">Pick a venue first.</string>
+    <string name="guest_form_offered_access_empty">No special accesses for this venue.</string>
 </resources>

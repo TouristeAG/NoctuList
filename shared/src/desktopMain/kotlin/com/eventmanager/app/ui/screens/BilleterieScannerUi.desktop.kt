@@ -36,12 +36,17 @@ import com.eventmanager.app.data.models.*
 import com.eventmanager.app.data.remote.resolvedProfilePhotoPath
 import com.eventmanager.app.resources.Res
 import com.eventmanager.app.resources.*
+import com.eventmanager.app.ui.components.EntryConfirmControl
 import com.eventmanager.app.ui.components.VolunteerFutureEntriesSection
 import com.eventmanager.app.ui.components.FirebaseOrgSwitcher
 import com.eventmanager.app.ui.components.FirebaseOrgSwitcherPlacement
 import com.eventmanager.app.ui.components.ScannerIdentityCard
+import com.eventmanager.app.ui.components.temporaryEntryValidatedLabel
 import com.eventmanager.app.ui.viewmodel.EventManagerViewModel
 import org.jetbrains.compose.resources.stringResource
+
+/** A spent single-use temporary entry: a warning, not a rejection. */
+private val TemporaryGuestUsedAmber = Color(0xFF8D6E00)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -407,16 +412,24 @@ fun DesktopBilleterieResultScreen(
     onScanNext: () -> Unit,
     onCloseToMenu: () -> Unit,
     viewModel: com.eventmanager.app.ui.viewmodel.EventManagerViewModel? = null,
+    onValidateTemporaryGuest: (Guest) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val focusRequester = remember { FocusRequester() }
     val isPendingValidation = result is BilleterieScanResult.TicketsAvailable && !ticketConfirmed
+    // Mirror ticketConfirmed: until the single-use entry is validated, Enter must not skip the scan.
+    var temporaryGuestValidated by remember(result) {
+        mutableStateOf(
+            result is BilleterieScanResult.TemporaryGuestFound && result.alreadyValidated,
+        )
+    }
     val canScanNext = when (result) {
         is BilleterieScanResult.TicketsAvailable -> ticketConfirmed
+        is BilleterieScanResult.TemporaryGuestFound -> temporaryGuestValidated
         else -> true
     }
 
-    LaunchedEffect(result, ticketConfirmed) {
+    LaunchedEffect(result, ticketConfirmed, temporaryGuestValidated) {
         focusRequester.requestFocus()
     }
 
@@ -468,9 +481,16 @@ fun DesktopBilleterieResultScreen(
                 is BilleterieScanResult.GuestFound,
                 -> true
                 is BilleterieScanResult.TicketsAvailable -> ticketConfirmed
+                is BilleterieScanResult.TemporaryGuestFound -> temporaryGuestValidated
                 else -> false
             }
-            val verdictColor = if (isSuccess) SuccessGreen else ErrorRed
+            val verdictColor = when {
+                // A spent single-use entry is not an error, just a "no more entry left" warning.
+                result is BilleterieScanResult.TemporaryGuestFound && temporaryGuestValidated ->
+                    TemporaryGuestUsedAmber
+                isSuccess -> SuccessGreen
+                else -> ErrorRed
+            }
 
             Box(
                 modifier = Modifier
@@ -480,7 +500,12 @@ fun DesktopBilleterieResultScreen(
                 DesktopBilleterieFullScreenVerdict(
                     result = result,
                     ticketConfirmed = ticketConfirmed,
+                    temporaryGuestValidated = temporaryGuestValidated,
                     viewModel = viewModel,
+                    onValidateTemporaryGuest = { guest ->
+                        temporaryGuestValidated = true
+                        onValidateTemporaryGuest(guest)
+                    },
                     modifier = Modifier.fillMaxSize(),
                 )
                 DesktopBilleterieResultActionBar(
@@ -523,7 +548,9 @@ fun DesktopBilleterieResultScreen(
 private fun DesktopBilleterieFullScreenVerdict(
     result: BilleterieScanResult,
     ticketConfirmed: Boolean,
+    temporaryGuestValidated: Boolean = false,
     viewModel: com.eventmanager.app.ui.viewmodel.EventManagerViewModel? = null,
+    onValidateTemporaryGuest: (Guest) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val isSuccess = when (result) {
@@ -531,13 +558,14 @@ private fun DesktopBilleterieFullScreenVerdict(
         is BilleterieScanResult.GuestFound,
         -> true
         is BilleterieScanResult.TicketsAvailable -> ticketConfirmed
+        is BilleterieScanResult.TemporaryGuestFound -> temporaryGuestValidated
         is BilleterieScanResult.NoEntry,
         is BilleterieScanResult.ScanError,
         -> false
     }
 
-    val checkScale = remember(result, ticketConfirmed) { Animatable(0f) }
-    LaunchedEffect(result, ticketConfirmed) {
+    val checkScale = remember(result, ticketConfirmed, temporaryGuestValidated) { Animatable(0f) }
+    LaunchedEffect(result, ticketConfirmed, temporaryGuestValidated) {
         checkScale.snapTo(0f)
         checkScale.animateTo(
             1f,
@@ -561,7 +589,16 @@ private fun DesktopBilleterieFullScreenVerdict(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            if (isSuccess) {
+            if (result is BilleterieScanResult.TemporaryGuestFound && temporaryGuestValidated) {
+                Icon(
+                    Icons.Default.History,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(160.dp)
+                        .scale(checkScale.value),
+                    tint = Color.White,
+                )
+            } else if (isSuccess) {
                 Icon(
                     Icons.Default.CheckCircle,
                     contentDescription = null,
@@ -664,6 +701,46 @@ private fun DesktopBilleterieFullScreenVerdict(
                         )
                     }
                 }
+                is BilleterieScanResult.TemporaryGuestFound -> {
+                    val barDiscount = result.guest.barDiscountPercent.coerceIn(0, 100)
+                    val hasNonAccessBenefits = barDiscount > 0
+                    val perkTexts = buildList {
+                        addAll(result.accesses.map { it.name })
+                        if (barDiscount > 0) {
+                            add(stringResource(Res.string.bar_discount, barDiscount))
+                        }
+                    }
+                    if (perkTexts.isNotEmpty()) {
+                        Spacer(Modifier.height(28.dp))
+                        DesktopBilleterieVerdictPerksCard(
+                            perkTexts = perkTexts,
+                            muted = temporaryGuestValidated,
+                            title = stringResource(
+                                if (hasNonAccessBenefits) Res.string.benefit_details
+                                else Res.string.access_details,
+                            ),
+                        )
+                    }
+                    Spacer(Modifier.height(24.dp))
+                    if (temporaryGuestValidated) {
+                        Text(
+                            text = temporaryEntryValidatedLabel(result.guest)?.let {
+                                stringResource(Res.string.temp_guest_scan_already_used, it)
+                            } ?: stringResource(Res.string.temp_guest_entry_validated_short),
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = Color.White,
+                            textAlign = TextAlign.Center,
+                        )
+                    } else {
+                        Box(modifier = Modifier.widthIn(max = 480.dp)) {
+                            EntryConfirmControl(
+                                onConfirm = {
+                                    onValidateTemporaryGuest(result.guest)
+                                },
+                            )
+                        }
+                    }
+                }
                 else -> Unit
             }
         }
@@ -730,6 +807,7 @@ private fun DesktopBilleterieTicketValidationContent(
 private fun DesktopBilleterieVerdictPerksCard(
     perkTexts: List<String>,
     muted: Boolean,
+    title: String = stringResource(Res.string.benefit_details),
 ) {
     Card(
         modifier = Modifier.widthIn(max = 520.dp),
@@ -743,7 +821,7 @@ private fun DesktopBilleterieVerdictPerksCard(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text(
-                text = stringResource(Res.string.benefit_details),
+                text = title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = Color.White,
@@ -870,6 +948,7 @@ private fun desktopBilleterieStatusTitle(result: BilleterieScanResult, ticketCon
         }
         is BilleterieScanResult.NoEntry -> stringResource(Res.string.billeterie_scanner_no_entry)
         is BilleterieScanResult.GuestFound -> stringResource(Res.string.billeterie_scanner_guest_found)
+        is BilleterieScanResult.TemporaryGuestFound -> stringResource(Res.string.temp_guest_scan_title)
         is BilleterieScanResult.ScanError -> stringResource(Res.string.billeterie_scanner_error)
     }
 
@@ -878,6 +957,7 @@ private fun desktopBilleteriePersonName(result: BilleterieScanResult): String? =
     is BilleterieScanResult.TicketsAvailable -> result.volunteer.name
     is BilleterieScanResult.NoEntry -> result.volunteer.name
     is BilleterieScanResult.GuestFound -> result.guest.name
+    is BilleterieScanResult.TemporaryGuestFound -> result.guest.name
     is BilleterieScanResult.ScanError -> null
 }
 
@@ -886,6 +966,7 @@ private fun desktopBilleteriePhotoUrl(result: BilleterieScanResult): String = wh
     is BilleterieScanResult.TicketsAvailable -> result.volunteer.profilePhotoUrl
     is BilleterieScanResult.NoEntry -> result.volunteer.profilePhotoUrl
     is BilleterieScanResult.GuestFound -> result.guest.profilePhotoUrl
+    is BilleterieScanResult.TemporaryGuestFound -> result.guest.profilePhotoUrl
     is BilleterieScanResult.ScanError -> ""
 }
 
@@ -894,6 +975,7 @@ private fun desktopBilleteriePhotoPath(result: BilleterieScanResult): String = w
     is BilleterieScanResult.TicketsAvailable -> result.volunteer.resolvedProfilePhotoPath()
     is BilleterieScanResult.NoEntry -> result.volunteer.resolvedProfilePhotoPath()
     is BilleterieScanResult.GuestFound -> result.guest.resolvedProfilePhotoPath()
+    is BilleterieScanResult.TemporaryGuestFound -> result.guest.resolvedProfilePhotoPath()
     is BilleterieScanResult.ScanError -> ""
 }
 
@@ -903,6 +985,10 @@ private fun desktopBilleterieIdentityExtras(result: BilleterieScanResult): List<
     desktopBilleterieRank(result)?.let { extras.add(it) }
     if (result is BilleterieScanResult.GuestFound && result.guest.venueName.isNotBlank()) {
         extras.add(result.guest.venueName)
+    }
+    if (result is BilleterieScanResult.TemporaryGuestFound) {
+        result.guest.temporaryArtistName.takeIf { it.isNotBlank() }?.let { extras.add(it) }
+        result.guest.temporaryVenueName.takeIf { it.isNotBlank() }?.let { extras.add(it) }
     }
     return extras
 }

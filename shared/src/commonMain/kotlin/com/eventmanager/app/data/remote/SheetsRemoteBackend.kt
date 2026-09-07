@@ -1,6 +1,7 @@
 package com.eventmanager.app.data.remote
 
 import com.eventmanager.app.data.models.Guest
+import com.eventmanager.app.data.models.GuestForm
 import com.eventmanager.app.data.models.Job
 import com.eventmanager.app.data.models.JobTypeConfig
 import com.eventmanager.app.data.models.ManualTemporaryGuestBatch
@@ -264,6 +265,11 @@ class SheetsRemoteBackend(
         deletionTracker?.trackSalesSheetItemDeletion(item.id.toString(), item.sheetsId, businessKey = item.name)
         twoWaySyncService.backupSalesSheetItemsToSheets()
     }
+
+    // Guest list forms are Firebase-only: the Sheets contract has no tab for them.
+    override suspend fun afterGuestFormSaved(form: GuestForm) = Unit
+
+    override suspend fun afterGuestFormDeleted(form: GuestForm) = Unit
 
     override suspend fun afterTransfersChanged() {
         twoWaySyncService.backupTransfersToSheets()

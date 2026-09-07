@@ -120,6 +120,9 @@ fun FirebaseSyncSettingsSection(
     signInFeedback: String? = null,
     profilePhotosEnabled: Boolean = false,
     onProfilePhotosEnabledChange: (Boolean) -> Unit = {},
+    guestFormsEnabled: Boolean = false,
+    onGuestFormsEnabledChange: (Boolean) -> Unit = {},
+    guestFormSiteOrigin: String = "",
 ) {
     val ready = firebaseConnectionReady(configuredOrgs, projectId, applicationId, apiKey, authEmail)
     val projectReady = projectId.isNotBlank() && applicationId.isNotBlank() && apiKey.isNotBlank()
@@ -272,6 +275,12 @@ fun FirebaseSyncSettingsSection(
 
         FirebaseSettingsSectionHeader(stringResource(Res.string.firebase_settings_section_optional))
         if (settingsManager != null) {
+            GuestFormSettingsCard(
+                enabled = guestFormsEnabled,
+                onEnabledChange = onGuestFormsEnabledChange,
+                siteOrigin = guestFormSiteOrigin,
+                canEdit = isFirebaseOrgAdmin,
+            )
             GuidedStepCard(
                 title = stringResource(Res.string.profile_photos_settings_title),
                 body = stringResource(Res.string.profile_photos_settings_body),
@@ -327,7 +336,10 @@ private fun FirebaseSettingsSectionHeader(title: String) {
 }
 
 @Composable
-fun SheetsMigrateToFirebaseButton(onClick: () -> Unit) {
+fun SheetsMigrateToFirebaseButton(
+    onClick: () -> Unit,
+    projectId: String = "",
+) {
     var showTutorial by remember { mutableStateOf(false) }
     GuidedStepCard(
         title = stringResource(Res.string.sheets_migrate_card_title),
@@ -341,7 +353,10 @@ fun SheetsMigrateToFirebaseButton(onClick: () -> Unit) {
         }
     }
     if (showTutorial) {
-        FirebaseSetupTutorialDialog(onDismiss = { showTutorial = false })
+        FirebaseSetupTutorialDialog(
+            onDismiss = { showTutorial = false },
+            projectId = projectId,
+        )
     }
 }
 

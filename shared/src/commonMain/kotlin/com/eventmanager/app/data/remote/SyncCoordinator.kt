@@ -1,6 +1,7 @@
 package com.eventmanager.app.data.remote
 
 import com.eventmanager.app.data.models.Guest
+import com.eventmanager.app.data.models.GuestForm
 import com.eventmanager.app.data.models.Job
 import com.eventmanager.app.data.models.JobTypeConfig
 import com.eventmanager.app.data.models.ManualTemporaryGuestBatch
@@ -82,6 +83,14 @@ class SyncCoordinator(
     suspend fun afterVenueDeleted(venue: VenueEntity) = activeBackend().afterVenueDeleted(venue)
     suspend fun afterSalesItemSaved(item: SalesSheetItem) = activeBackend().afterSalesItemSaved(item)
     suspend fun afterSalesItemDeleted(item: SalesSheetItem) = activeBackend().afterSalesItemDeleted(item)
+    suspend fun afterGuestFormSaved(form: GuestForm) = activeBackend().afterGuestFormSaved(form)
+    suspend fun afterGuestFormDeleted(form: GuestForm) = activeBackend().afterGuestFormDeleted(form)
+
+    /** Force-refresh artist form documents so a public PENDING_REVIEW answer surfaces quickly. */
+    suspend fun pullGuestForms(): SyncResult =
+        firebaseBackend?.pullGuestForms()
+            ?: SyncResult.Success("Guest forms require Firebase")
+
     suspend fun afterTransfersChanged() = activeBackend().afterTransfersChanged()
     suspend fun afterInstitutionSettingsChanged() = activeBackend().afterInstitutionSettingsChanged()
     suspend fun afterVolunteerGuestListRecalcNeeded() = activeBackend().afterVolunteerGuestListRecalcNeeded()

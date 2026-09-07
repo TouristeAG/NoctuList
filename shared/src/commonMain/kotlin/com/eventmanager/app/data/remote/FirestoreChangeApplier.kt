@@ -8,6 +8,11 @@ import com.eventmanager.app.data.models.AccountTransferType
 import com.eventmanager.app.data.models.BenefitSystemType
 import com.eventmanager.app.data.models.Gender
 import com.eventmanager.app.data.models.Guest
+import com.eventmanager.app.data.models.GuestForm
+import com.eventmanager.app.data.models.GuestFormExpiry
+import com.eventmanager.app.data.models.GuestFormLogoShape
+import com.eventmanager.app.data.models.GuestFormStatus
+import com.eventmanager.app.data.models.statusValue
 import com.eventmanager.app.data.models.Job
 import com.eventmanager.app.data.models.JobType
 import com.eventmanager.app.data.models.JobTypeConfig
@@ -49,6 +54,7 @@ object FirestoreChangeApplier {
                 "venues" -> applyVenue(orgId, change.documentId, payload, repository)
                 "salesItems" -> applySalesItem(orgId, change.documentId, payload, repository)
                 "transfers" -> applyTransfer(orgId, change.documentId, payload, repository)
+                "guestForms" -> applyGuestForm(orgId, change.documentId, payload, repository)
                 else -> Unit
             }
         } catch (e: CancellationException) {
@@ -83,6 +89,14 @@ object FirestoreChangeApplier {
                 ?.let { repository.deleteVenue(it) }
             "salesItems" -> repository.getSalesSheetItemByNameAndOrg(documentId, orgId)
                 ?.let { repository.deleteSalesSheetItem(it) }
+            "guestForms" -> repository.getGuestFormByFormIdAndOrg(documentId, orgId)?.let { form ->
+                if (form.allowMultipleResponses && form.parentFormId.isBlank()) {
+                    repository.getGuestFormsByParentFormId(form.formId).forEach { child ->
+                        repository.deleteGuestForm(child)
+                    }
+                }
+                repository.deleteGuestForm(form)
+            }
             "transfers" -> {
                 repository.getAccountTransferBySourceReference(documentId)?.takeIf { it.firebaseOrgId == orgId }
                     ?.let { existing ->
@@ -171,6 +185,11 @@ object FirestoreChangeApplier {
             temporaryArtistName = stringOf(decrypted["temporaryArtistName"]).orEmpty(),
             temporaryEventDate = longOf(decrypted["temporaryEventDate"]),
             temporaryContactPhone = stringOf(decrypted["temporaryContactPhone"]).orEmpty(),
+            temporaryVenueName = stringOf(decrypted["temporaryVenueName"]).orEmpty(),
+            temporaryContactEmail = stringOf(decrypted["temporaryContactEmail"]).orEmpty(),
+            temporaryAccessIds = stringOf(decrypted["temporaryAccessIds"]).orEmpty(),
+            temporaryEntryValidatedAt = longOf(decrypted["temporaryEntryValidatedAt"]) ?: 0L,
+            temporaryEntryValidatedBy = stringOf(decrypted["temporaryEntryValidatedBy"]).orEmpty(),
             nfcCardUid = stringOf(decrypted["nfcCardUid"]).orEmpty(),
             nfcCardUidHash = stringOf(decrypted["nfcCardUidHash"]).orEmpty(),
             isAdmin = boolOf(decrypted["isAdmin"]) ?: false,
@@ -323,6 +342,89 @@ object FirestoreChangeApplier {
             firebaseOrgId = orgId,
         )
         if (existing == null) repository.insertJobTypeConfig(remote) else repository.updateJobTypeConfig(remote)
+    }
+
+    private suspend fun applyGuestForm(
+        orgId: String,
+        docId: String,
+        data: Map<String, Any?>,
+        repository: EventManagerRepository,
+    ) {
+        val existing = repository.getGuestFormByFormIdAndOrg(docId, orgId)
+        val remoteLm = longOf(data["lastModified"]) ?: existing?.lastModified ?: 1L
+        val remoteStatus = stringOf(data["status"])
+        val remoteSubmission = stringOf(data["submissionJson"]).orEmpty()
+        val remoteIsAnswer = remoteStatus == GuestFormStatus.PENDING_REVIEW.name ||
+            remoteStatus == GuestFormStatus.ACCEPTED.name ||
+            remoteStatus == GuestFormStatus.REJECTED.name ||
+            remoteSubmission.isNotBlank()
+        val publicAnswerArrived = existing != null &&
+            existing.statusValue == GuestFormStatus.OPEN &&
+            remoteIsAnswer
+        // Artist answers and review decisions must never lose to a stale local OPEN row
+        // (clock skew, or lastModified still sitting in the json envelope).
+        if (existing != null && existing.lastModified >= remoteLm && !publicAnswerArrived && !remoteIsAnswer) {
+            return
+        }
+        if (existing != null &&
+            existing.statusValue != GuestFormStatus.OPEN &&
+            remoteStatus == GuestFormStatus.OPEN.name &&
+            existing.lastModified >= remoteLm
+        ) {
+            // Do not resurrect a decided/pending form from a stale OPEN snapshot.
+            return
+        }
+        val remote = GuestForm(
+            id = existing?.id ?: 0,
+            formId = docId,
+            firebaseOrgId = orgId,
+            venueName = stringOf(data["venueName"]) ?: existing?.venueName.orEmpty(),
+            eventName = stringOf(data["eventName"]) ?: existing?.eventName.orEmpty(),
+            eventDateMillis = longOf(data["eventDateMillis"]) ?: existing?.eventDateMillis ?: 0L,
+            artistName = stringOf(data["artistName"]) ?: existing?.artistName.orEmpty(),
+            offeredAccessIds = stringOf(data["offeredAccessIds"]) ?: existing?.offeredAccessIds.orEmpty(),
+            maxGuests = intOf(data["maxGuests"]) ?: existing?.maxGuests ?: GuestForm.DEFAULT_MAX_GUESTS,
+            expiryMode = stringOf(data["expiryMode"]) ?: existing?.expiryMode
+                ?: GuestFormExpiry.AFTER_RESPONSE.name,
+            expiresAtMillis = longOf(data["expiresAtMillis"]) ?: existing?.expiresAtMillis ?: 0L,
+            allowMultipleResponses = boolOf(data["allowMultipleResponses"])
+                ?: existing?.allowMultipleResponses
+                ?: false,
+            parentFormId = stringOf(data["parentFormId"]) ?: existing?.parentFormId.orEmpty(),
+            showInstitutionLogo = boolOf(data["showInstitutionLogo"])
+                ?: existing?.showInstitutionLogo ?: true,
+            institutionLogoDataUri = stringOf(data["institutionLogoDataUri"])
+                ?: existing?.institutionLogoDataUri.orEmpty(),
+            institutionLogoShape = stringOf(data["institutionLogoShape"])
+                ?: existing?.institutionLogoShape
+                ?: GuestFormLogoShape.ROUNDED.name,
+            institutionLogoInvert = boolOf(data["institutionLogoInvert"])
+                ?: existing?.institutionLogoInvert
+                ?: false,
+            guestLogoDataUri = stringOf(data["guestLogoDataUri"]) ?: existing?.guestLogoDataUri.orEmpty(),
+            guestLogoShape = stringOf(data["guestLogoShape"])
+                ?: existing?.guestLogoShape
+                ?: GuestFormLogoShape.ROUNDED.name,
+            guestLogoInvert = boolOf(data["guestLogoInvert"])
+                ?: existing?.guestLogoInvert
+                ?: false,
+            askEmail = boolOf(data["askEmail"]) ?: existing?.askEmail ?: true,
+            askPhone = boolOf(data["askPhone"]) ?: existing?.askPhone ?: true,
+            prefillEmail = stringOf(data["prefillEmail"]) ?: existing?.prefillEmail.orEmpty(),
+            prefillPhone = stringOf(data["prefillPhone"]) ?: existing?.prefillPhone.orEmpty(),
+            status = remoteStatus ?: existing?.status ?: GuestFormStatus.OPEN.name,
+            submissionJson = remoteSubmission.ifBlank { existing?.submissionJson.orEmpty() },
+            submittedAt = longOf(data["submittedAt"]) ?: existing?.submittedAt ?: 0L,
+            reviewedAt = longOf(data["reviewedAt"]) ?: existing?.reviewedAt ?: 0L,
+            reviewedBy = stringOf(data["reviewedBy"]) ?: existing?.reviewedBy.orEmpty(),
+            createdAt = longOf(data["createdAt"]) ?: existing?.createdAt ?: remoteLm,
+            lastModified = if (publicAnswerArrived || remoteIsAnswer) {
+                maxOf(remoteLm, (existing?.lastModified ?: 0L) + 1L)
+            } else {
+                remoteLm
+            },
+        )
+        if (existing == null) repository.insertGuestForm(remote) else repository.updateGuestForm(remote)
     }
 
     private suspend fun applyVenue(

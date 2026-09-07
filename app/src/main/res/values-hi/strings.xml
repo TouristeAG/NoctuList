@@ -254,61 +254,45 @@
     <string name="other_notes_placeholder">अतिरिक्त नोट्स...</string>
     <string name="update_shift_type">शिफ्ट प्रकार अपडेट करें</string>
     <string name="stellar_benefits_info_title">पर्क्स चीट शीट</string>
-
     <string name="benefits_help_dialog_title">पर्क्स चीट शीट</string>
     <string name="benefits_help_dialog_subtitle">कलेक्टिफ़ नॉक्टर्न · 2026-27</string>
     <string name="benefits_help_intro">बदलाव का मिलान वास्तव में जो हुआ उससे करें। तारकीय = ऑटो; मैनुअल = आप इसे टाइप करें।</string>
-
     <string name="benefits_help_tab_modes">मोड</string>
     <string name="benefits_help_tab_nova">शिफ्ट प्रकार</string>
     <string name="benefits_help_tab_extras">बोनस &amp; समय</string>
-
     <string name="benefits_help_app_stellar">नौकरी शिफ्ट करें → नोवा प्रकार चुनें\nओरियन नौकरी → जनादेश वर्ष (अनुभवी वर्ष बाद)\nपेय, अतिथि सूची, भविष्य की प्रविष्टियाँ → आपके लिए गणना की गई</string>
     <string name="benefits_help_app_manual">आप दिन, पेय, बार \u0025, मेहमान, अतिरिक्त दर्ज करें\nसामान्य ग्रिड के बाहर एकबारगी के लिए\nनहीं\'यदि यह\' पहले से ही तारकीय है तो उसी वास्तविक बदलाव को दोबारा न गिनें</string>
-
     <string name="benefits_help_section_profité_title">लाभ/गैर-लाभकारी</string>
     <string name="benefits_help_section_profité_body">डिफ़ॉल्ट शिफ्ट केवल तभी, जब \"शाम का आनंद लें\" चालू हो।\nप्रवेश के बारे में नहीं: बात यह है कि क्या शिफ्ट के घंटे अभी भी व्यक्ति को रात का आनंद लेने देते हैं या नहीं।\nअन्य नोवा प्रकार: यह टॉगल छिपा हुआ है।</string>
-
     <string name="benefits_help_section_nova_title">नोवा पर्क्स (शिफ्ट जॉब)</string>
     <string name="benefits_help_nova_profité_title">डिफ़ॉल्ट शिफ्ट - मुनाफ़ा</string>
     <string name="benefits_help_nova_profité_rationale">वह घटना वाली रात ही.</string>
     <string name="benefits_help_nova_profité_perks">निःशुल्क प्रवेश + 1 अतिथि - कार्यक्रम की रात\n50\u0025 बार - कार्यक्रम की रात\n2 निःशुल्क पेय (~10 सीएचएफ) - कार्यक्रम की रात</string>
-
     <string name="benefits_help_nova_non_profité_title">डिफ़ॉल्ट शिफ्ट - गैर-लाभकारी</string>
     <string name="benefits_help_nova_non_profité_rationale">रात्रि पैकेज + मौसमी कॉम्प (+1 अतिथि)।</string>
     <string name="benefits_help_nova_non_profité_perks">लाभ के समान इवेंट-नाइट पैकेज\nप्लस 1 मौसमी निःशुल्क प्रवेश + 1 अतिथि (ऐप में)</string>
-
     <string name="benefits_help_nova_photo_title">फोटोग्राफर/वीडियोग्राफर</string>
     <string name="benefits_help_nova_photo_rationale">गैर-लाभकारी डिफ़ॉल्ट के समान बॉलपार्क।</string>
     <string name="benefits_help_nova_photo_perks">निःशुल्क प्रवेश + 1 अतिथि - ढकी हुई रात\n50\u0025 बार - ढकी हुई रात\n2 मुफ़्त पेय (~10 CHF) - ढकी हुई रात\n1 मौसमी मुफ़्त प्रवेश + 1 अतिथि</string>
-
     <string name="benefits_help_nova_meeting_title">बैठक</string>
     <string name="benefits_help_nova_meeting_rationale">एक महीने में 3 बैठकें अभी भी गैलेक्सी को बढ़ावा देती हैं - ओरियन को छोड़कर (बैठकें नहीं)।\'टी गिनती)।</string>
     <string name="benefits_help_nova_meeting_perks">1 मौसमी निःशुल्क प्रवेश + 1 अतिथि\n1 निःशुल्क पेय (~5 CHF)</string>
-
     <string name="benefits_help_nova_gd_event_title">ग्राफ़िक डिज़ाइनर - एक इवेंट</string>
     <string name="benefits_help_nova_gd_event_rationale">उस रात के फोटो/वीडियो जैसा ही माहौल।</string>
     <string name="benefits_help_nova_gd_event_perks">निःशुल्क प्रवेश + 1 अतिथि - कार्यक्रम रात्रि\n50\u0025 बार - कार्यक्रम रात्रि\n2 निःशुल्क पेय (~10 सीएचएफ) - कार्यक्रम रात्रि\n1 मौसमी निःशुल्क प्रवेश + 1 अतिथि</string>
-
     <string name="benefits_help_nova_gd_asso_title">ग्राफ़िक डिज़ाइनर - एसोसिएशन-व्यापी</string>
     <string name="benefits_help_nova_gd_asso_rationale">एक पार्टी से बंधा नहीं → अधिक पेय, कोई रोक नहीं \u0025।</string>
     <string name="benefits_help_nova_gd_asso_perks">2 मौसमी निःशुल्क प्रविष्टियाँ + 1 अतिथि प्रत्येक\n4 निःशुल्क पेय (~20 CHF)</string>
-
     <string name="benefits_help_section_galaxie_title">आकाशगंगा</string>
     <string name="benefits_help_section_galaxie_body">एक ही कैलेंडर माह में 3 योगदान (शिफ्ट + मीटिंग)\nओरियन: मीटिंग\'को 3\nकी गिनती में नहीं लिया जाता है: हर जगह मुफ्त प्रवेश + 50\u0025 बार + 1 अतिरिक्त ड्रिंक\nसामान्य शिफ्ट भत्तों के साथ ढेर</string>
-
     <string name="benefits_help_section_orion_title">ओरायन</string>
     <string name="benefits_help_section_orion_body">नौकरी के प्रकार को ओरियन के रूप में टैग करें\nमैंडेट प्रारंभ से 1 वर्ष: निःशुल्क प्रवेश + 50\u0025 बार + 1 अतिथि\n270 सीएचएफ वॉलेट (शर्ट पॉट + पेय बजट)</string>
-
     <string name="benefits_help_section_veteran_title">वयोवृद्ध</string>
     <string name="benefits_help_section_veteran_body">ओरियन के बाद का वर्ष\nफिर भी: नि:शुल्क प्रवेश + 50\u0025 बार\nमैंडेट समाप्त होने पर वॉलेट बंद हो जाता है</string>
-
     <string name="benefits_help_section_timing_title">जब ऐप अनुलाभ चालू करता है</string>
     <string name="benefits_help_section_timing_body">नाइट-ऑफ़ पर्क्स = वह स्थान\'s इवेंट का दिन (सेटिंग्स → दिन-परिवर्तन का समय)\nभविष्य की प्रविष्टियाँ उसी क्षण से अनलॉक हो जाती हैं\nओरियन / गैलेक्सी / वेटरन लंबी विंडो का उपयोग करते हैं</string>
-
     <string name="benefits_help_footer_title">सचेत रहें</string>
     <string name="benefits_help_footer_bullets">लाभ/गैर-लाभकारी - शिफ्ट के घंटे आपको रात का आनंद लेने देते हैं या नहीं (प्रवेश के बारे में नहीं)\n50\u0025 बार दर लाइटस्पीड की कीमतों को ट्रैक करती है\nशिफ्ट सुविधाओं के साथ गैलेक्सी स्टैक</string>
-
     <string name="nova_job_type_label">नोवा लाभ प्रकार</string>
     <string name="nova_type_default_shift">डिफ़ॉल्ट बदलाव</string>
     <string name="nova_type_meeting">बैठक</string>
@@ -366,10 +350,19 @@
     <string name="temp_guest_event_date_label">घटना दिनांक</string>
     <string name="temp_guest_contact_phone_label">आपातकालीन संपर्क फ़ोन</string>
     <string name="temp_guest_chip_label">Temp</string>
-    <string name="temp_guest_timeline_button">भविष्य/इतिहास</string>
-    <string name="temp_guest_timeline_title">अस्थायी अतिथि समयरेखा</string>
+    <string name="temp_guest_timeline_button">रात · भविष्य · इतिहास</string>
+    <string name="temp_guest_timeline_title">रात · भविष्य · इतिहास</string>
     <string name="temp_guest_tab_temp">अस्थायी</string>
     <string name="temp_guest_tab_volunteer">स्वयंसेवक</string>
+    <string name="temp_guest_none_volunteers">इस फ़िल्टर के लिए कोई स्वयंसेवक नहीं।</string>
+    <string name="temp_guest_subsection_volunteers">स्वयंसेवक</string>
+    <string name="temp_guest_none_remaining">आज रात की पूरी सूची प्रवेश कर चुकी है।</string>
+    <string name="temp_guest_section_remaining">अभी प्रवेश नहीं</string>
+    <string name="temp_guest_tonight_tracking">प्रवेश / कुल रात</string>
+    <string name="temp_guest_tonight_title">आज रात के अस्थायी गेस्ट</string>
+    <string name="temp_guest_tab_history">इतिहास</string>
+    <string name="temp_guest_tab_future">भविष्य</string>
+    <string name="temp_guest_tab_tonight">रात</string>
     <string name="temp_guest_range_label">रेंज</string>
     <string name="temp_guest_range_three_days">+/- 3 दिन</string>
     <string name="temp_guest_range_three_days_short">±3डी</string>
@@ -385,14 +378,14 @@
     <string name="temp_guest_range_one_year_short">1 वर्ष</string>
     <string name="temp_guest_range_all_time">हर समय</string>
     <string name="temp_guest_range_all_time_short">सब</string>
-    <string name="temp_guest_section_upcoming">आने वाले मेहमान</string>
-    <string name="temp_guest_section_past">पिछले मेहमान</string>
-    <string name="temp_guest_none_upcoming">इस फ़िल्टर के लिए कोई आगामी अस्थायी अतिथि नहीं है।</string>
-    <string name="temp_guest_none_past">इस फ़िल्टर के लिए कोई पिछला अस्थायी मेहमान नहीं।</string>
+    <string name="temp_guest_section_upcoming">भविष्य के अस्थायी गेस्ट</string>
+    <string name="temp_guest_section_past">पुराने अस्थायी गेस्ट</string>
+    <string name="temp_guest_none_upcoming">इस फ़िल्टर के लिए कोई भविष्य का अस्थायी गेस्ट नहीं।</string>
+    <string name="temp_guest_none_past">इस फ़िल्टर के लिए कोई पुराना अस्थायी गेस्ट नहीं।</string>
     
     <!-- App Information -->
     <string name="app_info_title">ऐप की जानकारी</string>
-    <string name="app_version">NoctuList 2.1.1</string>
+    <string name="app_version">NoctuList 2.1.2</string>
     <string name="app_designed_for">कलेक्टिफ़ नॉक्टर्न स्थानों के लिए डिज़ाइन किया गया</string>
     <!-- Single full sentence to avoid spacing issues across locales -->
     <string name="app_developed_full">लियोनार्डो मोंडाडा द्वारा कलेक्टिफ़ नॉक्टर्न के लिए विकसित किया गया</string>
@@ -944,6 +937,7 @@
     <!-- Additional Volunteer Panel Strings -->
     <string name="expired">समाप्त हो गया</string>
     <string name="benefit_details">लाभ विवरण</string>
+    <string name="access_details">पहुँच विवरण</string>
     <string name="more_shifts">… और %d अधिक बदलाव</string>
     <string name="years_old">%d वर्ष पुराना</string>
     
@@ -1311,7 +1305,6 @@
     <string name="external_reader_test_success_title">पाठक ठीक है</string>
     <string name="external_reader_test_failure_title">रीडर परीक्षण विफल रहा</string>
     <string name="external_reader_test_close">बंद करें</string>
-
     <string name="ble_reader_picker_title">ब्लूटूथ एनएफसी रीडर चुनें</string>
     <string name="ble_reader_picker_subtitle">सुनिश्चित करें कि ACR1255U-J1 चालू और पास में है। एसीआर-श्रेणी के पाठक पहले आते हैं।</string>
     <string name="ble_reader_scanning">ब्लूटूथ डिवाइस के लिए स्कैन किया जा रहा है...</string>
@@ -1364,4 +1357,125 @@
     <string name="theme_hue_label">रंग (इंद्रधनुष): %1$d°</string>
     <string name="theme_luminosity_label">चमक: %1$d%%</string>
     <string name="theme_saturation_label">संतृप्ति: %1$d%%</string>
+
+    <!-- Temporary guests (Firebase) -->
+    <string name="temp_guest_access_settings_title">अस्थायी अतिथि पहुँच</string>
+    <string name="temp_guest_access_settings_description">प्रत्येक स्थल के लिए दी जा सकने वाली विशेष पहुँच (स्टेज, बैकस्टेज, VIP…) निर्धारित करें। केवल Firebase बैकएंड पर उपलब्ध।</string>
+    <string name="temp_guest_access_no_venue">अभी कोई सक्रिय स्थल नहीं है। पहुँच निर्धारित करने के लिए एक बनाएँ।</string>
+    <string name="temp_guest_access_venue_empty">इस स्थल के लिए कोई विशेष पहुँच नहीं।</string>
+    <string name="temp_guest_access_venue_count">%1$d पहुँच कॉन्फ़िगर की गई।</string>
+    <string name="temp_guest_access_add">नई पहुँच</string>
+    <string name="temp_guest_access_add_title">%1$s में नई पहुँच</string>
+    <string name="temp_guest_access_name_label">पहुँच का नाम</string>
+    <string name="temp_guest_access_duplicate">यह पहुँच इस स्थल पर पहले से मौजूद है।</string>
+    <string name="temp_guest_access_remove_title">यह पहुँच हटाएँ?</string>
+    <string name="temp_guest_access_remove_message">“%1$s” उन सभी अस्थायी अतिथियों से हटा दी जाएगी जिनके पास यह है।</string>
+    <string name="temp_guest_credits_setting_title">अस्थायी अतिथियों के लिए क्रेडिट खाते</string>
+    <string name="temp_guest_credits_setting_description">अस्थायी अतिथि को स्थायी अतिथि की तरह बार बैलेंस रखने देता है। डिफ़ॉल्ट रूप से बंद।</string>
+    <string name="temp_guest_contact_email_label">संपर्क ईमेल</string>
+    <string name="temp_guest_contact_email_hint">कलाकार या प्रबंधक जिसे इस सूची के सभी QR कोड मिलते हैं।</string>
+    <string name="temp_guest_venue_label">स्थल</string>
+    <string name="temp_guest_venue_placeholder">स्थल चुनें</string>
+    <string name="temp_guest_access_person_label">विशेष पहुँच</string>
+    <string name="date_format_european_placeholder">दिन/माह/वर्ष</string>
+    <string name="date_shortcut_today">आज</string>
+    <string name="date_shortcut_this_friday">इस शुक्रवार</string>
+    <string name="date_shortcut_this_saturday">इस शनिवार</string>
+    <string name="temp_guest_accesses_title">अधिकृत पहुँच</string>
+    <string name="temp_guest_no_access">कोई विशेष पहुँच नहीं</string>
+    <string name="temp_guest_entry_status_label">प्रवेश</string>
+    <string name="temp_guest_entry_validated_at">%1$s पर प्रवेश किया</string>
+    <string name="temp_guest_entry_not_yet">अभी तक प्रवेश नहीं</string>
+    <string name="temp_guest_validate_entry">प्रवेश सत्यापित करें</string>
+    <string name="temp_guest_entry_single_use_hint">एक-बार प्रवेश: सत्यापित होने पर यह अतिथि आज रात की सूची से हट जाएगा।</string>
+    <string name="temp_guest_email_tab">कलाकार सूची</string>
+    <string name="temp_guest_send_choice_title">कौन से QR कोड भेजें?</string>
+    <string name="temp_guest_send_choice_all">%1$s की पूरी सूची</string>
+    <string name="temp_guest_send_choice_all_description">रात के %1$d QR कोड के साथ एक ईमेल।</string>
+    <string name="temp_guest_send_choice_single">केवल यह व्यक्ति</string>
+    <string name="temp_guest_send_choice_single_description">एक QR कोड, अभी दर्ज किए पते पर।</string>
+    <string name="temp_guest_scan_title">अस्थायी अतिथि</string>
+    <string name="temp_guest_scan_already_used">प्रवेश %1$s पर पहले ही उपयोग हो चुका</string>
+    <string name="temp_guest_scan_wrong_day">यह सूची आज रात के लिए नहीं है।</string>
+    <string name="temp_guest_section_validated">पहले ही अंदर</string>
+    <string name="temp_guest_validated_count">%1$d / %2$d सत्यापित</string>
+    <string name="temp_guest_none_validated">आज रात अभी तक कोई अंदर नहीं आया।</string>
+    <string name="institution_settings_firebase_admin_only">समन्वयित संस्थान सेटिंग्स (मुद्रा, ईमेल, क्रेडिट बफ़र, फ़ोटो, मिरर) केवल Firebase संगठन व्यवस्थापक बदल सकता है।</string>
+    <string name="temp_guest_email_html_header">कलाकार अतिथि सूची</string>
+    <string name="temp_guest_email_subject_default">आपकी अतिथि सूची के क्यूआर कोड</string>
+    <string name="temp_guest_email_content_before_default">नमस्ते!\n\nयहां आपकी अतिथि सूची के क्यूआर कोड हैं। हर कोड संबंधित व्यक्ति को भेजें, या प्रवेश द्वार पर दिखाएं।</string>
+    <string name="temp_guest_email_content_after_default">हर कोड केवल एक बार प्रवेश के लिए मान्य है। आज रात मिलते हैं!</string>
+    <string name="temp_guest_send_choice_message">इस अतिथि सूची में कई लोग हैं।</string>
+    <string name="temp_guest_scan_venue">स्थल</string>
+    <string name="temp_guest_scan_no_access">इस स्थल पर कोई विशेष पहुंच नहीं।</string>
+    <string name="temp_guest_entry_validated_short">प्रवेश हो गया</string>
+    <string name="guest_form_create">फ़ॉर्म बनाएँ</string>
+    <string name="guest_form_create_title">कलाकार गेस्टलिस्ट फ़ॉर्म</string>
+    <string name="guest_form_event_name">इवेंट का नाम</string>
+    <string name="guest_form_artist">कलाकार / संस्था</string>
+    <string name="guest_form_max_guests">अधिकतम लोगों की संख्या</string>
+    <string name="guest_form_allow_multiple">कई जवाब अनुमति दें</string>
+    <string name="guest_form_allow_multiple_hint">लिंक समाप्ति तिथि तक खुला रहता है। हर सबमिशन एक नई समीक्षा बनाता है।</string>
+    <string name="guest_form_expiry_label">फ़ॉर्म बंद होता है (इवेंट के 3 दिन बाद तक हटाया जाता है)</string>
+    <string name="guest_form_expiry_after_response">जवाब के बाद</string>
+    <string name="guest_form_expiry_day_before">एक दिन पहले</string>
+    <string name="guest_form_expiry_event_day">इवेंट के दिन</string>
+    <string name="guest_form_expiry_day_after">अगले दिन</string>
+    <string name="guest_form_expiry_manual">चुनी हुई तारीख (अधिकतम इवेंट + 3 दिन)</string>
+    <string name="guest_form_include_logo">संस्था का लोगो शामिल करें</string>
+    <string name="guest_form_include_logo_missing">इसे सेटिंग्स → ईमेल में अपलोड करें (QR ईमेल वाला वही लोगो)।</string>
+    <string name="guest_form_guest_logo">दूसरा लोगो (वैकल्पिक)</string>
+    <string name="guest_form_guest_logo_hint">कलाकार, एल्बम या अतिथि संस्था। आपके लोगो के पास दिखेगा।</string>
+    <string name="guest_form_guest_logo_change">लोगो बदलें</string>
+    <string name="guest_form_guest_logo_add">लोगो जोड़ें</string>
+    <string name="guest_form_logo_shape">आकार</string>
+    <string name="guest_form_logo_shape_square">वर्ग</string>
+    <string name="guest_form_logo_shape_rounded">गोलाकार कोने</string>
+    <string name="guest_form_logo_shape_circle">वृत्त</string>
+    <string name="guest_form_logo_invert">रंग उलटें</string>
+    <string name="guest_form_ask_email">संपर्क ईमेल माँगें</string>
+    <string name="guest_form_ask_phone">आपातकालीन फ़ोन माँगें</string>
+    <string name="guest_form_prefill_email">पूर्व-भरा ईमेल</string>
+    <string name="guest_form_prefill_phone">पूर्व-भरा आपातकालीन फ़ोन</string>
+    <string name="guest_form_offered_access">वे जो एक्सेस मांग सकते हैं</string>
+    <string name="guest_form_offered_access_hint">अनुरोध गारंटी नहीं है — फैसला रात को आपका होगा।</string>
+    <string name="guest_form_create_action">फ़ॉर्म बनाएँ</string>
+    <string name="guest_form_link_title">फ़ॉर्म तैयार</string>
+    <string name="guest_form_link_body">यह अनूठा लिंक %1$s को भेजें। यह खत्म होने या जवाब तक चलता है।</string>
+    <string name="guest_form_link_body_multi">यह अनूठा लिंक %1$s को भेजें। यह समाप्ति तक खुला रहता है; हर जवाब एक नई समीक्षा बनाता है।</string>
+    <string name="guest_form_copy_link">लिंक कॉपी करें</string>
+    <string name="guest_form_link_copied">कॉपी हो गया</string>
+    <string name="guest_form_pending_title">समीक्षा के लिए गेस्टलिस्ट</string>
+    <string name="guest_form_pending_one">%1$s ने अपनी गेस्टलिस्ट भेजी</string>
+    <string name="guest_form_pending_many">%1$d गेस्टलिस्ट प्रतीक्षा में</string>
+    <string name="guest_form_pending_cta">समीक्षा के लिए टैप करें</string>
+    <string name="guest_form_review_title">समीक्षा — %1$s</string>
+    <string name="guest_form_review_response_hint">बहु-जवाब फ़ॉर्म से एक जवाब। स्वीकार या अस्वीकार केवल इसी जवाब को बंद करता है।</string>
+    <string name="guest_form_review_accept">स्वीकार करें</string>
+    <string name="guest_form_review_reject">अस्वीकार करें</string>
+    <string name="guest_form_review_empty">इस जवाब में कोई नाम नहीं।</string>
+    <string name="guest_form_person_n">व्यक्ति %1$d</string>
+    <string name="guest_form_settings_title">कलाकार गेस्टलिस्ट फ़ॉर्म (वैकल्पिक)</string>
+    <string name="guest_form_settings_body">कलाकार अपनी गेस्टलिस्ट एक सार्वजनिक पेज पर भेजते हैं (Firebase Hosting, मुफ़्त)। साइट एक बार Firebase सेटअप गाइड से प्रकाशित करें।</string>
+    <string name="guest_form_enable">कलाकार गेस्टलिस्ट फ़ॉर्म चालू करें</string>
+    <string name="guest_form_site_url">साइट: %1$s</string>
+    <string name="guest_form_export">फ़ॉर्म साइट एक्सपोर्ट करें</string>
+    <string name="guest_form_export_done">ज़िप सेव हो गया। अनज़िप करें, फिर नीचे की कमांड चलाएँ।</string>
+    <string name="guest_form_export_android">प्रकाशित करने के लिए कंप्यूटर चाहिए। डेस्कटॉप पर NoctuList में यह गाइड खोलें, ज़िप एक्सपोर्ट करें, फिर चरण 3 से जारी रखें।</string>
+    <string name="guest_form_deploy_commands">npm install -g firebase-tools\nfirebase login\nfirebase deploy --only hosting --project YOUR_PROJECT_ID</string>
+    <string name="firebase_tutorial_forms_optional_title">वैकल्पिक: सार्वजनिक गेस्टलिस्ट फ़ॉर्म (Firebase Hosting)</string>
+    <string name="firebase_tutorial_forms_optional_body">इस Firebase प्रोजेक्ट पर फ़ॉर्म साइट एक बार प्रकाशित करें (मुफ़्त Hosting)। फिर NoctuList में हर फ़ॉर्म एक अनूठा लिंक है — Terminal दोबारा नहीं।</string>
+    <string name="guest_form_step1">1. सेटिंग्स → Firebase → वैकल्पिक में कलाकार गेस्टलिस्ट फ़ॉर्म चालू करें।</string>
+    <string name="guest_form_step2">2. कंप्यूटर पर “Export the form site” दबाएँ, ज़िप सेव करके अनज़िप करें। फ़ोल्डर में index.html और firebase.json होने चाहिए।</string>
+    <string name="guest_form_step3">3. https://nodejs.org से Node.js LTS 22 या 24 इंस्टॉल करें (हरा LTS बटन, Current नहीं)। इंस्टॉल के बाद Terminal फिर खोलें।</string>
+    <string name="guest_form_step4">4. Terminal खोलें। cd लिखें, स्पेस, अनज़िप किया फ़ोल्डर विंडो में खींचें, Enter दबाएँ।</string>
+    <string name="guest_form_step5">5. नीचे की कमांड कॉपी करें, Terminal में पेस्ट करें, Enter। इस Firebase प्रोजेक्ट के मालिक Google खाते से साइन इन करें।</string>
+    <string name="guest_form_step6">6. Terminal में “Deploy complete!” दिखे तो साइट लाइव है। उसके बाद NoctuList में फ़ॉर्म बनाएँ — दोबारा डिप्लॉय नहीं।</string>
+    <string name="guest_form_terminal_caption">Terminal में चलाने वाली कमांड</string>
+    <string name="guest_form_copy_commands">कमांड कॉपी करें</string>
+    <string name="guest_form_commands_copied">कमांड कॉपी हो गईं</string>
+    <string name="guest_form_terminal_title">टर्मिनल</string>
+    <string name="guest_form_project_id_hint">YOUR_PROJECT_ID को सेटिंग्स → Firebase के Project ID से बदलें।</string>
+    <string name="guest_form_offered_access_pick_venue">पहले एक स्थान चुनें।</string>
+    <string name="guest_form_offered_access_empty">इस स्थान के लिए कोई विशेष पहुँच नहीं।</string>
 </resources>

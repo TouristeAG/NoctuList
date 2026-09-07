@@ -20,6 +20,15 @@ expect class PlatformFileManager(context: PlatformContext) {
     suspend fun pickEmailLogoImageFile(): String?
     fun getEmailLogoFile(): File?
     fun clearEmailLogoFile(): Boolean
+
+    /**
+     * Writes the institution logo synced from Firebase onto the canonical local file, or clears
+     * it when [bytes] is null. Returns the URI the platform e-mail code can read it back from.
+     */
+    fun saveEmailLogoBytes(bytes: ByteArray?): String?
+
+    /** Raw bytes of the current local logo, for uploading it as the synced institution logo. */
+    fun readEmailLogoBytes(): ByteArray?
     fun getWalletPassCertificateFile(): File?
     fun saveWalletPassCertificate(bytes: ByteArray): Boolean
     suspend fun pickWalletPassCertificateFile(): ByteArray?

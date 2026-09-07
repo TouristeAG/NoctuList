@@ -2,9 +2,12 @@ package com.eventmanager.app.data.remote
 
 import com.eventmanager.app.data.models.AccountTransfer
 import com.eventmanager.app.data.models.Guest
+import com.eventmanager.app.data.models.GuestForm
+import com.eventmanager.app.data.models.GuestFormStatus
 import com.eventmanager.app.data.models.Job
 import com.eventmanager.app.data.models.JobTypeConfig
 import com.eventmanager.app.data.models.ManualTemporaryGuestBatch
+import com.eventmanager.app.data.models.encodeTemporaryAccessIds
 import com.eventmanager.app.data.models.SalesSheetItem
 import com.eventmanager.app.data.models.VenueEntity
 import com.eventmanager.app.data.models.Volunteer
@@ -291,18 +294,22 @@ class FirebaseRemoteBackend(
     }
 
     override suspend fun afterTemporaryGuestBatch(batch: ManualTemporaryGuestBatch) {
-        for (rawName in batch.guestNames) {
-            val name = rawName.trim()
+        for (entry in batch.guests) {
+            val name = entry.name.trim()
             if (name.isEmpty()) continue
             val guest = Guest(
                 name = name,
-                invitations = 0,
+                invitations = 1,
                 venueName = "BOTH",
                 notes = batch.comments,
                 isTemporaryGuest = true,
                 temporaryArtistName = batch.artistName,
                 temporaryEventDate = batch.eventDateMillis,
                 temporaryContactPhone = batch.emergencyContactPhone,
+                temporaryVenueName = batch.venueName,
+                temporaryContactEmail = batch.contactEmail,
+                temporaryAccessIds = encodeTemporaryAccessIds(entry.accessIds),
+                barDiscountPercent = batch.barDiscountPercent.coerceIn(0, 100),
                 lastModified = System.currentTimeMillis(),
                 firebaseOrgId = resolveWriteOrgId(),
             )
@@ -342,6 +349,14 @@ class FirebaseRemoteBackend(
 
     override suspend fun afterJobTypeDeleted(config: JobTypeConfig) {
         delete("jobTypeConfigs", config.name, config.firebaseOrgId)
+    }
+
+    override suspend fun afterGuestFormSaved(form: GuestForm) {
+        upsert("guestForms", form.formId, firestoreGateway.guestFormToMap(form), form.firebaseOrgId)
+    }
+
+    override suspend fun afterGuestFormDeleted(form: GuestForm) {
+        delete("guestForms", form.formId, form.firebaseOrgId)
     }
 
     override suspend fun afterVenueSaved(venue: VenueEntity) {
@@ -485,6 +500,11 @@ class FirebaseRemoteBackend(
             repository.getAllJobTypeConfigs().first().forEach { afterJobTypeSaved(it) }
             repository.getAllVenues().first().forEach { afterVenueSaved(it) }
             repository.getAllSalesSheetItems().first().forEach { afterSalesItemSaved(it) }
+            // Never bulk-push OPEN forms: a stale local OPEN would overwrite a public
+            // PENDING_REVIEW answer already sitting in Firestore.
+            repository.getAllGuestForms().first()
+                .filter { it.status != GuestFormStatus.OPEN.name }
+                .forEach { afterGuestFormSaved(it) }
             repository.getAllAccountTransfersOnce()
                 .filter { it.syncState != com.eventmanager.app.data.models.AccountTransferSyncState.REJECTED }
                 .forEach { transfer ->
@@ -503,6 +523,8 @@ class FirebaseRemoteBackend(
             SyncResult.Error(e.message ?: "Firebase push failed")
         }
     }
+
+    suspend fun pullGuestForms(): SyncResult = pullAll(listOf("guestForms"))
 
     private suspend fun pullAll(collections: Collection<String>? = null): SyncResult {
         if (!firestoreGateway.isAvailable()) {
@@ -567,7 +589,11 @@ class FirebaseRemoteBackend(
         val targetOrg = resolveWriteOrgId(orgId)
         if (targetOrg.isBlank()) return
         val stamped = data.toMutableMap().apply {
-            put("sourceDeviceId", settingsManager.getOrCreatePersistentDeviceId())
+            // Public guest-form answers must never look like a write from this device: the
+            // creator's sourceDeviceId used to make NoctuList drop PENDING_REVIEW as an echo.
+            if (collection != "guestForms") {
+                put("sourceDeviceId", settingsManager.getOrCreatePersistentDeviceId())
+            }
         }
         if (firestoreGateway.isAvailable()) {
             try {
@@ -693,7 +719,12 @@ class FirebaseRemoteBackend(
             return
         }
         val echoDevice = change.data?.get("sourceDeviceId") as? String
-        if (!echoDevice.isNullOrBlank() &&
+        // guestForms answers are written by the public page without clearing the creator's
+        // sourceDeviceId on older rules/sites. Never treat this collection as a self-echo —
+        // otherwise the device that created the form silently drops PENDING_REVIEW forever.
+        val isGuestFormChange = change.collection == "guestForms"
+        if (!isGuestFormChange &&
+            !echoDevice.isNullOrBlank() &&
             echoDevice == settingsManager.getOrCreatePersistentDeviceId()
         ) {
             return

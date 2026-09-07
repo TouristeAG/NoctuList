@@ -341,8 +341,20 @@ fun PosScreen(
 
     val manualDefaultLabel = stringResource(Res.string.pos_manual_default_label)
 
-    val permanentGuests = remember(guests) {
-        guests.filter { !it.isVolunteerBenefit && !it.isTemporaryGuest }
+    val temporaryGuestFeatures = rememberTemporaryGuestFeatures(viewModel)
+    /**
+     * Temporary guests reach the till only when they actually have something to spend there — a
+     * credit account or a bar discount. Otherwise they would just clutter the customer search.
+     */
+    val permanentGuests = remember(guests, temporaryGuestFeatures) {
+        guests.filter {
+            !it.isVolunteerBenefit && (
+                !it.isTemporaryGuest || (
+                    temporaryGuestFeatures.enabled &&
+                        (temporaryGuestFeatures.creditsEnabled || it.barDiscountPercent > 0)
+                    )
+                )
+        }
     }
 
     val isCompact = isCompactScreen()
@@ -865,7 +877,7 @@ fun PosScreen(
                     is ScannerMatch.VolunteerMatch ->
                         handleProfileFound(match.volunteer, null, match.volunteer.name)
                     is ScannerMatch.GuestMatch -> {
-                        if (!match.guest.isVolunteerBenefit && !match.guest.isTemporaryGuest) {
+                        if (permanentGuests.any { it.nanoId == match.guest.nanoId }) {
                             handleProfileFound(null, match.guest, match.guest.name)
                         }
                     }

@@ -314,6 +314,18 @@ compose.resources {
     packageOfResClass = "com.eventmanager.app.resources"
 }
 
+val syncWebFormResources = tasks.register<Copy>("syncWebFormResources") {
+    from(rootProject.file("webform"))
+    into(layout.projectDirectory.dir("src/commonMain/composeResources/files/webform"))
+}
+
+tasks.matching { it.name.contains("generateResourceAccessors", ignoreCase = true) }.configureEach {
+    dependsOn(syncWebFormResources)
+}
+tasks.matching { it.name.contains("copyNonXmlValueResources", ignoreCase = true) }.configureEach {
+    dependsOn(syncWebFormResources)
+}
+
 kotlin.sourceSets.all {
     languageSettings {
         optIn("androidx.compose.material3.ExperimentalMaterial3Api")

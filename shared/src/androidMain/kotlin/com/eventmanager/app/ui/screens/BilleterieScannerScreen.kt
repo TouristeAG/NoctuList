@@ -84,6 +84,11 @@ actual fun BilleterieScannerScreen(
     val permanentGuests = remember(guests) {
         guests.filter { !it.isVolunteerBenefit && !it.isTemporaryGuest }
     }
+    val temporaryFeatures = rememberTemporaryGuestFeatures(viewModel)
+    // On Firebase, temporary guests carry a scannable single-use entry too.
+    val scannableTemporaryGuests = remember(guests, temporaryFeatures.enabled) {
+        if (temporaryFeatures.enabled) guests.filter { it.isTemporaryGuest } else emptyList()
+    }
     val volunteersByNfcUid = remember(volunteers) {
         volunteers.filter { it.nfcCardUid.isNotBlank() }
             .groupBy { it.nfcCardUid.billeterieNormalizeUid() }
@@ -147,11 +152,26 @@ actual fun BilleterieScannerScreen(
                 ticketConfirmed = false
             }
             is ScannerMatch.GuestMatch -> {
-                scanResult = BilleterieScanResult.GuestFound(match.guest)
+                val guest = match.guest
+                scanResult = if (guest.isTemporaryGuest && temporaryFeatures.enabled) {
+                    BilleterieScanResult.TemporaryGuestFound(
+                        guest = guest,
+                        accesses = VenueAccessCatalog.resolve(
+                            temporaryFeatures.venueAccesses,
+                            guest.temporaryAccessIdSet(),
+                        ),
+                        alreadyValidated = guest.temporaryEntryValidated,
+                    )
+                } else {
+                    BilleterieScanResult.GuestFound(guest)
+                }
                 cameraEnabled = false
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 bleReaderFxScope.launch {
-                    ExternalAcsUidReader.feedbackBleAccessOutcome(context, granted = true)
+                    ExternalAcsUidReader.feedbackBleAccessOutcome(
+                        context,
+                        granted = !(guest.isTemporaryGuest && guest.temporaryEntryValidated),
+                    )
                 }
             }
         }
@@ -212,6 +232,7 @@ actual fun BilleterieScannerScreen(
                             processMatch(ScannerMatch.VolunteerMatch(volunteer))
                         } else {
                             val guest = permanentGuests.find { it.nanoId == qrData.id }
+                                ?: scannableTemporaryGuests.find { it.nanoId == qrData.id }
                             if (guest != null) {
                                 processMatch(ScannerMatch.GuestMatch(guest))
                             } else {
@@ -231,11 +252,12 @@ actual fun BilleterieScannerScreen(
                         }
                     }
                     "guest" -> {
-                        val guest = permanentGuests.find {
+                        val guestPool = permanentGuests + scannableTemporaryGuests
+                        val guest = guestPool.find {
                             it.nanoId == qrData.id && qrData.id.isNotBlank()
-                        } ?: permanentGuests.find {
+                        } ?: guestPool.find {
                             it.name.equals(qrData.name, ignoreCase = true)
-                        } ?: permanentGuests.find {
+                        } ?: guestPool.find {
                             it.name.contains(qrData.name, ignoreCase = true) ||
                                 qrData.name.contains(it.name, ignoreCase = true)
                         }
@@ -423,6 +445,7 @@ actual fun BilleterieScannerScreen(
                 ticketConfirmed = true
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
             },
+            onValidateTemporaryGuest = { guest -> viewModel?.validateTemporaryGuestEntry(guest) },
             onScanNext = {
                 scanResult = null
                 ticketConfirmed = false

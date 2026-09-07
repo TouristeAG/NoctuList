@@ -4,6 +4,85 @@ All notable changes to NoctuList are documented here. Version numbers follow [Se
 
 ---
 
+## 2.1.2 — 2026-09-07
+
+Artists can fill in their own temporary guest list through a public form. **Firebase only** — Google Sheets is unchanged.
+
+### Public forms
+
+- Production creates a form from *Add a temporary guest → Create a form*: venue, event, date, artist, requestable accesses, person cap, expiry, optional logos, and a pre-filled email or emergency phone.
+- Optional **Allow multiple responses**: the shared link stays OPEN until expiry; each public submit creates a separate `PENDING_REVIEW` child (its own validation card). Single-response forms keep the previous in-place close-on-answer behaviour.
+- Contact **email** and **emergency phone** can each be shown or hidden per form; prefill fields only appear when the matching option is on.
+- Each form is a unique link (`https://<project>.web.app/g/<org>/<id>`). The site is deployed **once** per institution via Firebase Hosting; creating a form never needs another deploy.
+- The public page reuses the app's topographic background and dark palette. Accesses are a request only and never guaranteed. No bar discount or other in-house perk is asked.
+
+### Review
+
+- A yellow card at the top of the guest list lists answers waiting for an admin.
+- The review dialog shows a full recap (contact, notes, each person and requested accesses), then Accept (✓) or Refuse (✗).
+- Accepting (after optional edits) creates the temporary guests through the existing batch path. Refusing or expiring a form closes the public link and drops the per-form artist logo.
+
+### Future / History
+
+- Dialog split into three separate tabs: **Tonight** (Firebase: entered / total + lists), **Future** (upcoming temp guests; Android also volunteers), **History** (past temp guests; Android also volunteers).
+- Tonight’s guests no longer mix into Future when entry tracking is on.
+
+### Setup
+
+- Opt-in institution setting (like profile photos), off by default. The one-time Hosting publish steps live only in the Firebase setup guide (export, Node LTS, copyable Terminal commands).
+- The association logo is shared with the QR e-mail logo: upload in Settings → Email and it is available on forms (and synced across devices). Stored on disk locally (not in Preferences) so large logos no longer crash the desktop app at launch.
+
+### Public page polish
+
+- Background animation works on phones (scaled WebGL buffer) and no longer burns CPU on long open tabs (~30 fps, pauses when the tab is hidden).
+- Access chips show `+` / `✓` so requesting an access for each person is obvious.
+
+### Upgrade notes
+
+- **Version code:** 29 (`2.1.2`). Minimum supported code remains **27** (2.1.0) — optional update for 2.1.0 and 2.1.1.
+- **Database:** Room schema 45 → 50 (temporary-guest columns, then `guest_forms` including multi-response and `askEmail` / `askPhone`).
+- **Firestore rules:** version 9 — republish `firebase/firestore.rules` so multi-response public creates are allowed and single-response updates stay blocked on multi templates.
+- **Hosting:** redeploy the guest-form site (`webform/`) so multi-response submits and contact-field toggles work on the public page.
+- **Publishing:** tag `2.1.2`, then copy `version.json` to the AdminList update manifest. Do not raise `minSupportedVersionCode`.
+
+---
+
+## 2.2.0 — 2026-09-05
+
+Temporary artist guest lists become a first-class feature on the Firebase backend. **The Google Sheets backend is untouched**: the `Temp Guest List` tab keeps its seven columns (A–G) and every field below is stored only in Firestore and Room.
+
+### Special accesses per venue
+
+- New **Accès guests temporaires** card in Settings → Catalog. Each active venue holds up to 12 named accesses ("Backstage", "Zone VIP", "Stage"…), synced across devices as a Firebase-only institution setting. Accesses carry a stable ID, so renaming one keeps it attached to the guests who hold it.
+- The add/edit form grants accesses **per person**: a single switch when the venue has one access, selectable chips when it has several, and nothing at all when it has none. Changing the venue clears the ticked accesses, since they belong to the venue.
+
+### Temporary guest list form
+
+- **Venue** (one per batch) sits just before Notes, and an **email de contact** for the artist or manager sits just under the emergency number.
+- **Bar discount %** is now available on temporary guests too, using the same field as permanent guests.
+- The event date uses a new **JJ/MM/AAAA** field with a calendar and *Aujourd'hui* / *Ce vendredi* / *Ce samedi* shortcuts. This one applies to both backends — it changes only the input, not the stored value.
+
+### QR codes and grouped email
+
+- Temporary guests get the same QR icon as permanent guests and volunteers, available to Billeterie as well as Admin.
+- Sending offers a choice: **the artist's whole guest list** — every QR of the batch in a single email to the contact address, asked for once and then remembered on all guests of the batch — or **this person only**, which asks for a one-off recipient and sends a single QR.
+- A third email template, **Guestlist artiste**, joins Bénévole and Invité·e in the email settings.
+
+### Entry validation, scanner and POS
+
+- Scanning a temporary guest shows their authorized accesses in large contrasted chips and offers **Valider l'entrée**. Entry is single-use: a second scan reports the time of the first one instead of letting them back in.
+- A validated guest leaves the day list and reappears under **Déjà entrés** in *Futurs / historique*, with a `validés / total` counter.
+- Temporary guests reach the POS only when they can actually use it — that is, when they have a bar discount or when credit accounts are enabled.
+- **Credit accounts for temporary guests** are off by default and enabled from the same Settings card.
+
+### Upgrade notes
+
+- **Version code:** features below ship in **2.1.2** (code 29). Minimum supported code remains **27** (2.1.0).
+- **Database:** Room schema 45 → 46 adds five nullable columns to `guests`. The migration is additive and needs no action.
+- **Firestore rules:** unchanged.
+
+---
+
 ## 2.1.1 — 2026-09-04
 
 Patch release focused on sales catalogue sync reliability.

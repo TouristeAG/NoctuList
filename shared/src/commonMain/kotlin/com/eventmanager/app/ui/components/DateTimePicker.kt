@@ -102,7 +102,7 @@ fun DateTimePicker(
             initialSelectedDateMillis = selectedTimestamp
         )
         
-        DatePickerDialog(
+        EventDatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(
@@ -173,7 +173,7 @@ fun DateTimePicker(
 }
 
 @Composable
-private fun DatePickerDialog(
+internal fun EventDatePickerDialog(
     onDismissRequest: () -> Unit,
     confirmButton: @Composable () -> Unit,
     dismissButton: @Composable (() -> Unit)? = null,
@@ -404,7 +404,7 @@ fun BirthdayDatePicker(
             yearRange = IntRange(1900, Calendar.getInstance().get(Calendar.YEAR))
         )
         
-        DatePickerDialog(
+        EventDatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(

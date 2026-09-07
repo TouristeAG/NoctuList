@@ -66,9 +66,13 @@ internal fun resolveNfcUidMatches(
 internal fun resolveDesktopScannerPayload(
     raw: String,
     volunteers: List<Volunteer>,
-    guests: List<Guest>
+    guests: List<Guest>,
+    /** Firebase only: temporary guests join the search pool for their single-use entry. */
+    includeTemporaryGuests: Boolean = false,
 ): Pair<ScannerMatch?, List<NfcUidMatchOption>> {
-    val permanentGuests = guests.filter { !it.isVolunteerBenefit && !it.isTemporaryGuest }
+    val permanentGuests = guests.filter {
+        !it.isVolunteerBenefit && (!it.isTemporaryGuest || includeTemporaryGuests)
+    }
     val nfcMatches = resolveNfcUidMatches(raw, volunteers, permanentGuests)
     when {
         nfcMatches.size == 1 -> return nfcMatches.first().match to emptyList()

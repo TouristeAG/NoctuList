@@ -30,6 +30,7 @@ object SensitiveFieldCodec {
             email = crypto.encrypt(guest.email, orgId),
             phoneNumber = crypto.encrypt(guest.phoneNumber, orgId),
             temporaryContactPhone = crypto.encrypt(guest.temporaryContactPhone, orgId),
+            temporaryContactEmail = crypto.encrypt(guest.temporaryContactEmail, orgId),
             notes = crypto.encrypt(guest.notes, orgId),
             nfcCardUid = crypto.encrypt(guest.nfcCardUid, orgId),
             nfcCardUidHash = nfcLookupHash(guest.nfcCardUid, orgId),
@@ -43,6 +44,7 @@ object SensitiveFieldCodec {
             email = crypto.decrypt(guest.email, orgId),
             phoneNumber = crypto.decrypt(guest.phoneNumber, orgId),
             temporaryContactPhone = crypto.decrypt(guest.temporaryContactPhone, orgId),
+            temporaryContactEmail = crypto.decrypt(guest.temporaryContactEmail, orgId),
             notes = crypto.decrypt(guest.notes, orgId),
             nfcCardUid = crypto.decrypt(guest.nfcCardUid, orgId),
         )
@@ -122,6 +124,9 @@ object SensitiveFieldCodec {
         stringField(data, "temporaryContactPhone")?.let {
             m["temporaryContactPhone_enc"] = crypto.encrypt(it, orgId); m.remove("temporaryContactPhone")
         }
+        stringField(data, "temporaryContactEmail")?.let {
+            m["temporaryContactEmail_enc"] = crypto.encrypt(it, orgId); m.remove("temporaryContactEmail")
+        }
         stringField(data, "notes")?.let { m["notes_enc"] = crypto.encrypt(it, orgId); m.remove("notes") }
         stringField(data, "nfcCardUid")?.let {
             m["nfcCardUid_enc"] = crypto.encrypt(it, orgId)
@@ -137,6 +142,7 @@ object SensitiveFieldCodec {
         encOrPlain(m, "email_enc", "email", orgId)
         encOrPlain(m, "phone_enc", "phone", orgId)
         encOrPlain(m, "temporaryContactPhone_enc", "temporaryContactPhone", orgId)
+        encOrPlain(m, "temporaryContactEmail_enc", "temporaryContactEmail", orgId)
         encOrPlain(m, "notes_enc", "notes", orgId)
         encOrPlain(m, "nfcCardUid_enc", "nfcCardUid", orgId)
         return m

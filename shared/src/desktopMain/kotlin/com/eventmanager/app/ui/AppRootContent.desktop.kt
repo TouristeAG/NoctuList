@@ -106,6 +106,9 @@ actual fun AppRootContent(
     CompositionLocalProvider(LocalPlatformContext provides platformContext) {
         DesktopPopupWarmup()
         val settingsManager = remember(platformContext) { SettingsManager(createAppStorage(platformContext)) }
+        remember(platformContext, settingsManager) {
+            com.eventmanager.app.data.sync.installInstitutionLogoBridge(platformContext, settingsManager)
+        }
         val skipStartupSync = remember { settingsManager.consumeSkipNextStartupSync() }
         val uiRefreshNonce by AppAppearanceState::refreshNonce
         val backgroundAnimationStyle = uiRefreshNonce.let { settingsManager.getBackgroundAnimationStyle() }
@@ -208,7 +211,7 @@ actual fun AppRootContent(
             EventManagerRepository(
                 db.guestDao(), db.volunteerDao(), db.jobDao(),
                 db.jobTypeConfigDao(), db.venueDao(), db.salesSheetItemDao(),
-                db.accountTransferDao()
+                db.accountTransferDao(), db.guestFormDao()
             )
         }
         val sheets = remember { GoogleSheetsService(platformContext) }
@@ -260,6 +263,7 @@ actual fun AppRootContent(
 
         val followScope = rememberCoroutineScope()
 
+        Box(Modifier.fillMaxSize()) {
         when {
             showAdminSetup -> {
                 val adminSetupVenues by viewModel.venues.collectAsState()
@@ -559,8 +563,7 @@ actual fun AppRootContent(
                         selectedTab = selectedTab,
                         onTabSelected = { tab -> selectedTab = tab.index },
                         onBack = { endAdminSession() },
-                        onSync = { viewModel.performFullSync() },
-                        isSyncing = isSyncing,
+                        onSync = { viewModel.performDifferentialFullSync() },
                         onTouchSession = { touchAdminSession() },
                         onClearOverlays = {
                             showJobTypeManagement = false
@@ -690,12 +693,6 @@ actual fun AppRootContent(
                             ) {
                                 Icon(Icons.Default.QrCodeScanner, contentDescription = null)
                             }
-
-                            SyncStatusPill(
-                                viewModel = viewModel,
-                                modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
-                                onSync = { touchAdminSession(); viewModel.performDifferentialFullSync() },
-                            )
                         }
                     }
                     }
@@ -868,6 +865,9 @@ actual fun AppRootContent(
                 }
             },
         )
+
+        GuestFormArrivalToastHost(viewModel = viewModel)
+        }
     }
 }
 

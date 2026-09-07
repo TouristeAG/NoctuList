@@ -2,6 +2,7 @@ package com.eventmanager.app.data.remote
 
 import com.eventmanager.app.data.models.AccountTransfer
 import com.eventmanager.app.data.models.Guest
+import com.eventmanager.app.data.models.GuestForm
 import com.eventmanager.app.data.models.Job
 import com.eventmanager.app.data.models.JobTypeConfig
 import com.eventmanager.app.data.models.SalesSheetItem
@@ -345,4 +346,5 @@ private class FakeFirestoreGateway(
     override fun venueToMap(venue: VenueEntity): Map<String, Any?> = emptyMap()
     override fun salesItemToMap(item: SalesSheetItem): Map<String, Any?> = emptyMap()
     override fun transferToMap(transfer: AccountTransfer): Map<String, Any?> = emptyMap()
+    override fun guestFormToMap(form: GuestForm): Map<String, Any?> = emptyMap()
 }

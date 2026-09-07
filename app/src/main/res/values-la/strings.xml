@@ -185,7 +185,7 @@
     <string name="people_counter_visibility_title">Afficher compteur personususnes</string>
     <string name="people_counter_visibility_description">Afficher vel Cela compteur personususnes in pagina d\'accueil</string>
     <string name="billeterie_clock_visibility_title">Monstra horologium</string>
-    <string name="billeterie_clock_visibility_description">Monstra chartam diei et horae in pagina billeterie (sicut in tabula admin)</string>
+    <string name="billeterie_clock_visibility_description">Monstra chartam diei et horae in pagina billetterie (sicut in tabula admin)</string>
     <string name="statistics_visibility_title">Afficher graphicums statistica</string>
     <string name="statistics_visibility_description">Afficher vel Cela section ex graphicums statistica in pagina d\'accueil</string>
     <string name="scroll_behavior_title">Scrolling mores pro administratione paginarum</string>
@@ -254,61 +254,45 @@
     <string name="other_notes_placeholder">Additae notae…</string>
     <string name="update_shift_type">Mettre ad dies typus shift</string>
     <string name="stellar_benefits_info_title">Guide ex commoda voluntarii</string>
-
     <string name="benefits_help_dialog_title">Guide ex commoda voluntarii</string>
     <string name="benefits_help_dialog_subtitle">Collectif Nocturne · 2026-27</string>
     <string name="benefits_help_intro">Trabea indicat genus, quod correspondet operi actu peracto. In stellare modus,\'applicatio utilitates computat; in modo Manualis, tu eas ipse definis.</string>
-
     <string name="benefits_help_tab_modes">Modes</string>
     <string name="benefits_help_tab_nova">Types shift</string>
     <string name="benefits_help_tab_extras">Praemia &amp; tempora</string>
-
     <string name="benefits_help_app_stellar">Activate "officium Shift", deinde opportunum elige Novae typum\nActivum "Orion officium" unius mandati (Orionis annus, deinde Veterani status l\'sequenti anno)\nBibit, list\'hospites et futura viscus: automatice calculatione</string>
     <string name="benefits_help_app_manual">Tu ipse inscribis dies, potiones, bar \u0025, hospitae, extras\nAdhibe pro casibus singularibus extra consuetam tabulam\nCave ne idem munus bis numeres si iam in modo Stellaire captum est</string>
-
     <string name="benefits_help_section_profité_title">Profité / non-profité</string>
     <string name="benefits_help_section_profité_body">Solum munus ex consuetudine, cum "frui vespera" activum est.\nNon de introitu: utrum horae muneris adhuc permittant homini noctem frui necne.\nAlia genera Nova: haec optio latet.</string>
-
     <string name="benefits_help_section_nova_title">Avantages per typus Nova (shift job)</string>
     <string name="benefits_help_nova_profité_title">Shift vesperum - circumveniamur</string>
     <string name="benefits_help_nova_profité_rationale">Tantum ad vesperam of *\'res agitur.</string>
     <string name="benefits_help_nova_profité_perks">Introitus gratuite + 1 amie - vespera l\'eventus\n50\u0025 ad bar - vespera l\'eventus\n2 boissonususs offertes (~10 CHF) - vespera l\'eventus</string>
-
     <string name="benefits_help_nova_non_profité_title">Vespera subcinctus - non circumveniamur</string>
     <string name="benefits_help_nova_non_profité_rationale">Eadem beneficia per noctem\'eventus, plus gratis temporis ingressum (+ amicus).</string>
     <string name="benefits_help_nova_non_profité_perks">Eadem sarcina ac beneficium pro nocte\'eventus\n+ 1 temporis viscus + 1 amicus (followed in the)\'application)</string>
-
     <string name="benefits_help_nova_photo_title">Author/videographer (vesper)</string>
     <string name="benefits_help_nova_photo_rationale">Idem principium cum defalta trabea lucri non-.</string>
     <string name="benefits_help_nova_photo_perks">Free ingressum + I friend - operto noctis\n50\u0025 apud bar - subobscurum noctis\nII free drinks (~ X CHF) - nox operta\n1 temporis viscus + 1 amicus</string>
-
     <string name="benefits_help_nova_meeting_title">Conventus</string>
     <string name="benefits_help_nova_meeting_rationale">Tres conventus eodem mense computant pro Galaxia, excepto Orione: conventus in tota sua computantur.</string>
     <string name="benefits_help_nova_meeting_perks">1 temporis viscus + 1 amicus\nI free drink (~5 CHF)</string>
-
     <string name="benefits_help_nova_gd_event_title">Graphic excogitatoris - pro certo eventu</string>
     <string name="benefits_help_nova_gd_event_rationale">Eadem ratione ac photo vel video huic vesperi.</string>
     <string name="benefits_help_nova_gd_event_perks">Free viscus + 1 amicus - pars vesperi\'eventus\n50\u0025 apud bar - vesperum\'eventus\n2 potiones honorificas (~ 10 CHF) - convivium\'eventus\n1 temporis viscus + 1 amicus</string>
-
     <string name="benefits_help_nova_gd_asso_title">Graphiste - pro l\'association (hors seule vespera)</string>
     <string name="benefits_help_nova_gd_asso_rationale">Travail non limitatum ad vespera: dcommodum boissonususs offertes, sine 50\u0025 ad bar.</string>
     <string name="benefits_help_nova_gd_asso_perks">2 temporis entries + 1 amicus uterque\n4 free drinks (~20 CHF)</string>
-
     <string name="benefits_help_section_galaxie_title">Galaxie</string>
     <string name="benefits_help_section_galaxie_body">Tres contributiones in eodem mense calendario (accessiones et conventus)\nOrion enim conventus in his tribus contributionibus non numeratur\nMensis ille: liber introitus ad omnes eventus, 50\u0025 ad fora, addito potu\nHaec commoda\'adde illis cuiusque subcinctus</string>
-
     <string name="benefits_help_section_orion_title">Orion</string>
     <string name="benefits_help_section_orion_body">Genus officium Orionis situm esse indicat\nPro uno anno ab initio mandati: libero ingressu, 50\u0025 apud bar, I guest\n270 CHF in pera interna (subucula et budget bibit)</string>
-
     <string name="benefits_help_section_veteran_title">Veteran</string>
     <string name="benefits_help_section_veteran_body">L\'annus sequens Orion\nIntroitus gratuite et 50\u0025 ad bar sonusust maintenus\nLe porte-monnaie internum prend fin cum mandat</string>
-
     <string name="benefits_help_section_timing_title">Quand commoda s\'activent in l\'application</string>
     <string name="benefits_help_section_timing_body">Quod "nox d" beneficia\'eventus "post vesperam diei locus ("diei mutatio" modulus in occasus)\nViscus futuri eodem momento utibile facti sunt\nOrion, Galaxy et Veteran longiora tempora sequuntur</string>
-
     <string name="benefits_help_footer_title">Notae utiles</string>
     <string name="benefits_help_footer_bullets">Profité / non-profité — utrum horae muneris permiserint frui vespera necne (non de introitu)\n50\u0025 ad bar sequitur pretia Lightspeed\nGalaxie cum commodis per munus componitur</string>
-
     <string name="nova_job_type_label">Type d\'commoda Nova</string>
     <string name="nova_type_default_shift">Munus ex consuetudine</string>
     <string name="nova_type_meeting">Conventus</string>
@@ -366,10 +350,19 @@
     <string name="temp_guest_event_date_label">Dies l’eventus</string>
     <string name="temp_guest_contact_phone_label">Subitis telephone numerus</string>
     <string name="temp_guest_chip_label">Temp</string>
-    <string name="temp_guest_timeline_button">Futurs / Historique</string>
-    <string name="temp_guest_timeline_title">Guest list temporaire</string>
+    <string name="temp_guest_timeline_button">Vespera · Futura · Historia</string>
+    <string name="temp_guest_timeline_title">Vespera · Futura · Historia</string>
     <string name="temp_guest_tab_temp">Temporaire</string>
     <string name="temp_guest_tab_volunteer">Voluntarius</string>
+    <string name="temp_guest_none_volunteers">Nulli voluntarii pro hoc filtro.</string>
+    <string name="temp_guest_subsection_volunteers">Voluntarii</string>
+    <string name="temp_guest_none_remaining">Omnes in album vesperae ingressi sunt.</string>
+    <string name="temp_guest_section_remaining">Nondum ingressi</string>
+    <string name="temp_guest_tonight_tracking">Ingressi / summa vesperae</string>
+    <string name="temp_guest_tonight_title">Hospites temporales vesperae</string>
+    <string name="temp_guest_tab_history">Historia</string>
+    <string name="temp_guest_tab_future">Futura</string>
+    <string name="temp_guest_tab_tonight">Vespera</string>
     <string name="temp_guest_range_label">Tempus</string>
     <string name="temp_guest_range_three_days">+/- 3 dies</string>
     <string name="temp_guest_range_three_days_short">±3j</string>
@@ -385,14 +378,14 @@
     <string name="temp_guest_range_one_year_short">1a</string>
     <string name="temp_guest_range_all_time">semper</string>
     <string name="temp_guest_range_all_time_short">Omnes</string>
-    <string name="temp_guest_section_upcoming">Futurs hospitum</string>
-    <string name="temp_guest_section_past">Historique</string>
-    <string name="temp_guest_none_upcoming">Nulli hospites futuri hoc Colum.</string>
-    <string name="temp_guest_none_past">Non hospites ad hanc sparguntur.</string>
+    <string name="temp_guest_section_upcoming">Hospites temporales futuri</string>
+    <string name="temp_guest_section_past">Hospites temporales praeteriti</string>
+    <string name="temp_guest_none_upcoming">Nulli hospites temporales futuri pro hoc filtro.</string>
+    <string name="temp_guest_none_past">Nulli hospites temporales praeteriti pro hoc filtro.</string>
     
     <!-- App Information -->
     <string name="app_info_title">Informations in l\'application</string>
-    <string name="app_version">NoctuList 2.1.1</string>
+    <string name="app_version">NoctuList 2.1.2</string>
     <string name="app_designed_for">Nocturne Collective locis disposito</string>
     <!-- Single full sentence to avoid spacing issues across locales -->
     <string name="app_developed_full">Developed for Nocturne Collective by Leonardo Mondada</string>
@@ -532,7 +525,7 @@
     <!-- Welcome Screen -->
     <string name="start_admin">Initium Admin</string>
     <string name="admin_mode">Administrator</string>
-    <string name="ticket_check_mode">Billeterie</string>
+    <string name="ticket_check_mode">Billetterie</string>
     <string name="welcome_background_sync_content_description">Sync cum Google rudentis ut reprehendo\'Administrator accessum</string>
 
     <!-- Admin Auth Screen -->
@@ -579,8 +572,8 @@
     <string name="biometric_enrollment_org_verify_step">Verifica admin accessum pro %1$s (%2$d ex %3$d)</string>
     <string name="biometric_enrollment_org_enrolled">Inscriptus: %1$s</string>
 
-    <!-- Ticketing (Billeterie) hub -->
-    <string name="ticket_check_title">Billeterie</string>
+    <!-- Ticketing (Billetterie) hub -->
+    <string name="ticket_check_title">Billetterie</string>
     <string name="ticket_check_coming_soon">Hoc pluma venit mox</string>
     <string name="ticket_check_description">Velox accessum ad album hospitum et in-elit scanner\'introitus.</string>
     <string name="billeterie_stat_permanent_guests">Hospess permanents</string>
@@ -944,6 +937,7 @@
     <!-- Additional Volunteer Panel Strings -->
     <string name="expired">Expiratus</string>
     <string name="benefit_details">Beneficium Details</string>
+    <string name="access_details">Aditus details</string>
     <string name="more_shifts">... et %d shifts plus</string>
     <string name="years_old">%d ans</string>
     
@@ -1213,7 +1207,7 @@
     <string name="activity_status_inactive_years_ago">Inactivus (il y a %d ans)</string>
     <string name="legend_badge_label">Legend</string>
 
-    <!-- Billeterie Scanner -->
+    <!-- Billetterie Scanner -->
     <string name="billeterie_scanner_tap_to_activate">ICTUS movere camera</string>
     <string name="billeterie_scanner_tap_to_pause">Appuyer pro suspendre</string>
     <string name="billeterie_scanner_entry_approved">Probatus Entry</string>
@@ -1311,7 +1305,6 @@
     <string name="external_reader_test_success_title">Lector OK</string>
     <string name="external_reader_test_failure_title">Test defectum</string>
     <string name="external_reader_test_close">Claude</string>
-
     <string name="ble_reader_picker_title">Choisir lector NFC Bluetooth</string>
     <string name="ble_reader_picker_subtitle">Cognoscere quod coegi ACR1255U-J1 in et prope vertitur. ACR primo apparent fugat.</string>
     <string name="ble_reader_scanning">Recherche d\'instrumentums Bluetooth…</string>
@@ -1364,4 +1357,125 @@
     <string name="theme_hue_label">Teinte (arc-en-ciel): %1$d°</string>
     <string name="theme_luminosity_label">Splendor: %1$d%%</string>
     <string name="theme_saturation_label">Saturation: %1$d%%</string>
+
+    <!-- Temporary guests (Firebase) -->
+    <string name="temp_guest_access_settings_title">Aditus hospitum temporariorum</string>
+    <string name="temp_guest_access_settings_description">Statue aditus speciales (scaenam, post scaenam, VIP…) pro singulis locis. Tantum in Firebase praesto sunt.</string>
+    <string name="temp_guest_access_no_venue">Nullus locus activus adhuc. Crea unum ut aditus statuas.</string>
+    <string name="temp_guest_access_venue_empty">Nullus aditus specialis huic loco.</string>
+    <string name="temp_guest_access_venue_count">%1$d aditus constituti.</string>
+    <string name="temp_guest_access_add">Aditus novus</string>
+    <string name="temp_guest_access_add_title">Aditus novus apud %1$s</string>
+    <string name="temp_guest_access_name_label">Nomen aditus</string>
+    <string name="temp_guest_access_duplicate">Hic aditus iam est in hoc loco.</string>
+    <string name="temp_guest_access_remove_title">Hunc aditum tollere?</string>
+    <string name="temp_guest_access_remove_message">«%1$s» ab omnibus hospitibus temporariis qui eum habent tolletur.</string>
+    <string name="temp_guest_credits_setting_title">Rationes creditorum hospitibus temporariis</string>
+    <string name="temp_guest_credits_setting_description">Sinit hospitem temporarium saldum in taberna habere, ut hospes perpetuus. Praedefinite exstinctum.</string>
+    <string name="temp_guest_contact_email_label">Epistula electronica contactus</string>
+    <string name="temp_guest_contact_email_hint">Artifex vel procurator qui omnes codices QR huius indicis accipit.</string>
+    <string name="temp_guest_venue_label">Locus</string>
+    <string name="temp_guest_venue_placeholder">Locum elige</string>
+    <string name="temp_guest_access_person_label">Aditus speciales</string>
+    <string name="date_format_european_placeholder">DD/MM/AAAA</string>
+    <string name="date_shortcut_today">Hodie</string>
+    <string name="date_shortcut_this_friday">Hoc die Veneris</string>
+    <string name="date_shortcut_this_saturday">Hoc die Saturni</string>
+    <string name="temp_guest_accesses_title">Aditus permissi</string>
+    <string name="temp_guest_no_access">Nullus aditus specialis</string>
+    <string name="temp_guest_entry_status_label">Introitus</string>
+    <string name="temp_guest_entry_validated_at">Ingressus hora %1$s</string>
+    <string name="temp_guest_entry_not_yet">Nondum ingressus</string>
+    <string name="temp_guest_validate_entry">Introitum confirma</string>
+    <string name="temp_guest_entry_single_use_hint">Introitus semel tantum: confirmatus, hospes ex indice huius noctis exit.</string>
+    <string name="temp_guest_email_tab">Index artificis</string>
+    <string name="temp_guest_send_choice_title">Qui codices QR mittendi sunt?</string>
+    <string name="temp_guest_send_choice_all">Totus index %1$s</string>
+    <string name="temp_guest_send_choice_all_description">Una epistula cum %1$d codicibus QR noctis.</string>
+    <string name="temp_guest_send_choice_single">Haec persona tantum</string>
+    <string name="temp_guest_send_choice_single_description">Unus codex QR, ad inscriptionem quam nunc scribis.</string>
+    <string name="temp_guest_scan_title">Hospes temporarius</string>
+    <string name="temp_guest_scan_already_used">Introitus iam adhibitus hora %1$s</string>
+    <string name="temp_guest_scan_wrong_day">Hic index non est huius noctis.</string>
+    <string name="temp_guest_section_validated">Iam ingressi</string>
+    <string name="temp_guest_validated_count">%1$d / %2$d confirmati</string>
+    <string name="temp_guest_none_validated">Nemo hac nocte adhuc ingressus est.</string>
+    <string name="institution_settings_firebase_admin_only">Optiones institutionis synchronizatae (moneta, epistulae, margo crediti, imagines, speculum) a solo administratore Firebase mutari possunt.</string>
+    <string name="temp_guest_email_html_header">Index hospitum artificis</string>
+    <string name="temp_guest_email_subject_default">QR codices indicis tui hospitum</string>
+    <string name="temp_guest_email_content_before_default">Salve!\n\nEcce QR codices indicis tui hospitum. Singulos ad personam suam mitte, aut in ostio praesenta.</string>
+    <string name="temp_guest_email_content_after_default">Quisque codex uni introitui valet. Ad vesperam!</string>
+    <string name="temp_guest_send_choice_message">Hic index hospitum plures personas habet.</string>
+    <string name="temp_guest_scan_venue">Locus</string>
+    <string name="temp_guest_scan_no_access">Nullus accessus specialis in hoc loco.</string>
+    <string name="temp_guest_entry_validated_short">Ingressus</string>
+    <string name="guest_form_create">Formularum creare</string>
+    <string name="guest_form_create_title">Formula invitatorum artistæ</string>
+    <string name="guest_form_event_name">Nomen eventus</string>
+    <string name="guest_form_artist">Artifex / institutio</string>
+    <string name="guest_form_max_guests">Numerus maximus personarum</string>
+    <string name="guest_form_allow_multiple">Plures responsiones permitte</string>
+    <string name="guest_form_allow_multiple_hint">Nexus usque ad diem expirationis apertus manet. Quaeque submissio novam recognitionem creat.</string>
+    <string name="guest_form_expiry_label">Formula clauditur (post tres dies eventus deletur)</string>
+    <string name="guest_form_expiry_after_response">Post responsum</string>
+    <string name="guest_form_expiry_day_before">Pridie</string>
+    <string name="guest_form_expiry_event_day">Die eventus</string>
+    <string name="guest_form_expiry_day_after">Postridie</string>
+    <string name="guest_form_expiry_manual">Dies electus (max. tres dies post eventum)</string>
+    <string name="guest_form_include_logo">Insigne associationis includere</string>
+    <string name="guest_form_include_logo_missing">In Settings → Email onera (idem logo epistulis QR).</string>
+    <string name="guest_form_guest_logo">Alterum insigne (optio)</string>
+    <string name="guest_form_guest_logo_hint">Artifex, album vel institutio hospes.</string>
+    <string name="guest_form_guest_logo_change">Logo muta</string>
+    <string name="guest_form_guest_logo_add">Logo adde</string>
+    <string name="guest_form_logo_shape">Forma</string>
+    <string name="guest_form_logo_shape_square">Quadratum</string>
+    <string name="guest_form_logo_shape_rounded">Rotundatum</string>
+    <string name="guest_form_logo_shape_circle">Circulus</string>
+    <string name="guest_form_logo_invert">Colores invertere</string>
+    <string name="guest_form_ask_email">Inscribe epistulam electronicam</string>
+    <string name="guest_form_ask_phone">Inscribe telephonum urgentiae</string>
+    <string name="guest_form_prefill_email">Inscriptio præscripta</string>
+    <string name="guest_form_prefill_phone">Telephonum subsidiarium præscriptum</string>
+    <string name="guest_form_offered_access">Aditus quos petere licet</string>
+    <string name="guest_form_offered_access_hint">Petitio numquam promissio est.</string>
+    <string name="guest_form_create_action">Formularum condere</string>
+    <string name="guest_form_link_title">Formula parata</string>
+    <string name="guest_form_link_body">Hunc nexum unicum ad %1$s mitte.</string>
+    <string name="guest_form_link_body_multi">Hunc nexum unicum ad %1$s mitte. Usque ad expirationem apertus manet; quaeque responsio novam recognitionem creat.</string>
+    <string name="guest_form_copy_link">Nexum exscribere</string>
+    <string name="guest_form_link_copied">Exscriptum</string>
+    <string name="guest_form_pending_title">Album invitatorum recensendum</string>
+    <string name="guest_form_pending_one">%1$s album suum misit</string>
+    <string name="guest_form_pending_many">%1$d alba exspectant</string>
+    <string name="guest_form_pending_cta">Tange ut recognoscas</string>
+    <string name="guest_form_review_title">Recensio — %1$s</string>
+    <string name="guest_form_review_response_hint">Una responsio e forma plurium responsionum. Acceptatio vel recusatio hanc solam claudit.</string>
+    <string name="guest_form_review_accept">Probare</string>
+    <string name="guest_form_review_reject">Recusare</string>
+    <string name="guest_form_review_empty">Nulla nomina in hoc responso.</string>
+    <string name="guest_form_person_n">Persona %1$d</string>
+    <string name="guest_form_settings_title">Formulæ invitatorum (optio)</string>
+    <string name="guest_form_settings_body">Artifices album suum in pagina publica mittunt (Firebase Hosting, gratuitum). Situm semel per Firebase institutionis ducem prome.</string>
+    <string name="guest_form_enable">Formulas invitatorum accendere</string>
+    <string name="guest_form_site_url">Situs: %1$s</string>
+    <string name="guest_form_export">Situm formularum exportare</string>
+    <string name="guest_form_export_done">Fasciculus servatus. Extrahe, deinde mandata infra exsequere.</string>
+    <string name="guest_form_export_android">Promulgatio computatrum exigit. Hunc ducem in NoctuList in computatro aperi, fasciculum exporta, a gradu 3 perge.</string>
+    <string name="guest_form_deploy_commands">npm install -g firebase-tools\nfirebase login\nfirebase deploy --only hosting --project YOUR_PROJECT_ID</string>
+    <string name="firebase_tutorial_forms_optional_title">Optio: formulæ publicæ (Firebase Hosting)</string>
+    <string name="firebase_tutorial_forms_optional_body">Situm formularum semel in hoc Firebase incepto prome (Hosting gratuitum). Postea quaeque formula in NoctuList nexus unicus est — sine Terminale iterum.</string>
+    <string name="guest_form_step1">1. In Optiones → Firebase → facultativa, formulas invitatorum artificum accende.</string>
+    <string name="guest_form_step2">2. In computatro situm exporta, fasciculum serva et extrahe. Plica index.html et firebase.json continere debet.</string>
+    <string name="guest_form_step3">3. Node.js LTS 22 aut 24 ex https://nodejs.org instaura (viridis LTS, non Current). Terminale post inaugurationem reaperi.</string>
+    <string name="guest_form_step4">4. Terminale aperi. Scribe cd, spatium, plicam extractam in fenestram trahe, Enter preme.</string>
+    <string name="guest_form_step5">5. Mandata infra exscribe, in Terminale insere, Enter. Cum computo Google huius Firebase incepti domino connecte.</string>
+    <string name="guest_form_step6">6. Cum Terminale «Deploy complete!» ostendit, situs vivit. Formulas postea in NoctuList crea — sine novo promulgatu.</string>
+    <string name="guest_form_terminal_caption">Mandata in Terminale exsequenda</string>
+    <string name="guest_form_copy_commands">Mandata exscribere</string>
+    <string name="guest_form_commands_copied">Mandata exscripta</string>
+    <string name="guest_form_terminal_title">Terminale</string>
+    <string name="guest_form_project_id_hint">YOUR_PROJECT_ID substitue Project ID ex Optiones → Firebase.</string>
+    <string name="guest_form_offered_access_pick_venue">Prius locum elige.</string>
+    <string name="guest_form_offered_access_empty">Huic loco nulli accessus speciales.</string>
 </resources>

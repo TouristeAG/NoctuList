@@ -18,6 +18,7 @@ import com.eventmanager.app.resources.Res
 import com.eventmanager.app.resources.*
 import com.eventmanager.app.ui.components.FirebaseOrgSwitcher
 import com.eventmanager.app.ui.components.FirebaseOrgSwitcherPlacement
+import com.eventmanager.app.ui.components.SyncStatusPill
 import com.eventmanager.app.ui.navigation.AdminTab
 import com.eventmanager.app.ui.viewmodel.EventManagerViewModel
 import org.jetbrains.compose.resources.stringResource
@@ -32,7 +33,6 @@ fun DesktopAdminShell(
     onTabSelected: (AdminTab) -> Unit,
     onBack: () -> Unit,
     onSync: () -> Unit,
-    isSyncing: Boolean,
     onTouchSession: () -> Unit,
     onClearOverlays: () -> Unit,
     viewModel: EventManagerViewModel? = null,
@@ -49,14 +49,15 @@ fun DesktopAdminShell(
                 }
             },
             actions = {
-                if (isSyncing) {
-                    CircularProgressIndicator(
-                        Modifier.size(24.dp).padding(end = 8.dp),
-                        strokeWidth = 2.dp
+                if (viewModel != null) {
+                    SyncStatusPill(
+                        viewModel = viewModel,
+                        modifier = Modifier.padding(end = 12.dp),
+                        onSync = {
+                            onTouchSession()
+                            onSync()
+                        },
                     )
-                }
-                IconButton(onClick = { onTouchSession(); onSync() }) {
-                    Icon(Icons.Default.Sync, contentDescription = stringResource(Res.string.manual_sync_now))
                 }
             }
         )

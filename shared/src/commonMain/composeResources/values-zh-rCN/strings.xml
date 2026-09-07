@@ -127,7 +127,7 @@
     <string name="checking_for_updates_title">正在检查更新</string>
     <string name="checking_for_updates_message">正在联系更新服务器…</string>
     <string name="downloading_update">正在下载更新…</string>
-    <string name="download_progress">下载中：%1$d%%</string>
+    <string name="download_progress">下载中：%1$d%</string>
     <string name="download_complete">下载完成</string>
     <string name="install_update">安装更新</string>
     <string name="download_error_title">下载失败</string>
@@ -169,7 +169,6 @@
     <string name="color_theme_rich_brown">棕色</string>
     <string name="color_theme_sunset_mist">雾色</string>
     <string name="color_theme_feminist_violet">紫罗兰</string>
-
     <string name="color_theme_custom">自定义</string>
     <string name="color_theme_customize">自定义主题颜色</string>    
     <!-- Restart Dialog -->
@@ -222,7 +221,7 @@
     <string name="manual_rewards_details">手动奖励详情</string>
     <string name="days_n">%1$d 天</string>
     <string name="free_drinks_n">%1$d 杯免费饮料</string>
-    <string name="bar_discount_n">%1$d%% 酒吧折扣</string>
+    <string name="bar_discount_n">%1$d% 酒吧折扣</string>
     <string name="invites_n">%1$d 个邀请</string>
     <string name="no_rewards_configured">未配置奖励</string>
     <!-- Shift Type Dialog -->
@@ -261,61 +260,45 @@
     <string name="other_notes_placeholder">其他附加说明…</string>
     <string name="update_shift_type">更新班次类型</string>
     <string name="stellar_benefits_info_title">福利速查</string>
-
     <string name="benefits_help_dialog_title">福利速查</string>
     <string name="benefits_help_dialog_subtitle">Collectif Nocturne · 2026-27</string>
     <string name="benefits_help_intro">按真实班次选。恒星模式自动算；手动模式自己填。</string>
-
     <string name="benefits_help_tab_modes">模式</string>
     <string name="benefits_help_tab_nova">班次类型</string>
     <string name="benefits_help_tab_extras">加成与时间</string>
-
     <string name="benefits_help_app_stellar">开启班次工作 → 选 Nova 类型\n开启 Orion 工作 → 任期年（下一年 Veteran）\n饮品、名单、未来入场次数 → 自动算</string>
     <string name="benefits_help_app_manual">自己填天数、饮品、酒吧折扣\u0025、邀请、额外项\n表格外的感谢用\n已在恒星里算过的同一班次别重复计</string>
-
     <string name="benefits_help_section_profité_title">Profité / non-profité</string>
     <string name="benefits_help_section_profité_body">仅默认班次 + 开启「能否享受当晚」。\n与是否付费入场无关：只看排班时间是否仍让人能享受当晚。\n其他 Nova 类型没有这项。</string>
-
     <string name="benefits_help_section_nova_title">Nova（班次工作）- 权益一览</string>
     <string name="benefits_help_nova_profité_title">默认班次 - profité</string>
     <string name="benefits_help_nova_profité_rationale">仅限活动当晚。</string>
     <string name="benefits_help_nova_profité_perks">免费入场 + 1 名同伴 - 活动当晚\n酒吧 50\u0025 - 活动当晚\n2 杯免费饮品（约 10 CHF）- 活动当晚</string>
-
     <string name="benefits_help_nova_non_profité_title">默认班次 - non-profité</string>
     <string name="benefits_help_nova_non_profité_rationale">当晚权益 + 一季免费入场（+1 同伴）。</string>
     <string name="benefits_help_nova_non_profité_perks">与 profité 相同的当晚权益\n另 + 1 次季票免费入场 + 1 同伴（应用内跟踪）</string>
-
     <string name="benefits_help_nova_photo_title">摄影 / 摄像（当晚）</string>
     <string name="benefits_help_nova_photo_rationale">大致同默认 non-profité。</string>
     <string name="benefits_help_nova_photo_perks">免费入场 + 1 名同伴 - 覆盖当晚\n酒吧 50\u0025 - 覆盖当晚\n2 杯免费饮品（约 10 CHF）- 覆盖当晚\n1 次季票免费入场 + 1 同伴</string>
-
     <string name="benefits_help_nova_meeting_title">会议</string>
     <string name="benefits_help_nova_meeting_rationale">一月内 3 场会议仍算 Galaxie - Orion 除外（会议不计）。</string>
     <string name="benefits_help_nova_meeting_perks">1 次季票免费入场 + 1 同伴\n1 杯免费饮品（约 5 CHF）</string>
-
     <string name="benefits_help_nova_gd_event_title">平面设计 - 单场活动</string>
     <string name="benefits_help_nova_gd_event_rationale">当晚逻辑同摄影/摄像。</string>
     <string name="benefits_help_nova_gd_event_perks">免费入场 + 1 同伴 - 活动当晚\n酒吧 50\u0025 - 活动当晚\n2 杯免费饮品（约 10 CHF）- 活动当晚\n1 次季票免费入场 + 1 同伴</string>
-
     <string name="benefits_help_nova_gd_asso_title">平面设计 - 协会整体</string>
     <string name="benefits_help_nova_gd_asso_rationale">不绑单场派对 → 多饮品，无酒吧\u0025。</string>
     <string name="benefits_help_nova_gd_asso_perks">2 次季票免费入场，各 +1 同伴\n4 杯免费饮品（约 20 CHF）</string>
-
     <string name="benefits_help_section_galaxie_title">Galaxie</string>
     <string name="benefits_help_section_galaxie_body">同一自然月内 3 次贡献（班次 + 会议）\nOrion：会议不计入这 3 次\n该月：所有活动免费入场 + 整月酒吧 50\u0025 + 多 1 杯饮品\n与单次班次权益叠加</string>
-
     <string name="benefits_help_section_orion_title">Orion</string>
     <string name="benefits_help_section_orion_body">把工作标为 Orion\n自任期起 1 年：免费入场 + 酒吧 50\u0025 + 1 名同伴\n270 CHF 内部钱包（T 恤 + 饮品预算）</string>
-
     <string name="benefits_help_section_veteran_title">Veteran</string>
     <string name="benefits_help_section_veteran_body">Orion 后那一年\n仍有免费入场 + 酒吧 50\u0025\n钱包随任期结束停</string>
-
     <string name="benefits_help_section_timing_title">应用何时启用权益</string>
     <string name="benefits_help_section_timing_body">当晚权益 = 场地的活动日（设置里「换日时间」）\n未来入场从同一时刻起可用\nOrion / Galaxie / Veteran 时间窗更长</string>
-
     <string name="benefits_help_footer_title">小提示</string>
     <string name="benefits_help_footer_bullets">Profité / non-profité - 排班是否仍让人享受当晚（与入场无关）\n酒吧 50\u0025 跟 Lightspeed 价格走\nGalaxie 与班次权益可叠</string>
-
     <string name="nova_job_type_label">Nova 权益类型</string>
     <string name="nova_type_default_shift">默认班次</string>
     <string name="nova_type_meeting">会议</string>
@@ -362,10 +345,19 @@
     <string name="temp_guest_event_date_label">活动日期</string>
     <string name="temp_guest_contact_phone_label">紧急联系电话</string>
     <string name="temp_guest_chip_label">临时</string>
-    <string name="temp_guest_timeline_button">未来 / 历史</string>
-    <string name="temp_guest_timeline_title">临时来宾名单</string>
+    <string name="temp_guest_timeline_button">今晚 · 未来 · 历史</string>
+    <string name="temp_guest_timeline_title">今晚 · 未来 · 历史</string>
     <string name="temp_guest_tab_temp">临时</string>
     <string name="temp_guest_tab_volunteer">志愿者</string>
+    <string name="temp_guest_none_volunteers">此筛选下没有志愿者。</string>
+    <string name="temp_guest_subsection_volunteers">志愿者</string>
+    <string name="temp_guest_none_remaining">今晚名单上的人都已入场。</string>
+    <string name="temp_guest_section_remaining">尚未入场</string>
+    <string name="temp_guest_tonight_tracking">已入场 / 今晚总数</string>
+    <string name="temp_guest_tonight_title">今晚临时嘉宾</string>
+    <string name="temp_guest_tab_history">历史</string>
+    <string name="temp_guest_tab_future">未来</string>
+    <string name="temp_guest_tab_tonight">今晚</string>
     <string name="temp_guest_range_label">范围</string>
     <string name="temp_guest_range_three_days">前后 3 天</string>
     <string name="temp_guest_range_three_days_short">±3天</string>
@@ -381,14 +373,14 @@
     <string name="temp_guest_range_one_year_short">1年</string>
     <string name="temp_guest_range_all_time">全部时间</string>
     <string name="temp_guest_range_all_time_short">全部</string>
-    <string name="temp_guest_section_upcoming">未来来宾</string>
-    <string name="temp_guest_section_past">历史记录</string>
-    <string name="temp_guest_none_upcoming">该筛选下没有未来的临时来宾。</string>
-    <string name="temp_guest_none_past">该筛选下没有过去的临时来宾。</string>
+    <string name="temp_guest_section_upcoming">未来临时嘉宾</string>
+    <string name="temp_guest_section_past">过往临时嘉宾</string>
+    <string name="temp_guest_none_upcoming">此筛选下没有未来的临时嘉宾。</string>
+    <string name="temp_guest_none_past">此筛选下没有过往临时嘉宾。</string>
     
     <!-- App Information -->
     <string name="app_info_title">应用程序信息</string>
-    <string name="app_version">NoctuList 2.1.1</string>
+    <string name="app_version">NoctuList 2.1.2</string>
     <string name="app_designed_for">专为 Collectif Nocturne 场地设计</string>
     <string name="app_developed_full">为 Collectif Nocturne 开发，开发者：Leonardo Mondada</string>
     <string name="last_sync">上次更新：%1$s</string>
@@ -524,7 +516,6 @@
     <string name="firebase_pill_offline">Firebase · 离线</string>
     <string name="firebase_pill_not_setup">Firebase · 未配置</string>
     <string name="firebase_pill_refresh_cd">立即与 Firebase 同步</string>
-
     <string name="sync_pill_minutes_ago">%1$d 分钟前</string>
     <string name="sync_pill_hours_ago">%1$d 小时前</string>
     <string name="sync_pill_hours_minutes_ago">%1$d 小时 %2$d 分钟前</string>
@@ -729,7 +720,7 @@
     <string name="benefits_overview_info_button">说明</string>
     <string name="benefits_overview_totals_section">合计</string>
     <string name="benefits_overview_ranks_section">等级</string>
-    <string name="benefits_overview_line_50_bar">酒吧50%%: %1$d</string>
+    <string name="benefits_overview_line_50_bar">酒吧50%: %1$d</string>
     <string name="benefits_overview_line_free_entry">免票: %1$d·%2$d邀</string>
     <string name="benefits_overview_line_extraordinary">特别: %1$d</string>
     <string name="benefits_overview_line_future_tickets">余票: %1$d·%2$d邀</string>
@@ -739,7 +730,7 @@
     <string name="free_entry">✅ 免费入场</string>
     <string name="friend_invitation">👥 朋友邀请</string>
     <string name="drink_tokens">🍺 %1$d 个饮料券</string>
-    <string name="bar_discount">💰 %1$d%% 酒吧折扣</string>
+    <string name="bar_discount">💰 %1$d% 酒吧折扣</string>
     <string name="extraordinary_benefits">💎 特别福利</string>
     
     <!-- Shifts Screen -->
@@ -817,7 +808,6 @@
     <string name="scanner_ble_reader_footer_connected">链路已建立 — 可扫描</string>
     <string name="scanner_ble_reader_footer_disconnected">链路未建立 — 请唤醒读卡器（按键）或等待重连</string>
     <string name="scanner_ble_reader_footer_connecting">唤醒后重新连接中…</string>
-
     <string name="scanner_ble_reader_footer_reading">正在读卡…</string>
     <string name="nfc_not_supported_device">此设备不支持 NFC 扫描。</string>
     <string name="nfc_unavailable_no_usb_hint">此设备无 NFC，且未连接外接读卡器（USB 或蓝牙）。</string>
@@ -1024,6 +1014,7 @@
     <!-- Additional Volunteer Panel Strings -->
     <string name="expired">已过期</string>
     <string name="benefit_details">福利详情</string>
+    <string name="access_details">通行详情</string>
     <string name="more_shifts">… 以及 %1$d 个更多班次</string>
     <string name="years_old">%1$d 岁</string>
     
@@ -1498,7 +1489,6 @@ C) Web client secret（桌面端必需）
 → 保存，等待约一分钟，然后重试登录。
 
 继续第 6 步。</string>
-
     <string name="firebase_tutorial_cloud_step1_title">1. 打开 Cloud 项目</string>
     <string name="firebase_tutorial_cloud_step1_body">1. 打开 https://console.cloud.google.com
 2. 顶部栏 → 项目选择器 → 选择机构项目（若已用 Sheets 则选同一项目）。
@@ -1545,7 +1535,6 @@ D) Application ID（appId）
 • 或将完整 Firebase Web 配置粘贴到 NoctuList。
 
 继续第 6 步。</string>
-
     <string name="firebase_tutorial_step7_title">6. 填写 NoctuList，然后迁移 / 连接</string>
     <string name="firebase_tutorial_step7_body">在管理员 Firebase 同步或迁移对话框中：
 • 组织 ID — 简短共享名称（例如：noctulist-club）。每台设备相同。
@@ -1595,14 +1584,12 @@ D) Application ID（appId）
     <string name="sheets_mirror_interval_label">自动导出间隔（分钟）</string>
     <string name="sheets_mirror_interval_hint">0 = 仅手动导出。启用自动导出时最少 5 分钟。</string>
     <string name="sheets_mirror_last_export">上次镜像导出：%1$s</string>
-
     <string name="settings_category_appearance">外观与显示</string>
     <string name="settings_category_localization">本地化</string>
     <string name="settings_category_animations">动画与效果</string>
     <string name="settings_category_developer">开发者与调试</string>
     <string name="settings_category_maintenance">维护</string>
-    
-        <string name="settings_category_catalog">目录与场地</string>
+    <string name="settings_category_catalog">目录与场地</string>
 <!-- App Icon Settings -->
     <string name="app_icon_title">应用程序图标</string>
     <string name="app_icon_description">选择您偏好的图标样式</string>
@@ -1690,7 +1677,6 @@ D) Application ID（appId）
     <string name="sales_item_venues_hint">选择此商品可在哪些场地的 POS 销售。</string>
     <string name="pos_report_preview_period">涵盖期间</string>
     <string name="pos_report_save_as">另存为…</string>
-
     <string name="open_with">打开方式</string>
     <string name="active_volunteers_graph">活跃志愿者图表</string>
     
@@ -1807,7 +1793,6 @@ D) Application ID（appId）
     <string name="no_admin_recovery_panel_hint">扫描管理员 NFC 卡或二维码，或创建新管理员。</string>
     <string name="no_admin_recovery_create_admin">创建管理员</string>
     <string name="admin_setup_no_admin_warning">警告：没有管理员将无法访问管理模式。</string>
-
     <string name="local_admin_section_title">应用管理员权限</string>
     <string name="local_admin_section_body">本地管理员权限可让此人用 NFC 卡或二维码打开管理模式。只有 Firebase 组织管理员在扫描自己的管理员卡之后，才能授予或撤销该权限。</string>
     <string name="local_admin_status_yes">%1$s 已拥有本地管理员权限</string>
@@ -1890,7 +1875,6 @@ D) Application ID（appId）
     <string name="external_reader_test_success_title">读卡器正常</string>
     <string name="external_reader_test_failure_title">测试失败</string>
     <string name="external_reader_test_close">关闭</string>
-
     <string name="ble_reader_picker_title">选择蓝牙 NFC 读卡器</string>
     <string name="ble_reader_picker_subtitle">请确保 ACR1255U-J1 已开机且在附近。ACR 读卡器会优先显示。</string>
     <string name="ble_reader_section_acr_title">ACS NFC 读卡器</string>
@@ -2010,7 +1994,6 @@ D) Application ID（appId）
     <string name="desktop_nfc_ble_wake_hint">唤醒 ACR1255（按钮），等到 Windows 蓝牙显示已连接。扫描前 SoftDevice 必须出现在 PC/SC。</string>
     <string name="desktop_nfc_ble_connecting_hint">已看到 SoftDevice，但连接尚未就绪 — 唤醒读卡器后再等几秒。</string>
     <string name="desktop_nfc_active_none">未连接读卡器</string>
-
     <string name="desktop_nfc_test_reader">测试读卡器</string>
     <string name="desktop_nfc_use_bluetooth">使用蓝牙读卡器…</string>
     <string name="desktop_nfc_setup_title">首次设置</string>
@@ -2194,10 +2177,131 @@ D) Application ID（appId）
     <string name="rate_limit_write_requests">写入请求</string>
     <string name="rate_limit_write_value">每项目每分钟 300 次</string>
     <string name="theme_hue_label">色相（彩虹）：%1$d°</string>
-    <string name="theme_luminosity_label">亮度：%1$d%%</string>
-    <string name="theme_saturation_label">饱和度：%1$d%%</string>
+    <string name="theme_luminosity_label">亮度：%1$d%</string>
+    <string name="theme_saturation_label">饱和度：%1$d%</string>
     <string name="desktop_confirm_entry_button">确认入场</string>
     <string name="desktop_entry_confirmed">已确认入场</string>
     <string name="validate_entry_description_solo_desktop">单独入场（无嘉宾）。点击下方确认。</string>
     <string name="validate_entry_description_with_invites_desktop">确认入场并在下方登记受邀嘉宾。</string>
+
+    <!-- Temporary guests (Firebase) -->
+    <string name="temp_guest_access_settings_title">临时嘉宾权限</string>
+    <string name="temp_guest_access_settings_description">为每个场地定义可授予的特殊权限（舞台、后台、VIP…）。仅在 Firebase 后端可用。</string>
+    <string name="temp_guest_access_no_venue">尚无启用的场地。先创建一个再定义其权限。</string>
+    <string name="temp_guest_access_venue_empty">此场地没有特殊权限。</string>
+    <string name="temp_guest_access_venue_count">已配置 %1$d 项权限。</string>
+    <string name="temp_guest_access_add">新增权限</string>
+    <string name="temp_guest_access_add_title">在 %1$s 新增权限</string>
+    <string name="temp_guest_access_name_label">权限名称</string>
+    <string name="temp_guest_access_duplicate">该权限在此场地已存在。</string>
+    <string name="temp_guest_access_remove_title">删除此权限？</string>
+    <string name="temp_guest_access_remove_message">“%1$s”将从所有拥有它的临时嘉宾中移除。</string>
+    <string name="temp_guest_credits_setting_title">临时嘉宾的信用账户</string>
+    <string name="temp_guest_credits_setting_description">让临时嘉宾像常驻嘉宾一样拥有吧台余额。默认关闭。</string>
+    <string name="temp_guest_contact_email_label">联系邮箱</string>
+    <string name="temp_guest_contact_email_hint">接收该名单全部二维码的艺人或经纪人。</string>
+    <string name="temp_guest_venue_label">场地</string>
+    <string name="temp_guest_venue_placeholder">选择场地</string>
+    <string name="temp_guest_access_person_label">特殊权限</string>
+    <string name="date_format_european_placeholder">日日/月月/年年年年</string>
+    <string name="date_shortcut_today">今天</string>
+    <string name="date_shortcut_this_friday">本周五</string>
+    <string name="date_shortcut_this_saturday">本周六</string>
+    <string name="temp_guest_accesses_title">已授权权限</string>
+    <string name="temp_guest_no_access">无特殊权限</string>
+    <string name="temp_guest_entry_status_label">入场</string>
+    <string name="temp_guest_entry_validated_at">%1$s 已入场</string>
+    <string name="temp_guest_entry_not_yet">尚未入场</string>
+    <string name="temp_guest_validate_entry">确认入场</string>
+    <string name="temp_guest_entry_single_use_hint">一次性入场：确认后该嘉宾将离开今晚的名单。</string>
+    <string name="temp_guest_email_tab">艺人名单</string>
+    <string name="temp_guest_send_choice_title">要发送哪些二维码？</string>
+    <string name="temp_guest_send_choice_all">%1$s 的整份名单</string>
+    <string name="temp_guest_send_choice_all_description">一封邮件包含当晚的 %1$d 个二维码。</string>
+    <string name="temp_guest_send_choice_single">仅此人</string>
+    <string name="temp_guest_send_choice_single_description">一个二维码，发送到你现在输入的邮箱。</string>
+    <string name="temp_guest_scan_title">临时嘉宾</string>
+    <string name="temp_guest_scan_already_used">入场已于 %1$s 使用</string>
+    <string name="temp_guest_scan_wrong_day">该名单不是今晚的。</string>
+    <string name="temp_guest_section_validated">已入场</string>
+    <string name="temp_guest_validated_count">已确认 %1$d / %2$d</string>
+    <string name="temp_guest_none_validated">今晚还没有人入场。</string>
+    <string name="institution_settings_firebase_admin_only">同步的机构设置（货币、邮件、信用缓冲、照片、镜像）只能由 Firebase 组织管理员修改。</string>
+    <string name="temp_guest_email_html_header">艺人来宾名单</string>
+    <string name="temp_guest_email_subject_default">您的来宾名单 QR 码</string>
+    <string name="temp_guest_email_content_before_default">您好！\n\n这是您来宾名单的 QR 码。请分别转发给相应的人员，或在入口出示。</string>
+    <string name="temp_guest_email_content_after_default">每个码仅限入场一次。今晚见！</string>
+    <string name="temp_guest_send_choice_message">该来宾名单包含多人。</string>
+    <string name="temp_guest_scan_venue">场地</string>
+    <string name="temp_guest_scan_no_access">该场地没有特殊通行权限。</string>
+    <string name="temp_guest_entry_validated_short">已入场</string>
+    <string name="guest_form_create">创建表单</string>
+    <string name="guest_form_create_title">艺人嘉宾名单表单</string>
+    <string name="guest_form_event_name">活动名称</string>
+    <string name="guest_form_artist">艺人 / 机构</string>
+    <string name="guest_form_max_guests">人数上限</string>
+    <string name="guest_form_allow_multiple">允许多次提交</string>
+    <string name="guest_form_allow_multiple_hint">链接在到期日前保持开放。每次提交都会新建一条待审记录。</string>
+    <string name="guest_form_expiry_label">表单关闭时间（最迟活动后 3 天删除）</string>
+    <string name="guest_form_expiry_after_response">提交后</string>
+    <string name="guest_form_expiry_day_before">活动前一天</string>
+    <string name="guest_form_expiry_event_day">活动当天</string>
+    <string name="guest_form_expiry_day_after">活动次日</string>
+    <string name="guest_form_expiry_manual">自选日期（最多活动后 3 天）</string>
+    <string name="guest_form_include_logo">包含协会标志</string>
+    <string name="guest_form_include_logo_missing">请在设置 → 邮件中上传（与二维码邮件共用同一徽标）。</string>
+    <string name="guest_form_guest_logo">第二个标志（可选）</string>
+    <string name="guest_form_guest_logo_hint">艺人、专辑或受邀机构。显示在你们的标志旁边。</string>
+    <string name="guest_form_guest_logo_change">更换徽标</string>
+    <string name="guest_form_guest_logo_add">添加徽标</string>
+    <string name="guest_form_logo_shape">形状</string>
+    <string name="guest_form_logo_shape_square">方形</string>
+    <string name="guest_form_logo_shape_rounded">圆角方形</string>
+    <string name="guest_form_logo_shape_circle">圆形</string>
+    <string name="guest_form_logo_invert">反转颜色</string>
+    <string name="guest_form_ask_email">询问联系邮箱</string>
+    <string name="guest_form_ask_phone">询问紧急电话</string>
+    <string name="guest_form_prefill_email">预填邮箱</string>
+    <string name="guest_form_prefill_phone">预填紧急电话</string>
+    <string name="guest_form_offered_access">可申请的通行权限</string>
+    <string name="guest_form_offered_access_hint">申请不保证通过——当晚由你们决定。</string>
+    <string name="guest_form_create_action">创建表单</string>
+    <string name="guest_form_link_title">表单已就绪</string>
+    <string name="guest_form_link_body">把这个唯一链接发给 %1$s。在过期或提交前有效。</string>
+    <string name="guest_form_link_body_multi">把这个唯一链接发给 %1$s。到期前保持有效；每次提交都会新建一条待审记录。</string>
+    <string name="guest_form_copy_link">复制链接</string>
+    <string name="guest_form_link_copied">已复制</string>
+    <string name="guest_form_pending_title">待审核嘉宾名单</string>
+    <string name="guest_form_pending_one">%1$s 已提交嘉宾名单</string>
+    <string name="guest_form_pending_many">%1$d 份嘉宾名单待处理</string>
+    <string name="guest_form_pending_cta">点按以审核</string>
+    <string name="guest_form_review_title">审核 — %1$s</string>
+    <string name="guest_form_review_response_hint">多次提交表单中的一条回复。接受或拒绝只关闭本条。</string>
+    <string name="guest_form_review_accept">通过</string>
+    <string name="guest_form_review_reject">拒绝</string>
+    <string name="guest_form_review_empty">这份回答里没有名字。</string>
+    <string name="guest_form_person_n">第 %1$d 人</string>
+    <string name="guest_form_settings_title">艺人嘉宾名单表单（可选）</string>
+    <string name="guest_form_settings_body">艺人在公开页面提交嘉宾名单（Firebase Hosting，免费）。请通过 Firebase 安装指南发布一次站点。</string>
+    <string name="guest_form_enable">启用艺人嘉宾名单表单</string>
+    <string name="guest_form_site_url">站点：%1$s</string>
+    <string name="guest_form_export">导出表单站点</string>
+    <string name="guest_form_export_done">压缩包已保存。解压后运行下方命令。</string>
+    <string name="guest_form_export_android">发布需在电脑上完成。在桌面版 NoctuList 打开本指南，导出压缩包，然后从第 3 步继续。</string>
+    <string name="guest_form_deploy_commands">npm install -g firebase-tools\nfirebase login\nfirebase deploy --only hosting --project YOUR_PROJECT_ID</string>
+    <string name="firebase_tutorial_forms_optional_title">可选：公开嘉宾名单表单（Firebase Hosting）</string>
+    <string name="firebase_tutorial_forms_optional_body">在本 Firebase 项目上发布一次表单站点（免费 Hosting）。之后 NoctuList 里每个表单只是一个唯一链接，无需再开终端。</string>
+    <string name="guest_form_step1">1. 在设置 → Firebase → 可选功能中，开启艺人嘉宾名单表单。</string>
+    <string name="guest_form_step2">2. 在电脑上点“导出表单站点”，保存并解压。文件夹中须有 index.html 和 firebase.json。</string>
+    <string name="guest_form_step3">3. 从 https://nodejs.org 安装 Node.js LTS 22 或 24（绿色 LTS 按钮，不要 Current）。安装后重新打开终端。</string>
+    <string name="guest_form_step4">4. 打开终端。输入 cd，空格，把解压文件夹拖进窗口，回车。</string>
+    <string name="guest_form_step5">5. 复制下方命令，粘贴到终端并回车。用拥有此 Firebase 项目的 Google 账号登录。</string>
+    <string name="guest_form_step6">6. 终端显示 “Deploy complete!” 后站点即上线。之后在 NoctuList 创建表单即可，无需再部署。</string>
+    <string name="guest_form_terminal_caption">在终端运行的命令</string>
+    <string name="guest_form_copy_commands">复制命令</string>
+    <string name="guest_form_commands_copied">命令已复制</string>
+    <string name="guest_form_terminal_title">终端</string>
+    <string name="guest_form_project_id_hint">将 YOUR_PROJECT_ID 替换为设置 → Firebase 中的 Project ID。</string>
+    <string name="guest_form_offered_access_pick_venue">请先选择场地。</string>
+    <string name="guest_form_offered_access_empty">此场地没有特殊通行权限。</string>
 </resources>

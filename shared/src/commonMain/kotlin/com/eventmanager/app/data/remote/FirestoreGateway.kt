@@ -2,6 +2,7 @@ package com.eventmanager.app.data.remote
 
 import com.eventmanager.app.data.models.AccountTransfer
 import com.eventmanager.app.data.models.Guest
+import com.eventmanager.app.data.models.GuestForm
 import com.eventmanager.app.data.models.Job
 import com.eventmanager.app.data.models.JobTypeConfig
 import com.eventmanager.app.data.models.SalesSheetItem
@@ -112,6 +113,7 @@ interface FirestoreGateway {
     fun venueToMap(venue: VenueEntity): Map<String, Any?>
     fun salesItemToMap(item: SalesSheetItem): Map<String, Any?>
     fun transferToMap(transfer: AccountTransfer): Map<String, Any?>
+    fun guestFormToMap(form: GuestForm): Map<String, Any?>
 }
 
 /** Safe default when Firebase is not configured — used for Sheets-only installs. */
@@ -163,4 +165,5 @@ class NoOpFirestoreGateway : FirestoreGateway {
         "sourceReference" to transfer.sourceReference,
         "amount" to transfer.amount,
     )
+    override fun guestFormToMap(form: GuestForm) = mapOf("formId" to form.formId)
 }

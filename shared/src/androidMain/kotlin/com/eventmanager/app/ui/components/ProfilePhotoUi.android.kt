@@ -16,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -32,6 +33,8 @@ internal actual fun ProfileDecodedImage(
     bytes: ByteArray,
     modifier: Modifier,
     contentDescription: String?,
+    contentScale: ContentScale,
+    colorFilter: ColorFilter?,
 ) {
     val bitmap = remember(bytes) {
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
@@ -40,7 +43,8 @@ internal actual fun ProfileDecodedImage(
         bitmap = bitmap,
         contentDescription = contentDescription,
         modifier = modifier,
-        contentScale = ContentScale.Crop,
+        contentScale = contentScale,
+        colorFilter = colorFilter,
     )
 }
 

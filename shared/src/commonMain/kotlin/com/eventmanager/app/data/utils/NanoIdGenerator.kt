@@ -46,6 +46,22 @@ object NanoIdGenerator {
     fun generateGuestId(): String {
         return NanoIdUtils.randomNanoId(random, DEFAULT_ALPHABET, DEFAULT_SIZE)
     }
+
+    // Alphanumeric only: a guest form ID travels inside a URL that is copied by hand and pasted
+    // into chats, where a leading '-' or a '_' swallowed by an underline is a real support call.
+    private val URL_TOKEN_ALPHABET =
+        "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray()
+    private const val URL_TOKEN_SIZE = 24
+
+    /**
+     * Generates the public token for a guest list form.
+     *
+     * This ID is the only thing standing between the public internet and the form, so it is
+     * longer than a regular NanoID and drawn from a strictly alphanumeric alphabet.
+     */
+    fun generateGuestFormId(): String {
+        return NanoIdUtils.randomNanoId(random, URL_TOKEN_ALPHABET, URL_TOKEN_SIZE)
+    }
     
     /**
      * Validates if a given string is a valid NanoID format.

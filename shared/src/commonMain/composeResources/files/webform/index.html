@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Guest list</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css?v=ask-contact-1" />
+</head>
+<body>
+  <canvas id="topo" aria-hidden="true"></canvas>
+  <div class="lang-bar">
+    <label class="lang-label" for="lang">
+      <span data-i18n="lang">Language</span>
+      <select id="lang" aria-label="Language">
+        <option value="fr">FR</option>
+        <option value="en">EN</option>
+        <option value="es">ES</option>
+        <option value="de">DE</option>
+        <option value="it">IT</option>
+      </select>
+    </label>
+  </div>
+  <main class="page">
+    <section class="card" id="state-loading">
+      <p class="muted" data-i18n="loading">Loading…</p>
+    </section>
+    <section class="card hidden" id="state-closed">
+      <h1 data-i18n="closedTitle">This form is closed</h1>
+      <p class="muted" data-i18n="closedBody">The guest list is no longer accepting answers. If you think this is a mistake, ask the production team for a new link.</p>
+    </section>
+    <section class="card hidden" id="state-done">
+      <h1 data-i18n="doneTitle">Thank you</h1>
+      <p class="muted" data-i18n="doneBody">Your guest list has been sent. It will be reviewed before the night.</p>
+    </section>
+    <form class="card hidden" id="form" novalidate>
+      <header class="logos" id="logos"></header>
+      <h1 id="title">Guest list</h1>
+      <p class="meta" id="meta"></p>
+      <label id="email-field">
+        <span data-i18n="email">Contact email</span>
+        <input id="email" type="email" autocomplete="email" />
+      </label>
+      <label id="phone-field">
+        <span data-i18n="phone">Emergency phone</span>
+        <input id="phone" type="tel" autocomplete="tel" />
+      </label>
+      <h2 class="people-heading" data-i18n="peopleHeading">People on the guest list</h2>
+      <div id="people"></div>
+      <button type="button" class="ghost" id="add-person" data-i18n="addPerson">Add a person</button>
+      <p class="disclaimer" id="disclaimer" hidden data-i18n="disclaimer">
+        Accesses you tick are a request only. They are never guaranteed — confirmation comes on the night, depending on the show.
+      </p>
+      <label class="comments">
+        <span data-i18n="comments">Comments</span>
+        <textarea id="notes" rows="3" maxlength="500" data-i18n-placeholder="commentsPlaceholder" placeholder="Optional notes…"></textarea>
+      </label>
+      <button type="submit" class="primary" data-i18n="submit">Send the guest list</button>
+      <p class="error hidden" id="error"></p>
+    </form>
+  </main>
+  <script type="module" src="/topo.js?v=ask-contact-1"></script>
+  <script type="module" src="/app.js?v=ask-contact-1"></script>
+</body>
+</html>

@@ -84,6 +84,40 @@ object MimeEmailBuilder {
         ),
     )
 
+    /**
+     * Inline + downloadable attachment for one named QR code of a multi-code mail. The file name
+     * carries the person's name so a saved attachment stays identifiable.
+     */
+    fun namedQrInlineAndAttachment(
+        qrBytes: ByteArray,
+        contentId: String,
+        fileName: String,
+    ): List<MimeEmailAttachment> = listOf(
+        MimeEmailAttachment(
+            fileName = fileName,
+            mimeType = "image/png",
+            bytes = qrBytes,
+            contentId = contentId,
+            disposition = "inline",
+        ),
+        MimeEmailAttachment(
+            fileName = fileName,
+            mimeType = "image/png",
+            bytes = qrBytes,
+            disposition = "attachment",
+        ),
+    )
+
+    /** Sanitizes a person's name into a safe PNG file name, e.g. `qr_Ana_Lopez.png`. */
+    fun qrFileNameFor(holderName: String, index: Int): String {
+        val slug = holderName.trim()
+            .map { if (it.isLetterOrDigit()) it else '_' }
+            .joinToString("")
+            .trim('_')
+            .take(40)
+        return if (slug.isEmpty()) "qr_code_${index + 1}.png" else "qr_${slug}.png"
+    }
+
     fun logoInlineAttachment(logoBytes: ByteArray): MimeEmailAttachment =
         MimeEmailAttachment(
             fileName = "logo.png",

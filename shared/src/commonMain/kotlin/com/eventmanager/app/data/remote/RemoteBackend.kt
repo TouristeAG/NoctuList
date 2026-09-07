@@ -1,6 +1,7 @@
 package com.eventmanager.app.data.remote
 
 import com.eventmanager.app.data.models.Guest
+import com.eventmanager.app.data.models.GuestForm
 import com.eventmanager.app.data.models.Job
 import com.eventmanager.app.data.models.JobTypeConfig
 import com.eventmanager.app.data.models.ManualTemporaryGuestBatch
@@ -44,6 +45,8 @@ interface RemoteBackend {
     suspend fun afterVenueDeleted(venue: VenueEntity)
     suspend fun afterSalesItemSaved(item: SalesSheetItem)
     suspend fun afterSalesItemDeleted(item: SalesSheetItem)
+    suspend fun afterGuestFormSaved(form: GuestForm)
+    suspend fun afterGuestFormDeleted(form: GuestForm)
     suspend fun afterTransfersChanged()
     suspend fun afterInstitutionSettingsChanged()
     suspend fun afterVolunteerGuestListRecalcNeeded()

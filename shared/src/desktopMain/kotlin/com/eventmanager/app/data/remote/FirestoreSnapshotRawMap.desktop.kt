@@ -1,0 +1,26 @@
+package com.eventmanager.app.data.remote
+
+import com.google.firebase.Timestamp
+import dev.gitlive.firebase.firestore.DocumentSnapshot
+import dev.gitlive.firebase.firestore.android
+
+internal actual fun firestoreSnapshotRawMap(doc: DocumentSnapshot): Map<String, Any?> {
+    @Suppress("UNCHECKED_CAST")
+    val raw = doc.android.data as? Map<String, Any?> ?: return emptyMap()
+    val coerced = coerceJvmFirestoreValues(raw)
+    return FirestoreJsonCodec.snapshotToMap(normalizeFirestoreRawMap(coerced))
+}
+
+private fun coerceJvmFirestoreValues(raw: Map<String, Any?>): Map<String, Any?> =
+    raw.mapValues { (_, value) -> coerceJvmFirestoreValue(value) }
+
+private fun coerceJvmFirestoreValue(value: Any?): Any? = when (value) {
+    null -> null
+    is Timestamp -> value.seconds * 1000L + value.nanoseconds / 1_000_000L
+    is Map<*, *> -> value.entries.mapNotNull { (k, v) ->
+        val key = k?.toString()?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+        key to coerceJvmFirestoreValue(v)
+    }.toMap()
+    is List<*> -> value.map { coerceJvmFirestoreValue(it) }
+    else -> value
+}

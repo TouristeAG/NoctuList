@@ -2,6 +2,7 @@ package com.eventmanager.app.data.remote
 
 import com.eventmanager.app.data.models.AccountTransfer
 import com.eventmanager.app.data.models.Guest
+import com.eventmanager.app.data.models.GuestForm
 import com.eventmanager.app.data.models.Job
 import com.eventmanager.app.data.models.JobTypeConfig
 import com.eventmanager.app.data.models.SalesSheetItem
@@ -51,6 +52,7 @@ class GitLiveFirestoreGateway(
         "accounts",
         "institutionSettings",
         "metadata",
+        "guestForms",
     )
 
     private fun ensureReady(): Boolean {
@@ -176,18 +178,26 @@ class GitLiveFirestoreGateway(
     }
 
     private fun decodeSnapshot(doc: dev.gitlive.firebase.firestore.DocumentSnapshot): Map<String, Any?> {
-        runCatching {
+        // Prefer platform SDK map: GitLive data<JsonObject>/data<Map> fails under FirebaseDecoder,
+        // and envelope-only reads miss public flat updates (status/submissionJson).
+        val fromNative = runCatching { firestoreSnapshotRawMap(doc) }.getOrNull()
+        if (!fromNative.isNullOrEmpty()) return fromNative
+        val fromJsonObj = runCatching {
             val asJson = doc.data<kotlinx.serialization.json.JsonObject>()
-            val mapped = FirestoreJsonCodec.fromJsonObject(asJson)
-            if (mapped.isNotEmpty()) return mapped
-        }
-        runCatching {
+            FirestoreJsonCodec.fromJsonObject(asJson)
+        }.getOrNull()
+        if (!fromJsonObj.isNullOrEmpty()) return fromJsonObj
+        val fromMap = runCatching {
+            @Suppress("UNCHECKED_CAST")
+            val raw = doc.data<Map<String, Any?>>() ?: emptyMap()
+            FirestoreJsonCodec.snapshotToMap(raw)
+        }.getOrNull()
+        if (!fromMap.isNullOrEmpty()) return fromMap
+        val fromEnvelope = runCatching {
             val envelope = doc.data<FirestoreJsonEnvelope>()
-            if (envelope.json.isNotBlank()) {
-                val mapped = FirestoreJsonCodec.fromEnvelope(envelope)
-                if (mapped.isNotEmpty()) return mapped
-            }
-        }
+            if (envelope.json.isNotBlank()) FirestoreJsonCodec.fromEnvelope(envelope) else emptyMap()
+        }.getOrNull()
+        if (!fromEnvelope.isNullOrEmpty()) return fromEnvelope
         return emptyMap()
     }
 
@@ -525,6 +535,11 @@ class GitLiveFirestoreGateway(
             put("temporaryArtistName", guest.temporaryArtistName)
             put("temporaryEventDate", guest.temporaryEventDate)
             put("temporaryContactPhone", guest.temporaryContactPhone)
+            put("temporaryVenueName", guest.temporaryVenueName)
+            put("temporaryContactEmail", guest.temporaryContactEmail)
+            put("temporaryAccessIds", guest.temporaryAccessIds)
+            put("temporaryEntryValidatedAt", guest.temporaryEntryValidatedAt)
+            put("temporaryEntryValidatedBy", guest.temporaryEntryValidatedBy)
             put("nfcCardUid", guest.nfcCardUid)
             put(
                 "nfcCardUidHash",
@@ -590,6 +605,38 @@ class GitLiveFirestoreGateway(
         "accountCreditChf" to config.accountCreditChf,
         "description" to config.description,
         "lastModified" to config.lastModified,
+    )
+
+    override fun guestFormToMap(form: GuestForm) = mapOf(
+        "formId" to form.formId,
+        "venueName" to form.venueName,
+        "eventName" to form.eventName,
+        "eventDateMillis" to form.eventDateMillis,
+        "artistName" to form.artistName,
+        "offeredAccessIds" to form.offeredAccessIds,
+        "maxGuests" to form.maxGuests,
+        "expiryMode" to form.expiryMode,
+        "expiresAtMillis" to form.expiresAtMillis,
+        "allowMultipleResponses" to form.allowMultipleResponses,
+        "parentFormId" to form.parentFormId,
+        "showInstitutionLogo" to form.showInstitutionLogo,
+        "institutionLogoDataUri" to form.institutionLogoDataUri,
+        "institutionLogoShape" to form.institutionLogoShape,
+        "institutionLogoInvert" to form.institutionLogoInvert,
+        "guestLogoDataUri" to form.guestLogoDataUri,
+        "guestLogoShape" to form.guestLogoShape,
+        "guestLogoInvert" to form.guestLogoInvert,
+        "askEmail" to form.askEmail,
+        "askPhone" to form.askPhone,
+        "prefillEmail" to form.prefillEmail,
+        "prefillPhone" to form.prefillPhone,
+        "status" to form.status,
+        "submissionJson" to form.submissionJson,
+        "submittedAt" to form.submittedAt,
+        "reviewedAt" to form.reviewedAt,
+        "reviewedBy" to form.reviewedBy,
+        "createdAt" to form.createdAt,
+        "lastModified" to form.lastModified,
     )
 
     override fun venueToMap(venue: VenueEntity) = mapOf(

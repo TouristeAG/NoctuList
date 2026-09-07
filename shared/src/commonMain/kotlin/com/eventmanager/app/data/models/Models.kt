@@ -37,6 +37,16 @@ data class Guest(
     val temporaryArtistName: String = "",
     val temporaryEventDate: Long? = null,
     val temporaryContactPhone: String = "",
+    /** Venue a temporary guest is allowed into. Firebase-only; never synced to Google Sheets. */
+    val temporaryVenueName: String = "",
+    /** Single artist/manager mail receiving the whole batch. Firebase-only; never synced to Google Sheets. */
+    val temporaryContactEmail: String = "",
+    /** Comma-separated [VenueAccess] IDs. Firebase-only; never synced to Google Sheets. */
+    val temporaryAccessIds: String = "",
+    /** Epoch millis of the one-shot entry validation; 0 when unused. Firebase-only. */
+    val temporaryEntryValidatedAt: Long = 0L,
+    /** Account or device that validated the entry. Firebase-only. */
+    val temporaryEntryValidatedBy: String = "",
     val nfcCardUid: String = "",
     val nfcCardUidHash: String = "",
     val isAdmin: Boolean = false,
@@ -50,27 +60,64 @@ data class Guest(
 )
 
 /**
- * Bar discount a permanent guest is entitled to. The field only exists on the Firebase backend,
- * so [firebaseBackend] must be false on Sheets to keep guests at full price there.
+ * Bar discount a guest is entitled to. The field only exists on the Firebase backend, so
+ * [firebaseBackend] must be false on Sheets to keep guests at full price there. Volunteer benefit
+ * rows are computed from shifts and carry their discount through [BenefitCalculator] instead.
  */
 fun Guest.activeBarDiscountPercent(firebaseBackend: Boolean): Int =
-    if (firebaseBackend && !isVolunteerBenefit && !isTemporaryGuest) {
+    if (firebaseBackend && !isVolunteerBenefit) {
         barDiscountPercent.coerceIn(0, 100)
     } else {
         0
     }
 
+/** A temporary guest's single entry has already been consumed at the door. */
+val Guest.temporaryEntryValidated: Boolean
+    get() = temporaryEntryValidatedAt > 0L
+
+fun Guest.temporaryAccessIdSet(): Set<String> =
+    temporaryAccessIds.split(',').map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+
+fun encodeTemporaryAccessIds(ids: Set<String>): String =
+    ids.filter { it.isNotBlank() }.sorted().joinToString(",")
+
 /**
- * Manual add of temporary guests from the guest list: one Google Sheet row per [guestNames]
- * entry, sharing event date, artist, emergency contact phone, and comments.
+ * Groups a temporary guest with everyone invited by the same artist for the same night and venue.
+ * This is the unit the artist QR mail is sent for.
+ */
+fun Guest.temporaryBatchKey(): String =
+    listOf(
+        temporaryArtistName.trim().lowercase(),
+        (temporaryEventDate ?: 0L).toString(),
+        temporaryVenueName.trim().lowercase(),
+    ).joinToString("|")
+
+/**
+ * One person on a manually added temporary guest batch. [accessIds] are [VenueAccess] IDs and stay
+ * empty on the Sheets backend, which has no access catalogue.
+ */
+data class ManualTemporaryGuestEntry(
+    val name: String,
+    val accessIds: Set<String> = emptySet(),
+)
+
+/**
+ * Manual add of temporary guests from the guest list: one Google Sheet row per [guests] entry,
+ * sharing event date, artist, emergency contact phone, and comments. [venueName], [contactEmail]
+ * and per-guest accesses are Firebase-only and ignored by the Sheets backend.
  */
 data class ManualTemporaryGuestBatch(
     val eventDateMillis: Long,
     val artistName: String,
     val emergencyContactPhone: String,
     val comments: String,
-    val guestNames: List<String>
-)
+    val guests: List<ManualTemporaryGuestEntry>,
+    val venueName: String = "",
+    val contactEmail: String = "",
+    val barDiscountPercent: Int = 0,
+) {
+    val guestNames: List<String> get() = guests.map { it.name }
+}
 
 @Entity(
     tableName = "volunteers",

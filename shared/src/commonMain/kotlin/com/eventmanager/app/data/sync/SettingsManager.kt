@@ -6,6 +6,8 @@ import com.eventmanager.app.data.security.crypto.DefaultOrgCryptoService
 import com.eventmanager.app.data.security.crypto.OrgCryptoRegistry
 import com.eventmanager.app.data.models.PosSubcategory
 import com.eventmanager.app.data.models.PosSubcategoryCatalog
+import com.eventmanager.app.data.models.VenueAccess
+import com.eventmanager.app.data.models.VenueAccessCatalog
 import com.eventmanager.app.data.utils.AppIconStyles
 import com.eventmanager.app.data.utils.NanoIdGenerator
 import com.eventmanager.app.platform.AppBuildInfo
@@ -193,6 +195,17 @@ class SettingsManager(private val storage: AppStorage) {
         private const val KEY_FIREBASE_STORAGE_BUCKET = "firebase_storage_bucket"
         private const val KEY_PROFILE_PHOTOS_ENABLED = "profile_photos_enabled"
         private const val KEY_POS_SUBCATEGORIES = "pos_subcategories"
+        private const val KEY_TEMP_GUEST_VENUE_ACCESSES = "temp_guest_venue_accesses"
+        private const val KEY_TEMP_GUEST_CREDITS_ENABLED = "temp_guest_credits_enabled"
+        private const val KEY_GUEST_FORMS_ENABLED = "guest_forms_enabled"
+        private const val KEY_GUEST_FORM_BASE_URL = "guest_form_base_url"
+        private const val KEY_INSTITUTION_LOGO_PNG = "institution_logo_png"
+        /** Prefs only holds this marker — the PNG bytes live on disk (Preferences max ~8 KiB). */
+        private const val LOGO_ON_DISK_MARKER = "disk"
+        private const val KEY_TEMP_GUEST_EMAIL_SUBJECT = "temp_guest_email_subject"
+        private const val KEY_TEMP_GUEST_EMAIL_CONTENT_BEFORE = "temp_guest_email_content_before"
+        private const val KEY_TEMP_GUEST_EMAIL_CONTENT_AFTER = "temp_guest_email_content_after"
+        private const val KEY_TEMP_GUEST_EMAIL_INCLUDE_QR = "temp_guest_email_include_qr"
         private const val KEY_FIREBASE_WEB_CLIENT_ID = "firebase_web_client_id"
         private const val KEY_FIREBASE_WEB_CLIENT_SECRET = "firebase_web_client_secret"
         private const val KEY_ALLOWED_EMAIL_DOMAINS = "allowed_email_domains"
@@ -325,6 +338,140 @@ class SettingsManager(private val storage: AppStorage) {
     fun savePosSubcategories(subcategories: List<PosSubcategory>) {
         storage.putString(KEY_POS_SUBCATEGORIES, PosSubcategoryCatalog.encode(subcategories))
         touchInstitutionSettingLastModified(InstitutionSettingsKeys.POS_SUBCATEGORIES)
+    }
+
+    /** Admin-defined special accesses per venue, serialized by [VenueAccessCatalog]. */
+    fun getTemporaryGuestVenueAccesses(): List<VenueAccess> =
+        VenueAccessCatalog.decode(storage.getString(KEY_TEMP_GUEST_VENUE_ACCESSES, "") ?: "")
+
+    fun saveTemporaryGuestVenueAccesses(accesses: List<VenueAccess>) {
+        storage.putString(KEY_TEMP_GUEST_VENUE_ACCESSES, VenueAccessCatalog.encode(accesses))
+        touchInstitutionSettingLastModified(InstitutionSettingsKeys.TEMP_GUEST_VENUE_ACCESSES)
+    }
+
+    /** Opt-in: off by default, so temporary guests get no credit account unless the admin says so. */
+    fun isTemporaryGuestCreditsEnabled(): Boolean =
+        storage.getBoolean(KEY_TEMP_GUEST_CREDITS_ENABLED, false)
+
+    fun setTemporaryGuestCreditsEnabled(enabled: Boolean) {
+        storage.putBoolean(KEY_TEMP_GUEST_CREDITS_ENABLED, enabled)
+        touchInstitutionSettingLastModified(InstitutionSettingsKeys.TEMP_GUEST_CREDITS_ENABLED)
+    }
+
+    /** Opt-in: off by default, so no public form surface exists unless the admin turns it on. */
+    fun isGuestFormsEnabled(): Boolean = storage.getBoolean(KEY_GUEST_FORMS_ENABLED, false)
+
+    fun setGuestFormsEnabled(enabled: Boolean) {
+        storage.putBoolean(KEY_GUEST_FORMS_ENABLED, enabled)
+        touchInstitutionSettingLastModified(InstitutionSettingsKeys.GUEST_FORMS_ENABLED)
+    }
+
+    /** Empty means the origin is derived from the Firebase project ID. */
+    fun getGuestFormBaseUrl(): String = storage.getString(KEY_GUEST_FORM_BASE_URL, "") ?: ""
+
+    fun saveGuestFormBaseUrl(url: String) {
+        storage.putString(KEY_GUEST_FORM_BASE_URL, url.trim().trimEnd('/'))
+        touchInstitutionSettingLastModified(InstitutionSettingsKeys.GUEST_FORM_BASE_URL)
+    }
+
+    /**
+     * Where the site lives once deployed. Firebase Hosting serves every project at
+     * `<projectId>.web.app`, so nothing has to be configured for the default setup.
+     */
+    fun resolveGuestFormBaseUrl(): String {
+        val override = getGuestFormBaseUrl()
+        if (override.isNotBlank()) return override
+        val projectId = getFirebaseProjectId().trim()
+        return if (projectId.isBlank()) "" else "https://$projectId.web.app"
+    }
+
+    /** Public URL an artist opens. Empty when the site origin is unknown. */
+    fun guestFormUrl(orgId: String, formId: String): String {
+        val base = resolveGuestFormBaseUrl()
+        if (base.isBlank() || orgId.isBlank() || formId.isBlank()) return ""
+        return "$base/g/${orgId.trim()}/${formId.trim()}"
+    }
+
+    /** Base64 PNG shared by every device and by the public forms; empty when unset. */
+    fun getInstitutionLogoPng(): String {
+        // Disk is the source of truth. Java Preferences (desktop) rejects values over ~8 KiB,
+        // and a logo PNG base64 is routinely far larger — never read the payload from prefs.
+        val fromDisk = InstitutionLogoStore.readFromDisk()
+        if (fromDisk != null && fromDisk.isNotEmpty()) {
+            return InstitutionLogoStore.encode(fromDisk)
+        }
+        val legacy = storage.getString(KEY_INSTITUTION_LOGO_PNG, "").orEmpty().trim()
+        // Older builds stored a tiny base64 blob in prefs; ignore the "disk" presence marker.
+        return if (legacy == LOGO_ON_DISK_MARKER || legacy.isEmpty()) "" else legacy
+    }
+
+    fun saveInstitutionLogoPng(base64Png: String) {
+        val trimmed = base64Png.trim()
+        InstitutionLogoStore.mirrorToDisk(trimmed)
+        // Preferences only keeps a presence marker — never the image bytes.
+        if (trimmed.isEmpty()) {
+            storage.remove(KEY_INSTITUTION_LOGO_PNG)
+        } else {
+            storage.putString(KEY_INSTITUTION_LOGO_PNG, LOGO_ON_DISK_MARKER)
+        }
+        touchInstitutionSettingLastModified(InstitutionSettingsKeys.INSTITUTION_LOGO_PNG)
+    }
+
+    /**
+     * Moves a legacy Preferences-stored logo onto disk and replaces the prefs value with a
+     * tiny marker. Safe to call on every launch — a no-op once migrated.
+     */
+    fun migrateInstitutionLogoOffPreferences() {
+        val raw = storage.getString(KEY_INSTITUTION_LOGO_PNG, "").orEmpty().trim()
+        if (raw.isEmpty() || raw == LOGO_ON_DISK_MARKER) return
+        // Real base64 payload left by an older build.
+        InstitutionLogoStore.mirrorToDisk(raw)
+        storage.putString(KEY_INSTITUTION_LOGO_PNG, LOGO_ON_DISK_MARKER)
+    }
+
+    /**
+     * Publishes a disk logo into the sync pipeline when Preferences has no marker yet
+     * (first launch after the e-mail logo existed but the institution logo setting did not).
+     */
+    fun ensureInstitutionLogoPublishedFromDisk() {
+        val marker = storage.getString(KEY_INSTITUTION_LOGO_PNG, "").orEmpty().trim()
+        if (marker == LOGO_ON_DISK_MARKER) return
+        val bytes = InstitutionLogoStore.readFromDisk()?.takeIf { it.isNotEmpty() } ?: return
+        val encoded = InstitutionLogoStore.encode(bytes)
+        if (!InstitutionLogoStore.isWithinSizeLimit(encoded)) return
+        saveInstitutionLogoPng(encoded)
+    }
+
+    fun getTemporaryGuestEmailSubject(): String =
+        storage.getString(KEY_TEMP_GUEST_EMAIL_SUBJECT, "") ?: ""
+
+    fun saveTemporaryGuestEmailSubject(subject: String) {
+        storage.putString(KEY_TEMP_GUEST_EMAIL_SUBJECT, subject)
+        touchInstitutionSettingLastModified(InstitutionSettingsKeys.TEMP_GUEST_EMAIL_SUBJECT)
+    }
+
+    fun getTemporaryGuestEmailContentBefore(): String =
+        storage.getString(KEY_TEMP_GUEST_EMAIL_CONTENT_BEFORE, "") ?: ""
+
+    fun saveTemporaryGuestEmailContentBefore(content: String) {
+        storage.putString(KEY_TEMP_GUEST_EMAIL_CONTENT_BEFORE, content)
+        touchInstitutionSettingLastModified(InstitutionSettingsKeys.TEMP_GUEST_EMAIL_CONTENT_BEFORE)
+    }
+
+    fun getTemporaryGuestEmailContentAfter(): String =
+        storage.getString(KEY_TEMP_GUEST_EMAIL_CONTENT_AFTER, "") ?: ""
+
+    fun saveTemporaryGuestEmailContentAfter(content: String) {
+        storage.putString(KEY_TEMP_GUEST_EMAIL_CONTENT_AFTER, content)
+        touchInstitutionSettingLastModified(InstitutionSettingsKeys.TEMP_GUEST_EMAIL_CONTENT_AFTER)
+    }
+
+    fun isTemporaryGuestEmailIncludeQrEnabled(): Boolean =
+        storage.getBoolean(KEY_TEMP_GUEST_EMAIL_INCLUDE_QR, true)
+
+    fun setTemporaryGuestEmailIncludeQrEnabled(enabled: Boolean) {
+        storage.putBoolean(KEY_TEMP_GUEST_EMAIL_INCLUDE_QR, enabled)
+        touchInstitutionSettingLastModified(InstitutionSettingsKeys.TEMP_GUEST_EMAIL_INCLUDE_QR)
     }
 
     /** OAuth Web client ID used to request Google ID tokens for Firebase Auth (Android). */
@@ -854,6 +1001,18 @@ class SettingsManager(private val storage: AppStorage) {
                 isAnnouncementsNonAdminSendEnabled().toString()
             InstitutionSettingsKeys.POS_SUBCATEGORIES ->
                 storage.getString(KEY_POS_SUBCATEGORIES, "") ?: ""
+            InstitutionSettingsKeys.TEMP_GUEST_VENUE_ACCESSES ->
+                storage.getString(KEY_TEMP_GUEST_VENUE_ACCESSES, "") ?: ""
+            InstitutionSettingsKeys.TEMP_GUEST_CREDITS_ENABLED ->
+                isTemporaryGuestCreditsEnabled().toString()
+            InstitutionSettingsKeys.GUEST_FORMS_ENABLED -> isGuestFormsEnabled().toString()
+            InstitutionSettingsKeys.GUEST_FORM_BASE_URL -> getGuestFormBaseUrl()
+            InstitutionSettingsKeys.INSTITUTION_LOGO_PNG -> getInstitutionLogoPng()
+            InstitutionSettingsKeys.TEMP_GUEST_EMAIL_SUBJECT -> getTemporaryGuestEmailSubject()
+            InstitutionSettingsKeys.TEMP_GUEST_EMAIL_CONTENT_BEFORE -> getTemporaryGuestEmailContentBefore()
+            InstitutionSettingsKeys.TEMP_GUEST_EMAIL_CONTENT_AFTER -> getTemporaryGuestEmailContentAfter()
+            InstitutionSettingsKeys.TEMP_GUEST_EMAIL_INCLUDE_QR ->
+                isTemporaryGuestEmailIncludeQrEnabled().toString()
             InstitutionSettingsKeys.SHEETS_MIRROR_ENABLED -> isSheetsMirrorEnabled().toString()
             InstitutionSettingsKeys.SHEETS_MIRROR_SPREADSHEET_ID -> getSheetsMirrorSpreadsheetId()
             InstitutionSettingsKeys.SHEETS_MIRROR_INTERVAL_MINUTES ->
@@ -974,6 +1133,44 @@ class SettingsManager(private val storage: AppStorage) {
                 storage.putString(
                     KEY_POS_SUBCATEGORIES,
                     PosSubcategoryCatalog.encode(PosSubcategoryCatalog.decode(value)),
+                )
+            InstitutionSettingsKeys.TEMP_GUEST_VENUE_ACCESSES ->
+                storage.putString(
+                    KEY_TEMP_GUEST_VENUE_ACCESSES,
+                    VenueAccessCatalog.encode(VenueAccessCatalog.decode(value)),
+                )
+            InstitutionSettingsKeys.TEMP_GUEST_CREDITS_ENABLED ->
+                storage.putBoolean(
+                    KEY_TEMP_GUEST_CREDITS_ENABLED,
+                    value.trim().equals("true", ignoreCase = true),
+                )
+            InstitutionSettingsKeys.GUEST_FORMS_ENABLED ->
+                storage.putBoolean(
+                    KEY_GUEST_FORMS_ENABLED,
+                    value.trim().equals("true", ignoreCase = true),
+                )
+            InstitutionSettingsKeys.GUEST_FORM_BASE_URL ->
+                storage.putString(KEY_GUEST_FORM_BASE_URL, value.trim().trimEnd('/'))
+            InstitutionSettingsKeys.INSTITUTION_LOGO_PNG -> {
+                val logo = value.trim()
+                // Never put the image payload in Preferences (desktop hard-caps at ~8 KiB).
+                if (logo.isEmpty()) {
+                    storage.remove(KEY_INSTITUTION_LOGO_PNG)
+                } else {
+                    storage.putString(KEY_INSTITUTION_LOGO_PNG, LOGO_ON_DISK_MARKER)
+                }
+                InstitutionLogoStore.mirrorToDisk(logo)
+            }
+            InstitutionSettingsKeys.TEMP_GUEST_EMAIL_SUBJECT ->
+                storage.putString(KEY_TEMP_GUEST_EMAIL_SUBJECT, value)
+            InstitutionSettingsKeys.TEMP_GUEST_EMAIL_CONTENT_BEFORE ->
+                storage.putString(KEY_TEMP_GUEST_EMAIL_CONTENT_BEFORE, value)
+            InstitutionSettingsKeys.TEMP_GUEST_EMAIL_CONTENT_AFTER ->
+                storage.putString(KEY_TEMP_GUEST_EMAIL_CONTENT_AFTER, value)
+            InstitutionSettingsKeys.TEMP_GUEST_EMAIL_INCLUDE_QR ->
+                storage.putBoolean(
+                    KEY_TEMP_GUEST_EMAIL_INCLUDE_QR,
+                    value.trim().equals("true", ignoreCase = true),
                 )
             InstitutionSettingsKeys.SHEETS_MIRROR_ENABLED ->
                 storage.putBoolean(KEY_SHEETS_MIRROR_ENABLED, value.trim().equals("true", ignoreCase = true))

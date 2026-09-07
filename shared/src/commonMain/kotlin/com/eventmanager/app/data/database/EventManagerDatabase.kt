@@ -10,6 +10,7 @@ import androidx.sqlite.execSQL
 import androidx.sqlite.SQLiteStatement
 import com.eventmanager.app.data.dao.AccountTransferDao
 import com.eventmanager.app.data.dao.GuestDao
+import com.eventmanager.app.data.dao.GuestFormDao
 import com.eventmanager.app.data.dao.JobDao
 import com.eventmanager.app.data.dao.JobTypeConfigDao
 import com.eventmanager.app.data.dao.SalesSheetItemDao
@@ -19,6 +20,7 @@ import com.eventmanager.app.data.dao.PendingRemoteWriteDao
 import com.eventmanager.app.data.models.AccountTransfer
 import com.eventmanager.app.data.models.Converters
 import com.eventmanager.app.data.models.Guest
+import com.eventmanager.app.data.models.GuestForm
 import com.eventmanager.app.data.models.Job
 import com.eventmanager.app.data.models.JobTypeConfig
 import com.eventmanager.app.data.models.PendingRemoteWrite
@@ -49,8 +51,9 @@ private fun SQLiteConnection.query(sql: String): MigrationCursor =
         SalesSheetItem::class,
         AccountTransfer::class,
         PendingRemoteWrite::class,
+        GuestForm::class,
     ],
-    version = 45,
+    version = 50,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -63,6 +66,7 @@ abstract class EventManagerDatabase : RoomDatabase() {
     abstract fun salesSheetItemDao(): SalesSheetItemDao
     abstract fun accountTransferDao(): AccountTransferDao
     abstract fun pendingRemoteWriteDao(): PendingRemoteWriteDao
+    abstract fun guestFormDao(): GuestFormDao
 
     companion object {
         @Volatile
@@ -1515,6 +1519,152 @@ abstract class EventManagerDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_45_46 = object : Migration(45, 46) {
+            override fun migrate(connection: SQLiteConnection) {
+                try {
+                    println("Starting migration 45→46: temporary guest venue, access, contact mail and entry validation")
+                    connection.execSQL(
+                        "ALTER TABLE guests ADD COLUMN temporaryVenueName TEXT NOT NULL DEFAULT ''",
+                    )
+                    connection.execSQL(
+                        "ALTER TABLE guests ADD COLUMN temporaryContactEmail TEXT NOT NULL DEFAULT ''",
+                    )
+                    connection.execSQL(
+                        "ALTER TABLE guests ADD COLUMN temporaryAccessIds TEXT NOT NULL DEFAULT ''",
+                    )
+                    connection.execSQL(
+                        "ALTER TABLE guests ADD COLUMN temporaryEntryValidatedAt INTEGER NOT NULL DEFAULT 0",
+                    )
+                    connection.execSQL(
+                        "ALTER TABLE guests ADD COLUMN temporaryEntryValidatedBy TEXT NOT NULL DEFAULT ''",
+                    )
+                    println("Migration 45→46 completed successfully")
+                } catch (e: Exception) {
+                    println("Migration 45→46 failed: ${e.message}")
+                    e.printStackTrace()
+                    throw e
+                }
+            }
+        }
+
+        private val MIGRATION_46_47 = object : Migration(46, 47) {
+            override fun migrate(connection: SQLiteConnection) {
+                try {
+                    println("Starting migration 46→47: artist guest list forms")
+                    connection.execSQL(
+                        """
+                        CREATE TABLE IF NOT EXISTS guest_forms (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                            formId TEXT NOT NULL,
+                            firebaseOrgId TEXT NOT NULL DEFAULT '',
+                            venueName TEXT NOT NULL DEFAULT '',
+                            eventName TEXT NOT NULL DEFAULT '',
+                            eventDateMillis INTEGER NOT NULL DEFAULT 0,
+                            artistName TEXT NOT NULL DEFAULT '',
+                            offeredAccessIds TEXT NOT NULL DEFAULT '',
+                            maxGuests INTEGER NOT NULL DEFAULT 10,
+                            expiryMode TEXT NOT NULL DEFAULT 'AFTER_RESPONSE',
+                            expiresAtMillis INTEGER NOT NULL DEFAULT 0,
+                            showInstitutionLogo INTEGER NOT NULL DEFAULT 1,
+                            institutionLogoDataUri TEXT NOT NULL DEFAULT '',
+                            guestLogoDataUri TEXT NOT NULL DEFAULT '',
+                            prefillEmail TEXT NOT NULL DEFAULT '',
+                            prefillPhone TEXT NOT NULL DEFAULT '',
+                            status TEXT NOT NULL DEFAULT 'OPEN',
+                            submissionJson TEXT NOT NULL DEFAULT '',
+                            submittedAt INTEGER NOT NULL DEFAULT 0,
+                            reviewedAt INTEGER NOT NULL DEFAULT 0,
+                            reviewedBy TEXT NOT NULL DEFAULT '',
+                            createdAt INTEGER NOT NULL DEFAULT 0,
+                            lastModified INTEGER NOT NULL DEFAULT 0
+                        )
+                        """.trimIndent(),
+                    )
+                    connection.execSQL(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS index_guest_forms_firebaseOrgId_formId " +
+                            "ON guest_forms (firebaseOrgId, formId)",
+                    )
+                    connection.execSQL(
+                        "CREATE INDEX IF NOT EXISTS index_guest_forms_status ON guest_forms (status)",
+                    )
+                    connection.execSQL(
+                        "CREATE INDEX IF NOT EXISTS index_guest_forms_lastModified ON guest_forms (lastModified)",
+                    )
+                    println("Migration 46→47 completed successfully")
+                } catch (e: Exception) {
+                    println("Migration 46→47 failed: ${e.message}")
+                    e.printStackTrace()
+                    throw e
+                }
+            }
+        }
+
+        private val MIGRATION_47_48 = object : Migration(47, 48) {
+            override fun migrate(connection: SQLiteConnection) {
+                try {
+                    println("Starting migration 47→48: guest form logo shape/invert")
+                    connection.execSQL(
+                        "ALTER TABLE guest_forms ADD COLUMN institutionLogoShape TEXT NOT NULL DEFAULT 'ROUNDED'",
+                    )
+                    connection.execSQL(
+                        "ALTER TABLE guest_forms ADD COLUMN institutionLogoInvert INTEGER NOT NULL DEFAULT 0",
+                    )
+                    connection.execSQL(
+                        "ALTER TABLE guest_forms ADD COLUMN guestLogoShape TEXT NOT NULL DEFAULT 'ROUNDED'",
+                    )
+                    connection.execSQL(
+                        "ALTER TABLE guest_forms ADD COLUMN guestLogoInvert INTEGER NOT NULL DEFAULT 0",
+                    )
+                    println("Migration 47→48 completed successfully")
+                } catch (e: Exception) {
+                    println("Migration 47→48 failed: ${e.message}")
+                    e.printStackTrace()
+                    throw e
+                }
+            }
+        }
+
+        private val MIGRATION_48_49 = object : Migration(48, 49) {
+            override fun migrate(connection: SQLiteConnection) {
+                try {
+                    println("Starting migration 48→49: multi-response guest forms")
+                    connection.execSQL(
+                        "ALTER TABLE guest_forms ADD COLUMN allowMultipleResponses INTEGER NOT NULL DEFAULT 0",
+                    )
+                    connection.execSQL(
+                        "ALTER TABLE guest_forms ADD COLUMN parentFormId TEXT NOT NULL DEFAULT ''",
+                    )
+                    connection.execSQL(
+                        "CREATE INDEX IF NOT EXISTS index_guest_forms_parentFormId ON guest_forms (parentFormId)",
+                    )
+                    println("Migration 48→49 completed successfully")
+                } catch (e: Exception) {
+                    println("Migration 48→49 failed: ${e.message}")
+                    e.printStackTrace()
+                    throw e
+                }
+            }
+        }
+
+        private val MIGRATION_49_50 = object : Migration(49, 50) {
+            override fun migrate(connection: SQLiteConnection) {
+                try {
+                    println("Starting migration 49→50: guest form ask email/phone toggles")
+                    connection.execSQL(
+                        "ALTER TABLE guest_forms ADD COLUMN askEmail INTEGER NOT NULL DEFAULT 1",
+                    )
+                    connection.execSQL(
+                        "ALTER TABLE guest_forms ADD COLUMN askPhone INTEGER NOT NULL DEFAULT 1",
+                    )
+                    println("Migration 49→50 completed successfully")
+                } catch (e: Exception) {
+                    println("Migration 49→50 failed: ${e.message}")
+                    e.printStackTrace()
+                    throw e
+                }
+            }
+        }
+
         val ALL_MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2,
             MIGRATION_2_3,
@@ -1559,7 +1709,12 @@ abstract class EventManagerDatabase : RoomDatabase() {
             MIGRATION_41_42,
             MIGRATION_42_43,
             MIGRATION_43_44,
-            MIGRATION_44_45
+            MIGRATION_44_45,
+            MIGRATION_45_46,
+            MIGRATION_46_47,
+            MIGRATION_47_48,
+            MIGRATION_48_49,
+            MIGRATION_49_50
         )
     }
 }

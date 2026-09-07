@@ -2,6 +2,7 @@ package com.eventmanager.app.data.repository
 
 import com.eventmanager.app.data.dao.AccountTransferDao
 import com.eventmanager.app.data.dao.GuestDao
+import com.eventmanager.app.data.dao.GuestFormDao
 import com.eventmanager.app.data.dao.JobDao
 import com.eventmanager.app.data.dao.JobTypeConfigDao
 import com.eventmanager.app.data.dao.SalesSheetItemDao
@@ -30,7 +31,8 @@ class EventManagerRepository(
     private val jobTypeConfigDao: JobTypeConfigDao,
     private val venueDao: VenueDao,
     private val salesSheetItemDao: SalesSheetItemDao,
-    private val accountTransferDao: AccountTransferDao
+    private val accountTransferDao: AccountTransferDao,
+    private val guestFormDao: GuestFormDao
 ) {
     // Guest operations
     fun getAllGuests(): Flow<List<Guest>> =
@@ -132,6 +134,7 @@ class EventManagerRepository(
         venueDao.deleteAllForOrg(orgId)
         salesSheetItemDao.deleteAllForOrg(orgId)
         accountTransferDao.deleteAllForOrg(orgId)
+        guestFormDao.deleteAllForOrg(orgId)
     }
 
     suspend fun deleteAllDataNotInOrgs(orgIds: List<String>) {
@@ -143,6 +146,7 @@ class EventManagerRepository(
         venueDao.deleteAllNotInOrgs(orgIds)
         salesSheetItemDao.deleteAllNotInOrgs(orgIds)
         accountTransferDao.deleteAllNotInOrgs(orgIds)
+        guestFormDao.deleteAllNotInOrgs(orgIds)
     }
 
     suspend fun backfillEmptyOrgIds(activeOrgId: String) {
@@ -168,7 +172,29 @@ class EventManagerRepository(
         accountTransferDao.getAllAccountTransfersOnce()
             .filter { it.firebaseOrgId.isBlank() }
             .forEach { accountTransferDao.updateAccountTransfer(it.copy(firebaseOrgId = activeOrgId)) }
+        guestFormDao.backfillEmptyOrgIds(activeOrgId)
     }
+
+    // Guest form operations
+    fun getAllGuestForms(): Flow<List<GuestForm>> = guestFormDao.getAllGuestForms()
+
+    suspend fun getGuestFormByFormId(formId: String): GuestForm? =
+        guestFormDao.getGuestFormByFormId(formId)
+
+    suspend fun getGuestFormByFormIdAndOrg(formId: String, orgId: String): GuestForm? =
+        guestFormDao.getGuestFormByFormIdAndOrg(formId, orgId)
+
+    suspend fun getGuestFormsByStatus(status: GuestFormStatus): List<GuestForm> =
+        guestFormDao.getGuestFormsByStatus(status.name)
+
+    suspend fun insertGuestForm(form: GuestForm): Long = guestFormDao.insertGuestForm(form)
+
+    suspend fun updateGuestForm(form: GuestForm) = guestFormDao.updateGuestForm(form)
+
+    suspend fun deleteGuestForm(form: GuestForm) = guestFormDao.deleteGuestForm(form)
+
+    suspend fun getGuestFormsByParentFormId(parentFormId: String): List<GuestForm> =
+        guestFormDao.getGuestFormsByParentFormId(parentFormId)
 
     // Volunteer operations
     fun getAllActiveVolunteers(): Flow<List<Volunteer>> =

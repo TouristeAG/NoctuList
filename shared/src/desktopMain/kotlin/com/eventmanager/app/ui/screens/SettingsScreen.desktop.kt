@@ -63,6 +63,7 @@ import com.eventmanager.app.resources.*
 import com.eventmanager.app.ui.components.ActiveVolunteersDialog
 import com.eventmanager.app.ui.components.CleanupInactiveVolunteersDialog
 import com.eventmanager.app.ui.components.SyncStatusDialog
+import com.eventmanager.app.ui.components.TemporaryGuestAccessSettingsSection
 import com.eventmanager.app.ui.platform.ServiceAccountKeyUploadButton
 import com.eventmanager.app.ui.platform.GmailOAuthClientUploadButton
 import com.eventmanager.app.ui.platform.EmailLogoUploadSection
@@ -146,6 +147,11 @@ actual fun SettingsScreen(
         backendType = settingsManager.getBackendType(),
         isFirebaseOrgAdmin = isFirebaseOrgAdmin,
     )
+    val venues by viewModel.venues.collectAsState()
+    val activeVenues = remember(venues) { venues.filter { it.isActive } }
+    val temporaryGuestAccesses by viewModel.temporaryGuestVenueAccesses.collectAsState()
+    val temporaryGuestCreditsEnabled by viewModel.temporaryGuestCreditsEnabled.collectAsState()
+    val temporaryGuestFeaturesEnabled = viewModel.isTemporaryGuestFeaturesEnabled()
     var migrationWizard by remember { mutableStateOf<com.eventmanager.app.data.remote.MigrationDirection?>(null) }
     var gmailLoading by remember { mutableStateOf(false) }
     var gmailSignedIn by remember { mutableStateOf(gmailAuth.isSignedIn) }
@@ -156,6 +162,15 @@ actual fun SettingsScreen(
     var gmailOAuthUploadStatus by remember { mutableStateOf<String?>(null) }
     var gmailUseServiceAccount by remember { mutableStateOf(settingsManager.isGmailUseServiceAccount()) }
     var gmailServiceAccountSender by remember { mutableStateOf(settingsManager.getGmailServiceAccountSenderEmail()) }
+    val isFirebaseBackend =
+        settingsManager.getBackendType() == com.eventmanager.app.data.remote.BackendType.FIREBASE
+    // Firebase has no Sheets service account — keep Gmail on OAuth only.
+    LaunchedEffect(isFirebaseBackend) {
+        if (isFirebaseBackend && gmailUseServiceAccount) {
+            gmailUseServiceAccount = false
+            settingsManager.setGmailUseServiceAccount(false)
+        }
+    }
     val platformFileManager = remember(platformContext) { PlatformFileManager(platformContext) }
     val serviceAccountConfigured = platformFileManager.getServiceAccountFile() != null
 
@@ -239,6 +254,7 @@ actual fun SettingsScreen(
     val isSyncing by viewModel.isSyncing.collectAsState()
     val announcementsVenues by viewModel.venues.collectAsState()
     val profilePhotosEnabled by viewModel.profilePhotosUploadEnabled.collectAsState()
+    val guestFormsEnabled by viewModel.guestFormsEnabled.collectAsState()
     val billeterieSendEnabled by viewModel.announcementsBilleterieSendEnabled.collectAsState()
 
     val saveLabel = stringResource(Res.string.save)
@@ -387,7 +403,8 @@ actual fun SettingsScreen(
                 com.eventmanager.app.ui.components.SheetsMigrateToFirebaseButton(
                     onClick = {
                         migrationWizard = com.eventmanager.app.data.remote.MigrationDirection.SHEETS_TO_FIREBASE
-                    }
+                    },
+                    projectId = settingsManager.getFirebaseProjectId(),
                 )
             }
 
@@ -463,6 +480,9 @@ actual fun SettingsScreen(
                     settingsManager = settingsManager,
                     profilePhotosEnabled = profilePhotosEnabled,
                     onProfilePhotosEnabledChange = { viewModel.setProfilePhotosEnabled(it) },
+                    guestFormsEnabled = guestFormsEnabled,
+                    onGuestFormsEnabledChange = { viewModel.setGuestFormsEnabled(it) },
+                    guestFormSiteOrigin = viewModel.guestFormSiteOrigin(),
                     projectId = firebaseProjectId,
                     apiKey = firebaseApiKey,
                     applicationId = firebaseApplicationId,
@@ -584,23 +604,25 @@ actual fun SettingsScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.height(8.dp))
-                DesktopSettingsToggleRow(
-                    title = stringResource(Res.string.email_gmail_use_service_account),
-                    description = stringResource(Res.string.email_gmail_use_service_account_description),
-                    checked = gmailUseServiceAccount,
-                    onCheckedChange = { enabled ->
-                        gmailUseServiceAccount = enabled
-                        settingsManager.setGmailUseServiceAccount(enabled)
-                        scope.launch {
-                            gmailAuth.signOut()
-                            settingsManager.clearGmailAuth()
-                            gmailSignedIn = false
-                            gmailEmail = null
+                if (!isFirebaseBackend) {
+                    DesktopSettingsToggleRow(
+                        title = stringResource(Res.string.email_gmail_use_service_account),
+                        description = stringResource(Res.string.email_gmail_use_service_account_description),
+                        checked = gmailUseServiceAccount,
+                        onCheckedChange = { enabled ->
+                            gmailUseServiceAccount = enabled
+                            settingsManager.setGmailUseServiceAccount(enabled)
+                            scope.launch {
+                                gmailAuth.signOut()
+                                settingsManager.clearGmailAuth()
+                                gmailSignedIn = false
+                                gmailEmail = null
+                            }
                         }
-                    }
-                )
-                Spacer(Modifier.height(8.dp))
-                if (gmailUseServiceAccount) {
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
+                if (!isFirebaseBackend && gmailUseServiceAccount) {
                     Text(
                         text = if (serviceAccountConfigured) {
                             stringResource(Res.string.email_gmail_service_account_configured)
@@ -691,7 +713,7 @@ actual fun SettingsScreen(
                         onClick = {
                             scope.launch {
                                 gmailLoading = true
-                                if (gmailUseServiceAccount) {
+                                if (!isFirebaseBackend && gmailUseServiceAccount) {
                                     settingsManager.saveGmailServiceAccountSenderEmail(gmailServiceAccountSender.trim())
                                 }
                                 val ok = gmailAuth.signIn()
@@ -708,7 +730,7 @@ actual fun SettingsScreen(
                             }
                         },
                         enabled = !gmailLoading && (
-                            if (gmailUseServiceAccount) {
+                            if (!isFirebaseBackend && gmailUseServiceAccount) {
                                 serviceAccountConfigured && gmailServiceAccountSender.isNotBlank()
                             } else {
                                 gmailOAuthConfigured
@@ -731,6 +753,8 @@ actual fun SettingsScreen(
                         viewModel.backupInstitutionSettingsToSheets()
                     },
                     editable = canEditInstitutionSettings,
+                    temporaryFeaturesEnabled = temporaryGuestFeaturesEnabled,
+                    onInstitutionLogoBytes = { viewModel.setInstitutionLogo(it) },
                 )
             }
         }
@@ -828,6 +852,31 @@ actual fun SettingsScreen(
                     buttonLabel = stringResource(Res.string.manage_venues),
                     onClick = onNavigateToVenueManagement,
                 )
+                if (temporaryGuestFeaturesEnabled) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(Res.string.temp_guest_access_settings_title),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    TemporaryGuestAccessSettingsSection(
+                        activeVenues = activeVenues,
+                        accesses = temporaryGuestAccesses,
+                        creditsEnabled = temporaryGuestCreditsEnabled,
+                        canEdit = canEditInstitutionSettings,
+                        onAddAccess = { venueName, name ->
+                            viewModel.addTemporaryGuestVenueAccess(venueName, name)
+                        },
+                        onRemoveAccess = { viewModel.removeTemporaryGuestVenueAccess(it) },
+                        onCreditsEnabledChange = { viewModel.setTemporaryGuestCreditsEnabled(it) },
+                    )
+                    if (!canEditInstitutionSettings) {
+                        Text(
+                            text = stringResource(Res.string.institution_settings_firebase_admin_only),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
         }
 
@@ -1483,6 +1532,7 @@ actual fun SettingsScreen(
             com.eventmanager.app.data.remote.BackendType.FIREBASE ->
                 com.eventmanager.app.ui.components.FirebaseSetupTutorialDialog(
                     onDismiss = { showInstructions = false },
+                    projectId = settingsManager.getFirebaseProjectId(),
                 )
             com.eventmanager.app.data.remote.BackendType.SHEETS ->
                 DesktopGoogleSheetsInstructionsDialog(onDismiss = { showInstructions = false })
@@ -1490,13 +1540,18 @@ actual fun SettingsScreen(
     }
 
     if (showGmailOAuthHelp) {
-        DesktopGmailOAuthInstructionsDialog(onDismiss = { showGmailOAuthHelp = false })
+        DesktopGmailOAuthInstructionsDialog(
+            showServiceAccountHelp = !isFirebaseBackend,
+            onDismiss = { showGmailOAuthHelp = false },
+        )
     }
 
     if (showCleanupDialog) {
         val volunteers by viewModel.volunteers.collectAsState()
+        val jobs by viewModel.jobs.collectAsState()
         CleanupInactiveVolunteersDialog(
             volunteers = volunteers,
+            jobs = jobs,
             onConfirm = { yearsInactive ->
                 viewModel.cleanupInactiveVolunteers(yearsInactive)
                 showCleanupDialog = false
@@ -1507,8 +1562,10 @@ actual fun SettingsScreen(
 
     if (showActiveVolunteersDialog) {
         val volunteers by viewModel.volunteers.collectAsState()
+        val jobs by viewModel.jobs.collectAsState()
         ActiveVolunteersDialog(
             volunteers = volunteers,
+            jobs = jobs,
             onDismiss = { showActiveVolunteersDialog = false },
         )
     }
@@ -2139,6 +2196,10 @@ private fun DesktopEmailTemplateSettings(
     settingsManager: SettingsManager,
     onSyncedSettingChanged: () -> Unit = {},
     editable: Boolean = true,
+    /** The artist guest list tab only exists on Firebase, like the rest of the feature. */
+    temporaryFeaturesEnabled: Boolean = false,
+    /** Keep the e-mail logo and the institution / form logo in sync. */
+    onInstitutionLogoBytes: (ByteArray?) -> Unit = {},
 ) {
     fun persistSynced(block: () -> Unit) {
         if (!editable) return
@@ -2153,13 +2214,17 @@ private fun DesktopEmailTemplateSettings(
     val guestSubjectDefault = stringResource(Res.string.guest_email_subject_default)
     val guestContentBeforeDefault = stringResource(Res.string.guest_email_content_before_default)
     val guestContentAfterDefault = stringResource(Res.string.guest_email_content_after_default)
+    val tempSubjectDefault = stringResource(Res.string.temp_guest_email_subject_default)
+    val tempContentBeforeDefault = stringResource(Res.string.temp_guest_email_content_before_default)
+    val tempContentAfterDefault = stringResource(Res.string.temp_guest_email_content_after_default)
     val associationNameDefault = stringResource(Res.string.email_association_name_hint)
 
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabLabels = listOf(
-        stringResource(Res.string.email_tab_volunteer),
-        stringResource(Res.string.email_tab_guest)
-    )
+    val tabLabels = buildList {
+        add(stringResource(Res.string.email_tab_volunteer))
+        add(stringResource(Res.string.email_tab_guest))
+        if (temporaryFeaturesEnabled) add(stringResource(Res.string.temp_guest_email_tab))
+    }
 
     var volunteerSubject by remember { mutableStateOf(subjectDefault) }
     var volunteerContentBefore by remember { mutableStateOf(contentBeforeDefault) }
@@ -2169,6 +2234,10 @@ private fun DesktopEmailTemplateSettings(
     var guestContentBefore by remember { mutableStateOf(guestContentBeforeDefault) }
     var guestContentAfter by remember { mutableStateOf(guestContentAfterDefault) }
     var guestIncludeQr by remember { mutableStateOf(true) }
+    var tempSubject by remember { mutableStateOf(tempSubjectDefault) }
+    var tempContentBefore by remember { mutableStateOf(tempContentBeforeDefault) }
+    var tempContentAfter by remember { mutableStateOf(tempContentAfterDefault) }
+    var tempIncludeQr by remember { mutableStateOf(true) }
     var emailSignature by remember { mutableStateOf(signatureDefault) }
     var emailAssociationName by remember { mutableStateOf(associationNameDefault) }
     var emailLogoUri by remember { mutableStateOf("") }
@@ -2184,6 +2253,12 @@ private fun DesktopEmailTemplateSettings(
         guestContentBefore = settingsManager.getGuestEmailContentBefore().ifEmpty { guestContentBeforeDefault }
         guestContentAfter = settingsManager.getGuestEmailContentAfter().ifEmpty { guestContentAfterDefault }
         guestIncludeQr = settingsManager.isGuestEmailIncludeQrEnabled()
+        tempSubject = settingsManager.getTemporaryGuestEmailSubject().ifEmpty { tempSubjectDefault }
+        tempContentBefore =
+            settingsManager.getTemporaryGuestEmailContentBefore().ifEmpty { tempContentBeforeDefault }
+        tempContentAfter =
+            settingsManager.getTemporaryGuestEmailContentAfter().ifEmpty { tempContentAfterDefault }
+        tempIncludeQr = settingsManager.isTemporaryGuestEmailIncludeQrEnabled()
         emailSignature = settingsManager.getEmailSignature().ifEmpty { signatureDefault }
         emailAssociationName = settingsManager.getEmailAssociationName().ifEmpty { associationNameDefault }
         includeWalletPass = settingsManager.isEmailIncludeDigitalWalletPassEnabled()
@@ -2257,6 +2332,52 @@ private fun DesktopEmailTemplateSettings(
             onValueChange = {
                 volunteerContentAfter = it
                 persistSynced { settingsManager.saveEmailContentAfter(it) }
+            },
+            label = { Text(stringResource(Res.string.email_content_after_label)) },
+            placeholder = { Text(stringResource(Res.string.email_content_after_hint)) },
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 2,
+            enabled = editable,
+        )
+    } else if (selectedTab == 2) {
+        OutlinedTextField(
+            value = tempSubject,
+            onValueChange = {
+                tempSubject = it
+                persistSynced { settingsManager.saveTemporaryGuestEmailSubject(it) }
+            },
+            label = { Text(stringResource(Res.string.email_subject_label)) },
+            placeholder = { Text(stringResource(Res.string.email_subject_hint)) },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = editable,
+        )
+        OutlinedTextField(
+            value = tempContentBefore,
+            onValueChange = {
+                tempContentBefore = it
+                persistSynced { settingsManager.saveTemporaryGuestEmailContentBefore(it) }
+            },
+            label = { Text(stringResource(Res.string.email_content_before_label)) },
+            placeholder = { Text(stringResource(Res.string.email_content_before_hint)) },
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 2,
+            enabled = editable,
+        )
+        DesktopSettingsToggleRow(
+            title = stringResource(Res.string.email_include_qr_label),
+            description = stringResource(Res.string.email_include_qr_description),
+            checked = tempIncludeQr,
+            onCheckedChange = {
+                tempIncludeQr = it
+                persistSynced { settingsManager.setTemporaryGuestEmailIncludeQrEnabled(it) }
+            },
+            enabled = editable,
+        )
+        OutlinedTextField(
+            value = tempContentAfter,
+            onValueChange = {
+                tempContentAfter = it
+                persistSynced { settingsManager.saveTemporaryGuestEmailContentAfter(it) }
             },
             label = { Text(stringResource(Res.string.email_content_after_label)) },
             placeholder = { Text(stringResource(Res.string.email_content_after_hint)) },
@@ -2383,6 +2504,12 @@ private fun DesktopEmailTemplateSettings(
                 if (!editable) return@EmailLogoUploadSection
                 emailLogoUri = path
                 settingsManager.saveEmailLogoUri(path)
+                val bytes = if (path.isBlank()) {
+                    null
+                } else {
+                    PlatformFileManager(platformContext).readEmailLogoBytes()
+                }
+                onInstitutionLogoBytes(bytes)
             },
             modifier = Modifier.fillMaxWidth(),
         )
@@ -2805,12 +2932,20 @@ private fun DesktopDeveloperSettings(
 }
 
 @Composable
-private fun DesktopGmailOAuthInstructionsDialog(onDismiss: () -> Unit) {
+private fun DesktopGmailOAuthInstructionsDialog(
+    showServiceAccountHelp: Boolean = true,
+    onDismiss: () -> Unit,
+) {
     var selectedTab by remember { mutableStateOf(GmailHelpTab.OAuth) }
     val scrollState = rememberScrollState()
 
     LaunchedEffect(selectedTab) {
         scrollState.scrollTo(0)
+    }
+    LaunchedEffect(showServiceAccountHelp) {
+        if (!showServiceAccountHelp && selectedTab == GmailHelpTab.ServiceAccount) {
+            selectedTab = GmailHelpTab.OAuth
+        }
     }
 
     Dialog(
@@ -2838,10 +2973,12 @@ private fun DesktopGmailOAuthInstructionsDialog(onDismiss: () -> Unit) {
                     )
                 }
 
-                GmailHelpTabRow(
-                    selectedTab = selectedTab,
-                    onTabSelected = { selectedTab = it }
-                )
+                if (showServiceAccountHelp) {
+                    GmailHelpTabRow(
+                        selectedTab = selectedTab,
+                        onTabSelected = { selectedTab = it }
+                    )
+                }
 
                 Column(
                     modifier = Modifier
@@ -2852,7 +2989,11 @@ private fun DesktopGmailOAuthInstructionsDialog(onDismiss: () -> Unit) {
                 ) {
                     when (selectedTab) {
                         GmailHelpTab.OAuth -> GmailHelpOAuthTab()
-                        GmailHelpTab.ServiceAccount -> GmailHelpServiceAccountTab()
+                        GmailHelpTab.ServiceAccount -> if (showServiceAccountHelp) {
+                            GmailHelpServiceAccountTab()
+                        } else {
+                            GmailHelpOAuthTab()
+                        }
                     }
                 }
 

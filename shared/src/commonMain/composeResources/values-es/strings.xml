@@ -127,7 +127,7 @@
     <string name="checking_for_updates_title">Buscando actualizaciones</string>
     <string name="checking_for_updates_message">Contactando servidor de actualizaciones…</string>
     <string name="downloading_update">Descargando actualización…</string>
-    <string name="download_progress">Descargando: %1$d%%</string>
+    <string name="download_progress">Descargando: %1$d%</string>
     <string name="download_complete">Descarga completa</string>
     <string name="install_update">Instalar actualización</string>
     <string name="download_error_title">Error de descarga</string>
@@ -169,7 +169,6 @@
     <string name="color_theme_rich_brown">Marrón</string>
     <string name="color_theme_sunset_mist">Niebla</string>
     <string name="color_theme_feminist_violet">Violeta</string>
-
     <string name="color_theme_custom">Personalizado</string>
     <string name="color_theme_customize">Personalizar tema personalizado</string>    
     <!-- Restart Dialog -->
@@ -222,7 +221,7 @@
     <string name="manual_rewards_details">Detalles de recompensas manuales</string>
     <string name="days_n">%1$d días</string>
     <string name="free_drinks_n">%1$d bebidas gratis</string>
-    <string name="bar_discount_n">%1$d%% descuento en bar</string>
+    <string name="bar_discount_n">%1$d% descuento en bar</string>
     <string name="invites_n">%1$d invitaciones</string>
     <string name="no_rewards_configured">No hay recompensas configuradas</string>
     <!-- Shift Type Dialog -->
@@ -261,61 +260,45 @@
     <string name="other_notes_placeholder">Notas adicionales…</string>
     <string name="update_shift_type">Actualizar tipo de turno</string>
     <string name="stellar_benefits_info_title">Resumen de perks</string>
-
     <string name="benefits_help_dialog_title">Resumen de perks</string>
     <string name="benefits_help_dialog_subtitle">Collectif Nocturne · 2026-27</string>
     <string name="benefits_help_intro">Elige lo que encaje con el turno real. Stelar = automático; Manual = lo pones tú.</string>
-
     <string name="benefits_help_tab_modes">Modos</string>
     <string name="benefits_help_tab_nova">Tipos de turno</string>
     <string name="benefits_help_tab_extras">Extras y fechas</string>
-
     <string name="benefits_help_app_stellar">Shift job activado → elige tipo Nova\nOrion job activado → año de mandato (Veterano al siguiente)\nBebidas, lista, entradas futuras → calculadas</string>
     <string name="benefits_help_app_manual">Tú pones días, bebidas, \u0025 bar, invitados, extras\nPara agradecimientos fuera de la tabla\nNo cuentes dos veces el mismo turno si ya va en Stelar</string>
-
     <string name="benefits_help_section_profité_title">Profité / non-profité</string>
     <string name="benefits_help_section_profité_body">Solo turno por defecto + ajuste « disfrutar la velada ».\nNo es si pagó entrada: es si el horario del turno le permitió disfrutar de la velada o no.\nOtros Nova: sin este interruptor.</string>
-
     <string name="benefits_help_section_nova_title">Nova (shift job) - qué toca</string>
     <string name="benefits_help_nova_profité_title">Turno velada - profité</string>
     <string name="benefits_help_nova_profité_rationale">Solo esa noche de evento.</string>
     <string name="benefits_help_nova_profité_perks">Entrada gratis + 1 invitado/a - noche del evento\n50\u0025 barra - noche del evento\n2 bebidas gratis (~10 CHF) - noche del evento</string>
-
     <string name="benefits_help_nova_non_profité_title">Turno velada - non-profité</string>
     <string name="benefits_help_nova_non_profité_rationale">Paquete de noche + una entrada de temporada (+1 invitado/a).</string>
     <string name="benefits_help_nova_non_profité_perks">Mismo paquete de noche que profité\n+ 1 entrada de temporada + 1 invitado/a (en la app)</string>
-
     <string name="benefits_help_nova_photo_title">Foto / vídeo de velada</string>
     <string name="benefits_help_nova_photo_rationale">Misma idea que turno por defecto non-profité.</string>
     <string name="benefits_help_nova_photo_perks">Entrada gratis + 1 invitado/a - noche cubierta\n50\u0025 barra - noche cubierta\n2 bebidas gratis (~10 CHF) - noche cubierta\n1 entrada de temporada + 1 invitado/a</string>
-
     <string name="benefits_help_nova_meeting_title">Reunión</string>
     <string name="benefits_help_nova_meeting_rationale">3 reuniones en un mes cuentan para Galaxia - Orion no (sus reuniones no suman).</string>
     <string name="benefits_help_nova_meeting_perks">1 entrada de temporada + 1 invitado/a\n1 bebida gratis (~5 CHF)</string>
-
     <string name="benefits_help_nova_gd_event_title">Diseño gráfico - un evento</string>
     <string name="benefits_help_nova_gd_event_rationale">Como foto/vídeo esa misma noche.</string>
     <string name="benefits_help_nova_gd_event_perks">Entrada gratis + 1 invitado/a - noche del evento\n50\u0025 barra - noche del evento\n2 bebidas gratis (~10 CHF) - noche del evento\n1 entrada de temporada + 1 invitado/a</string>
-
     <string name="benefits_help_nova_gd_asso_title">Diseño gráfico - la aso en general</string>
     <string name="benefits_help_nova_gd_asso_rationale">No atado a una fiesta → más bebidas, sin 50\u0025 barra.</string>
     <string name="benefits_help_nova_gd_asso_perks">2 entradas de temporada + 1 invitado/a cada una\n4 bebidas gratis (~20 CHF)</string>
-
     <string name="benefits_help_section_galaxie_title">Galaxie</string>
     <string name="benefits_help_section_galaxie_body">3 contribuciones el mismo mes (turnos + reuniones)\nOrion: las reuniones no cuentan en el 3\nEse mes: entrada en todos + 50\u0025 barra + 1 bebida extra\nSe suma a los perks por turno</string>
-
     <string name="benefits_help_section_orion_title">Orion</string>
     <string name="benefits_help_section_orion_body">Marca el tipo como Orion\n1 año desde el inicio del mandato: entrada + 50\u0025 barra + 1 invitado/a\n270 CHF wallet (camiseta + bebidas)</string>
-
     <string name="benefits_help_section_veteran_title">Veterano</string>
     <string name="benefits_help_section_veteran_body">El año después de Orion\nSigues con entrada + 50\u0025 barra\nEl wallet corta cuando acaba el mandato</string>
-
     <string name="benefits_help_section_timing_title">Cuándo la app activa perks</string>
     <string name="benefits_help_section_timing_body">Perks de noche = día de velada del local (Ajustes → cambio de día)\nEntradas futuras: desde ese mismo inicio\nOrion / Galaxie / Veterano: ventanas más largas</string>
-
     <string name="benefits_help_footer_title">Ojo</string>
     <string name="benefits_help_footer_bullets">Profité / non-profité - si el horario del turno te dejó disfrutar la velada o no (no es la entrada)\nEl 50\u0025 barra sigue precios Lightspeed\nGalaxie se acumula con turnos</string>
-
     <string name="nova_job_type_label">Tipo de beneficios Nova</string>
     <string name="nova_type_default_shift">Turno por defecto</string>
     <string name="nova_type_meeting">Reunión</string>
@@ -362,10 +345,19 @@
     <string name="temp_guest_event_date_label">Fecha del evento</string>
     <string name="temp_guest_contact_phone_label">Teléfono de contacto de emergencia</string>
     <string name="temp_guest_chip_label">Temp</string>
-    <string name="temp_guest_timeline_button">Futuros / Historial</string>
-    <string name="temp_guest_timeline_title">Guest-list temporal</string>
+    <string name="temp_guest_timeline_button">Noche · Futuros · Historial</string>
+    <string name="temp_guest_timeline_title">Noche · Futuros · Historial</string>
     <string name="temp_guest_tab_temp">Temporal</string>
     <string name="temp_guest_tab_volunteer">Voluntariado</string>
+    <string name="temp_guest_none_volunteers">Ningún voluntario para este filtro.</string>
+    <string name="temp_guest_subsection_volunteers">Voluntarios</string>
+    <string name="temp_guest_none_remaining">Toda la guestlist de esta noche ha entrado.</string>
+    <string name="temp_guest_section_remaining">Aún no entrados</string>
+    <string name="temp_guest_tonight_tracking">Entrados / total de la noche</string>
+    <string name="temp_guest_tonight_title">Guests temporales de la noche</string>
+    <string name="temp_guest_tab_history">Historial</string>
+    <string name="temp_guest_tab_future">Futuros</string>
+    <string name="temp_guest_tab_tonight">Noche</string>
     <string name="temp_guest_range_label">Periodo</string>
     <string name="temp_guest_range_three_days">+/- 3 días</string>
     <string name="temp_guest_range_three_days_short">±3d</string>
@@ -381,14 +373,14 @@
     <string name="temp_guest_range_one_year_short">1a</string>
     <string name="temp_guest_range_all_time">Desde siempre</string>
     <string name="temp_guest_range_all_time_short">Todo</string>
-    <string name="temp_guest_section_upcoming">Próximos invitados</string>
-    <string name="temp_guest_section_past">Historial</string>
-    <string name="temp_guest_none_upcoming">No hay invitados futuros para este filtro.</string>
-    <string name="temp_guest_none_past">No hay invitados pasados para este filtro.</string>
+    <string name="temp_guest_section_upcoming">Guests temporales futuros</string>
+    <string name="temp_guest_section_past">Guests temporales pasados</string>
+    <string name="temp_guest_none_upcoming">Ningún guest temporal futuro para este filtro.</string>
+    <string name="temp_guest_none_past">Ningún guest temporal pasado para este filtro.</string>
     
     <!-- App Information -->
     <string name="app_info_title">Información de la aplicación</string>
-    <string name="app_version">NoctuList 2.1.1</string>
+    <string name="app_version">NoctuList 2.1.2</string>
     <string name="app_designed_for">Diseñado para lugares del Collectif Nocturne</string>
     <string name="app_developed_full">Desarrollado para el Collectif Nocturne por Leonardo Mondada</string>
     <string name="last_sync">Última actualización: %1$s</string>
@@ -524,7 +516,6 @@
     <string name="firebase_pill_offline">Firebase · sin conexión</string>
     <string name="firebase_pill_not_setup">Firebase · sin configurar</string>
     <string name="firebase_pill_refresh_cd">Sincronizar con Firebase ahora</string>
-
     <string name="sync_pill_minutes_ago">hace %1$d min</string>
     <string name="sync_pill_hours_ago">hace %1$d h</string>
     <string name="sync_pill_hours_minutes_ago">hace %1$d h %2$d min</string>
@@ -729,7 +720,7 @@
     <string name="benefits_overview_info_button">Guía</string>
     <string name="benefits_overview_totals_section">Totales</string>
     <string name="benefits_overview_ranks_section">Por rango</string>
-    <string name="benefits_overview_line_50_bar">Barra 50%%: %1$d</string>
+    <string name="benefits_overview_line_50_bar">Barra 50%: %1$d</string>
     <string name="benefits_overview_line_free_entry">Entrada: %1$d · %2$d inv.</string>
     <string name="benefits_overview_line_extraordinary">Extra: %1$d</string>
     <string name="benefits_overview_line_future_tickets">Entradas: %1$d · %2$d inv.</string>
@@ -739,7 +730,7 @@
     <string name="free_entry">✅ Entrada gratis</string>
     <string name="friend_invitation">👥 Invitación de amigo</string>
     <string name="drink_tokens">🍺 %1$d fichas de bebida</string>
-    <string name="bar_discount">💰 %1$d%% descuento en bar</string>
+    <string name="bar_discount">💰 %1$d% descuento en bar</string>
     <string name="extraordinary_benefits">💎 Beneficios extraordinarios</string>
     
     <!-- Shifts Screen -->
@@ -817,7 +808,6 @@
     <string name="scanner_ble_reader_footer_connected">Enlace activo — listo para escanear</string>
     <string name="scanner_ble_reader_footer_disconnected">Sin enlace activo — despierte el lector (botón) o espere la reconexión</string>
     <string name="scanner_ble_reader_footer_connecting">Reconectando tras el despertar…</string>
-
     <string name="scanner_ble_reader_footer_reading">Leyendo tarjeta…</string>
     <string name="nfc_not_supported_device">Este dispositivo no admite escaneo NFC.</string>
     <string name="nfc_unavailable_no_usb_hint">Este dispositivo no tiene NFC y no hay ningún lector externo conectado (USB o Bluetooth).</string>
@@ -1024,6 +1014,7 @@
     <!-- Additional Volunteer Panel Strings -->
     <string name="expired">Expirado</string>
     <string name="benefit_details">Detalles de beneficios</string>
+    <string name="access_details">Detalles de accesos</string>
     <string name="more_shifts">... y %1$d turnos más</string>
     <string name="years_old">%1$d años</string>
     
@@ -1248,7 +1239,7 @@
     <!-- Device Time/Date Error -->
     <string name="sync_error_device_time_title">⏰ Hora/Fecha del dispositivo incorrecta</string>
     <string name="sync_error_device_time_message">La hora o fecha de tu dispositivo es incorrecta. La API de Google Sheets requiere sincronización horaria precisa para funcionar correctamente.</string>
-    <string name="sync_error_device_time_solution">Cómo solucionarlo:\n\n1. Ve a Configuración\n2. Busca \"Fecha y hora\" o \"Sistema\"\n3. Activa \"Fecha y hora automáticas\" o \"Establecer hora automáticamente\"\n4. Si no está disponible, establece manualmente la fecha y hora correctas\n5. Reinicia la aplicación e intenta sincronizar de nuevo\n\n¡Común en tabletas antiguas - por favor verifica la configuración de tu dispositivo!</string>
+    <string name="sync_error_device_time_solution">Cómo solucionarlo:\n\n1. Ve a Configuración\n2. Busca "Fecha y hora" o "Sistema"\n3. Activa "Fecha y hora automáticas" o "Establecer hora automáticamente"\n4. Si no está disponible, establece manualmente la fecha y hora correctas\n5. Reinicia la aplicación e intenta sincronizar de nuevo\n\n¡Común en tabletas antiguas - por favor verifica la configuración de tu dispositivo!</string>
     <string name="sync_error_device_time_open_settings">Abrir configuración</string>
     
     <!-- Specific Sync Error Types -->
@@ -1498,7 +1489,6 @@ Orígenes opcionales (sin ruta): http://localhost:8889 etc.
 → Guarde, espere un minuto aproximadamente y vuelva a intentar el inicio de sesión.
 
 Continúe con el paso 6.</string>
-
     <string name="firebase_tutorial_cloud_step1_title">1. Abrir el proyecto Cloud</string>
     <string name="firebase_tutorial_cloud_step1_body">1. Abra https://console.cloud.google.com
 2. Barra superior → selector de proyecto → seleccione el proyecto de la institución (el de Sheets si ya lo usa).
@@ -1545,7 +1535,6 @@ D) Application ID (appId)
 • O pegue toda la configuración web de Firebase en NoctuList.
 
 Continúe con el paso 6.</string>
-
     <string name="firebase_tutorial_step7_title">6. Completar NoctuList y migrar / conectar</string>
     <string name="firebase_tutorial_step7_body">En Sincronización Firebase de administrador o el diálogo de migración:
 • ID de organización — nombre corto compartido (ejemplo: noctulist-club). Igual en cada dispositivo.
@@ -1595,14 +1584,12 @@ Inicie sesión con Google (el primer administrador se convierte en admin de la o
     <string name="sheets_mirror_interval_label">Intervalo de exportación automática (minutos)</string>
     <string name="sheets_mirror_interval_hint">0 = solo exportación manual. Mínimo 5 minutos cuando la exportación automática está activada.</string>
     <string name="sheets_mirror_last_export">Última exportación espejo: %1$s</string>
-
     <string name="settings_category_appearance">Apariencia y visualización</string>
     <string name="settings_category_localization">Localización</string>
     <string name="settings_category_animations">Animaciones y efectos</string>
     <string name="settings_category_developer">Desarrollador y depuración</string>
     <string name="settings_category_maintenance">Mantenimiento</string>
-    
-        <string name="settings_category_catalog">Catálogo y lugares</string>
+    <string name="settings_category_catalog">Catálogo y lugares</string>
 <!-- App Icon Settings -->
     <string name="app_icon_title">Icono de la aplicación</string>
     <string name="app_icon_description">Selecciona tu estilo de icono preferido</string>
@@ -1690,7 +1677,6 @@ Inicie sesión con Google (el primer administrador se convierte en admin de la o
     <string name="sales_item_venues_hint">Elija en qué locales está disponible este artículo en el POS.</string>
     <string name="pos_report_preview_period">Periodo cubierto</string>
     <string name="pos_report_save_as">Guardar como…</string>
-
     <string name="open_with">Abrir con</string>
     <string name="active_volunteers_graph">Gráfico de voluntarios activos</string>
     
@@ -1807,7 +1793,6 @@ Inicie sesión con Google (el primer administrador se convierte en admin de la o
     <string name="no_admin_recovery_panel_hint">Escanee una tarjeta NFC o un código QR de administrador, o cree un nuevo administrador.</string>
     <string name="no_admin_recovery_create_admin">Crear administrador</string>
     <string name="admin_setup_no_admin_warning">Advertencia: Sin un admin, no podrás acceder al modo administrador.</string>
-
     <string name="local_admin_section_title">Acceso de administrador de la app</string>
     <string name="local_admin_section_body">Los derechos de admin local permiten abrir el modo Admin con la tarjeta NFC o el código QR de esta persona. Solo un admin de Firebase de la organización, tras escanear su propia tarjeta de admin, puede concederlos o revocarlos.</string>
     <string name="local_admin_status_yes">%1$s ya tiene derechos de admin local</string>
@@ -1890,7 +1875,6 @@ Inicie sesión con Google (el primer administrador se convierte en admin de la o
     <string name="external_reader_test_success_title">Lector OK</string>
     <string name="external_reader_test_failure_title">Prueba fallida</string>
     <string name="external_reader_test_close">Cerrar</string>
-
     <string name="ble_reader_picker_title">Seleccionar lector NFC Bluetooth</string>
     <string name="ble_reader_picker_subtitle">Asegúrate de que el ACR1255U-J1 esté encendido y cerca. Los lectores ACR aparecen primero.</string>
     <string name="ble_reader_section_acr_title">Lectores NFC ACS</string>
@@ -2010,7 +1994,6 @@ Inicie sesión con Google (el primer administrador se convierte en admin de la o
     <string name="desktop_nfc_ble_wake_hint">Despierte el ACR1255 (botón) y espere a que Windows Bluetooth muestre Conectado. SoftDevice debe aparecer en PC/SC antes de poder escanear.</string>
     <string name="desktop_nfc_ble_connecting_hint">SoftDevice es visible pero el enlace aún no está listo — espere unos segundos tras despertar el lector.</string>
     <string name="desktop_nfc_active_none">Ningún lector conectado</string>
-
     <string name="desktop_nfc_test_reader">Probar lector</string>
     <string name="desktop_nfc_use_bluetooth">Usar lector Bluetooth…</string>
     <string name="desktop_nfc_setup_title">Configuración inicial</string>
@@ -2194,10 +2177,131 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="rate_limit_write_requests">Solicitudes de escritura</string>
     <string name="rate_limit_write_value">300 por minuto por proyecto</string>
     <string name="theme_hue_label">Tono (arcoíris): %1$d°</string>
-    <string name="theme_luminosity_label">Brillo: %1$d%%</string>
-    <string name="theme_saturation_label">Saturación: %1$d%%</string>
+    <string name="theme_luminosity_label">Brillo: %1$d%</string>
+    <string name="theme_saturation_label">Saturación: %1$d%</string>
     <string name="desktop_confirm_entry_button">Confirmar entrada</string>
     <string name="desktop_entry_confirmed">Entrada confirmada</string>
     <string name="validate_entry_description_solo_desktop">Entrada individual (sin invitados). Haz clic abajo para confirmar.</string>
     <string name="validate_entry_description_with_invites_desktop">Confirma la entrada y registra a los invitados abajo.</string>
+
+    <!-- Temporary guests (Firebase) -->
+    <string name="temp_guest_access_settings_title">Accesos de invitados temporales</string>
+    <string name="temp_guest_access_settings_description">Define los accesos especiales (escenario, backstage, VIP…) que se pueden conceder por local. Solo disponibles con Firebase.</string>
+    <string name="temp_guest_access_no_venue">Aún no hay ningún local activo. Crea uno para definir sus accesos.</string>
+    <string name="temp_guest_access_venue_empty">Ningún acceso especial para este local.</string>
+    <string name="temp_guest_access_venue_count">%1$d acceso(s) configurado(s).</string>
+    <string name="temp_guest_access_add">Nuevo acceso</string>
+    <string name="temp_guest_access_add_title">Nuevo acceso en %1$s</string>
+    <string name="temp_guest_access_name_label">Nombre del acceso</string>
+    <string name="temp_guest_access_duplicate">Este acceso ya existe en este local.</string>
+    <string name="temp_guest_access_remove_title">¿Eliminar este acceso?</string>
+    <string name="temp_guest_access_remove_message">«%1$s» se eliminará de todos los invitados temporales que lo tengan.</string>
+    <string name="temp_guest_credits_setting_title">Cuentas de crédito para invitados temporales</string>
+    <string name="temp_guest_credits_setting_description">Permite que un invitado temporal tenga saldo en la barra, como un invitado permanente. Desactivado por defecto.</string>
+    <string name="temp_guest_contact_email_label">Correo de contacto</string>
+    <string name="temp_guest_contact_email_hint">Artista o mánager que recibe todos los códigos QR de esta lista.</string>
+    <string name="temp_guest_venue_label">Local</string>
+    <string name="temp_guest_venue_placeholder">Elegir un local</string>
+    <string name="temp_guest_access_person_label">Accesos especiales</string>
+    <string name="date_format_european_placeholder">DD/MM/AAAA</string>
+    <string name="date_shortcut_today">Hoy</string>
+    <string name="date_shortcut_this_friday">Este viernes</string>
+    <string name="date_shortcut_this_saturday">Este sábado</string>
+    <string name="temp_guest_accesses_title">Accesos autorizados</string>
+    <string name="temp_guest_no_access">Sin acceso especial</string>
+    <string name="temp_guest_entry_status_label">Entrada</string>
+    <string name="temp_guest_entry_validated_at">Entró a las %1$s</string>
+    <string name="temp_guest_entry_not_yet">Todavía no ha entrado</string>
+    <string name="temp_guest_validate_entry">Validar la entrada</string>
+    <string name="temp_guest_entry_single_use_hint">Entrada de un solo uso: una vez validada, el invitado sale de la lista de esta noche.</string>
+    <string name="temp_guest_email_tab">Lista del artista</string>
+    <string name="temp_guest_send_choice_title">¿Qué códigos QR quieres enviar?</string>
+    <string name="temp_guest_send_choice_all">Toda la lista de %1$s</string>
+    <string name="temp_guest_send_choice_all_description">Un solo correo con los %1$d códigos QR de la noche.</string>
+    <string name="temp_guest_send_choice_single">Solo esta persona</string>
+    <string name="temp_guest_send_choice_single_description">Un solo código QR, a una dirección que introduces ahora.</string>
+    <string name="temp_guest_scan_title">Invitado temporal</string>
+    <string name="temp_guest_scan_already_used">Entrada ya utilizada a las %1$s</string>
+    <string name="temp_guest_scan_wrong_day">Esta lista no es para esta noche.</string>
+    <string name="temp_guest_section_validated">Ya han entrado</string>
+    <string name="temp_guest_validated_count">%1$d / %2$d validados</string>
+    <string name="temp_guest_none_validated">Todavía no ha entrado nadie esta noche.</string>
+    <string name="institution_settings_firebase_admin_only">Los ajustes de institución sincronizados (moneda, correos, margen de crédito, fotos, espejo) solo puede cambiarlos un administrador de la organización Firebase.</string>
+    <string name="temp_guest_email_html_header">Lista de invitados del artista</string>
+    <string name="temp_guest_email_subject_default">Los códigos QR de tu lista de invitados</string>
+    <string name="temp_guest_email_content_before_default">¡Hola!\n\nAquí están los códigos QR de tu lista de invitados. Reenvía cada uno a la persona correspondiente o muéstralos en la entrada.</string>
+    <string name="temp_guest_email_content_after_default">Cada código sirve para una sola entrada. ¡Nos vemos esta noche!</string>
+    <string name="temp_guest_send_choice_message">Esta lista de invitados tiene varias personas.</string>
+    <string name="temp_guest_scan_venue">Lugar</string>
+    <string name="temp_guest_scan_no_access">Sin acceso especial en este lugar.</string>
+    <string name="temp_guest_entry_validated_short">Ha entrado</string>
+    <string name="guest_form_create">Crear un formulario</string>
+    <string name="guest_form_create_title">Formulario de guestlist de artista</string>
+    <string name="guest_form_event_name">Nombre del evento</string>
+    <string name="guest_form_artist">Artista / institución</string>
+    <string name="guest_form_max_guests">Número máximo de personas</string>
+    <string name="guest_form_allow_multiple">Permitir varias respuestas</string>
+    <string name="guest_form_allow_multiple_hint">El enlace permanece abierto hasta la fecha de caducidad. Cada envío crea una nueva revisión.</string>
+    <string name="guest_form_expiry_label">El formulario cierra</string>
+    <string name="guest_form_expiry_after_response">Tras la respuesta</string>
+    <string name="guest_form_expiry_day_before">El día anterior</string>
+    <string name="guest_form_expiry_event_day">El día del evento</string>
+    <string name="guest_form_expiry_day_after">El día siguiente</string>
+    <string name="guest_form_expiry_manual">Una fecha elegida (máx. 3 días después del evento)</string>
+    <string name="guest_form_include_logo">Incluir el logo de la asociación</string>
+    <string name="guest_form_include_logo_missing">Súbelo en Ajustes → Correo (el mismo logo que en los mails QR).</string>
+    <string name="guest_form_guest_logo">Segundo logo (opcional)</string>
+    <string name="guest_form_guest_logo_hint">Artista, álbum o institución invitada. Se muestra junto al vuestro.</string>
+    <string name="guest_form_guest_logo_change">Cambiar logo</string>
+    <string name="guest_form_guest_logo_add">Añadir logo</string>
+    <string name="guest_form_logo_shape">Forma</string>
+    <string name="guest_form_logo_shape_square">Cuadrado</string>
+    <string name="guest_form_logo_shape_rounded">Redondeado</string>
+    <string name="guest_form_logo_shape_circle">Círculo</string>
+    <string name="guest_form_logo_invert">Invertir colores</string>
+    <string name="guest_form_ask_email">Pedir correo de contacto</string>
+    <string name="guest_form_ask_phone">Pedir teléfono de emergencia</string>
+    <string name="guest_form_prefill_email">Correo prellenado</string>
+    <string name="guest_form_prefill_phone">Teléfono de emergencia prellenado</string>
+    <string name="guest_form_offered_access">Accesos que pueden pedir</string>
+    <string name="guest_form_offered_access_hint">Una petición nunca es una garantía: decidís vosotros esa noche.</string>
+    <string name="guest_form_create_action">Crear el formulario</string>
+    <string name="guest_form_link_title">Formulario listo</string>
+    <string name="guest_form_link_body">Enviad este enlace único a %1$s. Funciona hasta que caduque o contesten.</string>
+    <string name="guest_form_link_body_multi">Enviad este enlace único a %1$s. Permanece abierto hasta la caducidad; cada respuesta crea una nueva revisión.</string>
+    <string name="guest_form_copy_link">Copiar el enlace</string>
+    <string name="guest_form_link_copied">Copiado</string>
+    <string name="guest_form_pending_title">Guestlist por validar</string>
+    <string name="guest_form_pending_one">%1$s envió su guestlist</string>
+    <string name="guest_form_pending_many">%1$d guestlists en espera</string>
+    <string name="guest_form_pending_cta">Toca para revisar</string>
+    <string name="guest_form_review_title">Revisión — %1$s</string>
+    <string name="guest_form_review_response_hint">Una respuesta de un formulario multi-respuesta. Aceptar o rechazar cierra solo esta respuesta.</string>
+    <string name="guest_form_review_accept">Validar</string>
+    <string name="guest_form_review_reject">Rechazar</string>
+    <string name="guest_form_review_empty">Esta respuesta no tiene nombres.</string>
+    <string name="guest_form_person_n">Persona %1$d</string>
+    <string name="guest_form_settings_title">Formularios de guestlist de artista (opcional)</string>
+    <string name="guest_form_settings_body">Los artistas envían su guestlist en una página pública (Firebase Hosting, gratis). Publicad el sitio una vez desde la guía de instalación de Firebase.</string>
+    <string name="guest_form_enable">Activar los formularios de guestlist</string>
+    <string name="guest_form_site_url">Sitio: %1$s</string>
+    <string name="guest_form_export">Exportar el sitio de formularios</string>
+    <string name="guest_form_export_done">Zip guardado. Descomprimidlo y ejecutad las órdenes de abajo.</string>
+    <string name="guest_form_export_android">La publicación requiere un ordenador. Abrid esta guía en NoctuList en escritorio, exportad el zip y seguid desde el paso 3.</string>
+    <string name="guest_form_deploy_commands">npm install -g firebase-tools\nfirebase login\nfirebase deploy --only hosting --project YOUR_PROJECT_ID</string>
+    <string name="firebase_tutorial_forms_optional_title">Opcional: formularios públicos de guestlist (Firebase Hosting)</string>
+    <string name="firebase_tutorial_forms_optional_body">Publicad una vez el sitio de formularios en este proyecto Firebase (Hosting gratis). Después, cada formulario en NoctuList es un enlace único — sin volver a Terminal.</string>
+    <string name="guest_form_step1">1. En Ajustes → Firebase → opciones, activad los formularios de guestlist de artista.</string>
+    <string name="guest_form_step2">2. En un ordenador, pulsad «Exportar el sitio de formularios», guardad el zip y descomprimidlo. La carpeta debe contener index.html y firebase.json.</string>
+    <string name="guest_form_step3">3. Instalad Node.js LTS 22 o 24 desde https://nodejs.org (botón verde LTS, no Current). Volved a abrir Terminal después de instalar.</string>
+    <string name="guest_form_step4">4. Abrid Terminal. Escribid cd, espacio, arrastrad la carpeta descomprimida a la ventana y pulsad Intro.</string>
+    <string name="guest_form_step5">5. Copiad las órdenes de abajo, pegadlas en Terminal e Intro. Entrad con la cuenta de Google dueña de este proyecto Firebase.</string>
+    <string name="guest_form_step6">6. Cuando Terminal muestre «Deploy complete!», el sitio está en línea. Luego cread formularios en NoctuList — sin otro despliegue.</string>
+    <string name="guest_form_terminal_caption">Órdenes para Terminal</string>
+    <string name="guest_form_copy_commands">Copiar órdenes</string>
+    <string name="guest_form_commands_copied">Órdenes copiadas</string>
+    <string name="guest_form_terminal_title">Terminal</string>
+    <string name="guest_form_project_id_hint">Sustituid YOUR_PROJECT_ID por el Project ID de Ajustes → Firebase.</string>
+    <string name="guest_form_offered_access_pick_venue">Elige primero un lugar.</string>
+    <string name="guest_form_offered_access_empty">Este lugar no tiene accesos especiales.</string>
 </resources>

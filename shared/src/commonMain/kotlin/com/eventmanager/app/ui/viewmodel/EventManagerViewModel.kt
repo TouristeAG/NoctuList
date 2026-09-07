@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.eventmanager.app.data.models.*
 import com.eventmanager.app.data.repository.EventManagerRepository
 import com.eventmanager.app.data.sync.FactoryReset
+import com.eventmanager.app.data.sync.InstitutionLogoStore
 import com.eventmanager.app.data.sync.GoogleSheetsService
 import com.eventmanager.app.data.sync.SettingsManager
 import com.eventmanager.app.data.sync.BiometricAdminProfileLink
@@ -873,6 +874,458 @@ class EventManagerViewModel(
         }
     }
 
+    private val _temporaryGuestVenueAccesses = MutableStateFlow(
+        if (temporaryGuestFeaturesEnabled(getActiveBackendType())) {
+            settingsManagerCached?.getTemporaryGuestVenueAccesses().orEmpty()
+        } else {
+            emptyList()
+        },
+    )
+
+    /** Empty on the Sheets backend — venue accesses are a Firebase-only feature. */
+    val temporaryGuestVenueAccesses: StateFlow<List<VenueAccess>> =
+        _temporaryGuestVenueAccesses.asStateFlow()
+
+    private val _temporaryGuestCreditsEnabled = MutableStateFlow(
+        temporaryGuestFeaturesEnabled(getActiveBackendType()) &&
+            settingsManagerCached?.isTemporaryGuestCreditsEnabled() == true,
+    )
+
+    val temporaryGuestCreditsEnabled: StateFlow<Boolean> =
+        _temporaryGuestCreditsEnabled.asStateFlow()
+
+    fun isTemporaryGuestFeaturesEnabled(): Boolean =
+        temporaryGuestFeaturesEnabled(getActiveBackendType())
+
+    private val _guestForms = MutableStateFlow<List<GuestForm>>(emptyList())
+
+    /** Every artist guest list form of the active org, newest first. */
+    val guestForms: StateFlow<List<GuestForm>> = _guestForms.asStateFlow()
+
+    /** Forms an admin still has to accept or reject — what the dashboard card counts. */
+    val pendingGuestForms: StateFlow<List<GuestForm>> = _guestForms
+        .map { forms -> forms.filter { it.awaitsReview } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    private val _guestFormsEnabled = MutableStateFlow(
+        guestFormFeaturesEnabled(
+            getActiveBackendType(),
+            settingsManagerCached?.isGuestFormsEnabled() == true,
+        ),
+    )
+
+    val guestFormsEnabled: StateFlow<Boolean> = _guestFormsEnabled.asStateFlow()
+
+    private val _institutionLogoPng = MutableStateFlow(
+        settingsManagerCached?.getInstitutionLogoPng().orEmpty(),
+    )
+
+    /** Base64 PNG shared across devices; empty when the institution has no logo yet. */
+    val institutionLogoPng: StateFlow<String> = _institutionLogoPng.asStateFlow()
+
+    fun isGuestFormFeaturesEnabled(): Boolean = guestFormFeaturesEnabled(
+        getActiveBackendType(),
+        settingsManagerCached?.isGuestFormsEnabled() == true,
+    )
+
+    private fun publishGuestFormSettings() {
+        _guestFormsEnabled.value = isGuestFormFeaturesEnabled()
+        _institutionLogoPng.value = settingsManagerCached?.getInstitutionLogoPng().orEmpty()
+    }
+
+    fun setGuestFormsEnabled(enabled: Boolean) {
+        val settings = settingsManagerCached ?: return
+        if (getActiveBackendType() != BackendType.FIREBASE) return
+        settings.setGuestFormsEnabled(enabled)
+        publishGuestFormSettings()
+        backupInstitutionSettingsToSheets()
+    }
+
+    fun setGuestFormBaseUrl(url: String) {
+        val settings = settingsManagerCached ?: return
+        if (getActiveBackendType() != BackendType.FIREBASE) return
+        settings.saveGuestFormBaseUrl(url)
+        publishGuestFormSettings()
+        backupInstitutionSettingsToSheets()
+    }
+
+    /**
+     * Unifies the e-mail logo and the institution logo: whatever the user uploaded in the e-mail
+     * settings is promoted to the synced institution logo so the guest-form creator (and every
+     * other device) can use it. A no-op once the synced logo already holds a value.
+     */
+    fun ensureInstitutionLogoFromEmail() {
+        val settings = settingsManagerCached ?: return
+        if (settings.getInstitutionLogoPng().isNotBlank()) return
+        val bytes = InstitutionLogoStore.readFromDisk()?.takeIf { it.isNotEmpty() } ?: return
+        val encoded = InstitutionLogoStore.encode(bytes)
+        if (!InstitutionLogoStore.isWithinSizeLimit(encoded)) return
+        settings.saveInstitutionLogoPng(encoded)
+        publishGuestFormSettings()
+        backupInstitutionSettingsToSheets()
+    }
+
+    /** Empty bytes clear the logo everywhere, on this device and on every other one. */
+    fun setInstitutionLogo(pngBytes: ByteArray?) {
+        val settings = settingsManagerCached ?: return
+        val encoded = if (pngBytes == null || pngBytes.isEmpty()) {
+            ""
+        } else {
+            InstitutionLogoStore.encode(pngBytes)
+        }
+        if (encoded.isNotEmpty() && !InstitutionLogoStore.isWithinSizeLimit(encoded)) {
+            _syncError.value = "Logo too large — use an image under 400 KB"
+            return
+        }
+        settings.saveInstitutionLogoPng(encoded)
+        InstitutionLogoStore.mirrorToDisk(encoded)
+        publishGuestFormSettings()
+        backupInstitutionSettingsToSheets()
+    }
+
+    fun guestFormUrl(form: GuestForm): String =
+        settingsManagerCached?.guestFormUrl(form.firebaseOrgId, form.formId).orEmpty()
+
+    /** The site origin, used to tell the admin whether the form site is reachable yet. */
+    fun guestFormSiteOrigin(): String = settingsManagerCached?.resolveGuestFormBaseUrl().orEmpty()
+
+    /**
+     * Creates an open form and hands the saved row back through [onCreated] so the caller can show
+     * the public link. Returns before the remote write lands; the row is usable either way.
+     */
+    fun createGuestForm(
+        venueName: String,
+        eventName: String,
+        eventDateMillis: Long,
+        artistName: String,
+        offeredAccessIds: Set<String>,
+        maxGuests: Int,
+        expiryMode: GuestFormExpiry,
+        manualExpiryMillis: Long,
+        showInstitutionLogo: Boolean,
+        institutionLogoShape: GuestFormLogoShape = GuestFormLogoShape.ROUNDED,
+        institutionLogoInvert: Boolean = false,
+        guestLogoDataUri: String,
+        guestLogoShape: GuestFormLogoShape = GuestFormLogoShape.ROUNDED,
+        guestLogoInvert: Boolean = false,
+        askEmail: Boolean = true,
+        askPhone: Boolean = true,
+        prefillEmail: String,
+        prefillPhone: String,
+        allowMultipleResponses: Boolean = false,
+        onCreated: (GuestForm) -> Unit = {},
+    ) {
+        if (!isGuestFormFeaturesEnabled()) return
+        val orgId = settingsManagerCached?.getFirebaseOrgId().orEmpty()
+        if (orgId.isBlank()) {
+            _syncError.value = "Firebase organization is not configured"
+            return
+        }
+        viewModelScope.launch {
+            try {
+                if (rejectIfCrudSoftLocked("creating a guest form")) return@launch
+                val now = System.currentTimeMillis()
+                val form = GuestForm(
+                    formId = NanoIdGenerator.generateGuestFormId(),
+                    firebaseOrgId = orgId,
+                    venueName = venueName.trim(),
+                    eventName = eventName.trim(),
+                    eventDateMillis = eventDateMillis,
+                    artistName = artistName.trim(),
+                    offeredAccessIds = GuestFormOfferedAccessCodec.encode(
+                        VenueAccessCatalog.resolve(
+                            _temporaryGuestVenueAccesses.value,
+                            offeredAccessIds.filter { it.isNotBlank() }.toSet(),
+                        ),
+                    ),
+                    maxGuests = maxGuests.coerceIn(1, GuestForm.MAX_GUESTS_LIMIT),
+                    expiryMode = expiryMode.name,
+                    expiresAtMillis = resolveGuestFormExpiry(expiryMode, eventDateMillis, manualExpiryMillis),
+                    allowMultipleResponses = allowMultipleResponses,
+                    showInstitutionLogo = showInstitutionLogo,
+                    institutionLogoDataUri = if (showInstitutionLogo) {
+                        val raw = settingsManagerCached?.getInstitutionLogoPng().orEmpty()
+                        if (raw.isBlank()) "" else "data:image/png;base64,$raw"
+                    } else {
+                        ""
+                    },
+                    institutionLogoShape = institutionLogoShape.name,
+                    institutionLogoInvert = institutionLogoInvert,
+                    guestLogoDataUri = guestLogoDataUri,
+                    guestLogoShape = guestLogoShape.name,
+                    guestLogoInvert = guestLogoInvert,
+                    askEmail = askEmail,
+                    askPhone = askPhone,
+                    prefillEmail = if (askEmail) prefillEmail.trim() else "",
+                    prefillPhone = if (askPhone) prefillPhone.trim() else "",
+                    status = GuestFormStatus.OPEN.name,
+                    createdAt = now,
+                    lastModified = now,
+                )
+                val rowId = repository.insertGuestForm(form)
+                val saved = form.copy(id = rowId)
+                syncCoordinator?.afterGuestFormSaved(saved)
+                withContext(Dispatchers.Main) { onCreated(saved) }
+            } catch (e: Exception) {
+                println("Failed to create guest form: ${e.message}")
+                _syncError.value = "Failed to create guest form: ${e.message}"
+            }
+        }
+    }
+
+    /**
+     * Turns a reviewed answer into real temporary guests. [people] is passed in rather than read
+     * from the form so an admin can edit the list before accepting it.
+     */
+    fun acceptGuestForm(
+        form: GuestForm,
+        people: List<ManualTemporaryGuestEntry>,
+        contactEmail: String,
+        emergencyPhone: String,
+        comments: String,
+        reviewedBy: String = "",
+    ) {
+        if (!isGuestFormFeaturesEnabled()) return
+        val entries = people.map { it.copy(name = it.name.trim()) }.filter { it.name.isNotEmpty() }
+        if (entries.isEmpty()) return
+        addTemporaryGuestBatch(
+            ManualTemporaryGuestBatch(
+                eventDateMillis = form.eventDateMillis,
+                artistName = form.artistName,
+                emergencyContactPhone = emergencyPhone.trim(),
+                comments = comments.trim(),
+                guests = entries,
+                venueName = form.venueName,
+                contactEmail = contactEmail.trim(),
+            ),
+        )
+        closeGuestForm(form, GuestFormStatus.ACCEPTED, reviewedBy)
+    }
+
+    fun rejectGuestForm(form: GuestForm, reviewedBy: String = "") {
+        if (!isGuestFormFeaturesEnabled()) return
+        closeGuestForm(form, GuestFormStatus.REJECTED, reviewedBy)
+    }
+
+    /**
+     * Settles a form. The per-form artist logo is dropped at the same time: it has done its job
+     * and a base64 image kept on every past form would grow the document store for nothing.
+     */
+    private fun closeGuestForm(form: GuestForm, status: GuestFormStatus, reviewedBy: String) {
+        viewModelScope.launch {
+            try {
+                val now = System.currentTimeMillis()
+                val closed = form.copy(
+                    status = status.name,
+                    reviewedAt = now,
+                    reviewedBy = reviewedBy.trim(),
+                    institutionLogoDataUri = "",
+                    guestLogoDataUri = "",
+                    lastModified = now,
+                )
+                repository.updateGuestForm(closed)
+                syncCoordinator?.afterGuestFormSaved(closed)
+            } catch (e: Exception) {
+                println("Failed to close guest form: ${e.message}")
+                _syncError.value = "Failed to update guest form: ${e.message}"
+            }
+        }
+    }
+
+    fun deleteGuestForm(form: GuestForm) {
+        viewModelScope.launch {
+            try {
+                deleteGuestFormCascade(form)
+            } catch (e: Exception) {
+                println("Failed to delete guest form: ${e.message}")
+                _syncError.value = "Failed to delete guest form: ${e.message}"
+            }
+        }
+    }
+
+    /**
+     * Deletes a form and, for multi-response templates, every child response that still points
+     * at it — otherwise accept/reject leftovers would linger after the share link is gone.
+     * @return formIds that were removed (template + any cascaded children).
+     */
+    private suspend fun deleteGuestFormCascade(form: GuestForm): Set<String> {
+        val deleted = linkedSetOf<String>()
+        if (form.allowMultipleResponses && form.parentFormId.isBlank()) {
+            repository.getGuestFormsByParentFormId(form.formId).forEach { child ->
+                repository.deleteGuestForm(child)
+                syncCoordinator?.afterGuestFormDeleted(child)
+                deleted += child.formId
+            }
+        }
+        repository.deleteGuestForm(form)
+        syncCoordinator?.afterGuestFormDeleted(form)
+        deleted += form.formId
+        return deleted
+    }
+
+    /**
+     * Pulls guest form documents from Firestore so a public PENDING_REVIEW answer shows up
+     * even when live listeners missed it (desktop REST poller lag, echo edge cases).
+     */
+    fun refreshGuestFormsFromRemote() {
+        if (!isGuestFormFeaturesEnabled()) return
+        viewModelScope.launch {
+            try {
+                syncCoordinator?.pullGuestForms()
+                sweepExpiredGuestForms()
+            } catch (e: Exception) {
+                println("Failed to refresh guest forms: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Marks past-deadline OPEN forms as expired, then deletes any form past the hard
+     * retention window (event date + [GuestForm.MAX_DAYS_AFTER_EVENT] days) — including
+     * forms that were never filled.
+     */
+    private fun sweepExpiredGuestForms() {
+        if (!isGuestFormFeaturesEnabled()) return
+        viewModelScope.launch {
+            try {
+                val now = System.currentTimeMillis()
+                val snapshot = _guestForms.value
+                val pastRetention = snapshot.filter { it.isPastHardRetention(now) }
+                // Templates first so cascade can still find local children before they are swept.
+                val deletedIds = linkedSetOf<String>()
+                pastRetention
+                    .sortedByDescending { it.allowMultipleResponses && it.parentFormId.isBlank() }
+                    .forEach { form ->
+                        if (form.formId in deletedIds) return@forEach
+                        deletedIds += deleteGuestFormCascade(form)
+                    }
+                val retainedIds = deletedIds
+                snapshot
+                    .filter { it.formId !in retainedIds && it.isExpiredAt(now) }
+                    .forEach { form ->
+                        val expired = form.copy(
+                            status = GuestFormStatus.EXPIRED.name,
+                            institutionLogoDataUri = "",
+                            guestLogoDataUri = "",
+                            lastModified = now,
+                        )
+                        repository.updateGuestForm(expired)
+                        syncCoordinator?.afterGuestFormSaved(expired)
+                    }
+            } catch (e: Exception) {
+                println("Failed to sweep expired guest forms: ${e.message}")
+            }
+        }
+    }
+
+    private fun publishTemporaryGuestSettings() {
+        val enabled = isTemporaryGuestFeaturesEnabled()
+        _temporaryGuestVenueAccesses.value = if (enabled) {
+            settingsManagerCached?.getTemporaryGuestVenueAccesses().orEmpty()
+        } else {
+            emptyList()
+        }
+        _temporaryGuestCreditsEnabled.value =
+            enabled && settingsManagerCached?.isTemporaryGuestCreditsEnabled() == true
+    }
+
+    fun addTemporaryGuestVenueAccess(venueName: String, name: String) {
+        val settings = settingsManagerCached ?: return
+        if (!isTemporaryGuestFeaturesEnabled()) return
+        val current = settings.getTemporaryGuestVenueAccesses()
+        val updated = VenueAccessCatalog.add(current, venueName, name)
+        if (updated == current) return
+        settings.saveTemporaryGuestVenueAccesses(updated)
+        publishTemporaryGuestSettings()
+        backupInstitutionSettingsToSheets()
+    }
+
+    /**
+     * Also strips the access from every temporary guest that held it, so a removed access cannot
+     * linger as an unresolvable ID on a guest record.
+     */
+    fun removeTemporaryGuestVenueAccess(accessId: String) {
+        val settings = settingsManagerCached ?: return
+        if (!isTemporaryGuestFeaturesEnabled()) return
+        settings.saveTemporaryGuestVenueAccesses(
+            VenueAccessCatalog.removeById(settings.getTemporaryGuestVenueAccesses(), accessId),
+        )
+        publishTemporaryGuestSettings()
+        backupInstitutionSettingsToSheets()
+        viewModelScope.launch {
+            val stale = _guests.value.filter {
+                it.isTemporaryGuest && it.temporaryAccessIdSet().contains(accessId)
+            }
+            stale.forEach { guest ->
+                updateGuest(
+                    guest.copy(
+                        temporaryAccessIds = encodeTemporaryAccessIds(
+                            guest.temporaryAccessIdSet() - accessId,
+                        ),
+                    ),
+                )
+            }
+        }
+    }
+
+    fun setTemporaryGuestCreditsEnabled(enabled: Boolean) {
+        val settings = settingsManagerCached ?: return
+        if (!isTemporaryGuestFeaturesEnabled()) return
+        settings.setTemporaryGuestCreditsEnabled(enabled)
+        publishTemporaryGuestSettings()
+        backupInstitutionSettingsToSheets()
+    }
+
+    /**
+     * Consumes a temporary guest's single entry. Idempotent, so two doors validating the same QR
+     * at once cannot double-count, and the guest drops off the day list either way.
+     */
+    fun validateTemporaryGuestEntry(guest: Guest, validatedBy: String = "") {
+        if (!isTemporaryGuestFeaturesEnabled()) return
+        viewModelScope.launch {
+            try {
+                val current = repository.getGuestByNanoId(guest.nanoId) ?: guest
+                if (!current.isTemporaryGuest || current.temporaryEntryValidated) return@launch
+                val validated = current.copy(
+                    temporaryEntryValidatedAt = System.currentTimeMillis(),
+                    temporaryEntryValidatedBy = validatedBy,
+                    lastModified = System.currentTimeMillis(),
+                )
+                repository.updateGuest(validated)
+                syncCoordinator?.afterGuestSaved(validated)
+                withContext(Dispatchers.Main) { refreshGuestData() }
+            } catch (e: Exception) {
+                println("Failed to validate temporary guest entry: ${e.message}")
+                _syncError.value = "Failed to validate entry: ${e.message}"
+            }
+        }
+    }
+
+    /**
+     * Every temporary guest invited by the same artist for the same date and venue, ordered by
+     * name. This is the unit an artist mail covers.
+     */
+    fun temporaryGuestBatch(guest: Guest): List<Guest> {
+        if (!guest.isTemporaryGuest) return listOf(guest)
+        val key = guest.temporaryBatchKey()
+        return _guests.value
+            .filter { it.isTemporaryGuest && it.temporaryBatchKey() == key }
+            .sortedBy { it.name.lowercase() }
+            .ifEmpty { listOf(guest) }
+    }
+
+    /** Persists the artist's mail address on the whole batch, so it is asked only once. */
+    fun setTemporaryGuestBatchContactEmail(guest: Guest, email: String) {
+        if (!isTemporaryGuestFeaturesEnabled()) return
+        val trimmed = email.trim()
+        if (trimmed.isEmpty()) return
+        viewModelScope.launch {
+            temporaryGuestBatch(guest)
+                .filter { it.temporaryContactEmail != trimmed }
+                .forEach { updateGuest(it.copy(temporaryContactEmail = trimmed)) }
+        }
+    }
+
     // Background sync job
     private var backgroundSyncJob: kotlinx.coroutines.Job? = null
     private var sheetsMirrorJob: kotlinx.coroutines.Job? = null
@@ -1261,6 +1714,19 @@ class EventManagerViewModel(
         }
         viewModelScope.launch {
             try {
+                repository.getAllGuestForms().collect { forms ->
+                    val next = forms.sortedByDescending { it.createdAt }
+                    if (_guestForms.value != next) {
+                        _guestForms.value = next
+                        sweepExpiredGuestForms()
+                    }
+                }
+            } catch (e: Exception) {
+                vmDebug { "Failed to load guest forms: ${e.message}" }
+            }
+        }
+        viewModelScope.launch {
+            try {
                 repository.getAllJobTypeConfigs().collect { configs ->
                     if (_isSyncing.value) return@collect
                     val next = withContext(Dispatchers.Default) { removeDuplicateJobTypes(configs) }
@@ -1389,9 +1855,11 @@ class EventManagerViewModel(
         viewModelScope.launch {
             try {
                 if (rejectIfCrudSoftLocked("adding temporary guests")) return@launch
-                val names = batch.guestNames.map { it.trim() }.filter { it.isNotEmpty() }
-                if (names.isEmpty()) return@launch
-                val prepared = batch.copy(guestNames = names)
+                val entries = batch.guests
+                    .map { it.copy(name = it.name.trim()) }
+                    .filter { it.name.isNotEmpty() }
+                if (entries.isEmpty()) return@launch
+                val prepared = batch.copy(guests = entries)
                 if (syncCoordinator != null) {
                     syncCoordinator.afterTemporaryGuestBatch(prepared)
                     if (settingsManagerCached?.getBackendType() == BackendType.FIREBASE) {
@@ -5153,6 +5621,8 @@ class EventManagerViewModel(
                 publishProfilePhotosUploadEnabled()
                 publishAnnouncementsBilleterieSendEnabled()
                 publishPosSubcategories()
+                publishTemporaryGuestSettings()
+                publishGuestFormSettings()
 
                 vmDebug {
                     "StateFlows updated - Guests: $oldGuestCount → ${_guests.value.size}, " +
@@ -5555,13 +6025,18 @@ class EventManagerViewModel(
                 // This ensures consistency between preview and actual cleanup
                 val volunteers = _volunteers.value
                 val jobs = repository.getAllJobs().first()
+                val jobsByVolunteerId = VolunteerActivityManager.groupJobsByVolunteerId(jobs)
                 
                 println("DEBUG: Total volunteers from StateFlow: ${volunteers.size}")
                 
                 // Find volunteers that have been inactive for the specified number of years
                 // Use the exact same calculation as the dialog preview
                 val volunteersToCleanup = volunteers.filter { volunteer ->
-                    val daysSinceLastActivity = VolunteerActivityManager.getDaysSinceLastActivity(volunteer)
+                    val volunteerJobs = jobsByVolunteerId[volunteer.id]
+                    val daysSinceLastActivity = VolunteerActivityManager.getDaysSinceLastActivity(
+                        volunteer,
+                        volunteerJobs,
+                    )
                     val shouldDelete = daysSinceLastActivity != null && daysSinceLastActivity >= (yearsInactive * 365L)
                     
                     // Debug logging for each volunteer
@@ -5580,9 +6055,6 @@ class EventManagerViewModel(
                     _syncError.value = "No volunteers found that have been inactive for $yearsInactive+ years"
                     return@launch
                 }
-                
-                // Optimize job lookup: create a map of volunteerId -> jobs for O(1) access instead of O(n) filtering
-                val jobsByVolunteerId = jobs.groupBy { it.volunteerId }
                 
                 var volunteersDeleted = 0
                 var jobsDeleted = 0

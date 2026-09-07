@@ -34,7 +34,9 @@ class DesktopGmailAuth(private val context: PlatformContext) {
     var lastSignInError: String? = null
         private set
 
-    private fun useServiceAccountMode(): Boolean = settingsManager.isGmailUseServiceAccount()
+    private fun useServiceAccountMode(): Boolean =
+        settingsManager.getBackendType() != com.eventmanager.app.data.remote.BackendType.FIREBASE &&
+            settingsManager.isGmailUseServiceAccount()
 
     fun hasOAuthClientConfigured(): Boolean =
         if (useServiceAccountMode()) {

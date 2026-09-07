@@ -61,6 +61,7 @@ import com.eventmanager.app.ui.components.SendAnnouncementButton
 import com.eventmanager.app.ui.components.SendAnnouncementDialog
 import com.eventmanager.app.ui.components.AnnouncementPopup
 import com.eventmanager.app.ui.components.BackendMigrationUiHost
+import com.eventmanager.app.ui.components.GuestFormArrivalToastHost
 import com.eventmanager.app.ui.scaling.ResolutionScaler
 import com.eventmanager.app.data.models.Guest
 import com.eventmanager.app.data.models.Volunteer
@@ -178,6 +179,7 @@ import android.content.Intent
 import android.provider.Settings
 import com.eventmanager.app.ui.components.DeviceTimeErrorDialog
 import com.eventmanager.app.ui.components.SyncStatusDialog
+import com.eventmanager.app.ui.components.SyncStatusPill
 import com.eventmanager.app.utils.ImageUtils
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -202,6 +204,9 @@ actual fun AppRootContent(
 ) {
     val appContext = platformContext.androidContext
     val settingsManager = remember { SettingsManager(createAppStorage(platformContext)) }
+    remember(platformContext, settingsManager) {
+        com.eventmanager.app.data.sync.installInstitutionLogoBridge(platformContext, settingsManager)
+    }
     val skipStartupSync = remember { settingsManager.consumeSkipNextStartupSync() }
     val uiRefreshNonce by com.eventmanager.app.ui.platform.AppAppearanceState::refreshNonce
     val backgroundAnimationStyle = uiRefreshNonce.let { settingsManager.getBackgroundAnimationStyle() }
@@ -301,7 +306,8 @@ actual fun AppRootContent(
                     db.jobTypeConfigDao(),
                     db.venueDao(),
                     db.salesSheetItemDao(),
-                    db.accountTransferDao()
+                    db.accountTransferDao(),
+                    db.guestFormDao()
                 )
             }
             val googleSheetsService = remember { GoogleSheetsService(platformContext) }
@@ -834,6 +840,9 @@ actual fun AppRootContent(
                                             )
                                         }
                                     },
+                                    actions = {
+                                        SyncStatusPill(viewModel = viewModel)
+                                    },
                                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                                         containerColor = Color.Transparent,
                                         scrolledContainerColor = Color.Transparent,
@@ -868,13 +877,6 @@ actual fun AppRootContent(
                         }
                     }
                 }
-
-                SyncStatusWidget(
-                    viewModel = viewModel,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(bottom = 8.dp, end = 8.dp)
-                )
             }
             }
         } else {
@@ -1493,6 +1495,8 @@ if (pageAnimationsEnabled) {
                     }
                 },
             )
+
+            GuestFormArrivalToastHost(viewModel = viewModel)
             
         // QR Scanner Dialog
         if (showQRScanner) {

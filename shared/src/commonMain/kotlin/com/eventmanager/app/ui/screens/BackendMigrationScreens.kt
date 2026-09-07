@@ -573,6 +573,7 @@ fun BackendMigrationWizardScreen(
             if (showFirebaseTutorial) {
                 com.eventmanager.app.ui.components.FirebaseSetupTutorialDialog(
                     onDismiss = { showFirebaseTutorial = false },
+                    projectId = settingsManager.getFirebaseProjectId(),
                 )
             }
             Text(

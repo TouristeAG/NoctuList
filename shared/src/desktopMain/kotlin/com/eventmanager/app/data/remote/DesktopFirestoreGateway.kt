@@ -2,6 +2,7 @@ package com.eventmanager.app.data.remote
 
 import com.eventmanager.app.data.models.AccountTransfer
 import com.eventmanager.app.data.models.Guest
+import com.eventmanager.app.data.models.GuestForm
 import com.eventmanager.app.data.models.Job
 import com.eventmanager.app.data.models.JobTypeConfig
 import com.eventmanager.app.data.models.SalesSheetItem
@@ -62,6 +63,7 @@ internal class DesktopFirestoreGateway(
         "accounts",
         "institutionSettings",
         "metadata",
+        "guestForms",
     )
 
     override fun isAvailable(): Boolean = gitlive.isAvailable() || rest?.isReady() == true
@@ -425,6 +427,7 @@ internal class DesktopFirestoreGateway(
     override fun venueToMap(venue: VenueEntity) = gitlive.venueToMap(venue)
     override fun salesItemToMap(item: SalesSheetItem) = gitlive.salesItemToMap(item)
     override fun transferToMap(transfer: AccountTransfer) = gitlive.transferToMap(transfer)
+    override fun guestFormToMap(form: GuestForm) = gitlive.guestFormToMap(form)
 
     private suspend fun readMemberRoleInternal(
         orgId: String,

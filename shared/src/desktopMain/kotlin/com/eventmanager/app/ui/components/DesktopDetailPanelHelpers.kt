@@ -39,6 +39,7 @@ import com.eventmanager.app.ui.util.shiftTimeLabelIfRelevant
 import com.eventmanager.app.ui.utils.getVenueDisplayString
 import com.eventmanager.app.utils.QRCodeUtils
 import com.eventmanager.app.email.QrEmailProfile
+import com.eventmanager.app.email.QrEmailRecipientCode
 import com.eventmanager.app.data.sync.DesktopQrEmailService
 import com.eventmanager.app.data.sync.DesktopQrEmailTemplateStrings
 import kotlinx.coroutines.launch
@@ -351,6 +352,8 @@ fun DesktopEmailConfirmDialog(
     onDismiss: () -> Unit,
     onSent: () -> Unit,
     staffSafeMode: Boolean = false,
+    /** More than one entry turns the mail into a grouped artist guest list. */
+    codes: List<QrEmailRecipientCode> = emptyList(),
 ) {
     val gmailAuth = remember(platformContext) { createGmailAuth(platformContext) }
     val emailService = remember(platformContext) { DesktopQrEmailService(platformContext) }
@@ -380,6 +383,11 @@ fun DesktopEmailConfirmDialog(
         walletPassTitle = stringResource(Res.string.email_wallet_section_title),
         walletPassDescription = stringResource(Res.string.email_wallet_section_description),
         walletPassCompatibility = stringResource(Res.string.email_wallet_section_compatibility),
+        tempGuestHeader = stringResource(Res.string.temp_guest_email_html_header),
+        tempGuestFooter = stringResource(Res.string.guest_email_html_footer),
+        tempGuestSubjectDefault = stringResource(Res.string.temp_guest_email_subject_default),
+        tempGuestContentBeforeDefault = stringResource(Res.string.temp_guest_email_content_before_default),
+        tempGuestContentAfterDefault = stringResource(Res.string.temp_guest_email_content_after_default),
     )
 
     AlertDialog(
@@ -403,6 +411,7 @@ fun DesktopEmailConfirmDialog(
                                     recipientName = recipientName,
                                     qrPayload = qrPayload,
                                     template = template,
+                                    codes = codes,
                                 )
                             }
                             if (ok) {
@@ -441,6 +450,7 @@ fun DesktopEmailConfirmDialog(
                                     recipientName = recipientName,
                                     qrPayload = qrPayload,
                                     template = template,
+                                    codes = codes,
                                 )
                                 isSending = false
                                 if (sent) {

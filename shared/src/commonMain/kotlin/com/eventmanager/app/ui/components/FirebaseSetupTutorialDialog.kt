@@ -25,6 +25,8 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.eventmanager.app.platform.LocalPlatformContext
+import com.eventmanager.app.platform.isDesktop
 import com.eventmanager.app.data.remote.FirestoreRulesClipboardContent
 import com.eventmanager.app.data.remote.InstitutionGoogleWebOAuth
 import com.eventmanager.app.data.remote.NOCTULIST_FIRESTORE_RULES_VERSION
@@ -48,6 +50,8 @@ import com.eventmanager.app.resources.firebase_tutorial_method_label
 import com.eventmanager.app.resources.firebase_tutorial_oauth_note
 import com.eventmanager.app.resources.firebase_tutorial_storage_optional_body
 import com.eventmanager.app.resources.firebase_tutorial_storage_optional_title
+import com.eventmanager.app.resources.firebase_tutorial_forms_optional_body
+import com.eventmanager.app.resources.firebase_tutorial_forms_optional_title
 import com.eventmanager.app.resources.firebase_tutorial_cloud_step1_body
 import com.eventmanager.app.resources.firebase_tutorial_cloud_step1_title
 import com.eventmanager.app.resources.firebase_tutorial_cloud_step2_body
@@ -85,6 +89,7 @@ private enum class TutorialConsoleMethod { Firebase, Cloud }
 @Composable
 fun FirebaseSetupTutorialDialog(
     onDismiss: () -> Unit,
+    projectId: String = "",
 ) {
     val clipboard = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
@@ -317,6 +322,25 @@ fun FirebaseSetupTutorialDialog(
                             },
                         )
                     }
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        stringResource(Res.string.firebase_tutorial_forms_optional_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        stringResource(Res.string.firebase_tutorial_forms_optional_body),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    GuestFormHostingGuide(
+                        projectId = projectId,
+                        isDesktop = LocalPlatformContext.current.isDesktop,
+                        canExport = true,
+                        showExportButton = true,
+                    )
                 }
             }
         },

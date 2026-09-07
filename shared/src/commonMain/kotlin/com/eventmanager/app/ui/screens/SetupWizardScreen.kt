@@ -410,7 +410,7 @@ fun SetupWizardScreen(
                                             val repository = EventManagerRepository(
                                                 db.guestDao(), db.volunteerDao(), db.jobDao(),
                                                 db.jobTypeConfigDao(), db.venueDao(), db.salesSheetItemDao(),
-                                                db.accountTransferDao()
+                                                db.accountTransferDao(), db.guestFormDao()
                                             )
                                             val ledger = com.eventmanager.app.data.remote.FirebaseLedgerService(
                                                 repository, settingsManager, gateway,
@@ -443,7 +443,7 @@ fun SetupWizardScreen(
                             val repository = EventManagerRepository(
                                 db.guestDao(), db.volunteerDao(), db.jobDao(),
                                 db.jobTypeConfigDao(), db.venueDao(), db.salesSheetItemDao(),
-                                db.accountTransferDao()
+                                db.accountTransferDao(), db.guestFormDao()
                             )
                             val syncManager = com.eventmanager.app.data.sync.SyncManager(
                                 platformContext, repository, GoogleSheetsService(platformContext)
@@ -758,7 +758,10 @@ fun SetupWizardScreen(
     }
 
     if (showFirebaseTutorial) {
-        FirebaseSetupTutorialDialog(onDismiss = { showFirebaseTutorial = false })
+        FirebaseSetupTutorialDialog(
+            onDismiss = { showFirebaseTutorial = false },
+            projectId = settingsManager.getFirebaseProjectId(),
+        )
     }
     if (showJoinScan) {
         com.eventmanager.app.ui.components.RawPayloadQrScannerDialog(

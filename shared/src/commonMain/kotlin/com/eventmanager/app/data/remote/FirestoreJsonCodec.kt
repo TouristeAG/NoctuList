@@ -67,8 +67,9 @@ object FirestoreJsonCodec {
         if (!nested.isNullOrBlank()) {
             val fromJson = fromEnvelope(FirestoreJsonEnvelope(nested))
             if (fromJson.isNotEmpty()) {
-                // Prefer envelope payload but keep any flat fields not present in json.
-                return raw.filterKeys { it != "json" } + fromJson
+                // Flat fields win: the public form writes status/submissionJson at the top
+                // level and cannot rewrite the legacy json envelope.
+                return fromJson + raw.filterKeys { it != "json" && it != "_seed" }
             }
         }
         return raw.filterKeys { it != "json" && it != "_seed" }
@@ -95,8 +96,9 @@ object FirestoreJsonCodec {
         if (!nested.isNullOrBlank()) {
             val fromJson = fromEnvelope(FirestoreJsonEnvelope(nested))
             if (fromJson.isNotEmpty()) {
-                // Prefer envelope payload but keep any flat fields not present in json.
-                return flat + fromJson
+                // Envelope fills gaps; flat fields win so an artist answer (status,
+                // submissionJson, lastModified) is not overwritten by the stale envelope.
+                return fromJson + flat
             }
         }
         return flat

@@ -71,7 +71,7 @@ fun AnnouncementsSettingsContent(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        AnnouncementsSettingsToggleRow(
+        SettingsToggleRow(
             title = stringResource(Res.string.announcements_reception_title),
             description = stringResource(Res.string.announcements_reception_description),
             checked = receptionEnabled,
@@ -146,13 +146,13 @@ fun AnnouncementsSettingsContent(
 
         if (mode == AnnouncementsSettingsMode.Admin) {
             HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.45f))
-            AnnouncementsSettingsToggleRow(
+            SettingsToggleRow(
                 title = stringResource(Res.string.announcements_non_admin_send_title),
                 description = stringResource(Res.string.announcements_non_admin_send_description),
                 checked = billeterieSendEnabled,
                 enabled = canEditBilleterieSend,
                 onCheckedChange = {
-                    if (!canEditBilleterieSend) return@AnnouncementsSettingsToggleRow
+                    if (!canEditBilleterieSend) return@SettingsToggleRow
                     onBilleterieSendEnabledChange?.invoke(it)
                         ?: settingsManager.setAnnouncementsNonAdminSendEnabled(it)
                 },
@@ -169,7 +169,7 @@ fun AnnouncementsSettingsContent(
 }
 
 @Composable
-private fun AnnouncementsSettingsToggleRow(
+internal fun SettingsToggleRow(
     title: String,
     description: String,
     checked: Boolean,

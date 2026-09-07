@@ -83,15 +83,15 @@
     <string name="pos_clear_customer">Changer de profil</string>
     <string name="pos_profile_switch_title">Changer de profil ?</string>
     <string name="pos_profile_switch_message">%1$s a été scanné, mais la commande en cours est au nom de %2$s.</string>
-    <string name="pos_profile_switch_keep_cart">Changer de profil — garder le panier</string>
-    <string name="pos_profile_switch_clear_cart">Changer de profil — vider le panier</string>
-    <string name="pos_profile_switch_keep_current">Annuler — garder le profil et le panier actuels</string>
+    <string name="pos_profile_switch_keep_cart">Changer de profil - garder le panier</string>
+    <string name="pos_profile_switch_clear_cart">Changer de profil - vider le panier</string>
+    <string name="pos_profile_switch_keep_current">Annuler - garder le profil et le panier actuels</string>
     <string name="pos_reader_scanning">Lecture NFC en cours</string>
     <string name="pos_bar_discount_badge">-%1$d\u0025 au bar</string>
     <string name="pos_bar_discount_at_bar">au bar</string>
     <string name="pos_bar_discount_cash_hint">Sur paiement en espèces ou carte</string>
     <string name="pos_scan_next">Scannez la prochaine carte</string>
-    <string name="pos_cart_empty">Panier vide — touchez les produits pour ajouter</string>
+    <string name="pos_cart_empty">Panier vide - touchez les produits pour ajouter</string>
     <string name="pos_select_customer_first">Scannez d'abord un profil</string>
     <string name="pos_customer_guest_label">Invité·e</string>
     <string name="pos_items_count">%1$d articles</string>
@@ -197,7 +197,7 @@
     <string name="background_animation_opacity_description">Réduisez l'opacité pour des lignes animées plus discrètes</string>
     <string name="background_animation_opacity_apply">Appliquer l'intensité</string>
     <string name="background_animation_preview_unavailable">Aperçu indisponible sur cet appareil</string>
-    <string name="background_animation_low_performance_warning">Activer un arrière-plan animé est déconseillé sur ce périphérique — l'application risque de ralentir ou de planter.</string>
+    <string name="background_animation_low_performance_warning">Activer un arrière-plan animé est déconseillé sur ce périphérique - l'application risque de ralentir ou de planter.</string>
     <string name="billeterie_background_animation_title">Arrière-plan billetterie</string>
     <string name="billeterie_background_animation_description">Choisissez un arrière-plan animé pour les écrans de billetterie uniquement</string>
     <string name="page_animations_title">Animations de pages</string>
@@ -233,7 +233,6 @@
     <string name="color_theme_rich_brown">Brun</string>
     <string name="color_theme_sunset_mist">Brume</string>
     <string name="color_theme_feminist_violet">Violet</string>
-
     <string name="color_theme_custom">Personnalisé</string>
     <string name="color_theme_customize">Personnaliser le thème personnalisé</string>    
     <!-- Restart Dialog -->
@@ -289,7 +288,7 @@
     <string name="checking_for_updates_title">Vérification des mises à jour</string>
     <string name="checking_for_updates_message">Connexion au serveur de mise à jour…</string>
     <string name="downloading_update">Téléchargement de la mise à jour…</string>
-    <string name="download_progress">Téléchargement : %1$d%%</string>
+    <string name="download_progress">Téléchargement : %1$d%</string>
     <string name="download_complete">Téléchargement terminé</string>
     <string name="install_update">Installer la mise à jour</string>
     <string name="download_error_title">Échec du téléchargement</string>
@@ -378,13 +377,13 @@
     <!-- Sync Status -->
     <string name="syncing">Synchronisation...</string>
     <string name="last_update_just_now">à l'instant</string>
-    <string name="last_update_never_brief">—</string>
+    <string name="last_update_never_brief">-</string>
     <string name="last_update_seconds_ago">il y a %1$d s</string>
     <string name="last_update_min_sec_ago">il y a %1$d min %2$d s</string>
     <string name="last_update_hour_min_ago">il y a %1$d h %2$d min</string>
     <string name="last_update_days_ago">il y a %1$d j</string>
     <string name="last_update_line">Mise à jour · %1$s</string>
-    <string name="last_update_none_line">Mise à jour · —</string>
+    <string name="last_update_none_line">Mise à jour · -</string>
     <string name="firebase_pill_live">Firebase · en direct</string>
     <string name="firebase_pill_line">Firebase · %1$s</string>
     <string name="firebase_pill_pending">Firebase · %1$d en attente</string>
@@ -404,10 +403,10 @@
     <!-- Welcome Screen -->
     <string name="start_admin">Démarrer Admin</string>
     <string name="admin_mode">Admin</string>
-    <string name="ticket_check_mode">Billeterie</string>
+    <string name="ticket_check_mode">Billetterie</string>
     <string name="startup_splash_opening">Ouverture de NoctuList…</string>
     <string name="startup_splash_syncing">Synchronisation de vos données…</string>
-    <string name="startup_splash_preparing">Préparation Billeterie, POS et Admin…</string>
+    <string name="startup_splash_preparing">Préparation Billetterie, POS et Admin…</string>
     <string name="welcome_desktop_tagline">Choisissez un espace pour commencer</string>
     <string name="welcome_ticketing_hint">Scanner les billets et gérer l’entrée</string>
     <string name="welcome_pos_hint">Encaisser les ventes au comptoir</string>
@@ -420,7 +419,7 @@
     <string name="admin_auth_syncing">Chargement des données depuis Google Sheets…</string>
     <string name="admin_auth_syncing_title">Préparation de l'accès admin</string>
     <string name="admin_auth_syncing_subtitle">Synchronisation avec Google Sheets pour vérifier correctement votre badge ou code QR.</string>
-    <string name="admin_auth_sync_wait_hint">Ne scannez pas encore — l'authentification sera disponible à la fin de la synchronisation</string>
+    <string name="admin_auth_sync_wait_hint">Ne scannez pas encore - l'authentification sera disponible à la fin de la synchronisation</string>
     <string name="admin_auth_sync_step_sheet">Vérification de la structure de la feuille</string>
     <string name="admin_auth_sync_step_download">Téléchargement des dernières données invités et bénévoles</string>
     <string name="admin_auth_sync_step_verify">Actualisation des profils administrateurs</string>
@@ -465,8 +464,8 @@
     <string name="biometric_enrollment_org_verify_step">Vérifier l'accès admin pour %1$s (%2$d sur %3$d)</string>
     <string name="biometric_enrollment_org_enrolled">Inscrit : %1$s</string>
 
-    <!-- Billeterie -->
-    <string name="ticket_check_title">Billeterie</string>
+    <!-- Billetterie -->
+    <string name="ticket_check_title">Billetterie</string>
     <string name="ticket_check_coming_soon">Cette fonctionnalité arrive bientôt</string>
     <string name="ticket_check_description">Accès rapide à la liste des invité·e·s et au scanner à l'entrée.</string>
     <string name="billeterie_stat_permanent_guests">Invité·e·s permanents</string>
@@ -502,11 +501,11 @@
     <string name="setup_language_title">Choisissez votre langue</string>
     <string name="setup_language_description">Sélectionnez la langue que vous souhaitez utiliser dans l'application</string>
     <string name="setup_theme_title">Choisissez un thème</string>
-    <string name="setup_theme_description">Choisissez l'apparence de l'application — vous pourrez toujours modifier cela dans les Paramètres</string>
+    <string name="setup_theme_description">Choisissez l'apparence de l'application - vous pourrez toujours modifier cela dans les Paramètres</string>
     <string name="setup_color_profile_title">Profil de couleur</string>
     <string name="setup_color_profile_description">Choisissez les couleurs d'accent. Le système suit votre fond d'écran sur les appareils compatibles.</string>
     <string name="setup_layout_size_title">Taille de la mise en page</string>
-    <string name="setup_layout_size_description">Ajustez la taille de l'interface — vous pourrez l'affiner à tout moment dans les Paramètres.</string>
+    <string name="setup_layout_size_description">Ajustez la taille de l'interface - vous pourrez l'affiner à tout moment dans les Paramètres.</string>
     <string name="setup_layout_nvidia_hint">Sur les tablettes NVIDIA, 107% convient souvent mieux à cet écran.</string>
     <string name="setup_layout_use_recommended">Utiliser 107%</string>
     <string name="setup_spreadsheet_title">ID Google Sheets</string>
@@ -515,7 +514,7 @@
     <string name="setup_json_key_title">Clé de compte de service</string>
     <string name="setup_json_key_description">Importez le fichier JSON de votre compte de service Google.</string>
     <string name="setup_sheets_title">Noms des feuilles</string>
-    <string name="setup_sheets_description">Configurez les noms de chaque feuille dans votre Google Spreadsheet — les valeurs par défaut sont pré-remplies</string>
+    <string name="setup_sheets_description">Configurez les noms de chaque feuille dans votre Google Spreadsheet - les valeurs par défaut sont pré-remplies</string>
     <string name="setup_wizard_first_sync_title">Première synchronisation</string>
     <string name="setup_wizard_first_sync_message">Téléchargement des données de l'événement…</string>
     <string name="setup_wizard_first_sync_error_title">Échec de la première synchronisation</string>
@@ -552,7 +551,7 @@
     <string name="setup_firebase_signin_title">Connexion</string>
     <string name="setup_firebase_signin_body">Connectez-vous avec Google pour autoriser cet appareil.</string>
     <string name="setup_join_title">Rejoindre une organisation</string>
-    <string name="setup_join_description">Scannez le QR, ou saisissez les deux codes — ce n'est pas le même.</string>
+    <string name="setup_join_description">Scannez le QR, ou saisissez les deux codes - ce n'est pas le même.</string>
     
     <!-- Instructions Dialog -->
     <string name="google_sheets_setup_instructions">Instructions de configuration Google Sheets</string>
@@ -680,7 +679,7 @@
     <string name="benefits_overview_info_button">Aide</string>
     <string name="benefits_overview_totals_section">Totaux</string>
     <string name="benefits_overview_ranks_section">Par rang</string>
-    <string name="benefits_overview_line_50_bar">Bar 50%% : %1$d</string>
+    <string name="benefits_overview_line_50_bar">Bar 50% : %1$d</string>
     <string name="benefits_overview_line_free_entry">Entrée : %1$d · %2$d inv.</string>
     <string name="benefits_overview_line_extraordinary">Extra : %1$d</string>
     <string name="benefits_overview_line_future_tickets">Billets : %1$d · %2$d inv.</string>
@@ -690,7 +689,7 @@
     <string name="free_entry">✅ Entrée gratuite</string>
     <string name="friend_invitation">👥 Invitation d'un·e ami·e</string>
     <string name="drink_tokens">🍺 %1$d jetons de boisson</string>
-    <string name="bar_discount">💰 %1$d%% de réduction au bar</string>
+    <string name="bar_discount">💰 %1$d% de réduction au bar</string>
     <string name="extraordinary_benefits">💎 Avantages extraordinaires</string>
     
     <!-- Shifts Screen -->
@@ -733,7 +732,7 @@
     <string name="manual_rewards_details">Détails des récompenses manuelles</string>
     <string name="days_n">%1$d jours</string>
     <string name="free_drinks_n">%1$d boissons gratuites</string>
-    <string name="bar_discount_n">%1$d%% de réduction au bar</string>
+    <string name="bar_discount_n">%1$d% de réduction au bar</string>
     <string name="invites_n">%1$d invitations</string>
     <string name="no_rewards_configured">Aucune récompense configurée</string>
     <!-- Shift Type Dialog -->
@@ -748,8 +747,8 @@
     <string name="benefit_system_label">Système d'avantages</string>
     <string name="stellar_config_label">Configuration du type de shift</string>
     <string name="manual_rewards_config_label">Configuration des récompenses manuelles</string>
-    <string name="manual_rewards_warning_orion_automatic_enabled">Les avantages automatiques Orion sont activés pour ce type de shift ! Ils se cumulent avec les récompenses manuelles — repassez en mode Stellaire et désactivez « Orion Job » si ce n'était pas voulu.</string>
-    <string name="manual_rewards_warning_nova_stellar_automatic_enabled">Les avantages automatiques Nova / Galaxie (shift comptabilisé) sont activés ! Ils se cumulent avec les récompenses manuelles — repassez en mode Stellaire et désactivez « Shift Job » si ce n'était pas voulu.</string>
+    <string name="manual_rewards_warning_orion_automatic_enabled">Les avantages automatiques Orion sont activés pour ce type de shift ! Ils se cumulent avec les récompenses manuelles - repassez en mode Stellaire et désactivez « Orion Job » si ce n'était pas voulu.</string>
+    <string name="manual_rewards_warning_nova_stellar_automatic_enabled">Les avantages automatiques Nova / Galaxie (shift comptabilisé) sont activés ! Ils se cumulent avec les récompenses manuelles - repassez en mode Stellaire et désactivez « Shift Job » si ce n'était pas voulu.</string>
     <string name="shift_job_label">Shift Job (Nova / Galaxie)</string>
     <string name="orion_job_label">Orion Job (Comité / Coordination)</string>
     <string name="requires_shift_time_label">Paramètre requis : peut/ne peut pas profiter de la soirée</string>
@@ -772,61 +771,45 @@
     <string name="other_notes_placeholder">Remarques supplémentaires…</string>
     <string name="update_shift_type">Mettre à jour le type de shift</string>
     <string name="stellar_benefits_info_title">Guide des avantages bénévoles</string>
-
     <string name="benefits_help_dialog_title">Guide des avantages bénévoles</string>
     <string name="benefits_help_dialog_subtitle">Collectif Nocturne · 2026-2027</string>
     <string name="benefits_help_intro">Indique le type de shift qui correspond au travail réellement effectué. En mode Stellaire, l'application calcule les avantages ; en mode Manuel, tu les définis toi-même.</string>
-
     <string name="benefits_help_tab_modes">Modes</string>
     <string name="benefits_help_tab_nova">Types de shift</string>
     <string name="benefits_help_tab_extras">Bonus et dates</string>
-
     <string name="benefits_help_app_stellar">Active « Shift job », puis choisis le type Nova qui convient\nActive « Orion job » pour un mandat (année Orion, puis statut Vétéran l'année suivante)\nBoissons, liste d'invités et entrées futures : calcul automatique</string>
     <string name="benefits_help_app_manual">Tu saisis toi-même la durée, les boissons, la réduction au bar, les invitations, etc.\nÀ utiliser pour des cas particuliers hors grille habituelle\nÉvite de compter deux fois le même engagement s'il est déjà pris en charge en mode Stellaire</string>
-
     <string name="benefits_help_section_profité_title">Profité / non-profité</string>
     <string name="benefits_help_section_profité_body">Uniquement pour le type Nova « Shift par défaut », avec le réglage « profiter de la soirée » activé.\nCe n'est pas une question d'entrée : on indique simplement si les horaires du shift ont permis à la personne de profiter de la soirée malgré le travail, ou non.\nLes autres types Nova n'utilisent pas ce paramètre.</string>
-
     <string name="benefits_help_section_nova_title">Avantages par type Nova (shift job)</string>
     <string name="benefits_help_nova_profité_title">Shift soirée - profité</string>
     <string name="benefits_help_nova_profité_rationale">Uniquement pour la soirée de l'événement concerné.</string>
     <string name="benefits_help_nova_profité_perks">Entrée gratuite + 1 ami·e - soirée de l'événement\n50\u0025 au bar - soirée de l'événement\n2 boissons offertes (~10 CHF) - soirée de l'événement</string>
-
     <string name="benefits_help_nova_non_profité_title">Shift soirée - non-profité</string>
     <string name="benefits_help_nova_non_profité_rationale">Mêmes avantages pour la nuit d'événement, plus une entrée saisonnière gratuite (+1 ami·e).</string>
     <string name="benefits_help_nova_non_profité_perks">Même paquet que le profité pour la nuit d'événement\n+ 1 entrée saisonnière + 1 ami·e (suivie dans l'application)</string>
-
     <string name="benefits_help_nova_photo_title">Photographe / vidéaste (soirée)</string>
     <string name="benefits_help_nova_photo_rationale">Même principe que le shift par défaut en non-profité.</string>
     <string name="benefits_help_nova_photo_perks">Entrée gratuite + 1 ami·e - nuit couverte\n50\u0025 au bar - nuit couverte\n2 boissons offertes (~10 CHF) - nuit couverte\n1 entrée saisonnière + 1 ami·e</string>
-
     <string name="benefits_help_nova_meeting_title">Réunion</string>
     <string name="benefits_help_nova_meeting_rationale">Trois réunions dans le même mois comptent pour Galaxie, sauf pour Orion : les réunions ne sont pas comptabilisées dans leur total.</string>
     <string name="benefits_help_nova_meeting_perks">1 entrée saisonnière + 1 ami·e\n1 boisson offerte (~5 CHF)</string>
-
     <string name="benefits_help_nova_gd_event_title">Graphiste - pour un événement précis</string>
     <string name="benefits_help_nova_gd_event_rationale">Même logique que la photo ou la vidéo pour cette soirée.</string>
     <string name="benefits_help_nova_gd_event_perks">Entrée gratuite + 1 ami·e - soirée de l'événement\n50\u0025 au bar - soirée de l'événement\n2 boissons offertes (~10 CHF) - soirée de l'événement\n1 entrée saisonnière + 1 ami·e</string>
-
     <string name="benefits_help_nova_gd_asso_title">Graphiste - pour l'association (hors une seule soirée)</string>
     <string name="benefits_help_nova_gd_asso_rationale">Travail non limité à une soirée : davantage de boissons offertes, sans 50\u0025 au bar.</string>
     <string name="benefits_help_nova_gd_asso_perks">2 entrées saisonnières + 1 ami·e chacune\n4 boissons offertes (~20 CHF)</string>
-
     <string name="benefits_help_section_galaxie_title">Galaxie</string>
     <string name="benefits_help_section_galaxie_body">Trois contributions le même mois civil (shifts et réunions)\nPour Orion, les réunions ne comptent pas dans ces trois contributions\nCe mois-là : entrée gratuite à tous les événements, 50\u0025 au bar, et une boisson supplémentaire\nCes avantages s'ajoutent à ceux de chaque shift</string>
-
     <string name="benefits_help_section_orion_title">Orion</string>
     <string name="benefits_help_section_orion_body">Indique que le type de poste est un job Orion\nPendant un an à partir du début du mandat : entrée gratuite, 50\u0025 au bar, 1 invité·e\n270 CHF sur le porte-monnaie interne (budget T-shirt et boissons)</string>
-
     <string name="benefits_help_section_veteran_title">Vétéran·e·x</string>
     <string name="benefits_help_section_veteran_body">L'année suivant Orion\nEntrée gratuite et 50\u0025 au bar sont maintenus\nLe porte-monnaie interne prend fin avec le mandat</string>
-
     <string name="benefits_help_section_timing_title">Quand les avantages s'activent dans l'application</string>
     <string name="benefits_help_section_timing_body">Les avantages « nuit d'événement » suivent le jour de soirée du lieu (paramètre « changement de jour » dans les réglages)\nLes entrées futures deviennent utilisables à partir du même moment\nOrion, Galaxie et Vétéran suivent des périodes plus longues</string>
-
     <string name="benefits_help_footer_title">Remarques utiles</string>
     <string name="benefits_help_footer_bullets">Profité / non-profité - savoir si les horaires du shift ont permis de profiter de la soirée ou non (sans lien avec l'entrée)\nLe 50\u0025 au bar dépend des prix enregistrés dans Lightspeed\nGalaxie se cumule avec les avantages par shift</string>
-
     <string name="nova_job_type_label">Type d'avantages Nova</string>
     <string name="nova_type_default_shift">Shift par défaut</string>
     <string name="nova_type_meeting">Réunion</string>
@@ -873,10 +856,19 @@
     <string name="temp_guest_event_date_label">Date de l’événement</string>
     <string name="temp_guest_contact_phone_label">Numéro de téléphone d’urgence</string>
     <string name="temp_guest_chip_label">Temp</string>
-    <string name="temp_guest_timeline_button">Futurs / Historique</string>
-    <string name="temp_guest_timeline_title">Guest list temporaire</string>
+    <string name="temp_guest_timeline_button">Soirée · Futurs · Historique</string>
+    <string name="temp_guest_timeline_title">Soirée · Futurs · Historique</string>
     <string name="temp_guest_tab_temp">Temporaire</string>
     <string name="temp_guest_tab_volunteer">Bénévole</string>
+    <string name="temp_guest_none_volunteers">Aucun bénévole pour ce filtre.</string>
+    <string name="temp_guest_subsection_volunteers">Bénévoles</string>
+    <string name="temp_guest_none_remaining">Toute la guestlist de ce soir est entrée.</string>
+    <string name="temp_guest_section_remaining">Pas encore entrés</string>
+    <string name="temp_guest_tonight_tracking">Entrés / total de la soirée</string>
+    <string name="temp_guest_tonight_title">Guests temporaires de la soirée</string>
+    <string name="temp_guest_tab_history">Historique</string>
+    <string name="temp_guest_tab_future">Futurs</string>
+    <string name="temp_guest_tab_tonight">Soirée</string>
     <string name="temp_guest_range_label">Période</string>
     <string name="temp_guest_range_three_days">+/- 3 jours</string>
     <string name="temp_guest_range_three_days_short">±3j</string>
@@ -892,14 +884,14 @@
     <string name="temp_guest_range_one_year_short">1a</string>
     <string name="temp_guest_range_all_time">Depuis toujours</string>
     <string name="temp_guest_range_all_time_short">Tous</string>
-    <string name="temp_guest_section_upcoming">Futurs invités</string>
-    <string name="temp_guest_section_past">Historique</string>
-    <string name="temp_guest_none_upcoming">Aucun invité futur pour ce filtre.</string>
-    <string name="temp_guest_none_past">Aucun invité passé pour ce filtre.</string>
+    <string name="temp_guest_section_upcoming">Futurs guests temporaires</string>
+    <string name="temp_guest_section_past">Anciens guests temporaires</string>
+    <string name="temp_guest_none_upcoming">Aucun guest temporaire futur pour ce filtre.</string>
+    <string name="temp_guest_none_past">Aucun ancien guest temporaire pour ce filtre.</string>
     
     <!-- App Information -->
     <string name="app_info_title">Informations sur l'application</string>
-    <string name="app_version">NoctuList 2.1.1</string>
+    <string name="app_version">NoctuList 2.1.2</string>
     <string name="app_designed_for">Conçu pour les lieux du Collectif Nocturne</string>
     <string name="app_developed_full">Développé pour le Collectif Nocturne par Leonardo Mondada</string>
     <string name="last_sync">Dernière mise à jour : %1$s</string>
@@ -955,8 +947,8 @@
     <string name="scan_with_usb_reader">Scanner avec le lecteur externe</string>
     <string name="usb_reader_waiting_card_short">Carte en attente...</string>
     <string name="scanner_ble_reader_footer_label">Lecteur Bluetooth (ACR1255U-J1)</string>
-    <string name="scanner_ble_reader_footer_connected">Connecté — prêt à scanner</string>
-    <string name="scanner_ble_reader_footer_disconnected">Non connecté — réveillez le lecteur / attendez le Bluetooth</string>
+    <string name="scanner_ble_reader_footer_connected">Connecté - prêt à scanner</string>
+    <string name="scanner_ble_reader_footer_disconnected">Non connecté - réveillez le lecteur / attendez le Bluetooth</string>
     <string name="scanner_ble_reader_footer_connecting">Reconnexion après réveil…</string>
     <string name="scanner_ble_reader_footer_reading">Lecture de la carte…</string>
     <string name="nfc_not_supported_device">Cet appareil ne prend pas en charge le scan NFC.</string>
@@ -979,7 +971,7 @@
     <string name="volunteer_id">ID du·de la bénévole</string>
     <string name="find_volunteer">Trouver un·e bénévole</string>
     <string name="please_enter_valid_volunteer_id">Veuillez entrer un ID bénévole valide</string>
-    <string name="volunteer_id_not_found">Bénévole avec l'ID \"%1$s\" introuvable</string>
+    <string name="volunteer_id_not_found">Bénévole avec l'ID "%1$s" introuvable</string>
     <string name="available_volunteers">Bénévoles disponibles :</string>
     <string name="error_processing_qr_code">Erreur de traitement du QR code : %1$s</string>
     <string name="invalid_qr_code_format">Format de QR code invalide : %1$s</string>
@@ -1049,7 +1041,7 @@
     <string name="email_wallet_pass_cert_password_label">Mot de passe du certificat</string>
     <string name="email_wallet_pass_cert_password_hint">Mot de passe du fichier .p12</string>
     <string name="email_wallet_pass_cert_configured">Signature Apple Wallet prête (%1$s · Équipe %2$s).</string>
-    <string name="email_wallet_pass_cert_missing">Aucun certificat configuré — les passes fonctionnent avec Google Pay mais pas avec Apple Wallet.</string>
+    <string name="email_wallet_pass_cert_missing">Aucun certificat configuré - les passes fonctionnent avec Google Pay mais pas avec Apple Wallet.</string>
     <string name="email_include_logo_label">Inclure le Logo de l'Association</string>
     <string name="email_include_logo_description">Ajouter le logo de votre organisation à l'email</string>
     <string name="email_logo_upload">Télécharger le Logo</string>
@@ -1066,12 +1058,12 @@
     <string name="email_gmail_oauth_client_description">Sur desktop, un fichier JSON OAuth Google (type application de bureau) avec l'API Gmail activée est requis. Téléchargez-le depuis Google Cloud Console, puis importez-le ici avant de vous connecter.</string>
     <string name="email_gmail_oauth_client_upload">Importer le JSON OAuth</string>
     <string name="email_gmail_oauth_client_configured">Client OAuth configuré</string>
-    <string name="email_gmail_oauth_client_missing">Fichier OAuth client manquant — importez-le avant de vous connecter avec Google</string>
+    <string name="email_gmail_oauth_client_missing">Fichier OAuth client manquant - importez-le avant de vous connecter avec Google</string>
     <string name="email_gmail_use_service_account">Utiliser le même compte de service que Google Sheets</string>
     <string name="email_gmail_use_service_account_description">Utilise le JSON du compte de service des paramètres Synchronisation. Nécessite l'API Gmail activée et la délégation à l'échelle du domaine (Google Workspace).</string>
     <string name="email_gmail_service_account_sender_label">Adresse e-mail expéditeur</string>
     <string name="email_gmail_service_account_sender_description">L'adresse Gmail ou Google Workspace qui envoie les e-mails au nom du compte de service.</string>
-    <string name="email_gmail_service_account_missing">Clé de compte de service manquante — importez-la d'abord dans les paramètres Synchronisation</string>
+    <string name="email_gmail_service_account_missing">Clé de compte de service manquante - importez-la d'abord dans les paramètres Synchronisation</string>
     <string name="email_gmail_service_account_configured">Clé de compte de service trouvée</string>
     <string name="email_gmail_oauth_help_title">Aide API Gmail</string>
     <string name="email_gmail_help_tab_oauth">Client OAuth</string>
@@ -1091,7 +1083,7 @@
     <string name="email_gmail_oauth_step_6_description">Cliquez sur « Se connecter avec Google ». Votre navigateur s'ouvre pour autoriser NoctuList. Après validation, l'application reçoit l'accès automatiquement (ports locaux 8888, 8765 ou 9090).</string>
     <string name="email_gmail_service_account_help_intro">Lorsque « Utiliser le même compte de service que Google Sheets » est activé, saisissez l'adresse e-mail réelle qui doit envoyer les messages. Le compte de service agit au nom de cette boîte via la délégation Google Workspace.</string>
     <string name="email_gmail_service_account_help_sender_title">Que saisir</string>
-    <string name="email_gmail_service_account_help_sender_body">L'adresse d'envoi visible — une boîte Gmail ou Google Workspace de votre domaine, par exemple contact@votreassociation.org ou no-reply@votre-domaine.org.</string>
+    <string name="email_gmail_service_account_help_sender_body">L'adresse d'envoi visible - une boîte Gmail ou Google Workspace de votre domaine, par exemple contact@votreassociation.org ou no-reply@votre-domaine.org.</string>
     <string name="email_gmail_service_account_help_not_title">À ne pas utiliser</string>
     <string name="email_gmail_service_account_help_not_body">L'e-mail du compte de service affiché dans Synchronisation (se terminant par .iam.gserviceaccount.com). Cette adresse sert uniquement à l'authentification API, pas à l'envoi.</string>
     <string name="email_gmail_service_account_help_requirements_title">Prérequis</string>
@@ -1164,6 +1156,7 @@
     <!-- Additional Volunteer Panel Strings -->
     <string name="expired">Expiré</string>
     <string name="benefit_details">Détails des avantages</string>
+    <string name="access_details">Détails des accès</string>
     <string name="more_shifts">... et %1$d shifts de plus</string>
     <string name="years_old">%1$d ans</string>
     
@@ -1179,7 +1172,7 @@
     <string name="people_counter_priority">Priorité</string>
     <string name="people_counter_sheet_synced">Dernière mise à jour du compteur</string>
     <string name="people_counter_priority_lost">Un autre appareil a pris la priorité et votre interrupteur a été désactivé. Maintenez l'interrupteur Priorité pendant 3 secondes pour reprendre la priorité sur cet appareil.</string>
-    <string name="people_counter_another_device">Cet appareil n'a pas la priorité — un autre appareil contrôle le compteur. Maintenez l'interrupteur Priorité pendant 3 secondes pour prendre la priorité sur cet appareil.</string>
+    <string name="people_counter_another_device">Cet appareil n'a pas la priorité - un autre appareil contrôle le compteur. Maintenez l'interrupteur Priorité pendant 3 secondes pour prendre la priorité sur cet appareil.</string>
     <string name="people_counter_no_priority_readonly">Cet appareil n'a pas la priorité pour ce lieu. Maintenez l'interrupteur Priorité pendant 3 secondes pour prendre la priorité.</string>
     <string name="people_counter_priority_firebase_account">Priorité détenue par %1$s</string>
     <string name="people_counter_priority_firebase_account_unknown">Priorité détenue par un autre compte Firebase.</string>
@@ -1235,18 +1228,18 @@
     <string name="not_enough_data">Pas assez de données</string>
     <string name="stats_category_volunteers">Bénévoles</string>
     <string name="stats_category_guest_list">Liste d'invité·e·s</string>
-    <string name="stats_category_pos_activity">POS — Ventes et crédits</string>
-    <string name="stats_category_pos_mix">POS — Mix</string>
+    <string name="stats_category_pos_activity">POS - Ventes et crédits</string>
+    <string name="stats_category_pos_mix">POS - Mix</string>
     <string name="stats_section_volunteers">Bénévoles</string>
     <string name="stats_section_guest_list">Liste d'invité·e·s</string>
     <string name="stats_section_pos">POS</string>
-    <string name="stats_category_volunteer_activity">Bénévoles — activité</string>
-    <string name="stats_category_volunteer_shifts">Bénévoles — shifts</string>
-    <string name="stats_category_volunteer_ranks">Bénévoles — rangs</string>
-    <string name="stats_category_volunteer_profile">Bénévoles — profil</string>
-    <string name="stats_category_pos_sales">POS — Ventes</string>
-    <string name="stats_category_pos_credits">POS — Crédits</string>
-    <string name="stats_category_pos_customers">POS — Clients et soldes</string>
+    <string name="stats_category_volunteer_activity">Bénévoles - activité</string>
+    <string name="stats_category_volunteer_shifts">Bénévoles - shifts</string>
+    <string name="stats_category_volunteer_ranks">Bénévoles - rangs</string>
+    <string name="stats_category_volunteer_profile">Bénévoles - profil</string>
+    <string name="stats_category_pos_sales">POS - Ventes</string>
+    <string name="stats_category_pos_credits">POS - Crédits</string>
+    <string name="stats_category_pos_customers">POS - Clients et soldes</string>
     <string name="stats_category_toc_activity">Activité</string>
     <string name="stats_category_toc_shifts">Shifts</string>
     <string name="stats_category_toc_ranks">Rangs</string>
@@ -1272,7 +1265,7 @@
     <string name="pos_stats_cash_personnel_description">Espèces ou carte payées lorsque le crédit ne suffisait pas</string>
     <string name="pos_stats_category_mix">Ventes par catégorie de produits</string>
     <string name="pos_stats_category_mix_description">Part du chiffre d'affaires POS par catégorie de produits</string>
-    <string name="pos_stats_category_products">%1$s — articles vendus</string>
+    <string name="pos_stats_category_products">%1$s - articles vendus</string>
     <string name="pos_stats_category_products_description">Répartition des articles vendus dans cette catégorie</string>
     <string name="pos_stats_sales_by_venue">Ventes par lieu</string>
     <string name="pos_stats_sales_by_venue_description">Part des ventes POS par lieu</string>
@@ -1430,7 +1423,7 @@
     <!-- Device Time/Date Error -->
     <string name="sync_error_device_time_title">⏰ Heure/Date de l'appareil incorrecte</string>
     <string name="sync_error_device_time_message">L'heure ou la date de votre appareil est incorrecte. L'API Google Sheets nécessite une synchronisation horaire précise pour fonctionner correctement.</string>
-    <string name="sync_error_device_time_solution">Comment corriger :\n\n1. Allez dans Paramètres\n2. Recherchez \"Date &amp; heure\" ou \"Système\"\n3. Activez \"Date &amp; heure automatiques\" ou \"Définir l'heure automatiquement\"\n4. Si non disponible, définissez manuellement la date et l'heure correctes\n5. Redémarrez l'application et réessayez la synchronisation\n\nCourant sur les anciennes tablettes - veuillez vérifier les paramètres de votre appareil !</string>
+    <string name="sync_error_device_time_solution">Comment corriger :\n\n1. Allez dans Paramètres\n2. Recherchez "Date &amp; heure" ou "Système"\n3. Activez "Date &amp; heure automatiques" ou "Définir l'heure automatiquement"\n4. Si non disponible, définissez manuellement la date et l'heure correctes\n5. Redémarrez l'application et réessayez la synchronisation\n\nCourant sur les anciennes tablettes - veuillez vérifier les paramètres de votre appareil !</string>
     <string name="sync_error_device_time_open_settings">Ouvrir les paramètres</string>
     
     <!-- Specific Sync Error Types -->
@@ -1467,7 +1460,7 @@
     <string name="sync_advice_rate_limit">• Attendez 1–2 minutes avant de réessayer\n• L'application réessaiera automatiquement\n• Envisagez de réduire la fréquence de synchronisation dans les paramètres</string>
     <string name="sync_advice_authentication">• Vérifiez votre fichier de clé de compte de service\n• Assurez-vous que la clé est téléchargée dans les Paramètres\n• Rechargez la clé si nécessaire</string>
     <string name="sync_advice_permission">• Partagez votre feuille de calcul avec l'email du compte de service\n• Accordez l'accès Éditeur au compte de service\n• Vérifiez l'email du compte dans votre fichier de clé</string>
-    <string name="sync_advice_firebase_permission">• Connectez-vous avec Google dans les paramètres Firebase (même compte sur chaque appareil)\n• Chaque org doit avoir `orgs/{orgId}/members/{votre-uid}` dans Firestore — le switch crée automatiquement les nouvelles orgs\n• Si l'org existe déjà, demandez une invitation admin ou utilisez le code de join\n• Publiez les dernières firestore.rules depuis le tutoriel in-app</string>
+    <string name="sync_advice_firebase_permission">• Connectez-vous avec Google dans les paramètres Firebase (même compte sur chaque appareil)\n• Chaque org doit avoir `orgs/{orgId}/members/{votre-uid}` dans Firestore - le switch crée automatiquement les nouvelles orgs\n• Si l'org existe déjà, demandez une invitation admin ou utilisez le code de join\n• Publiez les dernières firestore.rules depuis le tutoriel in-app</string>
     <string name="sync_advice_network">• Vérifiez votre connexion internet\n• Vérifiez que le Wi-Fi ou les données mobiles sont activés\n• Réessayez quand la connexion est stable\n• Assurez-vous que le mode avion est désactivé</string>
     <string name="sync_advice_not_found">• Vérifiez l'ID de la feuille de calcul dans les Paramètres\n• Vérifiez que les noms des feuilles existent\n• Assurez-vous que la feuille de calcul est accessible</string>
     <string name="sync_advice_generic">• Réessayez la synchronisation\n• Vérifiez vos paramètres Google Sheets\n• Consultez les Paramètres pour vérifier votre configuration</string>
@@ -1573,9 +1566,9 @@
     <string name="firebase_settings_section_access">Accès &amp; équipe</string>
     <string name="firebase_settings_section_optional">Optionnel</string>
     <string name="institution_settings_firebase_admin_only">Les paramètres d’institution synchronisés (devise, e-mails, tampon de crédit, photos, miroir) ne peuvent être modifiés que par un admin Firebase de l’organisation.</string>
-    <string name="firebase_status_ready">Prêt — connecté et authentifié</string>
-    <string name="firebase_status_need_sign_in">Presque prêt — connectez-vous avec Google</string>
-    <string name="firebase_status_need_config">Configuration incomplète — renseignez les champs ci-dessous</string>
+    <string name="firebase_status_ready">Prêt - connecté et authentifié</string>
+    <string name="firebase_status_need_sign_in">Presque prêt - connectez-vous avec Google</string>
+    <string name="firebase_status_need_config">Configuration incomplète - renseignez les champs ci-dessous</string>
     <string name="firebase_status_signed_in_as">Connecté : %1$s</string>
     <string name="firebase_status_not_signed_in">Non connecté</string>
     <string name="firebase_step_org_title">1. Votre organisation</string>
@@ -1608,7 +1601,7 @@
     <string name="firebase_config_paste_hint">Collez la config SDK Web de la console Firebase (apiKey, appId, projectId). Réservé aux admins.</string>
     <string name="firebase_config_paste_apply">Appliquer la config collée</string>
     <string name="firebase_join_qr_title">Inviter d’autres appareils (QR)</string>
-    <string name="firebase_join_qr_body">Partagez ce QR uniquement avec votre équipe. Il contient la config projet, les identifiants Google Sign-In et le code d'invitation — un seul scan suffit.</string>
+    <string name="firebase_join_qr_body">Partagez ce QR uniquement avec votre équipe. Il contient la config projet, les identifiants Google Sign-In et le code d'invitation - un seul scan suffit.</string>
     <string name="firebase_join_error_oauth_missing">Ce code d'invitation n'inclut pas les identifiants Google Sign-In. Demandez un nouveau QR à votre admin (Paramètres → Sync Firebase).</string>
     <string name="firebase_join_error_invite_missing">Ce code n'inclut pas le code d'invitation. Demandez un QR complet à votre admin, ou saisissez le code d'invitation à 8 caractères ci-dessous.</string>
     <string name="firebase_join_error_invalid">Ceci n'est pas un code de jonction NoctuList. Scannez le QR de jonction depuis un appareil administrateur (Réglages → Synchronisation Firebase).</string>
@@ -1616,15 +1609,15 @@
     <string name="firebase_join_copy_code">Copier le code de configuration</string>
     <string name="firebase_join_code_copied">Code de configuration copié</string>
     <string name="firebase_join_scan_title">Rejoindre cette organisation</string>
-    <string name="firebase_join_scan_body">Scannez le QR admin (recommandé), ou collez le code de configuration. Un code complet inclut déjà l'invitation — pas besoin d'un second code.</string>
+    <string name="firebase_join_scan_body">Scannez le QR admin (recommandé), ou collez le code de configuration. Un code complet inclut déjà l'invitation - pas besoin d'un second code.</string>
     <string name="firebase_join_scan">Scanner le QR</string>
     <string name="firebase_join_paste_label">Code de configuration</string>
     <string name="firebase_join_paste_code">Appliquer le code</string>
-    <string name="firebase_join_received">Configuration reçue — connectez-vous avec Google pour terminer.</string>
+    <string name="firebase_join_received">Configuration reçue - connectez-vous avec Google pour terminer.</string>
     <string name="firebase_join_wizard_option">Rejoindre une organisation</string>
     <string name="firebase_join_wizard_option_body">Scannez le QR admin ou collez le code de configuration (inclut l'invitation).</string>
     <string name="firebase_join_config_code_label">Code de configuration</string>
-    <string name="firebase_join_config_code_hint">Long code commençant par noctulist-fb — le même contenu que le QR (inclut l'invitation).</string>
+    <string name="firebase_join_config_code_hint">Long code commençant par noctulist-fb - le même contenu que le QR (inclut l'invitation).</string>
     <string name="firebase_join_invite_code_label">Code d'invitation (optionnel)</string>
     <string name="firebase_join_invite_code_hint">Uniquement pour les anciens QR qui ne l'incluent pas. Les codes complets le contiennent déjà.</string>
     <string name="firebase_join_invite_copy">Copier le code d'invitation</string>
@@ -1642,12 +1635,12 @@
     <string name="firebase_team_body">Chaque personne qui utilise Firebase doit être enregistrée comme membre de l’organisation avec un rôle. Sans cela, la connexion Google réussit mais Firestore refuse tout accès aux données.</string>
     <string name="firebase_team_steps">1. Demandez à la personne de se connecter une fois avec Google dans l’app.\n2. Dans la console Firebase → Authentication → Utilisateurs, copiez son UID (jamais affiché dans NoctuList).\n3. Collez l’UID ci-dessous, ajoutez son e-mail Google si votre org filtre les domaines, puis choisissez un rôle. Vous devez être connecté·e en tant qu’admin Firebase de l’organisation.</string>
     <string name="firebase_team_roles_heading">Ce que permet chaque rôle</string>
-    <string name="firebase_team_role_admin_desc">Admin — paramètres complets, migration, invitations, toutes les données.</string>
-    <string name="firebase_team_role_door_desc">Porte / billetterie — liste d’entrée, jobs, lieux (Billeterie).</string>
-    <string name="firebase_team_role_pos_desc">POS — ventes, soldes de comptes, transfers (caisse).</string>
+    <string name="firebase_team_role_admin_desc">Admin - paramètres complets, migration, invitations, toutes les données.</string>
+    <string name="firebase_team_role_door_desc">Porte / billetterie - liste d’entrée, jobs, lieux (Billetterie).</string>
+    <string name="firebase_team_role_pos_desc">POS - ventes, soldes de comptes, transfers (caisse).</string>
     <string name="firebase_team_show">Inviter quelqu’un / attribuer un rôle</string>
     <string name="firebase_team_not_domains">À ne pas confondre avec « Domaines e-mail Google autorisés » ci-dessus : les domaines filtrent qui peut se connecter ; cette section donne l’accès aux données de l’institution dans Firestore.</string>
-    <string name="firebase_team_role_member_desc">Membre — accès sync pour les appareils d’équipe. Ouvrir le mode Admin exige toujours une carte admin locale.</string>
+    <string name="firebase_team_role_member_desc">Membre - accès sync pour les appareils d’équipe. Ouvrir le mode Admin exige toujours une carte admin locale.</string>
     <string name="firebase_team_admins_heading">Admins Firebase de l’organisation</string>
     <string name="firebase_team_admins_empty">Aucun admin Firebase trouvé pour cette organisation. Le premier compte Google qui a créé l’org devrait apparaître ici.</string>
     <string name="firebase_team_members_heading">Autres membres</string>
@@ -1666,7 +1659,7 @@
     <string name="firebase_role_member">Membre</string>
     <string name="firebase_email_domains_title">Domaines e-mail Google autorisés</string>
     <string name="firebase_email_domains_body">Seuls les comptes Google dont l’adresse se termine par un de ces domaines peuvent se connecter et accéder aux données. Laissez vide pour autoriser toute adresse.</string>
-    <string name="firebase_email_domains_empty">Aucune restriction — tout e-mail Google peut se connecter (si invité / bootstrap).</string>
+    <string name="firebase_email_domains_empty">Aucune restriction - tout e-mail Google peut se connecter (si invité / bootstrap).</string>
     <string name="firebase_email_domains_label">Domaine</string>
     <string name="firebase_email_domains_hint">Exemple : quelquechose.ch ou @quelquechose.ch</string>
     <string name="firebase_email_domains_add">Ajouter le domaine</string>
@@ -1674,7 +1667,7 @@
     <string name="firebase_section_show">Afficher</string>
     <string name="firebase_section_hide">Masquer</string>
     <string name="firebase_member_uid_label">UID utilisateur Firebase du collègue</string>
-    <string name="firebase_member_uid_hint">À copier uniquement depuis Console Firebase → Authentication → Utilisateurs. Les UID ne sont jamais listés dans NoctuList — octroyer un rôle exige l’accès à la console Firebase.</string>
+    <string name="firebase_member_uid_hint">À copier uniquement depuis Console Firebase → Authentication → Utilisateurs. Les UID ne sont jamais listés dans NoctuList - octroyer un rôle exige l’accès à la console Firebase.</string>
     <string name="firebase_member_email_label">E-mail Google (si requis)</string>
     <string name="firebase_member_email_hint">Obligatoire seulement si votre org restreint les domaines e-mail. Affiché dans la liste des membres ; ne remplace pas l’UID.</string>
     <string name="firebase_member_unknown_email">Compte Google (e-mail inconnu)</string>
@@ -1684,7 +1677,7 @@
     <string name="firebase_tools_title">Extras</string>
     <string name="firebase_tools_body">Outils optionnels qui ne changent pas votre backend actif.</string>
     <string name="firebase_migrate_section_title">Changer de backend</string>
-    <string name="firebase_migrate_section_body">Déplace toutes les données vers un autre backend et demande aux autres appareils de se reconnecter. Réservé aux admins — choisissez un moment calme.</string>
+    <string name="firebase_migrate_section_body">Déplace toutes les données vers un autre backend et demande aux autres appareils de se reconnecter. Réservé aux admins - choisissez un moment calme.</string>
     <string name="firebase_migrate_to_sheets">Passer à Google Sheets…</string>
     <string name="sheets_migrate_to_firebase">Passer à Firebase…</string>
     <string name="sheets_migrate_card_title">Passer à Firebase</string>
@@ -1696,30 +1689,29 @@
     <string name="firebase_tutorial_oauth_note">L'OAuth Gmail/e-mail (JSON Desktop du développeur) est séparé et ne doit pas servir au Sign-In Firebase. Utilisez le Web client ID + secret de l'institution dans ce projet Firebase.</string>
     <string name="firebase_tutorial_method_label">Méthode du guide</string>
     <string name="firebase_tutorial_method_firebase">Console Firebase</string>
-    <string name="firebase_tutorial_method_firebase_hint">Recommandé : console.firebase.google.com — écrans plus clairs pour Auth, Firestore et config Web. Ouvrez brièvement Cloud Console seulement pour le secret client Web et les URI localhost.</string>
+    <string name="firebase_tutorial_method_firebase_hint">Recommandé : console.firebase.google.com - écrans plus clairs pour Auth, Firestore et config Web. Ouvrez brièvement Cloud Console seulement pour le secret client Web et les URI localhost.</string>
     <string name="firebase_tutorial_method_cloud">Google Cloud Console</string>
     <string name="firebase_tutorial_method_cloud_hint">Pour les admins déjà dans console.cloud.google.com (même projet que Sheets). Il faut quand même ouvrir Firebase une fois pour Auth Google et l'Application ID (appId).</string>
     <string name="firebase_tutorial_copy_rules">Copier firestore.rules dans le presse-papiers</string>
     <string name="firebase_tutorial_copy_rules_done">Copié - collez dans Firestore → Rules, puis Publier</string>
-    <string name="firebase_tutorial_copy_rules_error">Impossible de charger les règles — ouvrez firebase/firestore.rules dans le projet</string>
+    <string name="firebase_tutorial_copy_rules_error">Impossible de charger les règles - ouvrez firebase/firestore.rules dans le projet</string>
     <string name="firebase_tutorial_copy_redirect_uris">Copier les URI localhost</string>
-    <string name="firebase_tutorial_copy_redirect_uris_done">Copié — collez chaque URI dans « URI de redirection autorisées », puis Enregistrer</string>
+    <string name="firebase_tutorial_copy_redirect_uris_done">Copié - collez chaque URI dans « URI de redirection autorisées », puis Enregistrer</string>
     <string name="firebase_tutorial_storage_optional_title">Facultatif : photos de profil (Firebase Storage)</string>
-    <string name="firebase_tutorial_storage_optional_body">Ignorez cette étape pour rester sur l’offre gratuite Spark. Activer Storage peut exiger le plan Blaze (payant).\n\nPour les photos de profil :\n1. Firebase Console → Build → Storage → Get started (même projet).\n2. Storage → Rules (l’URL doit contenir /storage/rules — pas Firestore).\n3. Collez les règles Storage NoctuList (bouton ci-dessous) → Publish.\n4. Dans NoctuList Réglages → Firebase, activez « Activer les photos de profil » (tous les appareils de l’organisation l’activent aussi).\n\nVous pouvez le faire plus tard. L’app fonctionne entièrement sans Storage.</string>
+    <string name="firebase_tutorial_storage_optional_body">Ignorez cette étape pour rester sur l’offre gratuite Spark. Activer Storage peut exiger le plan Blaze (payant).\n\nPour les photos de profil :\n1. Firebase Console → Build → Storage → Get started (même projet).\n2. Storage → Rules (l’URL doit contenir /storage/rules - pas Firestore).\n3. Collez les règles Storage NoctuList (bouton ci-dessous) → Publish.\n4. Dans NoctuList Réglages → Firebase, activez « Activer les photos de profil » (tous les appareils de l’organisation l’activent aussi).\n\nVous pouvez le faire plus tard. L’app fonctionne entièrement sans Storage.</string>
     <string name="firebase_tutorial_copy_storage_rules">Copier storage.rules dans le presse-papiers</string>
-    <string name="firebase_tutorial_copy_storage_rules_done">Copié — collez dans Storage → Rules, puis Publish</string>
-    <string name="firebase_tutorial_copy_storage_rules_error">Impossible de charger les règles — ouvrez firebase/storage.rules dans le projet</string>
-
+    <string name="firebase_tutorial_copy_storage_rules_done">Copié - collez dans Storage → Rules, puis Publish</string>
+    <string name="firebase_tutorial_copy_storage_rules_error">Impossible de charger les règles - ouvrez firebase/storage.rules dans le projet</string>
     <string name="firebase_tutorial_fb_step1_title">1. Créer ou ouvrir le projet Firebase</string>
-    <string name="firebase_tutorial_fb_step1_body">1. Ouvrez https://console.firebase.google.com avec un compte Google de l'institution qui peut gérer le projet.\n2. Cliquez sur Ajouter un projet (ou sélectionnez un projet existant).\n3. Si Google Sheets utilise déjà un projet Cloud : choisissez « Utiliser un projet Google Cloud existant » et ce même projet — ne créez pas un second projet vide.\n4. Analytics est facultatif. Terminez l'assistant.\n5. Notez le Project ID (Paramètres du projet → Général). Vous le collerez dans NoctuList.</string>
+    <string name="firebase_tutorial_fb_step1_body">1. Ouvrez https://console.firebase.google.com avec un compte Google de l'institution qui peut gérer le projet.\n2. Cliquez sur Ajouter un projet (ou sélectionnez un projet existant).\n3. Si Google Sheets utilise déjà un projet Cloud : choisissez « Utiliser un projet Google Cloud existant » et ce même projet - ne créez pas un second projet vide.\n4. Analytics est facultatif. Terminez l'assistant.\n5. Notez le Project ID (Paramètres du projet → Général). Vous le collerez dans NoctuList.</string>
     <string name="firebase_tutorial_fb_step2_title">2. Créer Firestore</string>
-    <string name="firebase_tutorial_fb_step2_body">Dans la console Firebase, même projet :\n1. Build → Firestore Database → Créer une base de données.\n2. Préférez le mode production, région proche de vos lieux (UE si requis), puis créer.\n3. N'ajoutez pas de documents à la main — NoctuList les crée sous orgs/{orgId}/…</string>
+    <string name="firebase_tutorial_fb_step2_body">Dans la console Firebase, même projet :\n1. Build → Firestore Database → Créer une base de données.\n2. Préférez le mode production, région proche de vos lieux (UE si requis), puis créer.\n3. N'ajoutez pas de documents à la main - NoctuList les crée sous orgs/{orgId}/…</string>
     <string name="firebase_tutorial_fb_step3_title">3. Publier les règles de sécurité</string>
-    <string name="firebase_tutorial_fb_step3_body">Console Firebase → Build → Firestore → Rules (l'URL doit contenir /firestore/rules — pas Realtime Database).\nTout sélectionner, coller les règles NoctuList (bouton ci-dessous), puis Publier. Sans ces règles, les appareils ne peuvent pas lire/écrire correctement.</string>
+    <string name="firebase_tutorial_fb_step3_body">Console Firebase → Build → Firestore → Rules (l'URL doit contenir /firestore/rules - pas Realtime Database).\nTout sélectionner, coller les règles NoctuList (bouton ci-dessous), puis Publier. Sans ces règles, les appareils ne peuvent pas lire/écrire correctement.</string>
     <string name="firebase_tutorial_fb_step4_title">4. Activer Google Sign-In</string>
-    <string name="firebase_tutorial_fb_step4_body">1. Console Firebase → Build → Authentication → Commencer (si besoin).\n2. Méthode de connexion → Google → Activer → Enregistrer.\n3. Sur cet écran, notez le Web client ID affiché pour le fournisseur Google — c'est le client Web de l'institution (pas Gmail Desktop).\n4. Si Firebase crée automatiquement un client OAuth Web, gardez-le. Ne le remplacez pas par le JSON OAuth Gmail du développeur.</string>
+    <string name="firebase_tutorial_fb_step4_body">1. Console Firebase → Build → Authentication → Commencer (si besoin).\n2. Méthode de connexion → Google → Activer → Enregistrer.\n3. Sur cet écran, notez le Web client ID affiché pour le fournisseur Google - c'est le client Web de l'institution (pas Gmail Desktop).\n4. Si Firebase crée automatiquement un client OAuth Web, gardez-le. Ne le remplacez pas par le JSON OAuth Gmail du développeur.</string>
     <string name="firebase_tutorial_fb_step5_title">5. Copier les valeurs dans NoctuList</string>
-    <string name="firebase_tutorial_fb_step5_body">Gardez cette liste ouverte.\n\nA) Config Web (le plus simple)\n• Paramètres du projet (engrenage) → Général → Vos applications → app Web.\n• Si aucune : Ajouter une app → Web (&lt;/&gt;), surnom « NoctuList », sans Hosting.\n• Ouvrez Config / extrait SDK et copiez apiKey, appId, projectId — ou collez tout l'extrait dans NoctuList « Coller la config Web Firebase ».\n\nB) Web client ID\n• Authentication → Méthode de connexion → Google → Web client ID\n  OU Paramètres du projet → Général\n  OU Cloud Console → API et services → Identifiants → ID client OAuth 2.0 → type Application Web.\n• Collez dans NoctuList → Web client ID.\n\nC) Secret client Web (Desktop + Android)\n• Ouvrez https://console.cloud.google.com → même projet → API et services → Identifiants.\n• Ouvrez le même client Application Web ci-dessus.\n• Copiez le Secret client → NoctuList → Secret client Web.\n• PAS dans « Origines JavaScript autorisées » (une origine ne peut pas contenir /Callback).
+    <string name="firebase_tutorial_fb_step5_body">Gardez cette liste ouverte.\n\nA) Config Web (le plus simple)\n• Paramètres du projet (engrenage) → Général → Vos applications → app Web.\n• Si aucune : Ajouter une app → Web (&lt;/&gt;), surnom « NoctuList », sans Hosting.\n• Ouvrez Config / extrait SDK et copiez apiKey, appId, projectId - ou collez tout l'extrait dans NoctuList « Coller la config Web Firebase ».\n\nB) Web client ID\n• Authentication → Méthode de connexion → Google → Web client ID\n  OU Paramètres du projet → Général\n  OU Cloud Console → API et services → Identifiants → ID client OAuth 2.0 → type Application Web.\n• Collez dans NoctuList → Web client ID.\n\nC) Secret client Web (Desktop + Android)\n• Ouvrez https://console.cloud.google.com → même projet → API et services → Identifiants.\n• Ouvrez le même client Application Web ci-dessus.\n• Copiez le Secret client → NoctuList → Secret client Web.\n• PAS dans « Origines JavaScript autorisées » (une origine ne peut pas contenir /Callback).
 Descendez jusqu’à « URI de redirection autorisées » et ajoutez TOUTES celles-ci exactement (bouton de copie ci-dessous) :
   http://localhost:8889/Callback
   http://localhost:8888/Callback
@@ -1727,13 +1719,12 @@ Descendez jusqu’à « URI de redirection autorisées » et ajoutez TOUTES cell
   http://localhost:9090/Callback
 Origines optionnelles (sans chemin) : http://localhost:8889 etc.
 → Enregistrer, attendre environ une minute, puis réessayer Sign-In.\n\nPassez à l’étape 6.</string>
-
     <string name="firebase_tutorial_cloud_step1_title">1. Ouvrir le projet Cloud</string>
     <string name="firebase_tutorial_cloud_step1_body">1. Ouvrez https://console.cloud.google.com\n2. Barre du haut → sélecteur de projet → projet de l'institution (celui de Sheets si déjà utilisé).\n3. Confirmez le Project ID (puce du projet ou IAM et administration → Paramètres). Vous le collerez dans NoctuList.\n\nLier Firebase si besoin : https://console.firebase.google.com → Ajouter un projet → « Utiliser un projet Google Cloud existant » → ce même projet. Ne créez pas un projet vide tout neuf.</string>
     <string name="firebase_tutorial_cloud_step2_title">2. Activer Firestore</string>
-    <string name="firebase_tutorial_cloud_step2_body">Toujours dans Cloud Console, même projet :\n1. Menu ☰ → API et services → Bibliothèque → « Cloud Firestore API » → Activer.\n2. Menu ☰ → Firestore → Créer une base de données si demandé.\n3. Préférez mode natif / production, région proche de vos lieux, puis créer.\n4. N'ajoutez pas de documents à la main — NoctuList crée orgs/{orgId}/…</string>
+    <string name="firebase_tutorial_cloud_step2_body">Toujours dans Cloud Console, même projet :\n1. Menu ☰ → API et services → Bibliothèque → « Cloud Firestore API » → Activer.\n2. Menu ☰ → Firestore → Créer une base de données si demandé.\n3. Préférez mode natif / production, région proche de vos lieux, puis créer.\n4. N'ajoutez pas de documents à la main - NoctuList crée orgs/{orgId}/…</string>
     <string name="firebase_tutorial_cloud_step3_title">3. Publier les règles de sécurité</string>
-    <string name="firebase_tutorial_cloud_step3_body">Cloud Console → Firestore → Rules (l'URL doit contenir firestore et rules — pas Realtime Database).\nCollez les règles NoctuList (bouton ci-dessous) → Publier.\nSi l'éditeur Rules n'apparaît pas dans Cloud : console Firebase → Build → Firestore → Rules → coller → Publier.</string>
+    <string name="firebase_tutorial_cloud_step3_body">Cloud Console → Firestore → Rules (l'URL doit contenir firestore et rules - pas Realtime Database).\nCollez les règles NoctuList (bouton ci-dessous) → Publier.\nSi l'éditeur Rules n'apparaît pas dans Cloud : console Firebase → Build → Firestore → Rules → coller → Publier.</string>
     <string name="firebase_tutorial_cloud_step4_title">4. Activer Google Sign-In + client OAuth Web</string>
     <string name="firebase_tutorial_cloud_step4_body">A) Firebase Auth (obligatoire une fois)\n1. console.firebase.google.com → même projet → Authentication → Méthode de connexion → Google → Activer → Enregistrer.\n\nB) Client OAuth Web de l'institution (pas Gmail Desktop)\n1. Cloud Console → API et services → Identifiants.\n2. Sous ID client OAuth 2.0, ouvrez (ou créez) un client de type Application Web utilisé par Firebase Auth.\n3. N'utilisez pas le client JSON Gmail Desktop du développeur pour cela.\n4. PAS dans « Origines JavaScript autorisées » (une origine ne peut pas contenir /Callback).
 Descendez jusqu’à « URI de redirection autorisées » et ajoutez TOUTES celles-ci exactement (bouton de copie ci-dessous) :
@@ -1744,25 +1735,24 @@ Descendez jusqu’à « URI de redirection autorisées » et ajoutez TOUTES cell
 Origines optionnelles (sans chemin) : http://localhost:8889 etc.
 → Enregistrer, attendre environ une minute, puis réessayer Sign-In.\n5. Copiez l'ID client et le Secret client pour l'étape 5.</string>
     <string name="firebase_tutorial_cloud_step5_title">5. Copier les valeurs dans NoctuList</string>
-    <string name="firebase_tutorial_cloud_step5_body">A) Project ID — sélecteur de projet Cloud / IAM et administration → Paramètres.\n\nB) Clé API — Identifiants → Clés API (clé navigateur existante, ou Créer des identifiants → Clé API une fois).\n\nC) Web client ID + secret — Identifiants → ID client OAuth 2.0 → Application Web (étape 4). Collez les deux dans NoctuList (secret = Sign-In Desktop).\n\nD) Application ID (appId)\n• Console Firebase → Paramètres du projet → Général → Vos applications → Web.\n• Si aucune : Ajouter une app → Web une fois, surnom « NoctuList », sans Hosting ; copiez appId dans l'extrait Config.\n• Ou collez toute la config Web Firebase dans NoctuList.\n\nPassez à l’étape 6.</string>
-
+    <string name="firebase_tutorial_cloud_step5_body">A) Project ID - sélecteur de projet Cloud / IAM et administration → Paramètres.\n\nB) Clé API - Identifiants → Clés API (clé navigateur existante, ou Créer des identifiants → Clé API une fois).\n\nC) Web client ID + secret - Identifiants → ID client OAuth 2.0 → Application Web (étape 4). Collez les deux dans NoctuList (secret = Sign-In Desktop).\n\nD) Application ID (appId)\n• Console Firebase → Paramètres du projet → Général → Vos applications → Web.\n• Si aucune : Ajouter une app → Web une fois, surnom « NoctuList », sans Hosting ; copiez appId dans l'extrait Config.\n• Ou collez toute la config Web Firebase dans NoctuList.\n\nPassez à l’étape 6.</string>
     <string name="firebase_tutorial_step7_title">6. Remplir NoctuList, puis migrer / connecter</string>
-    <string name="firebase_tutorial_step7_body">Dans Sync Firebase (admin) ou la boîte de migration :\n• ID d'organisation — nom court partagé (ex. : noctulist-club). Identique sur chaque appareil.\n• Project ID, Application ID, clé API, Web client ID et secret client Web (Desktop et Android).\n• Ou collez la config Web + renseignez Web client ID/secret, puis utilisez le QR de rejoindre pour les autres appareils.\nConnectez-vous avec Google (le premier admin devient admin de l'org). Seulement après une connexion réussie, lancez la migration si vous quittez Sheets. Les pairs rejoignent via QR / follow — ils ne doivent pas resaisir les secrets.</string>
+    <string name="firebase_tutorial_step7_body">Dans Sync Firebase (admin) ou la boîte de migration :\n• ID d'organisation - nom court partagé (ex. : noctulist-club). Identique sur chaque appareil.\n• Project ID, Application ID, clé API, Web client ID et secret client Web (Desktop et Android).\n• Ou collez la config Web + renseignez Web client ID/secret, puis utilisez le QR de rejoindre pour les autres appareils.\nConnectez-vous avec Google (le premier admin devient admin de l'org). Seulement après une connexion réussie, lancez la migration si vous quittez Sheets. Les pairs rejoignent via QR / follow - ils ne doivent pas resaisir les secrets.</string>
     <string name="firebase_tutorial_step8_title">7. Après la configuration</string>
     <string name="firebase_tutorial_step8_body">Dans Firestore vous devez voir orgs/{votreOrgId}/… (guests, members, metadata, etc.). Gardez Sheets en secours jusqu'à avoir vérifié POS, porte et un second appareil. Facturation : restez sur l'offre gratuite pour tester ; passez au payant seulement si vous dépassez les quotas.</string>
     <string name="migration_wizard_to_firebase_title">Passer à Firebase</string>
     <string name="migration_wizard_to_sheets_title">Passer à Google Sheets</string>
     <string name="migration_wizard_intro">Réservé aux admins. Nous copions vos données, basculons cet appareil, puis annonçons le changement pour que les autres se reconnectent.</string>
-    <string name="migration_wizard_step_config">Étape 1 — Connexion cible</string>
+    <string name="migration_wizard_step_config">Étape 1 - Connexion cible</string>
     <string name="migration_wizard_step_config_firebase">Saisissez l’organisation Firebase et les détails du projet, puis connectez-vous.</string>
     <string name="migration_wizard_step_config_sheets">Saisissez le spreadsheet de destination et vérifiez que la clé de compte de service est déjà uploadée.</string>
-    <string name="migration_wizard_step_run">Étape 2 — Lancer la migration</string>
+    <string name="migration_wizard_step_run">Étape 2 - Lancer la migration</string>
     <string name="migration_wizard_step_run_body">Gardez cet écran ouvert jusqu’à la fin. Les autres appareils verront une invite de reconnexion.</string>
     <string name="migration_wizard_start">Démarrer la migration</string>
     <string name="migration_wizard_cancel">Annuler</string>
-    <string name="migration_wizard_done">Migration terminée — fermer</string>
+    <string name="migration_wizard_done">Migration terminée - fermer</string>
     <string name="migration_wizard_cancel_inflight">Arrêter la migration</string>
-    <string name="migration_wizard_cancel_inflight_hint">Annulation demandée — arrêt avant le basculement si encore possible.</string>
+    <string name="migration_wizard_cancel_inflight_hint">Annulation demandée - arrêt avant le basculement si encore possible.</string>
     <string name="migration_spreadsheet_id_label">ID du spreadsheet</string>
     <string name="migration_service_account_ok">Clé de compte de service trouvée sur cet appareil.</string>
     <string name="migration_service_account_missing">Uploadez le fichier JSON du compte de service Google ci-dessous.</string>
@@ -1800,8 +1790,7 @@ Origines optionnelles (sans chemin) : http://localhost:8889 etc.
     <string name="settings_category_animations">Animations &amp; Effets</string>
     <string name="settings_category_developer">Développeur &amp; Débogage</string>
     <string name="settings_category_maintenance">Maintenance</string>
-    
-        <string name="settings_category_catalog">Catalogue &amp; lieux</string>
+    <string name="settings_category_catalog">Catalogue &amp; lieux</string>
 <!-- Easter Egg Games -->
     <string name="easter_egg_hextris">Hextris</string>
     <string name="easter_egg_pizza_undelivery">Pizza Undelivery</string>
@@ -1813,11 +1802,11 @@ Origines optionnelles (sans chemin) : http://localhost:8889 etc.
     <string name="arcade_pick_game">CHOISIS UN JEU !</string>
     <string name="arcade_credits_title">★ CRÉDITS DES CRÉATEUR·ICES ★</string>
     <string name="arcade_exit">[ ESC ] SORTIR</string>
-    <string name="arcade_credit_wendol_village">Wendol Village — a js13kGames 2024 game by @sanojian.</string>
-    <string name="arcade_credit_scroll">👆Scroll! — TypeScript game using Web Components for JS13K. © 2019 Zeev Katz. All rights reserved.</string>
-    <string name="arcade_credit_hextris">Hextris — An addictive puzzle game inspired by Tetris. hextris.io · By Logan Engstrom, Garrett Finucane, Noah Moroze &amp; Michael Yang.</string>
-    <string name="arcade_credit_pizza_undelivery">Pizza Undelivery — A game made for the 2019 js13kGames competition. nilsgawlik.github.io/js13k2019/ · @nikigawlik</string>
-    <string name="arcade_credit_catculus">Catculus — a js13kGames 2025 game by @anttihaavikko.</string>
+    <string name="arcade_credit_wendol_village">Wendol Village - a js13kGames 2024 game by @sanojian.</string>
+    <string name="arcade_credit_scroll">👆Scroll! - TypeScript game using Web Components for JS13K. © 2019 Zeev Katz. All rights reserved.</string>
+    <string name="arcade_credit_hextris">Hextris - An addictive puzzle game inspired by Tetris. hextris.io · By Logan Engstrom, Garrett Finucane, Noah Moroze &amp; Michael Yang.</string>
+    <string name="arcade_credit_pizza_undelivery">Pizza Undelivery - A game made for the 2019 js13kGames competition. nilsgawlik.github.io/js13k2019/ · @nikigawlik</string>
+    <string name="arcade_credit_catculus">Catculus - a js13kGames 2025 game by @anttihaavikko.</string>
     
     <!-- Entry Validation -->
     <string name="validate_entry">Valider une entrée</string>
@@ -1844,7 +1833,7 @@ Origines optionnelles (sans chemin) : http://localhost:8889 etc.
     <string name="activity_status_inactive_years_ago">Inactif (il y a %1$d ans)</string>
     <string name="legend_badge_label">Légende</string>
 
-    <!-- Billeterie Scanner -->
+    <!-- Billetterie Scanner -->
     <string name="billeterie_scanner_tap_to_activate">Appuyer pour activer la caméra</string>
     <string name="billeterie_scanner_tap_to_pause">Appuyer pour suspendre</string>
     <string name="billeterie_scanner_entry_approved">Entrée Approuvée</string>
@@ -1860,8 +1849,8 @@ Origines optionnelles (sans chemin) : http://localhost:8889 etc.
     <string name="billeterie_scanner_scanned_org">Org : %1$s</string>
     <string name="desktop_billeterie_webcam_section">QR code (webcam)</string>
     <string name="desktop_billeterie_nfc_section">Lecteur NFC</string>
-    <string name="desktop_billeterie_nfc_connected">Lecteur connecté — prêt à scanner</string>
-    <string name="desktop_billeterie_nfc_disconnected">Aucun lecteur NFC — connectez un lecteur USB ou Bluetooth dans les réglages</string>
+    <string name="desktop_billeterie_nfc_connected">Lecteur connecté - prêt à scanner</string>
+    <string name="desktop_billeterie_nfc_disconnected">Aucun lecteur NFC - connectez un lecteur USB ou Bluetooth dans les réglages</string>
     <string name="desktop_billeterie_nfc_reading">Lecture de la carte…</string>
     <string name="desktop_billeterie_scan_next_shortcut">Entrée ↵ pour scanner la personne suivante</string>
     <string name="desktop_billeterie_camera_stop">Arrêter la webcam</string>
@@ -1885,7 +1874,7 @@ Origines optionnelles (sans chemin) : http://localhost:8889 etc.
     <string name="admin_setup_create_volunteer_desc">Remplissez les informations du nouveau bénévole admin</string>
     <string name="admin_setup_access_title">Comment vous connecter ?</string>
     <string name="admin_setup_access_desc">Comment souhaitez-vous vous connecter en tant que premier admin ?</string>
-    <string name="admin_setup_access_explained">Choisissez une option ci-dessous.\n\n• Code QR — affiche un code à scanner depuis l'écran d'accueil. Pratique pour le partager avec une autre personne ou un autre téléphone.\n\n• Carte NFC — associe une carte ou un badge que vous approchez de l'appareil pour un accès admin rapide.</string>
+    <string name="admin_setup_access_explained">Choisissez une option ci-dessous.\n\n• Code QR - affiche un code à scanner depuis l'écran d'accueil. Pratique pour le partager avec une autre personne ou un autre téléphone.\n\n• Carte NFC - associe une carte ou un badge que vous approchez de l'appareil pour un accès admin rapide.</string>
     <string name="admin_setup_created_line">%1$s a été ajouté comme administrateur.</string>
     <string name="admin_setup_done_title">C'est prêt</string>
     <string name="admin_setup_done_message">%1$s pourra ouvrir le mode admin depuis l'écran d'accueil avec l'option choisie. Vous pourrez ajouter ou modifier des méthodes plus tard dans l'application.</string>
@@ -1914,7 +1903,6 @@ Origines optionnelles (sans chemin) : http://localhost:8889 etc.
     <string name="no_admin_recovery_description">Cette institution n'a pas encore d'administrateur. Créez-en un ci-dessous, puis connectez-vous avec sa carte NFC ou son QR code.</string>
     <string name="no_admin_recovery_panel_hint">Scannez une carte NFC ou un QR code admin, ou créez un nouvel administrateur.</string>
     <string name="no_admin_recovery_create_admin">Créer un administrateur</string>
-
     <string name="local_admin_section_title">Accès admin de l’app</string>
     <string name="local_admin_section_body">Les droits admin locaux permettent d’ouvrir le mode Admin avec la carte NFC ou le QR code de cette personne. Seul un admin Firebase de l’organisation, après avoir scanné sa propre carte admin, peut les octroyer ou les retirer.</string>
     <string name="local_admin_status_yes">%1$s a déjà les droits admin locaux</string>
@@ -1925,10 +1913,10 @@ Origines optionnelles (sans chemin) : http://localhost:8889 etc.
     <string name="local_admin_revoke_title">Retirer l’admin local</string>
     <string name="local_admin_grant_subtitle">Donner à %1$s le droit d’ouvrir le mode Admin avec sa carte ou son QR code.</string>
     <string name="local_admin_revoke_subtitle">Retirer l’accès au mode Admin de %1$s.</string>
-    <string name="local_admin_step1">Scannez la carte NFC ou le QR code de quelqu’un qui a déjà les droits admin locaux — votre carte, pas celle du destinataire.</string>
+    <string name="local_admin_step1">Scannez la carte NFC ou le QR code de quelqu’un qui a déjà les droits admin locaux - votre carte, pas celle du destinataire.</string>
     <string name="local_admin_step2">Nous vérifions ensuite que le compte Google connecté sur cet appareil est un admin Firebase de l’organisation. Un membre d’équipe habituel ne peut pas terminer cette étape.</string>
     <string name="local_admin_scan_own_card_hint">Utilisez un appareil connecté avec un compte Google admin Firebase. Scanner la carte du destinataire ne suffit pas.</string>
-    <string name="local_admin_continue_scan">Continuer — scanner la carte admin</string>
+    <string name="local_admin_continue_scan">Continuer - scanner la carte admin</string>
     <string name="local_admin_scan_prompt">Présentez votre carte NFC admin au lecteur, ou scannez votre QR code admin.</string>
     <string name="local_admin_checking_firebase">Vérification que ce compte Google est un admin Firebase…</string>
     <string name="local_admin_checking_firebase_named">%1$s a les droits admin locaux. Vérification du compte Google de cet appareil…</string>
@@ -1987,12 +1975,12 @@ Origines optionnelles (sans chemin) : http://localhost:8889 etc.
     <string name="desktop_nfc_ble_not_ready">Bluetooth sélectionné · non connecté</string>
     <string name="desktop_nfc_ble_connecting">Bluetooth · reconnexion…</string>
     <string name="desktop_nfc_ble_wake_hint">Réveillez l'ACR1255 (bouton) et attendez que Windows Bluetooth affiche Connecté. SoftDevice doit apparaître dans PC/SC avant de pouvoir scanner.</string>
-    <string name="desktop_nfc_ble_connecting_hint">SoftDevice est visible mais le lien n'est pas encore prêt — attendez quelques secondes après le réveil du lecteur.</string>
+    <string name="desktop_nfc_ble_connecting_hint">SoftDevice est visible mais le lien n'est pas encore prêt - attendez quelques secondes après le réveil du lecteur.</string>
     <string name="desktop_nfc_active_none">Aucun lecteur connecté</string>
     <string name="desktop_nfc_test_reader">Tester le lecteur</string>
     <string name="desktop_nfc_use_bluetooth">Utiliser un lecteur Bluetooth…</string>
     <string name="desktop_nfc_setup_title">Première configuration</string>
-    <string name="desktop_nfc_setup_usb">USB : commutateur sur USB, installer le driver PC/SC USB ACS, brancher le câble, puis Tester le lecteur avec une carte sur le côté sans contact (PICC) — pas le slot ICC.</string>
+    <string name="desktop_nfc_setup_usb">USB : commutateur sur USB, installer le driver PC/SC USB ACS, brancher le câble, puis Tester le lecteur avec une carte sur le côté sans contact (PICC) - pas le slot ICC.</string>
     <string name="desktop_nfc_setup_ble">Bluetooth (Windows uniquement) : installer ACS Bluetooth PC/SC → associer dans Bluetooth Windows → ACS Bluetooth Device Management Tool → Install → choisir le lecteur ici. L'appairage seul ne suffit pas.</string>
     <string name="desktop_nfc_advanced_title">Avancé / dépannage</string>
     <string name="desktop_nfc_advanced_hint">Uniquement si Tester le lecteur échoue : vérifiez les interfaces PC/SC vues par Windows, ou corrigez le stack driver USB.</string>
@@ -2003,13 +1991,13 @@ Origines optionnelles (sans chemin) : http://localhost:8889 etc.
     <string name="desktop_usb_reader_test_button">Tester le lecteur USB</string>
     <string name="desktop_acs_prefer_usb">Recommandé : le mode USB (commutateur matériel) est plus fiable que le Bluetooth pour la porte et la caisse.</string>
     <string name="desktop_acs_windows_usb_banner">Si le lecteur bippe mais le test ne montre pas d'UID : installez ACS USB PC/SC, confirmez une interface PICC, puis Activez Escape Command s'il est encore sous Microsoft CCID. Débranchez/rebranchez après avoir activé Escape.</string>
-    <string name="desktop_acs_ble_setup_steps">Configuration Bluetooth (Windows) :\n1. Installer le MSI PC/SC Bluetooth ACS\n2. Associer le lecteur dans les réglages Bluetooth Windows\n3. Lancer ACS Bluetooth Device Management Tool → Install\n4. Vérifier un lecteur BLE dans Lister les lecteurs PC/SC\nL'appairage seul ne suffit pas — sans l'outil Management, le lien se connecte souvent puis se coupe.</string>
+    <string name="desktop_acs_ble_setup_steps">Configuration Bluetooth (Windows) :\n1. Installer le MSI PC/SC Bluetooth ACS\n2. Associer le lecteur dans les réglages Bluetooth Windows\n3. Lancer ACS Bluetooth Device Management Tool → Install\n4. Vérifier un lecteur BLE dans Lister les lecteurs PC/SC\nL'appairage seul ne suffit pas - sans l'outil Management, le lien se connecte souvent puis se coupe.</string>
     <string name="desktop_acs_open_drivers">Télécharger les drivers ACS</string>
     <string name="desktop_acs_probe_drivers">Vérifier le driver USB</string>
     <string name="desktop_acs_enable_escape">Activer Escape Command (admin)</string>
     <string name="desktop_acs_escape_running">En attente UAC…</string>
-    <string name="desktop_acs_escape_not_needed">Le driver natif ACS est installé — Escape Command ne concerne que Microsoft CCID. Posez une carte sur le PICC et utilisez Tester le lecteur.</string>
-    <string name="desktop_ble_paired_not_pcsc_tool_hint">Associé mais absent de PC/SC — lancez ACS Bluetooth Device Management Tool et installez le lecteur</string>
+    <string name="desktop_acs_escape_not_needed">Le driver natif ACS est installé - Escape Command ne concerne que Microsoft CCID. Posez une carte sur le PICC et utilisez Tester le lecteur.</string>
+    <string name="desktop_ble_paired_not_pcsc_tool_hint">Associé mais absent de PC/SC - lancez ACS Bluetooth Device Management Tool et installez le lecteur</string>
     <string name="desktop_ble_reader_picker_subtitle">Associez l'ACR1255U-J1 dans le Bluetooth Windows, puis utilisez ACS Bluetooth Device Management Tool pour qu'il apparaisse dans PC/SC. Préférez le mode USB pour la porte / la caisse.</string>
     <string name="desktop_ble_reader_not_found">Aucun ACR1255U-J1 trouvé. Allumez-le, associez-le au Bluetooth, installez le driver PC/SC Bluetooth ACS, et lancez ACS Bluetooth Device Management Tool pour qu'il apparaisse dans PC/SC.</string>
     <string name="desktop_ble_reader_pcsc_ready">PC/SC prêt</string>
@@ -2026,7 +2014,6 @@ Origines optionnelles (sans chemin) : http://localhost:8889 etc.
     <string name="external_reader_test_success_title">Lecteur OK</string>
     <string name="external_reader_test_failure_title">Échec du test</string>
     <string name="external_reader_test_close">Fermer</string>
-
     <string name="ble_reader_picker_title">Choisir un lecteur NFC Bluetooth</string>
     <string name="ble_reader_picker_subtitle">Vérifiez que le lecteur ACR1255U-J1 est allumé et à proximité. Les lecteurs ACR apparaissent en premier.</string>
     <string name="ble_reader_section_acr_title">Lecteurs NFC ACS</string>
@@ -2060,7 +2047,7 @@ Origines optionnelles (sans chemin) : http://localhost:8889 etc.
     <!-- UI strings (shared components / desktop) -->
     <string name="noctulist_admin_title">NoctuList Admin</string>
     <string name="download">Télécharger</string>
-    <string name="download_complete_opening_installer">Téléchargement terminé — ouverture de l'installateur…</string>
+    <string name="download_complete_opening_installer">Téléchargement terminé - ouverture de l'installateur…</string>
     <string name="select_date">Sélectionner la date</string>
     <string name="select_time">Sélectionner l'heure</string>
     <string name="date_time_label">Date et heure</string>
@@ -2119,10 +2106,10 @@ Assurez-vous que PC/SC est installé et redémarrez l'application.</string>
     <string name="desktop_pcsc_service_hint_windows">Sous Windows : démarrez le service Carte à puce (SCardSvr) dans services.msc, vérifiez qu'une interface PICC apparaît dans le Gestionnaire de périphériques, puis débranchez/rebranchez le lecteur et réessayez.</string>
     <string name="desktop_pcsc_reader_disconnected">Lecteur déconnecté.</string>
     <string name="desktop_pcsc_reader_error">Erreur du lecteur</string>
-    <string name="desktop_pcsc_reader_ok_place_card">OK — lecteur connecté.
+    <string name="desktop_pcsc_reader_ok_place_card">OK - lecteur connecté.
 Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="desktop_pcsc_beep_no_uid_hint">Si le lecteur bippe sans UID : utilisez PICC (pas ICC / pas SoftDevice BLE), maintenez la carte jusqu'à la fin du test, et préférez le mode USB avec câble.</string>
-    <string name="desktop_pcsc_escape_blocked_hint">Échec Escape CCID. Avec le driver ACS, c'est souvent une entrée PC/SC fantôme ou le polling PICC désactivé — débranchez l'USB, retirez les SoftDevice restants dans le Gestionnaire de périphériques, rebranchez en mode USB, puis retestez en maintenant une carte.</string>
+    <string name="desktop_pcsc_escape_blocked_hint">Échec Escape CCID. Avec le driver ACS, c'est souvent une entrée PC/SC fantôme ou le polling PICC désactivé - débranchez l'USB, retirez les SoftDevice restants dans le Gestionnaire de périphériques, rebranchez en mode USB, puis retestez en maintenant une carte.</string>
     <string name="desktop_pcsc_ghost_reader_hint">Astuce : ACS peut lister un SoftDevice BLE (nom du type ACR1255U-J1-0xxxxx) même sans câble USB. Ce n'est pas un PICC USB. Pour les tests USB, ne gardez que « PICC Reader » ; l'outil ACS Bluetooth Device Management ne sert que pour le BLE.</string>
     <string name="desktop_pcsc_ble_softdevice_uid_hint">SoftDevice Bluetooth : le lecteur peut bipper alors que PC/SC n'a pas de carte. Réveillez-le (bouton), vérifiez Bluetooth Windows = Connecté et ACS Device Management Tool = Install OK, puis maintenez une carte pendant tout le test. Préférez le mode USB pour des UID fiables.</string>
     <string name="desktop_pcsc_readers_header">Lecteurs (%1$d) :</string>
@@ -2160,6 +2147,126 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="rate_limit_write_requests">Requêtes en écriture</string>
     <string name="rate_limit_write_value">300 par minute et par projet</string>
     <string name="theme_hue_label">Teinte (arc-en-ciel) : %1$d°</string>
-    <string name="theme_luminosity_label">Luminosité : %1$d%%</string>
-    <string name="theme_saturation_label">Saturation : %1$d%%</string>
+    <string name="theme_luminosity_label">Luminosité : %1$d%</string>
+    <string name="theme_saturation_label">Saturation : %1$d%</string>
+
+    <!-- Temporary guests (Firebase) -->
+    <string name="temp_guest_access_settings_title">Accès des guests temporaires</string>
+    <string name="temp_guest_access_settings_description">Définissez les accès spéciaux (scène, backstage, VIP…) attribuables pour chaque lieu. Disponibles uniquement avec la base Firebase.</string>
+    <string name="temp_guest_access_no_venue">Aucun lieu actif pour l’instant. Créez-en un pour définir ses accès.</string>
+    <string name="temp_guest_access_venue_empty">Aucun accès spécial pour ce lieu.</string>
+    <string name="temp_guest_access_venue_count">%1$d accès configuré(s).</string>
+    <string name="temp_guest_access_add">Nouvel accès</string>
+    <string name="temp_guest_access_add_title">Nouvel accès à %1$s</string>
+    <string name="temp_guest_access_name_label">Nom de l’accès</string>
+    <string name="temp_guest_access_duplicate">Cet accès existe déjà pour ce lieu.</string>
+    <string name="temp_guest_access_remove_title">Supprimer cet accès ?</string>
+    <string name="temp_guest_access_remove_message">« %1$s » sera retiré de tous les guests temporaires qui en disposent.</string>
+    <string name="temp_guest_credits_setting_title">Comptes à crédits pour les guests temporaires</string>
+    <string name="temp_guest_credits_setting_description">Permet à un guest temporaire d’avoir un solde au bar, comme un guest permanent. Désactivé par défaut.</string>
+    <string name="temp_guest_contact_email_label">Email de contact</string>
+    <string name="temp_guest_contact_email_hint">Artiste ou manager qui reçoit tous les QR codes de cette guest list.</string>
+    <string name="temp_guest_venue_label">Lieu</string>
+    <string name="temp_guest_venue_placeholder">Choisir un lieu</string>
+    <string name="temp_guest_access_person_label">Accès spéciaux</string>
+    <string name="date_format_european_placeholder">JJ/MM/AAAA</string>
+    <string name="date_shortcut_today">Aujourd’hui</string>
+    <string name="date_shortcut_this_friday">Ce vendredi</string>
+    <string name="date_shortcut_this_saturday">Ce samedi</string>
+    <string name="temp_guest_accesses_title">Accès autorisés</string>
+    <string name="temp_guest_no_access">Aucun accès spécial</string>
+    <string name="temp_guest_entry_status_label">Entrée</string>
+    <string name="temp_guest_entry_validated_at">Entré·e à %1$s</string>
+    <string name="temp_guest_entry_not_yet">Pas encore entré·e</string>
+    <string name="temp_guest_validate_entry">Valider l’entrée</string>
+    <string name="temp_guest_entry_single_use_hint">Entrée unique : une fois validée, ce guest quitte la liste du soir.</string>
+    <string name="temp_guest_email_tab">Guestlist artiste</string>
+    <string name="temp_guest_send_choice_title">Quels QR codes envoyer ?</string>
+    <string name="temp_guest_send_choice_all">Toute la guestlist de %1$s</string>
+    <string name="temp_guest_send_choice_all_description">Un seul email avec les %1$d QR codes de la soirée.</string>
+    <string name="temp_guest_send_choice_single">Cette personne uniquement</string>
+    <string name="temp_guest_send_choice_single_description">Un seul QR code, à une adresse que vous saisissez maintenant.</string>
+    <string name="temp_guest_scan_title">Guest temporaire</string>
+    <string name="temp_guest_scan_already_used">Entrée déjà utilisée à %1$s</string>
+    <string name="temp_guest_scan_wrong_day">Cette guest list n’est pas pour ce soir.</string>
+    <string name="temp_guest_section_validated">Déjà entrés</string>
+    <string name="temp_guest_validated_count">%1$d / %2$d validés</string>
+    <string name="temp_guest_none_validated">Personne n’est encore entré ce soir.</string>
+    <string name="temp_guest_email_html_header">Guestlist artiste</string>
+    <string name="temp_guest_email_subject_default">Les QR codes de votre guestlist</string>
+    <string name="temp_guest_email_content_before_default">Bonjour !\n\nVoici les QR codes de votre guestlist. Transmettez chacun à la personne concernée, ou présentez-les à l'entrée.</string>
+    <string name="temp_guest_email_content_after_default">Chaque code est valable pour une seule entrée. À ce soir !</string>
+    <string name="temp_guest_send_choice_message">Cette guestlist compte plusieurs personnes.</string>
+    <string name="temp_guest_scan_venue">Lieu</string>
+    <string name="temp_guest_scan_no_access">Aucun accès spécial sur ce lieu.</string>
+    <string name="temp_guest_entry_validated_short">Entré·e</string>
+    <string name="guest_form_create">Créer un formulaire</string>
+    <string name="guest_form_create_title">Formulaire de guestlist artiste</string>
+    <string name="guest_form_event_name">Nom de l'événement</string>
+    <string name="guest_form_artist">Artiste / institution</string>
+    <string name="guest_form_max_guests">Nombre maximum de personnes</string>
+    <string name="guest_form_allow_multiple">Autoriser plusieurs réponses</string>
+    <string name="guest_form_allow_multiple_hint">Le lien reste ouvert jusqu'à la date d'expiration. Chaque envoi crée une nouvelle validation.</string>
+    <string name="guest_form_expiry_label">Le formulaire expire (supprimé au plus tard 3 jours après l'événement)</string>
+    <string name="guest_form_expiry_after_response">Après la réponse</string>
+    <string name="guest_form_expiry_day_before">La veille</string>
+    <string name="guest_form_expiry_event_day">Le jour de l'événement</string>
+    <string name="guest_form_expiry_day_after">Le lendemain</string>
+    <string name="guest_form_expiry_manual">Une date choisie (max. 3 jours après l'événement)</string>
+    <string name="guest_form_include_logo">Logo de l'association</string>
+    <string name="guest_form_include_logo_missing">Téléversez-le dans Réglages → E-mail (même logo que pour les mails QR).</string>
+    <string name="guest_form_guest_logo">Second logo (facultatif)</string>
+    <string name="guest_form_guest_logo_hint">Artiste, album ou institution invitée. Affiché à côté du vôtre.</string>
+    <string name="guest_form_guest_logo_change">Changer le logo</string>
+    <string name="guest_form_guest_logo_add">Ajouter un logo</string>
+    <string name="guest_form_logo_shape">Forme</string>
+    <string name="guest_form_logo_shape_square">Carré</string>
+    <string name="guest_form_logo_shape_rounded">Carré arrondi</string>
+    <string name="guest_form_logo_shape_circle">Rond</string>
+    <string name="guest_form_logo_invert">Inverser les couleurs</string>
+    <string name="guest_form_ask_email">Demander un e-mail de contact</string>
+    <string name="guest_form_ask_phone">Demander un téléphone d'urgence</string>
+    <string name="guest_form_prefill_email">E-mail prérempli</string>
+    <string name="guest_form_prefill_phone">Téléphone d'urgence prérempli</string>
+    <string name="guest_form_offered_access">Accès qu'ils peuvent demander</string>
+    <string name="guest_form_offered_access_hint">Une demande n'est jamais une garantie - vous décidez le soir.</string>
+    <string name="guest_form_create_action">Créer le formulaire</string>
+    <string name="guest_form_link_title">Formulaire prêt</string>
+    <string name="guest_form_link_body">Envoyez ce lien unique à %1$s. Il fonctionne jusqu'à l'expiration ou la réponse.</string>
+    <string name="guest_form_link_body_multi">Envoyez ce lien unique à %1$s. Il reste ouvert jusqu'à l'expiration ; chaque réponse crée une nouvelle validation.</string>
+    <string name="guest_form_copy_link">Copier le lien</string>
+    <string name="guest_form_link_copied">Copié</string>
+    <string name="guest_form_pending_title">Guestlist à valider</string>
+    <string name="guest_form_pending_one">%1$s a envoyé sa guestlist</string>
+    <string name="guest_form_pending_many">%1$d guestlists en attente</string>
+    <string name="guest_form_pending_cta">Touchez pour valider</string>
+    <string name="guest_form_review_title">Revue - %1$s</string>
+    <string name="guest_form_review_response_hint">Une réponse d'un formulaire multi-réponses. Accepter ou refuser ne clôture que cette réponse.</string>
+    <string name="guest_form_review_accept">Valider</string>
+    <string name="guest_form_review_reject">Refuser</string>
+    <string name="guest_form_review_empty">Aucun nom dans cette réponse.</string>
+    <string name="guest_form_person_n">Personne %1$d</string>
+    <string name="guest_form_settings_title">Formulaires de guestlist artiste (facultatif)</string>
+    <string name="guest_form_settings_body">Les artistes envoient leur guestlist sur une page publique (Firebase Hosting, gratuit). Publiez le site une fois via le guide d'installation Firebase.</string>
+    <string name="guest_form_enable">Activer les formulaires de guestlist</string>
+    <string name="guest_form_site_url">Site : %1$s</string>
+    <string name="guest_form_export">Exporter le site des formulaires</string>
+    <string name="guest_form_export_done">Zip enregistré. Décompressez-le, puis lancez les commandes ci-dessous.</string>
+    <string name="guest_form_export_android">La publication se fait depuis un ordinateur. Ouvrez ce guide dans NoctuList sur ordinateur, exportez le zip, puis continuez à l'étape 3.</string>
+    <string name="guest_form_deploy_commands">npm install -g firebase-tools\nfirebase login\nfirebase deploy --only hosting --project YOUR_PROJECT_ID</string>
+    <string name="firebase_tutorial_forms_optional_title">Facultatif : formulaires de guestlist publics (Firebase Hosting)</string>
+    <string name="firebase_tutorial_forms_optional_body">Publiez une fois le site des formulaires sur ce projet Firebase (Hosting gratuit). Ensuite, chaque formulaire dans NoctuList est un lien unique - plus besoin du Terminal.</string>
+    <string name="guest_form_step1">1. Dans Réglages → Firebase → options, activez les formulaires de guestlist artiste.</string>
+    <string name="guest_form_step2">2. Sur un ordinateur, touchez « Exporter le site des formulaires », enregistrez le zip et décompressez-le. Le dossier doit contenir index.html et firebase.json.</string>
+    <string name="guest_form_step3">3. Installez Node.js LTS 22 ou 24 depuis https://nodejs.org (bouton vert LTS, pas Current). Rouvrez le Terminal après l'installation.</string>
+    <string name="guest_form_step4">4. Ouvrez le Terminal. Tapez cd, espace, glissez le dossier décompressé dans la fenêtre, puis Entrée.</string>
+    <string name="guest_form_step5">5. Copiez les commandes ci-dessous, collez-les dans le Terminal, Entrée. Connectez-vous avec le compte Google propriétaire de ce projet Firebase.</string>
+    <string name="guest_form_step6">6. Quand le Terminal affiche « Deploy complete! », le site est en ligne. Créez ensuite les formulaires dans NoctuList - sans nouveau déploiement.</string>
+    <string name="guest_form_terminal_caption">Commandes à lancer dans le Terminal</string>
+    <string name="guest_form_copy_commands">Copier les commandes</string>
+    <string name="guest_form_commands_copied">Commandes copiées</string>
+    <string name="guest_form_terminal_title">Terminal</string>
+    <string name="guest_form_project_id_hint">Remplacez YOUR_PROJECT_ID par le Project ID affiché dans Réglages → Firebase.</string>
+    <string name="guest_form_offered_access_pick_venue">Choisissez d'abord un lieu.</string>
+    <string name="guest_form_offered_access_empty">Aucun accès spécial pour ce lieu.</string>
 </resources>

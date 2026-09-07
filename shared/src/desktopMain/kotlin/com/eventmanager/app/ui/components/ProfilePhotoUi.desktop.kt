@@ -7,6 +7,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import com.eventmanager.app.data.remote.loadProfilePhotoBytesForExport
@@ -26,6 +27,8 @@ internal actual fun ProfileDecodedImage(
     bytes: ByteArray,
     modifier: Modifier,
     contentDescription: String?,
+    contentScale: ContentScale,
+    colorFilter: ColorFilter?,
 ) {
     val bitmap = remember(bytes) {
         runCatching { Image.makeFromEncoded(bytes).toComposeImageBitmap() }.getOrNull()
@@ -34,7 +37,8 @@ internal actual fun ProfileDecodedImage(
         bitmap = bitmap,
         contentDescription = contentDescription,
         modifier = modifier,
-        contentScale = ContentScale.Crop,
+        contentScale = contentScale,
+        colorFilter = colorFilter,
     )
 }
 

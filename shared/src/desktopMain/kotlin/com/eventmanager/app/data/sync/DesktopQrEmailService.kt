@@ -2,9 +2,11 @@ package com.eventmanager.app.data.sync
 
 import com.eventmanager.app.email.MimeEmailAttachment
 import com.eventmanager.app.email.MimeEmailBuilder
+import com.eventmanager.app.email.QrEmailCode
 import com.eventmanager.app.email.QrEmailHtmlBuilder
 import com.eventmanager.app.email.QrEmailHtmlOptions
 import com.eventmanager.app.email.QrEmailProfile
+import com.eventmanager.app.email.QrEmailRecipientCode
 import com.eventmanager.app.email.QrEmailTheme
 import com.eventmanager.app.platform.PlatformContext
 import com.eventmanager.app.platform.PlatformFileManager
@@ -39,8 +41,12 @@ data class DesktopQrEmailTemplateStrings(
     val walletPassTitle: String,
     val walletPassDescription: String,
     val walletPassCompatibility: String,
+    val tempGuestHeader: String = guestHeader,
+    val tempGuestFooter: String = guestFooter,
+    val tempGuestSubjectDefault: String = guestSubjectDefault,
+    val tempGuestContentBeforeDefault: String = guestContentBeforeDefault,
+    val tempGuestContentAfterDefault: String = guestContentAfterDefault,
 )
-
 class DesktopQrEmailService(private val context: PlatformContext) {
     private val fileManager = PlatformFileManager(context)
     private val cacheDir = File(context.appDataDir, "cache").also { it.mkdirs() }
@@ -52,6 +58,7 @@ class DesktopQrEmailService(private val context: PlatformContext) {
         recipientName: String,
         qrPayload: String,
         template: DesktopQrEmailTemplateStrings,
+        codes: List<QrEmailRecipientCode> = emptyList(),
     ): Boolean {
         val gmailAuth = DesktopGmailAuth(context)
         if (!gmailAuth.isSignedIn()) return false
@@ -65,6 +72,7 @@ class DesktopQrEmailService(private val context: PlatformContext) {
             qrPayload = qrPayload,
             template = template,
             forManualSend = false,
+            codes = codes,
         )
 
         return DesktopGmailSendService(context).sendMimeEmail(
@@ -82,6 +90,7 @@ class DesktopQrEmailService(private val context: PlatformContext) {
         recipientName: String,
         qrPayload: String,
         template: DesktopQrEmailTemplateStrings,
+        codes: List<QrEmailRecipientCode> = emptyList(),
     ): Boolean = runCatching {
         val prepared = prepareEmail(
             profile = profile,
@@ -91,6 +100,7 @@ class DesktopQrEmailService(private val context: PlatformContext) {
             qrPayload = qrPayload,
             template = template,
             forManualSend = true,
+            codes = codes,
         )
         val emlFile = File(cacheDir, "qr_email_${System.currentTimeMillis()}.eml")
         emlFile.writeText(prepared.mimeMessage)
@@ -108,10 +118,12 @@ class DesktopQrEmailService(private val context: PlatformContext) {
         qrPayload: String,
         template: DesktopQrEmailTemplateStrings,
         forManualSend: Boolean,
+        codes: List<QrEmailRecipientCode> = emptyList(),
     ): PreparedEmail {
         val theme = when (profile) {
             QrEmailProfile.Volunteer -> QrEmailTheme.Volunteer
             QrEmailProfile.Guest -> QrEmailTheme.Guest
+            QrEmailProfile.TempGuest -> QrEmailTheme.TempGuest
         }
         val subject = resolveSubject(profile, settingsManager, template)
         val contentBefore = resolveContentBefore(profile, settingsManager, template)
@@ -120,19 +132,37 @@ class DesktopQrEmailService(private val context: PlatformContext) {
         val includeQr = when (profile) {
             QrEmailProfile.Volunteer -> settingsManager.isEmailIncludeQrEnabled()
             QrEmailProfile.Guest -> settingsManager.isGuestEmailIncludeQrEnabled()
+            QrEmailProfile.TempGuest -> settingsManager.isTemporaryGuestEmailIncludeQrEnabled()
         }
         val includeLogo = settingsManager.isEmailIncludeLogoEnabled()
-        val includeDigitalWalletPass = settingsManager.isEmailIncludeDigitalWalletPassEnabled()
+        // A grouped artist mail carries several people, so a single-holder wallet pass is meaningless.
+        val includeDigitalWalletPass = settingsManager.isEmailIncludeDigitalWalletPassEnabled() &&
+            profile != QrEmailProfile.TempGuest
         val headerText = when (profile) {
             QrEmailProfile.Volunteer -> template.volunteerHeader
             QrEmailProfile.Guest -> template.guestHeader
+            QrEmailProfile.TempGuest -> template.tempGuestHeader
         }
         val footerText = when (profile) {
             QrEmailProfile.Volunteer -> template.volunteerFooter
             QrEmailProfile.Guest -> template.guestFooter
+            QrEmailProfile.TempGuest -> template.tempGuestFooter
         }
 
-        val qrBytes = if (includeQr) generateQrPngBytes(qrPayload, 512) else null
+        val effectiveCodes = codes.ifEmpty {
+            listOf(QrEmailRecipientCode(holderName = recipientName, qrPayload = qrPayload))
+        }
+        val renderedCodes = if (includeQr) {
+            effectiveCodes.mapIndexedNotNull { index, code ->
+                val bytes = generateQrPngBytes(code.qrPayload, 512) ?: return@mapIndexedNotNull null
+                RenderedQrCode(
+                    holderName = code.holderName,
+                    contentId = if (effectiveCodes.size == 1) "qrcode" else "qrcode-$index",
+                    fileName = MimeEmailBuilder.qrFileNameFor(code.holderName, index),
+                    bytes = bytes,
+                )
+            }
+        } else emptyList()
         val logoBytes = if (includeLogo && !forManualSend) loadLogoBytes(settingsManager.getEmailLogoUri()) else null
         val walletPassBytes = if (includeDigitalWalletPass) {
             generateWalletPassBytes(
@@ -163,6 +193,11 @@ class DesktopQrEmailService(private val context: PlatformContext) {
                 logoBase64 = null,
                 useContentId = !forManualSend,
                 theme = theme,
+                qrCodes = if (renderedCodes.size > 1) {
+                    renderedCodes.map {
+                        QrEmailCode(holderName = it.holderName, contentId = it.contentId)
+                    }
+                } else emptyList(),
             )
         )
 
@@ -175,18 +210,30 @@ class DesktopQrEmailService(private val context: PlatformContext) {
         )
 
         val attachments = buildList {
-            if (includeQr && qrBytes != null) {
+            if (includeQr) {
                 if (forManualSend) {
-                    add(
-                        MimeEmailAttachment(
-                            fileName = "qr_code.png",
-                            mimeType = "image/png",
-                            bytes = qrBytes,
-                            disposition = "attachment",
+                    renderedCodes.forEach { code ->
+                        add(
+                            MimeEmailAttachment(
+                                fileName = if (renderedCodes.size == 1) "qr_code.png" else code.fileName,
+                                mimeType = "image/png",
+                                bytes = code.bytes,
+                                disposition = "attachment",
+                            )
                         )
-                    )
+                    }
+                } else if (renderedCodes.size == 1) {
+                    addAll(MimeEmailBuilder.qrInlineAndAttachment(renderedCodes.first().bytes))
                 } else {
-                    addAll(MimeEmailBuilder.qrInlineAndAttachment(qrBytes))
+                    renderedCodes.forEach { code ->
+                        addAll(
+                            MimeEmailBuilder.namedQrInlineAndAttachment(
+                                qrBytes = code.bytes,
+                                contentId = code.contentId,
+                                fileName = code.fileName,
+                            )
+                        )
+                    }
                 }
             }
             if (!forManualSend && includeLogo && logoBytes != null) {
@@ -215,6 +262,8 @@ class DesktopQrEmailService(private val context: PlatformContext) {
     ): String = when (profile) {
         QrEmailProfile.Volunteer -> settingsManager.getEmailSubject().ifEmpty { template.volunteerSubjectDefault }
         QrEmailProfile.Guest -> settingsManager.getGuestEmailSubject().ifEmpty { template.guestSubjectDefault }
+        QrEmailProfile.TempGuest ->
+            settingsManager.getTemporaryGuestEmailSubject().ifEmpty { template.tempGuestSubjectDefault }
     }
 
     private fun resolveContentBefore(
@@ -224,6 +273,8 @@ class DesktopQrEmailService(private val context: PlatformContext) {
     ): String = when (profile) {
         QrEmailProfile.Volunteer -> settingsManager.getEmailContentBefore().ifEmpty { template.volunteerContentBeforeDefault }
         QrEmailProfile.Guest -> settingsManager.getGuestEmailContentBefore().ifEmpty { template.guestContentBeforeDefault }
+        QrEmailProfile.TempGuest ->
+            settingsManager.getTemporaryGuestEmailContentBefore().ifEmpty { template.tempGuestContentBeforeDefault }
     }
 
     private fun resolveContentAfter(
@@ -233,6 +284,8 @@ class DesktopQrEmailService(private val context: PlatformContext) {
     ): String = when (profile) {
         QrEmailProfile.Volunteer -> settingsManager.getEmailContentAfter().ifEmpty { template.volunteerContentAfterDefault }
         QrEmailProfile.Guest -> settingsManager.getGuestEmailContentAfter().ifEmpty { template.guestContentAfterDefault }
+        QrEmailProfile.TempGuest ->
+            settingsManager.getTemporaryGuestEmailContentAfter().ifEmpty { template.tempGuestContentAfterDefault }
     }
 
     private fun resolveSignature(
@@ -242,6 +295,7 @@ class DesktopQrEmailService(private val context: PlatformContext) {
     ): String = when (profile) {
         QrEmailProfile.Volunteer -> settingsManager.getEmailSignature().ifEmpty { template.signatureDefault }
         QrEmailProfile.Guest -> settingsManager.getGuestEmailSignature().ifEmpty { template.signatureDefault }
+        QrEmailProfile.TempGuest -> settingsManager.getGuestEmailSignature().ifEmpty { template.signatureDefault }
     }
 
     private fun loadLogoBytes(logoPath: String): ByteArray? {
@@ -284,6 +338,13 @@ class DesktopQrEmailService(private val context: PlatformContext) {
         )
         return WalletPassService.createPassBytes(settingsManager, certBytes, request, logoBytes)
     }
+
+    private data class RenderedQrCode(
+        val holderName: String,
+        val contentId: String,
+        val fileName: String,
+        val bytes: ByteArray,
+    )
 
     private data class PreparedEmail(
         val subject: String,

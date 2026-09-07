@@ -25,6 +25,16 @@ class GmailNotConfiguredException(message: String) : Exception(message)
 class GmailPlayServicesUnavailableException(message: String) : Exception(message)
 
 /**
+ * One QR image of a mail that carries several codes, e.g. a whole artist guest list.
+ * [contentId] must match the `cid:` reference used in the HTML body.
+ */
+data class GmailQrAttachment(
+    val file: File,
+    val contentId: String,
+    val fileName: String,
+)
+
+/**
  * Service for sending emails via Gmail API
  * Uses manual MIME construction to avoid AWT dependencies
  */
@@ -42,7 +52,8 @@ class GmailSendService(private val context: Context) {
         plainText: String,
         qrFile: File?,
         logoFile: File?,
-        digitalWalletPassFile: File?
+        digitalWalletPassFile: File?,
+        qrAttachments: List<GmailQrAttachment> = emptyList()
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             // Generate unique boundary for multipart message
@@ -57,6 +68,7 @@ class GmailSendService(private val context: Context) {
                 qrFile = qrFile,
                 logoFile = logoFile,
                 digitalWalletPassFile = digitalWalletPassFile,
+                qrAttachments = qrAttachments,
                 boundary = boundary
             )
             
@@ -193,6 +205,7 @@ class GmailSendService(private val context: Context) {
         qrFile: File?,
         logoFile: File?,
         digitalWalletPassFile: File?,
+        qrAttachments: List<GmailQrAttachment>,
         boundary: String
     ): String {
         val sb = StringBuilder()
@@ -230,6 +243,26 @@ class GmailSendService(private val context: Context) {
         sb.append("--${boundary}_alt--\r\n")
         sb.append("\r\n")
         
+        // Several named QR codes (one artist guest list in a single mail)
+        qrAttachments.filter { it.file.exists() }.forEach { attachment ->
+            val base64 = Base64.encodeToString(attachment.file.readBytes(), Base64.NO_WRAP)
+            listOf("inline", "attachment").forEach { disposition ->
+                sb.append("--$boundary\r\n")
+                sb.append("Content-Type: image/png; name=\"${attachment.fileName}\"\r\n")
+                sb.append("Content-Transfer-Encoding: base64\r\n")
+                sb.append("Content-Disposition: $disposition; filename=\"${attachment.fileName}\"\r\n")
+                if (disposition == "inline") {
+                    sb.append("Content-ID: <${attachment.contentId}>\r\n")
+                }
+                sb.append("\r\n")
+                base64.chunked(76).forEach { line ->
+                    sb.append(line)
+                    sb.append("\r\n")
+                }
+                sb.append("\r\n")
+            }
+        }
+
         // QR Code - First as inline with Content-ID for HTML display
         if (qrFile != null && qrFile.exists()) {
             val qrBytes = qrFile.readBytes()

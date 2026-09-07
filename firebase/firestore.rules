@@ -1,5 +1,5 @@
 rules_version = '2';
-// NoctuList Firestore rules — NOCTULIST_RULES_VERSION = 6
+// NoctuList Firestore rules — NOCTULIST_RULES_VERSION = 9
 // Republish this exact file in Firebase Console → Firestore → Rules after every app update,
 // otherwise members that already exist cannot re-join their organization.
 service cloud.firestore {
@@ -48,6 +48,57 @@ service cloud.firestore {
 
     function isOrgAdmin(orgId) {
       return isMember(orgId) && memberRole(orgId) == 'admin';
+    }
+
+    function guestFormParentPath(orgId, parentFormId) {
+      return /databases/$(database)/documents/orgs/$(orgId)/guestForms/$(parentFormId);
+    }
+
+    // Multi-response answers spawn a new PENDING_REVIEW doc; the open template must still
+    // accept answers (OPEN, flagged, unexpired) and the child must copy venue/event fields.
+    function isPublicMultiGuestFormCreate(orgId, formId) {
+      return request.resource.data.parentFormId is string
+        && request.resource.data.parentFormId.size() > 0
+        && exists(guestFormParentPath(orgId, request.resource.data.parentFormId))
+        && get(guestFormParentPath(orgId, request.resource.data.parentFormId)).data.status == 'OPEN'
+        && get(guestFormParentPath(orgId, request.resource.data.parentFormId)).data.allowMultipleResponses == true
+        && get(guestFormParentPath(orgId, request.resource.data.parentFormId)).data.expiresAtMillis is number
+        && request.time.toMillis()
+             < get(guestFormParentPath(orgId, request.resource.data.parentFormId)).data.expiresAtMillis
+        && request.resource.data.status == 'PENDING_REVIEW'
+        && request.resource.data.formId == formId
+        && request.resource.data.submissionJson is string
+        && request.resource.data.submissionJson.size() < 20000
+        && request.resource.data.venueName
+             == get(guestFormParentPath(orgId, request.resource.data.parentFormId)).data.venueName
+        && request.resource.data.eventName
+             == get(guestFormParentPath(orgId, request.resource.data.parentFormId)).data.eventName
+        && request.resource.data.eventDateMillis
+             == get(guestFormParentPath(orgId, request.resource.data.parentFormId)).data.eventDateMillis
+        && request.resource.data.artistName
+             == get(guestFormParentPath(orgId, request.resource.data.parentFormId)).data.artistName
+        && request.resource.data.offeredAccessIds
+             == get(guestFormParentPath(orgId, request.resource.data.parentFormId)).data.offeredAccessIds
+        && request.resource.data.maxGuests
+             == get(guestFormParentPath(orgId, request.resource.data.parentFormId)).data.maxGuests
+        && request.resource.data.expiresAtMillis
+             == get(guestFormParentPath(orgId, request.resource.data.parentFormId)).data.expiresAtMillis
+        && (
+             !('institutionLogoDataUri' in request.resource.data)
+             || request.resource.data.institutionLogoDataUri == ''
+           )
+        && (
+             !('guestLogoDataUri' in request.resource.data)
+             || request.resource.data.guestLogoDataUri == ''
+           )
+        && (
+             !('sourceDeviceId' in request.resource.data)
+             || request.resource.data.sourceDeviceId == ''
+           )
+        && (
+             !('allowMultipleResponses' in request.resource.data)
+             || request.resource.data.allowMultipleResponses == false
+           );
     }
 
     function isValidMemberRole(role) {
@@ -202,6 +253,39 @@ service cloud.firestore {
     match /orgs/{orgId}/institutionSettings/{key} {
       allow read: if isMember(orgId);
       allow write: if isOrgAdmin(orgId);
+    }
+
+    // Artist guest list forms. The only unauthenticated surface in this database: an artist
+    // opens a link holding the form's NanoID and fills in their guest list without an account.
+    match /orgs/{orgId}/guestForms/{formId} {
+      allow read, write: if isMember(orgId);
+
+      // Public read is a targeted get only — never list — so a form is unreachable without its
+      // exact ID, and only while it is still open and unexpired.
+      allow get: if resource.data.status == 'OPEN'
+        && resource.data.expiresAtMillis is number
+        && request.time.toMillis() < resource.data.expiresAtMillis;
+
+      // Multi-response: each answer creates a new PENDING_REVIEW doc; the template stays OPEN.
+      allow create: if isPublicMultiGuestFormCreate(orgId, formId);
+
+      // Single-response: answer in place and move to PENDING_REVIEW (closes public get).
+      // Multi-response templates must not be closed this way — use create above instead.
+      // Clearing sourceDeviceId is required so the device that created the form does not treat
+      // the artist answer as its own write echo and drop it.
+      allow update: if resource.data.status == 'OPEN'
+        && resource.data.get('allowMultipleResponses', false) != true
+        && resource.data.expiresAtMillis is number
+        && request.time.toMillis() < resource.data.expiresAtMillis
+        && request.resource.data.status == 'PENDING_REVIEW'
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['status', 'submissionJson', 'submittedAt', 'lastModified', 'sourceDeviceId'])
+        && request.resource.data.submissionJson is string
+        && request.resource.data.submissionJson.size() < 20000
+        && (
+             !('sourceDeviceId' in request.resource.data)
+             || request.resource.data.sourceDeviceId == ''
+           );
     }
 
     match /orgs/{orgId}/{document=**} {

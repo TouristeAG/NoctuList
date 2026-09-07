@@ -47,6 +47,47 @@ object InstitutionSettingsKeys {
     /** JSON list of [{category, name}] — admin-defined POS sub-categories (Firebase backend only). */
     const val POS_SUBCATEGORIES = "pos_subcategories"
 
+    /** JSON list of [{id, venue, name}] — special accesses a temporary guest can get (Firebase only). */
+    const val TEMP_GUEST_VENUE_ACCESSES = "temp_guest_venue_accesses"
+
+    /** Opt-in credit accounts for temporary guests; off by default (Firebase backend only). */
+    const val TEMP_GUEST_CREDITS_ENABLED = "temp_guest_credits_enabled"
+
+    /** Mail template sent to the artist/manager with every QR of their guest list (Firebase only). */
+    const val TEMP_GUEST_EMAIL_SUBJECT = "temp_guest_email_subject"
+    const val TEMP_GUEST_EMAIL_CONTENT_BEFORE = "temp_guest_email_content_before"
+    const val TEMP_GUEST_EMAIL_CONTENT_AFTER = "temp_guest_email_content_after"
+    const val TEMP_GUEST_EMAIL_INCLUDE_QR = "temp_guest_email_include_qr"
+
+    /** Opt-in public guest list forms filled in by artists; off by default (Firebase backend only). */
+    const val GUEST_FORMS_ENABLED = "guest_forms_enabled"
+
+    /** Overrides the derived `https://<projectId>.web.app` origin when a custom domain is used. */
+    const val GUEST_FORM_BASE_URL = "guest_form_base_url"
+
+    /**
+     * Base64 PNG of the institution logo. Lives here rather than on each device so every device
+     * — and every public guest form — shows the same logo without a re-upload.
+     */
+    const val INSTITUTION_LOGO_PNG = "institution_logo_png"
+
+    /** Everything driving the Firebase-only artist guest list forms. */
+    val GUEST_FORM_KEYS: List<String> = listOf(
+        GUEST_FORMS_ENABLED,
+        GUEST_FORM_BASE_URL,
+        INSTITUTION_LOGO_PNG,
+    )
+
+    /** Everything driving the Firebase-only temporary guest features. */
+    val TEMP_GUEST_KEYS: List<String> = listOf(
+        TEMP_GUEST_VENUE_ACCESSES,
+        TEMP_GUEST_CREDITS_ENABLED,
+        TEMP_GUEST_EMAIL_SUBJECT,
+        TEMP_GUEST_EMAIL_CONTENT_BEFORE,
+        TEMP_GUEST_EMAIL_CONTENT_AFTER,
+        TEMP_GUEST_EMAIL_INCLUDE_QR,
+    )
+
     /** Optional one-way Sheets mirror while Firebase is the live backend (synced across admin devices). */
     const val SHEETS_MIRROR_ENABLED = "sheets_mirror_enabled"
     const val SHEETS_MIRROR_SPREADSHEET_ID = "sheets_mirror_spreadsheet_id"
@@ -111,7 +152,7 @@ object InstitutionSettingsKeys {
         PROFILE_PHOTOS_ENABLED,
         ANNOUNCEMENTS_NON_ADMIN_SEND_ENABLED,
         POS_SUBCATEGORIES,
-    ) + BACKEND_KEYS + SHEETS_MIRROR_KEYS
+    ) + TEMP_GUEST_KEYS + GUEST_FORM_KEYS + BACKEND_KEYS + SHEETS_MIRROR_KEYS
 
     /**
      * Settings that exist only on the Firebase backend. They are still synced between Firebase
@@ -120,7 +161,7 @@ object InstitutionSettingsKeys {
      */
     val FIREBASE_ONLY_KEYS: Set<String> = setOf(
         POS_SUBCATEGORIES,
-    )
+    ) + TEMP_GUEST_KEYS + GUEST_FORM_KEYS
 
     fun isSyncedToSheets(key: String): Boolean = key !in FIREBASE_ONLY_KEYS
 }

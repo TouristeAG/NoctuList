@@ -35,8 +35,8 @@ object VolunteerActivityManager {
         return (currentTime - lastShiftDate) / (1000 * 60 * 60 * 24)
     }
 
-    fun getDaysSinceLastActivity(volunteer: Volunteer): Long? {
-        val daysSinceLastShift = getDaysSinceLastShift(volunteer)
+    fun getDaysSinceLastActivity(volunteer: Volunteer, volunteerJobs: List<Job>? = null): Long? {
+        val daysSinceLastShift = getDaysSinceLastShift(volunteer, volunteerJobs)
         if (daysSinceLastShift != null) return daysSinceLastShift
         val lastModified = volunteer.lastModified
         if (lastModified > 0) {

@@ -15,6 +15,7 @@ import com.eventmanager.app.resources.Res
 import com.eventmanager.app.resources.*
 import com.eventmanager.app.ui.components.NfcUidMatchOption
 import com.eventmanager.app.ui.components.ScannerMatch
+import com.eventmanager.app.ui.components.rememberTemporaryGuestFeatures
 import com.eventmanager.app.ui.components.resolveDesktopScannerPayload
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -47,6 +48,7 @@ actual fun BilleterieScannerScreen(
     var readerLabel by remember { mutableStateOf("") }
 
     val noMatchMsg = stringResource(Res.string.billeterie_nfc_no_match)
+    val temporaryFeatures = rememberTemporaryGuestFeatures(viewModel)
 
     LaunchedEffect(cardReader, settingsManager) {
         while (isActive) {
@@ -108,11 +110,24 @@ actual fun BilleterieScannerScreen(
             }
             is ScannerMatch.GuestMatch -> {
                 val guest = match.guest
-                if (guest.isTemporaryGuest || guest.isVolunteerBenefit) {
-                    errorMessage = noMatchMsg
-                } else {
-                    scanResult = BilleterieScanResult.GuestFound(guest)
-                    cameraEnabled = false
+                when {
+                    guest.isVolunteerBenefit -> errorMessage = noMatchMsg
+                    guest.isTemporaryGuest && temporaryFeatures.enabled -> {
+                        scanResult = BilleterieScanResult.TemporaryGuestFound(
+                            guest = guest,
+                            accesses = VenueAccessCatalog.resolve(
+                                temporaryFeatures.venueAccesses,
+                                guest.temporaryAccessIdSet(),
+                            ),
+                            alreadyValidated = guest.temporaryEntryValidated,
+                        )
+                        cameraEnabled = false
+                    }
+                    guest.isTemporaryGuest -> errorMessage = noMatchMsg
+                    else -> {
+                        scanResult = BilleterieScanResult.GuestFound(guest)
+                        cameraEnabled = false
+                    }
                 }
             }
         }
@@ -120,7 +135,12 @@ actual fun BilleterieScannerScreen(
 
     fun handlePayload(raw: String) {
         if (scanResult != null) return
-        val (match, duplicates) = resolveDesktopScannerPayload(raw, volunteers, guests)
+        val (match, duplicates) = resolveDesktopScannerPayload(
+            raw = raw,
+            volunteers = volunteers,
+            guests = guests,
+            includeTemporaryGuests = temporaryFeatures.enabled,
+        )
         when {
             match != null -> resolveScanMatch(match)
             duplicates.isNotEmpty() -> duplicateUidMatches = duplicates
@@ -194,6 +214,7 @@ actual fun BilleterieScannerScreen(
             onScanNext = ::resetForNextScan,
             onCloseToMenu = onBack,
             viewModel = viewModel,
+            onValidateTemporaryGuest = { guest -> viewModel?.validateTemporaryGuestEntry(guest) },
         )
     } else {
         DesktopBilleterieScanningScreen(
