@@ -1562,6 +1562,7 @@
     <string name="firebase_sync_title">Synchronisation Firebase</string>
     <string name="firebase_sync_subtitle">Sync temps réel pour invités, bénévoles, POS et billetterie.</string>
     <string name="firebase_settings_intro">Suivez les étapes ci-dessous. Utilisez le guide ? si vous avez besoin d’aide dans la Console Firebase.</string>
+    <string name="firebase_settings_section_setup">Configuration</string>
     <string name="firebase_settings_section_devices">Autres appareils</string>
     <string name="firebase_settings_section_access">Accès &amp; équipe</string>
     <string name="firebase_settings_section_optional">Optionnel</string>

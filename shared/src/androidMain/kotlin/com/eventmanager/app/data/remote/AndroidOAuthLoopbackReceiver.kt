@@ -61,7 +61,7 @@ internal class AndroidOAuthLoopbackReceiver {
                         .readLine()
                         .orEmpty()
                     val result = parseRequestLine(requestLine, redirectUri)
-                    val body = "<html><body><p>Sign-in complete. You can return to NoctuList.</p></body></html>"
+                    val body = OAuthCallbackHtml.page(success = result is LoopbackOAuthResult.Success)
                     val response = buildString {
                         append("HTTP/1.1 200 OK\r\n")
                         append("Content-Type: text/html; charset=utf-8\r\n")

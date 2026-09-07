@@ -1448,6 +1448,7 @@
     <string name="firebase_sync_title">Firebase सिंक</string>
     <string name="firebase_sync_subtitle">अतिथियों, स्वयंसेवकों, POS और द्वार उपकरणों के लिए रीयलटाइम सिंक।</string>
     <string name="firebase_settings_intro">नीचे दिए चरणों का पालन करें। Firebase Console में मदद के लिए ? गाइड देखें।</string>
+    <string name="firebase_settings_section_setup">सेटअप</string>
     <string name="firebase_settings_section_devices">अन्य उपकरण</string>
     <string name="firebase_settings_section_access">पहुँच और टीम</string>
     <string name="firebase_settings_section_optional">वैकल्पिक</string>

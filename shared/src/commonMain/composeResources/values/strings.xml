@@ -1472,6 +1472,7 @@
     <string name="firebase_sync_title">Firebase sync</string>
     <string name="firebase_sync_subtitle">Realtime sync for guests, volunteers, POS and door devices.</string>
     <string name="firebase_settings_intro">Follow the steps below. Use the ? guide if you need help in Firebase Console.</string>
+    <string name="firebase_settings_section_setup">Setup</string>
     <string name="firebase_settings_section_devices">Other devices</string>
     <string name="firebase_settings_section_access">Access &amp; team</string>
     <string name="firebase_settings_section_optional">Optional</string>

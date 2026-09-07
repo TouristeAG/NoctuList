@@ -1,18 +1,33 @@
 package com.eventmanager.app.ui.components
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.eventmanager.app.data.remote.FirebaseOrgAdminAccess
@@ -43,6 +58,7 @@ import com.eventmanager.app.resources.firebase_settings_intro
 import com.eventmanager.app.resources.firebase_settings_section_access
 import com.eventmanager.app.resources.firebase_settings_section_devices
 import com.eventmanager.app.resources.firebase_settings_section_optional
+import com.eventmanager.app.resources.firebase_settings_section_setup
 import com.eventmanager.app.resources.institution_settings_firebase_admin_only
 import com.eventmanager.app.resources.firebase_status_need_config
 import com.eventmanager.app.resources.firebase_status_need_sign_in
@@ -155,7 +171,7 @@ fun FirebaseSyncSettingsSection(
 
     Column(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         Text(
             stringResource(Res.string.firebase_settings_intro),
@@ -170,153 +186,177 @@ fun FirebaseSyncSettingsSection(
             warning = !ready && orgReady,
         )
 
-        // —— Setup (steps 1–3) ——
-        FirebaseConfiguredOrgsSection(
-            configuredOrgs = configuredOrgs,
-            onConfiguredOrgsChange = onConfiguredOrgsChange,
-            onOrgIdCommitted = onOrgIdCommitted,
-        )
-
-        if (settingsManager != null) {
-            FirebaseAdminProjectConfigCard(
-                settingsManager = settingsManager,
-                projectId = projectId,
-                applicationId = applicationId,
-                apiKey = apiKey,
-                webClientId = webClientId,
-                webClientSecret = webClientSecret,
-                onProjectIdChange = onProjectIdChange,
-                onApplicationIdChange = onApplicationIdChange,
-                onApiKeyChange = onApiKeyChange,
-                onWebClientIdChange = onWebClientIdChange,
-                onWebClientSecretChange = onWebClientSecretChange,
-                allowProjectSecrets = allowProjectSecrets,
+        FirebaseSettingsGroup(
+            title = stringResource(Res.string.firebase_settings_section_setup),
+            icon = Icons.Default.CloudSync,
+        ) {
+            FirebaseConfiguredOrgsSection(
+                configuredOrgs = configuredOrgs,
+                onConfiguredOrgsChange = onConfiguredOrgsChange,
+                onOrgIdCommitted = onOrgIdCommitted,
             )
+
+            if (settingsManager != null) {
+                FirebaseAdminProjectConfigCard(
+                    settingsManager = settingsManager,
+                    projectId = projectId,
+                    applicationId = applicationId,
+                    apiKey = apiKey,
+                    webClientId = webClientId,
+                    webClientSecret = webClientSecret,
+                    onProjectIdChange = onProjectIdChange,
+                    onApplicationIdChange = onApplicationIdChange,
+                    onApiKeyChange = onApiKeyChange,
+                    onWebClientIdChange = onWebClientIdChange,
+                    onWebClientSecretChange = onWebClientSecretChange,
+                    allowProjectSecrets = allowProjectSecrets,
+                )
+            }
+
+            FirebaseSignInStep(
+                authEmail = authEmail,
+                onSignIn = onSignIn,
+                onSignOut = onSignOut,
+                signInFeedback = signInFeedback,
+            )
+
+            GuidedStepCard(title = stringResource(Res.string.firebase_checklist_title)) {
+                GuidedChecklistItem(
+                    label = stringResource(Res.string.firebase_checklist_org),
+                    done = orgReady,
+                )
+                GuidedChecklistItem(
+                    label = stringResource(Res.string.firebase_checklist_project),
+                    done = projectReady,
+                )
+                GuidedChecklistItem(
+                    label = stringResource(Res.string.firebase_checklist_auth),
+                    done = authReady,
+                )
+            }
         }
 
-        FirebaseSignInStep(
-            authEmail = authEmail,
-            onSignIn = onSignIn,
-            onSignOut = onSignOut,
-            signInFeedback = signInFeedback,
-        )
-
-        GuidedStepCard(title = stringResource(Res.string.firebase_checklist_title)) {
-            GuidedChecklistItem(
-                label = stringResource(Res.string.firebase_checklist_org),
-                done = orgReady,
-            )
-            GuidedChecklistItem(
-                label = stringResource(Res.string.firebase_checklist_project),
-                done = projectReady,
-            )
-            GuidedChecklistItem(
-                label = stringResource(Res.string.firebase_checklist_auth),
-                done = authReady,
-            )
-        }
-
-        FirebaseSettingsSectionHeader(stringResource(Res.string.firebase_settings_section_devices))
         if (settingsManager != null) {
-            FirebaseAdminJoinQrCard(
-                orgId = configuredOrgs.firstOrNull { it.orgId.isNotBlank() }?.orgId.orEmpty(),
-                projectId = projectId,
-                applicationId = applicationId,
-                apiKey = apiKey,
-                webClientId = webClientId,
-                webClientSecret = webClientSecret,
-                bootstrapCode = bootstrapCode,
-                allowProjectSecrets = isFirebaseOrgAdmin,
-                onBootstrapCodeChange = { code ->
-                    bootstrapCode = code
-                    settingsManager.setFirebaseBootstrapCode(code)
-                },
-                onRotateBootstrapCode = if (isFirebaseOrgAdmin && platformContext != null) {
-                    {
-                        val org = settingsManager.resolveWritableFirebaseOrgId()
-                        val gateway = com.eventmanager.app.data.remote.createFirestoreGateway(
-                            platformContext,
-                            settingsManager,
-                        )
-                        val code = com.eventmanager.app.data.remote.MemberRoleAdmin.rotateBootstrapCode(
-                            gateway = gateway,
-                            orgId = org,
-                            allowedEmailDomains = settingsManager.getAllowedEmailDomains(),
-                        )
+            FirebaseSettingsGroup(
+                title = stringResource(Res.string.firebase_settings_section_devices),
+                icon = Icons.Default.QrCode,
+            ) {
+                FirebaseAdminJoinQrCard(
+                    orgId = configuredOrgs.firstOrNull { it.orgId.isNotBlank() }?.orgId.orEmpty(),
+                    projectId = projectId,
+                    applicationId = applicationId,
+                    apiKey = apiKey,
+                    webClientId = webClientId,
+                    webClientSecret = webClientSecret,
+                    bootstrapCode = bootstrapCode,
+                    allowProjectSecrets = isFirebaseOrgAdmin,
+                    onBootstrapCodeChange = { code ->
+                        bootstrapCode = code
                         settingsManager.setFirebaseBootstrapCode(code)
-                        code
-                    }
-                } else {
-                    null
-                },
-            )
+                    },
+                    onRotateBootstrapCode = if (isFirebaseOrgAdmin && platformContext != null) {
+                        {
+                            val org = settingsManager.resolveWritableFirebaseOrgId()
+                            val gateway = com.eventmanager.app.data.remote.createFirestoreGateway(
+                                platformContext,
+                                settingsManager,
+                            )
+                            val code = com.eventmanager.app.data.remote.MemberRoleAdmin.rotateBootstrapCode(
+                                gateway = gateway,
+                                orgId = org,
+                                allowedEmailDomains = settingsManager.getAllowedEmailDomains(),
+                            )
+                            settingsManager.setFirebaseBootstrapCode(code)
+                            code
+                        }
+                    } else {
+                        null
+                    },
+                )
+            }
         }
 
-        FirebaseSettingsSectionHeader(stringResource(Res.string.firebase_settings_section_access))
-        if (!isFirebaseOrgAdmin && authReady) {
+        FirebaseSettingsGroup(
+            title = stringResource(Res.string.firebase_settings_section_access),
+            icon = Icons.Default.Group,
+        ) {
+            if (!isFirebaseOrgAdmin && authReady) {
+                Text(
+                    stringResource(Res.string.institution_settings_firebase_admin_only),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            FirebaseAllowedEmailDomainsSection(
+                domains = allowedEmailDomains,
+                onDomainsChange = onAllowedEmailDomainsChange,
+                enabled = isFirebaseOrgAdmin,
+            )
+
+            if (settingsManager != null) {
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+                )
+                FirebaseTeamAccessCard(
+                    platformContext = platformContext,
+                    settingsManager = settingsManager,
+                )
+            }
+        }
+
+        if (settingsManager != null) {
+            FirebaseSettingsGroup(
+                title = stringResource(Res.string.firebase_settings_section_optional),
+                icon = Icons.Default.Tune,
+            ) {
+                GuestFormSettingsCard(
+                    enabled = guestFormsEnabled,
+                    onEnabledChange = onGuestFormsEnabledChange,
+                    siteOrigin = guestFormSiteOrigin,
+                    canEdit = isFirebaseOrgAdmin,
+                )
+                GuidedStepCard(
+                    title = stringResource(Res.string.profile_photos_settings_title),
+                    body = stringResource(Res.string.profile_photos_settings_body),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            stringResource(Res.string.profile_photos_enable),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f).padding(end = 8.dp),
+                        )
+                        Switch(
+                            checked = profilePhotosEnabled,
+                            onCheckedChange = { enabled ->
+                                onProfilePhotosEnabledChange(enabled)
+                            },
+                            enabled = isFirebaseOrgAdmin,
+                        )
+                    }
+                }
+                FirebaseSheetsMirrorSettingsSection(
+                    settingsManager = settingsManager,
+                    platformContext = platformContext,
+                    onMirrorExport = onMirrorExport,
+                    onMirrorSettingsChanged = onMirrorSettingsChanged,
+                    enabled = isFirebaseOrgAdmin,
+                )
+            }
+        }
+
+        FirebaseSettingsGroup(
+            title = stringResource(Res.string.firebase_migrate_section_title),
+            icon = Icons.Default.SwapHoriz,
+        ) {
             Text(
-                stringResource(Res.string.institution_settings_firebase_admin_only),
+                stringResource(Res.string.firebase_migrate_section_body),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-        }
-        FirebaseAllowedEmailDomainsSection(
-            domains = allowedEmailDomains,
-            onDomainsChange = onAllowedEmailDomainsChange,
-            enabled = isFirebaseOrgAdmin,
-        )
-
-        if (settingsManager != null) {
-            FirebaseTeamAccessCard(
-                platformContext = platformContext,
-                settingsManager = settingsManager,
-            )
-        }
-
-        FirebaseSettingsSectionHeader(stringResource(Res.string.firebase_settings_section_optional))
-        if (settingsManager != null) {
-            GuestFormSettingsCard(
-                enabled = guestFormsEnabled,
-                onEnabledChange = onGuestFormsEnabledChange,
-                siteOrigin = guestFormSiteOrigin,
-                canEdit = isFirebaseOrgAdmin,
-            )
-            GuidedStepCard(
-                title = stringResource(Res.string.profile_photos_settings_title),
-                body = stringResource(Res.string.profile_photos_settings_body),
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(
-                        stringResource(Res.string.profile_photos_enable),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.weight(1f).padding(end = 8.dp),
-                    )
-                    Switch(
-                        checked = profilePhotosEnabled,
-                        onCheckedChange = { enabled ->
-                            onProfilePhotosEnabledChange(enabled)
-                        },
-                        enabled = isFirebaseOrgAdmin,
-                    )
-                }
-            }
-            FirebaseSheetsMirrorSettingsSection(
-                settingsManager = settingsManager,
-                platformContext = platformContext,
-                onMirrorExport = onMirrorExport,
-                onMirrorSettingsChanged = onMirrorSettingsChanged,
-                enabled = isFirebaseOrgAdmin,
-            )
-        }
-
-        GuidedStepCard(
-            title = stringResource(Res.string.firebase_migrate_section_title),
-            body = stringResource(Res.string.firebase_migrate_section_body),
-        ) {
             Button(onClick = onMigrateToSheets, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(Res.string.firebase_migrate_to_sheets))
             }
@@ -325,14 +365,50 @@ fun FirebaseSyncSettingsSection(
 }
 
 @Composable
-private fun FirebaseSettingsSectionHeader(title: String) {
-    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-    Text(
-        title,
-        style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.primary,
-    )
+private fun FirebaseSettingsGroup(
+    title: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)),
+        tonalElevation = 0.dp,
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            content()
+        }
+    }
 }
 
 @Composable
@@ -510,6 +586,11 @@ private fun FirebaseTeamAccessCard(
             Text(stringResource(Res.string.firebase_team_refresh))
         }
 
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 4.dp),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+        )
+
         Text(
             stringResource(Res.string.firebase_team_steps),
             style = MaterialTheme.typography.bodySmall,
@@ -591,21 +672,41 @@ private fun FirebaseTeamAccessCard(
 private fun FirebaseMemberRow(member: FirebaseTeamMemberListing, admin: Boolean) {
     val title = member.email?.takeIf { it.isNotBlank() }
         ?: stringResource(Res.string.firebase_member_unknown_email)
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         Text(
             title,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = if (admin) FontWeight.SemiBold else FontWeight.Normal,
+            modifier = Modifier.weight(1f),
         )
-        Text(
-            if (admin) {
-                stringResource(Res.string.firebase_role_admin)
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = if (admin) {
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
             } else {
-                stringResource(Res.string.firebase_role_member)
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
             },
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        ) {
+            Text(
+                if (admin) {
+                    stringResource(Res.string.firebase_role_admin)
+                } else {
+                    stringResource(Res.string.firebase_role_member)
+                },
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Medium,
+                color = if (admin) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+            )
+        }
     }
 }
 

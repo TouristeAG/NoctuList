@@ -1310,6 +1310,7 @@
     <string name="firebase_sync_title">Firebase 同步</string>
     <string name="firebase_sync_subtitle">賓客、志工、收銀和門禁裝置的即時同步。</string>
     <string name="firebase_settings_intro">請依下列步驟操作。如需 Firebase 控制台協助，請使用 ? 指南。</string>
+    <string name="firebase_settings_section_setup">設定</string>
     <string name="firebase_settings_section_devices">其他裝置</string>
     <string name="firebase_settings_section_access">存取與團隊</string>
     <string name="firebase_settings_section_optional">選用</string>

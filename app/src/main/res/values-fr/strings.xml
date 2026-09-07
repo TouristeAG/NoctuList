@@ -1433,7 +1433,7 @@
     <string name="guest_form_logo_shape_circle">Rond</string>
     <string name="guest_form_logo_invert">Inverser les couleurs</string>
     <string name="guest_form_ask_email">Demander un e-mail de contact</string>
-    <string name="guest_form_ask_phone">Demander un téléphone d'urgence</string>
+    <string name="guest_form_ask_phone">Demander un téléphone d\'urgence</string>
     <string name="guest_form_prefill_email">E-mail prérempli</string>
     <string name="guest_form_prefill_phone">Téléphone d\'urgence prérempli</string>
     <string name="guest_form_offered_access">Accès qu\'ils peuvent demander</string>
@@ -1449,7 +1449,7 @@
     <string name="guest_form_pending_many">%1$d guestlists en attente</string>
     <string name="guest_form_pending_cta">Touchez pour valider</string>
     <string name="guest_form_review_title">Revue - %1$s</string>
-    <string name="guest_form_review_response_hint">Une réponse d'un formulaire multi-réponses. Accepter ou refuser ne clôture que cette réponse.</string>
+    <string name="guest_form_review_response_hint">Une réponse d\'un formulaire multi-réponses. Accepter ou refuser ne clôture que cette réponse.</string>
     <string name="guest_form_review_accept">Valider</string>
     <string name="guest_form_review_reject">Refuser</string>
     <string name="guest_form_review_empty">Aucun nom dans cette réponse.</string>

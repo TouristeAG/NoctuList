@@ -24,6 +24,7 @@ import com.eventmanager.app.ui.AdminSessionWatchdog
 import com.eventmanager.app.ui.theme.EventManagerTheme
 import com.eventmanager.app.ui.theme.ThemeMode
 import com.eventmanager.app.ui.platform.AppAppearanceState
+import com.eventmanager.app.ui.platform.bootstrapAppLocale
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -136,7 +137,9 @@ class MainActivity : FragmentActivity(), AdminSessionHost {
     @Suppress("DEPRECATION")
     private fun applyLanguageSettings() {
         val settingsManager = SettingsManager(createAppStorage(createPlatformContext(this)))
-        val locale = createLocaleFromLanguageCode(settingsManager.getLanguage())
+        val language = settingsManager.getLanguage()
+        bootstrapAppLocale(language)
+        val locale = createLocaleFromLanguageCode(language)
         Locale.setDefault(locale)
         val config = Configuration(resources.configuration)
         config.setLocale(locale)
@@ -173,7 +176,9 @@ class MainActivity : FragmentActivity(), AdminSessionHost {
     private fun applyLanguageToContext(base: Context?): Context? {
         if (base == null) return null
         val settingsManager = SettingsManager(createAppStorage(createPlatformContext(base)))
-        val locale = createLocaleFromLanguageCode(settingsManager.getLanguage())
+        val language = settingsManager.getLanguage()
+        bootstrapAppLocale(language)
+        val locale = createLocaleFromLanguageCode(language)
         val config = Configuration(base.resources.configuration)
         config.setLocale(locale)
         return base.createConfigurationContext(config)

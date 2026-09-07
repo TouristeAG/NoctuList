@@ -1448,6 +1448,7 @@
     <string name="firebase_sync_title">Sync Firebase</string>
     <string name="firebase_sync_subtitle">Sync tempore reali pro hospitibus, voluntariis, POS et instrumentis portae.</string>
     <string name="firebase_settings_intro">Sequere gradus infra. Utere guide ? si opus est auxilium in Firebase Console.</string>
+    <string name="firebase_settings_section_setup">Configuratio</string>
     <string name="firebase_settings_section_devices">Alia instrumenta</string>
     <string name="firebase_settings_section_access">Accessus &amp; turma</string>
     <string name="firebase_settings_section_optional">Optionale</string>

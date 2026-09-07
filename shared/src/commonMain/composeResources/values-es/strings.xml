@@ -1310,6 +1310,7 @@
     <string name="firebase_sync_title">Sincronización Firebase</string>
     <string name="firebase_sync_subtitle">Sincronización en tiempo real para invitados, voluntarios, TPV y dispositivos de puerta.</string>
     <string name="firebase_settings_intro">Siga los pasos a continuación. Use la guía ? si necesita ayuda en Firebase Console.</string>
+    <string name="firebase_settings_section_setup">Configuración</string>
     <string name="firebase_settings_section_devices">Otros dispositivos</string>
     <string name="firebase_settings_section_access">Acceso y equipo</string>
     <string name="firebase_settings_section_optional">Opcional</string>
