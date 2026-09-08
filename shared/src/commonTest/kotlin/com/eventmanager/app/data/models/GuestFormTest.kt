@@ -43,6 +43,70 @@ class GuestFormTest {
     fun offeredAccesses_legacyCommaIdsStillResolve() {
         val decoded = GuestFormOfferedAccessCodec.decode("a1, a2")
         assertEquals(listOf("a1", "a2"), decoded.map { it.id })
+        assertEquals(listOf(0, 0), decoded.map { it.maxRequests })
+    }
+
+    @Test
+    fun offeredAccesses_roundTripWithMaxRequests() {
+        val accesses = listOf(
+            VenueAccess(id = "a1", venueName = "GROOVE", name = "Backstage"),
+            VenueAccess(id = "a2", venueName = "GROOVE", name = "VIP"),
+        )
+        val encoded = GuestFormOfferedAccessCodec.encode(
+            accesses,
+            mapOf("a1" to 5, "a2" to 3),
+            maxGuests = 10,
+        )
+        val decoded = GuestFormOfferedAccessCodec.decode(encoded)
+        assertEquals(listOf(5, 3), decoded.map { it.maxRequests })
+        assertTrue(encoded.contains("\"maxRequests\":5"))
+    }
+
+    @Test
+    fun offeredAccesses_omitsUnlimitedMaxRequests() {
+        val encoded = GuestFormOfferedAccessCodec.encode(
+            listOf(VenueAccess(id = "a1", venueName = "GROOVE", name = "Backstage")),
+        )
+        assertTrue(!encoded.contains("maxRequests"))
+        assertEquals(0, GuestFormOfferedAccessCodec.decode(encoded).single().maxRequests)
+    }
+
+    @Test
+    fun offeredAccesses_legacyJsonWithoutMaxRequestsIsUnlimited() {
+        val decoded = GuestFormOfferedAccessCodec.decode("""[{"id":"a1","name":"Backstage"}]""")
+        assertEquals(0, decoded.single().maxRequests)
+    }
+
+    @Test
+    fun offeredAccesses_clampsMaxRequestsToMaxGuests() {
+        val encoded = GuestFormOfferedAccessCodec.encode(
+            listOf(VenueAccess(id = "a1", venueName = "GROOVE", name = "Backstage")),
+            mapOf("a1" to 999),
+            maxGuests = 10,
+        )
+        assertEquals(10, GuestFormOfferedAccessCodec.decode(encoded).single().maxRequests)
+    }
+
+    @Test
+    fun accessQuota_flagsOverflowAndIgnoresUnlimited() {
+        val offered = listOf(
+            GuestFormOfferedAccess(id = "a1", name = "Backstage", maxRequests = 5),
+            GuestFormOfferedAccess(id = "a2", name = "VIP", maxRequests = 0),
+        )
+        val over = GuestFormSubmission(
+            people = List(6) { GuestFormPerson("P$it", setOf("a1")) },
+        )
+        assertEquals(listOf("a1"), over.accessQuotaViolations(offered).map { it.id })
+
+        val atCap = GuestFormSubmission(
+            people = List(5) { GuestFormPerson("P$it", setOf("a1")) },
+        )
+        assertTrue(atCap.accessQuotaViolations(offered).isEmpty())
+
+        val unlimited = GuestFormSubmission(
+            people = List(6) { GuestFormPerson("P$it", setOf("a2")) },
+        )
+        assertTrue(unlimited.accessQuotaViolations(offered).isEmpty())
     }
 
     @Test

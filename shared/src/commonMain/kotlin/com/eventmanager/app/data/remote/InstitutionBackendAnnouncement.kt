@@ -26,3 +26,16 @@ data class InstitutionBackendAnnouncement(
             !firebaseApplicationId.isNullOrBlank() &&
             !firebaseApiKey.isNullOrBlank()
 }
+
+/**
+ * True when this device must show the “connect to the new database” follow UI.
+ *
+ * Only a **backend type change** (Sheets ↔ Firebase) is a real migration. A leftover
+ * [InstitutionBackendAnnouncement.migrationId] on an org this phone already uses — typical when
+ * opening a space, rotating an invite code (which rewrites `metadata/config`), or joining via QR
+ * without ever storing `followed_backend_migration_id` — must not look like a new transfer.
+ */
+fun shouldPromptInstitutionBackendFollow(
+    announcement: InstitutionBackendAnnouncement,
+    localBackend: BackendType,
+): Boolean = announcement.backendType != localBackend

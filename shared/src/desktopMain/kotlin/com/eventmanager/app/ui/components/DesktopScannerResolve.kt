@@ -2,9 +2,10 @@ package com.eventmanager.app.ui.components
 
 import com.eventmanager.app.data.models.Guest
 import com.eventmanager.app.data.models.Volunteer
+import com.eventmanager.app.data.nfc.NfcUid
+import com.eventmanager.app.data.security.crypto.SensitiveFieldCodec
 
-internal fun String.normalizeScannerUid(): String =
-    trim().replace(" ", "").replace(":", "").uppercase()
+internal fun String.normalizeScannerUid(): String = NfcUid.normalize(this)
 
 private fun ScannerMatch.hasAdminPrivileges(): Boolean = when (this) {
     is ScannerMatch.VolunteerMatch -> volunteer.isAdmin
@@ -33,14 +34,10 @@ internal fun resolveNfcUidMatches(
 ): List<NfcUidMatchOption> {
     val uid = rawUid.normalizeScannerUid()
     if (uid.isBlank()) return emptyList()
-    val volunteersByNfc = volunteers
-        .filter { it.nfcCardUid.isNotBlank() }
-        .groupBy { it.nfcCardUid.normalizeScannerUid() }
-    val guestsByNfc = permanentGuests
-        .filter { it.nfcCardUid.isNotBlank() }
-        .groupBy { it.nfcCardUid.normalizeScannerUid() }
+    val matchingVolunteers = volunteers.filter { SensitiveFieldCodec.matchesNfcUid(it, uid) }
+    val matchingGuests = permanentGuests.filter { SensitiveFieldCodec.matchesNfcUid(it, uid) }
     return buildList {
-        volunteersByNfc[uid].orEmpty().forEach { volunteer ->
+        matchingVolunteers.forEach { volunteer ->
             add(
                 NfcUidMatchOption(
                     match = ScannerMatch.VolunteerMatch(volunteer),
@@ -50,7 +47,7 @@ internal fun resolveNfcUidMatches(
                 )
             )
         }
-        guestsByNfc[uid].orEmpty().forEach { guest ->
+        matchingGuests.forEach { guest ->
             add(
                 NfcUidMatchOption(
                     match = ScannerMatch.GuestMatch(guest),

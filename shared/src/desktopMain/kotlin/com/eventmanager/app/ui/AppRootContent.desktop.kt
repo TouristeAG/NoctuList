@@ -110,6 +110,7 @@ actual fun AppRootContent(
             com.eventmanager.app.data.sync.installInstitutionLogoBridge(platformContext, settingsManager)
         }
         val skipStartupSync = remember { settingsManager.consumeSkipNextStartupSync() }
+        val openWelcomeAfterSetup = remember { settingsManager.consumeOpenWelcomeAfterSetup() }
         val uiRefreshNonce by AppAppearanceState::refreshNonce
         val backgroundAnimationStyle = uiRefreshNonce.let { settingsManager.getBackgroundAnimationStyle() }
         val backgroundAnimationOpacity = uiRefreshNonce.let { settingsManager.getBackgroundAnimationOpacity() }
@@ -149,6 +150,15 @@ actual fun AppRootContent(
         var showScannedGuestDetail by remember { mutableStateOf<Guest?>(null) }
         var searchFocusTick by remember { mutableIntStateOf(0) }
         var lastAdminInteraction by remember { mutableLongStateOf(elapsedRealtimeMs()) }
+        LaunchedEffect(openWelcomeAfterSetup) {
+            if (openWelcomeAfterSetup) {
+                showWelcome = true
+                showAdminAuth = false
+                showTicketCheck = false
+                showPos = false
+                nav.showAdminSetup = false
+            }
+        }
 
         fun touchAdminSession() {
             lastAdminInteraction = elapsedRealtimeMs()
@@ -166,6 +176,10 @@ actual fun AppRootContent(
                     settingsManager.setSetupWizardCompleted(true)
                     showSetupWizard = false
                     showWelcome = true
+                    showAdminAuth = false
+                    showTicketCheck = false
+                    showPos = false
+                    nav.showAdminSetup = false
                     onThemeModeChanged(settingsManager.getThemeMode())
                 },
                 onThemeModeChanged = onThemeModeChanged,
@@ -234,7 +248,12 @@ actual fun AppRootContent(
             val minSplashMs = 800L
             val splashStart = elapsedRealtimeMs()
             try {
-                if (skipStartupSync) {
+                if (openWelcomeAfterSetup) {
+                    startupStep = StartupSplashStep.Preparing
+                    viewModel.warmupWorkspacesAfterGate()
+                    showAdminSetup = false
+                    adminPrecheckSucceeded = true
+                } else if (skipStartupSync) {
                     startupStep = StartupSplashStep.Preparing
                     viewModel.warmupWorkspacesAfterGate()
                     showAdminSetup = viewModel.evaluateLocalAdminSetupNeed()

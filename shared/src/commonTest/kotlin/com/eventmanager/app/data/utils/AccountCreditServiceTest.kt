@@ -1,5 +1,9 @@
 package com.eventmanager.app.data.utils
 
+import com.eventmanager.app.data.models.AccountHolderType
+import com.eventmanager.app.data.models.AccountTransfer
+import com.eventmanager.app.data.models.AccountTransferSyncState
+import com.eventmanager.app.data.models.AccountTransferType
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -109,5 +113,61 @@ class AccountCreditServiceTest {
         val payment = computePosPayment(cart, accountBalance = 0.0, barDiscountPercent = 0)
 
         assertEquals(3.0, payment.cashOrCardDue, 1e-9)
+    }
+
+    @Test
+    fun findReusablePendingPosSale_returnsSameCartPendingRow() {
+        val pending = AccountTransfer(
+            holderType = AccountHolderType.VOLUNTEER,
+            holderId = "v1",
+            holderName = "Ada",
+            amount = -10.0,
+            type = AccountTransferType.POS_SALE,
+            sourceReference = "pos:first:v1",
+            posItemsJson = "1:Beer:5.0:2",
+            posVenueName = "Bar",
+            syncState = AccountTransferSyncState.PENDING,
+            firebaseOrgId = "org-a",
+        )
+        val confirmedTwin = pending.copy(
+            sourceReference = "pos:second:v1",
+            syncState = AccountTransferSyncState.CONFIRMED,
+        )
+        val otherCart = pending.copy(
+            sourceReference = "pos:other:v1",
+            posItemsJson = "1:Beer:5.0:1",
+        )
+        val found = findReusablePendingPosSale(
+            existing = listOf(confirmedTwin, otherCart, pending),
+            holderType = AccountHolderType.VOLUNTEER,
+            holderId = "v1",
+            posItemsJson = "1:Beer:5.0:2",
+            posVenueName = "Bar",
+            firebaseOrgId = "org-a",
+        )
+        assertEquals("pos:first:v1", found?.sourceReference)
+    }
+
+    @Test
+    fun findReusablePendingPosSale_ignoresConfirmedDuplicates() {
+        val confirmed = AccountTransfer(
+            holderType = AccountHolderType.GUEST,
+            holderId = "g1",
+            holderName = "Bo",
+            amount = -5.0,
+            type = AccountTransferType.POS_SALE,
+            sourceReference = "pos:done:g1",
+            posItemsJson = "2:Ticket:5.0:1",
+            syncState = AccountTransferSyncState.CONFIRMED,
+        )
+        val found = findReusablePendingPosSale(
+            existing = listOf(confirmed),
+            holderType = AccountHolderType.GUEST,
+            holderId = "g1",
+            posItemsJson = "2:Ticket:5.0:1",
+            posVenueName = "",
+            firebaseOrgId = "",
+        )
+        assertEquals(null, found)
     }
 }

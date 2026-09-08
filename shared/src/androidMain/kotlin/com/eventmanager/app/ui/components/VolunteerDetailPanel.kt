@@ -459,37 +459,14 @@ actual fun VolunteerDetailPanel(
                                 OutlinedButton(
                                     onClick = {
                                         qrImage?.let { bitmap ->
-                                            try {
-                                                val file = File(qrContext.cacheDir, "qr_code_${volunteer.id}.png")
-                                                val outputStream = FileOutputStream(file)
-                                                bitmap.asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, outputStream)
-                                                outputStream.close()
-                                                
-                                                val uri = FileProvider.getUriForFile(
-                                                    qrContext,
-                                                    "${qrContext.packageName}.fileprovider",
-                                                    file
+                                            runCatching {
+                                                sharePngImage(
+                                                    context = qrContext,
+                                                    image = bitmap,
+                                                    fileName = "qr_code_${volunteer.id}.png",
+                                                    chooserTitle = qrContext.getString(R.string.share_qr_code),
+                                                    subject = qrContext.getString(R.string.qr_code_subject, volunteer.name),
                                                 )
-                                                
-                                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                                    type = "image/png"
-                                                    putExtra(Intent.EXTRA_STREAM, uri)
-                                                    putExtra(Intent.EXTRA_SUBJECT, qrContext.getString(R.string.qr_code_subject, volunteer.name))
-                                                    putExtra(Intent.EXTRA_TEXT, qrContext.getString(R.string.qr_code_for_volunteer, volunteer.name))
-                                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                                }
-                                                qrContext.startActivity(Intent.createChooser(shareIntent, qrContext.getString(R.string.share_qr_code)))
-                                            } catch (e: Exception) {
-                                                // Fallback to text sharing if image sharing fails
-                                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                                    type = "text/plain"
-                                                    putExtra(Intent.EXTRA_SUBJECT, "Volunteer QR")
-                                                    putExtra(
-                                                        Intent.EXTRA_TEXT,
-                                                        "Volunteer: ${volunteer.name}\nID: ${volunteer.id}\nPayload: $payload"
-                                                    )
-                                                }
-                                                qrContext.startActivity(Intent.createChooser(shareIntent, qrContext.getString(R.string.share_qr_code)))
                                             }
                                         }
                                     },

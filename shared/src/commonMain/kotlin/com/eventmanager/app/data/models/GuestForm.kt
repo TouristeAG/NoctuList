@@ -245,6 +245,8 @@ fun GuestForm.isPastHardRetention(nowMillis: Long): Boolean {
 data class GuestFormOfferedAccess(
     val id: String = "",
     val name: String = "",
+    /** 0 means no per-access cap (still bounded by [GuestForm.maxGuests]). */
+    val maxRequests: Int = 0,
 )
 
 /**
@@ -257,9 +259,20 @@ object GuestFormOfferedAccessCodec {
         GuestFormOfferedAccess.serializer(),
     )
 
-    fun encode(accesses: List<VenueAccess>): String {
+    fun encode(
+        accesses: List<VenueAccess>,
+        maxRequestsById: Map<String, Int> = emptyMap(),
+        maxGuests: Int = GuestForm.MAX_GUESTS_LIMIT,
+    ): String {
+        val cap = maxGuests.coerceIn(1, GuestForm.MAX_GUESTS_LIMIT)
         val entries = accesses
-            .map { GuestFormOfferedAccess(it.id.trim(), it.name.trim()) }
+            .map { access ->
+                GuestFormOfferedAccess(
+                    id = access.id.trim(),
+                    name = access.name.trim(),
+                    maxRequests = normalizeMaxRequests(maxRequestsById[access.id] ?: 0, cap),
+                )
+            }
             .filter { it.id.isNotEmpty() && it.name.isNotEmpty() }
         if (entries.isEmpty()) return ""
         return json.encodeToString(listSerializer, entries)
@@ -272,12 +285,30 @@ object GuestFormOfferedAccessCodec {
             return runCatching { json.decodeFromString(listSerializer, trimmed) }
                 .getOrElse { emptyList() }
                 .filter { it.id.isNotEmpty() && it.name.isNotEmpty() }
+                .map { it.copy(maxRequests = it.maxRequests.coerceAtLeast(0)) }
         }
         // Legacy comma-separated IDs, kept so a half-written form still resolves.
         return trimmed.split(',').map { it.trim() }.filter { it.isNotEmpty() }
             .map { GuestFormOfferedAccess(id = it, name = it) }
     }
+
+    fun normalizeMaxRequests(raw: Int, maxGuests: Int): Int {
+        if (raw <= 0) return 0
+        return raw.coerceIn(1, maxGuests.coerceIn(1, GuestForm.MAX_GUESTS_LIMIT))
+    }
 }
+
+/**
+ * Offered accesses whose per-person request count exceeds [GuestFormOfferedAccess.maxRequests].
+ * Entries with [GuestFormOfferedAccess.maxRequests] of 0 have no extra cap.
+ */
+fun GuestFormSubmission.accessQuotaViolations(
+    offered: List<GuestFormOfferedAccess>,
+): List<GuestFormOfferedAccess> =
+    offered.filter { access ->
+        access.maxRequests > 0 &&
+            people.count { access.id in it.requestedAccessIds } > access.maxRequests
+    }
 
 fun GuestFormSubmission.toManualEntries(): List<ManualTemporaryGuestEntry> =
     people.map { ManualTemporaryGuestEntry(name = it.name, accessIds = it.requestedAccessIds) }

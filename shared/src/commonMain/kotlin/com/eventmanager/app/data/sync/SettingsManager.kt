@@ -102,6 +102,7 @@ class SettingsManager(private val storage: AppStorage) {
         private const val KEY_COLOR_THEME = "color_theme"
         private const val KEY_CUSTOM_THEME_COLOR_PREFIX = "custom_theme_color"
         private const val KEY_SKIP_NEXT_STARTUP_SYNC = "skip_next_startup_sync"
+        private const val KEY_OPEN_WELCOME_AFTER_SETUP = "open_welcome_after_setup"
         private const val KEY_RESOLUTION_SCALE = "resolution_scale"
         private const val KEY_DATE_FORMAT = "date_format"
         private const val KEY_TIME_FORMAT = "time_format"
@@ -307,9 +308,18 @@ class SettingsManager(private val storage: AppStorage) {
         }
         Regex("""AIza[0-9A-Za-z_-]{30,}""").find(s)?.value?.let { s = it }
         s = s.trim().trim('"', '\'', ',', '}', ']', ' ').replace(Regex("\\s+"), "")
-        SecureCredentialStoreHolder.get()?.putSecret(SecureCredentialKeys.FIREBASE_API_KEY, s)
-            ?: storage.putString(KEY_FIREBASE_API_KEY, s)
-        storage.remove(KEY_FIREBASE_API_KEY)
+        val secure = SecureCredentialStoreHolder.get()
+        if (s.isBlank()) {
+            secure?.removeSecret(SecureCredentialKeys.FIREBASE_API_KEY)
+            storage.remove(KEY_FIREBASE_API_KEY)
+            return
+        }
+        if (secure != null) {
+            secure.putSecret(SecureCredentialKeys.FIREBASE_API_KEY, s)
+            storage.remove(KEY_FIREBASE_API_KEY)
+        } else {
+            storage.putString(KEY_FIREBASE_API_KEY, s)
+        }
     }
 
     fun getFirebaseApplicationId(): String = storage.getString(KEY_FIREBASE_APPLICATION_ID, "") ?: ""
@@ -483,9 +493,19 @@ class SettingsManager(private val storage: AppStorage) {
         SecureCredentialStoreHolder.get()?.getSecret(SecureCredentialKeys.FIREBASE_WEB_CLIENT_SECRET)
             ?: storage.getString(KEY_FIREBASE_WEB_CLIENT_SECRET, "") ?: ""
     fun setFirebaseWebClientSecret(value: String) {
-        SecureCredentialStoreHolder.get()?.putSecret(SecureCredentialKeys.FIREBASE_WEB_CLIENT_SECRET, value)
-            ?: storage.putString(KEY_FIREBASE_WEB_CLIENT_SECRET, value)
-        storage.remove(KEY_FIREBASE_WEB_CLIENT_SECRET)
+        val s = value.trim()
+        val secure = SecureCredentialStoreHolder.get()
+        if (s.isBlank()) {
+            secure?.removeSecret(SecureCredentialKeys.FIREBASE_WEB_CLIENT_SECRET)
+            storage.remove(KEY_FIREBASE_WEB_CLIENT_SECRET)
+            return
+        }
+        if (secure != null) {
+            secure.putSecret(SecureCredentialKeys.FIREBASE_WEB_CLIENT_SECRET, s)
+            storage.remove(KEY_FIREBASE_WEB_CLIENT_SECRET)
+        } else {
+            storage.putString(KEY_FIREBASE_WEB_CLIENT_SECRET, s)
+        }
     }
 
     fun getFirebaseOrgId(): String = storage.getString(KEY_FIREBASE_ORG_ID, "") ?: ""
@@ -700,17 +720,22 @@ class SettingsManager(private val storage: AppStorage) {
 
     /** Apply a QR/clipboard join payload without exposing values in the UI. */
     fun applyFirebaseJoinPayload(payload: com.eventmanager.app.data.remote.FirebaseJoinPayload) {
+        val previousProject = getFirebaseProjectId().trim()
+        val nextProject = payload.projectId.trim()
+        val switchingProject = previousProject.isNotBlank() && previousProject != nextProject
         setFirebaseJoinImported(true)
         addFirebaseConfiguredOrgFromJoin(payload.orgId.trim())
-        setFirebaseProjectId(payload.projectId.trim())
+        setFirebaseProjectId(nextProject)
         setFirebaseApplicationId(payload.applicationId.trim())
         setFirebaseApiKey(payload.apiKey.trim())
         setFirebaseWebClientId(payload.webClientId.trim())
-        if (payload.webClientSecret.isNotBlank()) {
-            setFirebaseWebClientSecret(payload.webClientSecret.trim())
+        when {
+            payload.webClientSecret.isNotBlank() -> setFirebaseWebClientSecret(payload.webClientSecret.trim())
+            switchingProject -> setFirebaseWebClientSecret("")
         }
-        if (payload.bootstrapCode.isNotBlank()) {
-            setFirebaseBootstrapCode(payload.bootstrapCode.trim())
+        when {
+            payload.bootstrapCode.isNotBlank() -> setFirebaseBootstrapCode(payload.bootstrapCode.trim())
+            switchingProject -> setFirebaseBootstrapCode("")
         }
     }
 
@@ -1450,6 +1475,22 @@ class SettingsManager(private val storage: AppStorage) {
         }
         return shouldSkip
     }
+
+    /**
+     * After the setup wizard finishes, the next composition must land on Welcome
+     * instead of restoring a first-admin gate from the pre-recreate frame.
+     */
+    fun markOpenWelcomeAfterSetup() {
+        storage.putBoolean(KEY_OPEN_WELCOME_AFTER_SETUP, true)
+    }
+
+    fun consumeOpenWelcomeAfterSetup(): Boolean {
+        val shouldOpen = storage.getBoolean(KEY_OPEN_WELCOME_AFTER_SETUP, false)
+        if (shouldOpen) {
+            storage.putBoolean(KEY_OPEN_WELCOME_AFTER_SETUP, false)
+        }
+        return shouldOpen
+    }
     
     // Resolution Scale Configuration
     fun getResolutionScale(): Float {
@@ -2085,6 +2126,7 @@ class SettingsManager(private val storage: AppStorage) {
     // Clear all settings
     fun clearAllSettings() {
         storage.clear()
+        SecureCredentialStoreHolder.clearAll()
     }
     
     // Check if settings are configured

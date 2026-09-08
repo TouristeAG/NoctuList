@@ -50,6 +50,14 @@ private class DesktopSecureCredentialStore(
         cache.containsKey(key) && !cache[key].isNullOrEmpty()
     }
 
+    override fun clearAll() {
+        synchronized(lock) {
+            cache.clear()
+            persist()
+            runCatching { if (file.exists()) file.delete() }
+        }
+    }
+
     private fun loadFromDisk() {
         if (!file.exists()) return
         runCatching {

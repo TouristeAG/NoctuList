@@ -158,6 +158,7 @@ import com.eventmanager.app.ui.components.AppBackgroundAnimation
 import com.eventmanager.app.ui.components.BackgroundAnimationStyle
 import com.eventmanager.app.ui.components.FirebaseOrgSwitcher
 import com.eventmanager.app.ui.components.FirebaseOrgSwitcherPlacement
+import com.eventmanager.app.ui.components.isFirebaseOrgSwitcherVisible
 import com.eventmanager.app.ui.components.WelcomeForegroundPanel
 import com.eventmanager.app.ui.components.WelcomeSecondaryButton
 import com.eventmanager.app.ui.components.DashboardClockCard
@@ -208,6 +209,7 @@ actual fun AppRootContent(
         com.eventmanager.app.data.sync.installInstitutionLogoBridge(platformContext, settingsManager)
     }
     val skipStartupSync = remember { settingsManager.consumeSkipNextStartupSync() }
+    val openWelcomeAfterSetup = remember { settingsManager.consumeOpenWelcomeAfterSetup() }
     val uiRefreshNonce by com.eventmanager.app.ui.platform.AppAppearanceState::refreshNonce
     val backgroundAnimationStyle = uiRefreshNonce.let { settingsManager.getBackgroundAnimationStyle() }
     val backgroundAnimationOpacity = uiRefreshNonce.let { settingsManager.getBackgroundAnimationOpacity() }
@@ -223,6 +225,15 @@ actual fun AppRootContent(
     val adminOrgPickerScope = rememberCoroutineScope()
     var showTicketCheck by rememberSaveable { mutableStateOf(false) }
     var showPos by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(openWelcomeAfterSetup) {
+        if (openWelcomeAfterSetup) {
+            showWelcome = true
+            showAdminAuth = false
+            showAdminOrgPicker = false
+            showTicketCheck = false
+            showPos = false
+        }
+    }
     var selectedTab by rememberSaveable { mutableStateOf(0) }
     var previousTab by rememberSaveable { mutableStateOf(0) }
     val pageAnimationsEnabled = settingsManager.isPageAnimationsEnabled()
@@ -275,6 +286,11 @@ actual fun AppRootContent(
             platformContext = platformContext,
             onSetupComplete = {
                 showSetupWizard = false
+                showWelcome = true
+                showAdminAuth = false
+                showAdminOrgPicker = false
+                showTicketCheck = false
+                showPos = false
                 // Resolution scale is applied in attachBaseContext; recreate so layout size matches prefs.
                 (appContext as? Activity)?.recreate()
             },
@@ -321,7 +337,7 @@ actual fun AppRootContent(
             }
 
             // ── First-admin setup gate ──────────────────────────────────────
-            var showAdminSetup by rememberSaveable { mutableStateOf(false) }
+            var showAdminSetup by rememberSaveable(openWelcomeAfterSetup) { mutableStateOf(false) }
             var adminCheckDone by rememberSaveable { mutableStateOf(false) }
             var adminPrecheckComplete by remember { mutableStateOf(false) }
             var adminPrecheckSucceeded by remember { mutableStateOf(false) }
@@ -332,7 +348,12 @@ actual fun AppRootContent(
                 val minSplashMs = 800L
                 val splashStart = elapsedRealtimeMs()
                 try {
-                    if (skipStartupSync) {
+                    if (openWelcomeAfterSetup) {
+                        startupStep = StartupSplashStep.Preparing
+                        viewModel.warmupWorkspacesAfterGate()
+                        showAdminSetup = false
+                        adminPrecheckSucceeded = true
+                    } else if (skipStartupSync) {
                         startupStep = StartupSplashStep.Preparing
                         viewModel.warmupWorkspacesAfterGate()
                         showAdminSetup = viewModel.evaluateLocalAdminSetupNeed()
@@ -805,6 +826,8 @@ actual fun AppRootContent(
                         )
                     }
                     else -> {
+                        val dockSyncPillToCorner =
+                            isFirebaseOrgSwitcherVisible(viewModel) && !isTablet()
                         Scaffold(
                             containerColor = if (BackgroundAnimationStyle.isEnabled(billeterieBackgroundAnimationStyle)) {
                                 Color.Transparent
@@ -824,7 +847,9 @@ actual fun AppRootContent(
                                                 text = billeterieListContext.getString(R.string.nav_guests),
                                                 style = MaterialTheme.typography.titleLarge,
                                                 fontWeight = FontWeight.Bold,
-                                                modifier = Modifier.weight(1f),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                modifier = Modifier.weight(1f, fill = false),
                                             )
                                             FirebaseOrgSwitcher(
                                                 viewModel = viewModel,
@@ -841,7 +866,9 @@ actual fun AppRootContent(
                                         }
                                     },
                                     actions = {
-                                        SyncStatusPill(viewModel = viewModel)
+                                        if (!dockSyncPillToCorner) {
+                                            SyncStatusPill(viewModel = viewModel)
+                                        }
                                     },
                                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                                         containerColor = Color.Transparent,
@@ -871,6 +898,14 @@ actual fun AppRootContent(
                                     Icon(
                                         imageVector = Icons.Default.QrCodeScanner,
                                         contentDescription = billeterieListContext.getString(R.string.billeterie_button_scanner)
+                                    )
+                                }
+                                if (dockSyncPillToCorner) {
+                                    SyncStatusPill(
+                                        viewModel = viewModel,
+                                        modifier = Modifier
+                                            .align(Alignment.BottomEnd)
+                                            .padding(16.dp),
                                     )
                                 }
                             }

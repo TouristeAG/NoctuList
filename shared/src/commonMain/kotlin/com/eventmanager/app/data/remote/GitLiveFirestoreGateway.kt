@@ -463,11 +463,11 @@ class GitLiveFirestoreGateway(
         holderKey: String,
         newBalance: Double,
         buffer: Double,
-    ): Boolean {
-        val firestore = db() ?: return false
-        if (orgId.isBlank()) return false
+    ): LedgerCommitResult {
+        val firestore = db() ?: return LedgerCommitResult.Unknown
+        if (orgId.isBlank()) return LedgerCommitResult.Unknown
         return try {
-            var accepted = false
+            var result = LedgerCommitResult.Unknown
             firestore.runTransaction {
                 val transferRef = firestore.collection("orgs").document(orgId)
                     .collection("transfers").document(transfer.sourceReference)
@@ -476,7 +476,7 @@ class GitLiveFirestoreGateway(
 
                 val existingTransfer = get(transferRef)
                 if (existingTransfer.exists) {
-                    accepted = true
+                    result = LedgerCommitResult.Accepted
                     return@runTransaction
                 }
 
@@ -493,7 +493,7 @@ class GitLiveFirestoreGateway(
                 }
                 val nextBalance = currentBalance + transfer.amount
                 if (nextBalance < -buffer) {
-                    accepted = false
+                    result = LedgerCommitResult.RejectedInsufficientFunds
                     return@runTransaction
                 }
 
@@ -510,11 +510,12 @@ class GitLiveFirestoreGateway(
                 )
                 set(transferRef, toFirestoreFieldMap(transferFields), merge = false)
                 set(accountRef, toFirestoreFieldMap(accountFields), merge = true)
-                accepted = true
+                result = LedgerCommitResult.Accepted
             }
-            accepted
-        } catch (_: Exception) {
-            false
+            result
+        } catch (e: Exception) {
+            if (e is kotlin.coroutines.cancellation.CancellationException) throw e
+            LedgerCommitResult.Unknown
         }
     }
 

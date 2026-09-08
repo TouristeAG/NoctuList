@@ -3,6 +3,7 @@ package com.eventmanager.app.data.security.crypto
 import com.eventmanager.app.data.models.AccountTransfer
 import com.eventmanager.app.data.models.Guest
 import com.eventmanager.app.data.models.Volunteer
+import com.eventmanager.app.data.nfc.NfcUid
 
 /**
  * Single boundary for encrypting/decrypting sensitive fields before persistence or sync.
@@ -93,18 +94,23 @@ object SensitiveFieldCodec {
         )
     }
 
-    fun nfcLookupHash(uid: String, orgId: String): String = crypto.hashForLookup(uid, orgId)
+    fun nfcLookupHash(uid: String, orgId: String): String =
+        crypto.hashForLookup(NfcUid.normalize(uid), orgId)
 
     fun matchesNfcUid(storedUid: String, storedHash: String, scannedUid: String, orgId: String): Boolean {
         if (scannedUid.isBlank()) return false
-        val normalized = scannedUid.trim().uppercase()
+        val normalized = NfcUid.normalize(scannedUid)
         if (storedUid.isNotBlank()) {
             val decrypted = crypto.decrypt(storedUid, orgId)
-            if (decrypted.equals(normalized, ignoreCase = true)) return true
-            if (storedUid.equals(normalized, ignoreCase = true)) return true
+            if (NfcUid.matches(decrypted, normalized)) return true
+            if (NfcUid.matches(storedUid, normalized)) return true
         }
         if (storedHash.isNotBlank()) {
-            return storedHash == nfcLookupHash(normalized, orgId)
+            if (storedHash == nfcLookupHash(normalized, orgId)) return true
+            // Truncated ACS reads store a 4-byte hash; phone/PC later scan the full UID.
+            if (normalized.length == 14 || normalized.length == 20) {
+                if (storedHash == nfcLookupHash(normalized.take(8), orgId)) return true
+            }
         }
         return false
     }

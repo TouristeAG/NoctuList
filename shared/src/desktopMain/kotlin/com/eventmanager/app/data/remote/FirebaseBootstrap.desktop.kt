@@ -31,15 +31,23 @@ actual object FirebaseBootstrap {
         options: FirebaseProjectOptions?,
     ): Boolean {
         if (!ensurePlatform(platformContext)) return false
-        if (isInitialized()) {
-            lastFailure = null
-            return true
-        }
         val opts = options
         if (opts == null || !opts.isComplete()) {
+            if (isInitialized()) {
+                lastFailure = null
+                return true
+            }
             lastFailure =
                 "Missing Firebase project options (Project ID, Application ID, API key)."
             return false
+        }
+        if (isInitialized() && appliedIdentity == identityOf(opts)) {
+            lastFailure = null
+            return true
+        }
+        if (isInitialized()) {
+            deleteDefaultApp()
+            appliedIdentity = null
         }
         return runCatching {
             // GitLive JVM requires a non-null android.content.Context; firebase-java-sdk
@@ -54,6 +62,7 @@ actual object FirebaseBootstrap {
                     storageBucket = opts.storageBucket.ifBlank { null },
                 ),
             )
+            appliedIdentity = identityOf(opts)
             lastFailure = null
             true
         }.getOrElse { e ->
@@ -84,6 +93,26 @@ actual object FirebaseBootstrap {
         Firebase.app
         true
     }.getOrDefault(false)
+
+    actual fun release() {
+        deleteDefaultApp()
+        appliedIdentity = null
+        lastFailure = null
+    }
+
+    @Volatile
+    private var appliedIdentity: Triple<String, String, String>? = null
+
+    private fun identityOf(opts: FirebaseProjectOptions) =
+        Triple(opts.apiKey, opts.applicationId, opts.projectId)
+
+    private fun deleteDefaultApp() {
+        runCatching {
+            val clazz = Class.forName("com.google.firebase.FirebaseApp")
+            val instance = clazz.getMethod("getInstance").invoke(null)
+            clazz.getMethod("delete").invoke(instance)
+        }
+    }
 
     private fun ensurePlatform(platformContext: PlatformContext): Boolean {
         if (platformReady && platformInstance != null) return true

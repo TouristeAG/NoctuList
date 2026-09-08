@@ -1,16 +1,15 @@
 package com.eventmanager.app.data.update
 
 import com.eventmanager.app.platform.AppBuildInfo
+import com.eventmanager.app.platform.DesktopFileActions
 import com.eventmanager.app.platform.PlatformContext
 import com.eventmanager.app.platform.PlatformFileManager
-import com.eventmanager.app.platform.openUrl
 import com.eventmanager.app.data.sync.settingsManagerFor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
-import java.awt.Desktop
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileOutputStream
@@ -99,24 +98,15 @@ actual class UpdateDownloader actual constructor(private val platformContext: Pl
     }.flowOn(Dispatchers.IO)
 
     actual fun installUpdate(filePath: String) {
-        val file = File(filePath)
-        if (!file.exists()) return
+        runCatching {
+            val file = File(filePath)
+            if (!file.exists()) return
 
-        if (file.name.endsWith(".AppImage", ignoreCase = true)) {
-            file.setExecutable(true)
-        }
+            if (file.name.endsWith(".AppImage", ignoreCase = true)) {
+                file.setExecutable(true)
+            }
 
-        if (Desktop.isDesktopSupported()) {
-            val desktop = Desktop.getDesktop()
-            if (desktop.isSupported(Desktop.Action.OPEN)) {
-                desktop.open(file)
-                return
-            }
-            if (desktop.isSupported(Desktop.Action.BROWSE)) {
-                desktop.browse(file.parentFile?.toURI() ?: file.toURI())
-                return
-            }
+            DesktopFileActions.open(file)
         }
-        openUrl(file.toURI().toString())
     }
 }

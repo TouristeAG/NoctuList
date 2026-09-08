@@ -725,19 +725,22 @@ class DesktopPcscCardReader {
     }
 
     /**
-     * ACS Get UID for macOS: Le=04 first — CryptoTokenKit often returns SW=6300 for Le=00
-     * even with a card on the antenna.
+     * ACS Get UID for macOS: try every Le variant and keep the longest plausible UID.
+     * Le=04 often succeeds first with only 4 bytes of a 7-byte NTAG UID.
      */
     private fun transmitUidApduVariantsClassic(card: Card): ResponseAPDU? {
         val channel = card.basicChannel ?: return null
+        val successes = mutableListOf<ResponseAPDU>()
         var lastResponse: ResponseAPDU? = null
         for (apduBytes in CLASSIC_GET_UID_APDU_VARIANTS) {
             val response = runCatching { channel.transmit(CommandAPDU(apduBytes)) }.getOrNull()
                 ?: continue
             lastResponse = response
-            if (response.sw == SW_SUCCESS && response.data.isNotEmpty()) return response
+            if (response.sw == SW_SUCCESS && response.data.isNotEmpty()) {
+                successes += response
+            }
         }
-        return lastResponse
+        return preferredUidResponse(successes) ?: lastResponse
     }
 
     /**
@@ -1129,17 +1132,20 @@ class DesktopPcscCardReader {
     }
 
     /**
-     * ACS Get UID pseudo-APDU. Try Le=04 then Le=00 (macOS order that also helps Windows ACS),
-     * then remaining Le variants. jnasmartcardio does **not** accept "T=CL" on Windows.
+     * ACS Get UID pseudo-APDU. Try every Le variant and keep the longest plausible UID
+     * (NTAG cards are 7 bytes; Le=04 often returns only the first 4).
      */
     private fun transmitUidApduVariants(card: Card): ResponseAPDU? {
         val channel = card.basicChannel ?: return null
+        val successes = mutableListOf<ResponseAPDU>()
         var lastResponse: ResponseAPDU? = null
         for (apduBytes in WIRED_GET_UID_APDU_VARIANTS) {
             val response = runCatching { channel.transmit(CommandAPDU(apduBytes)) }.getOrNull()
                 ?: continue
             lastResponse = response
-            if (response.sw == SW_SUCCESS && response.data.isNotEmpty()) return response
+            if (response.sw == SW_SUCCESS && response.data.isNotEmpty()) {
+                successes += response
+            }
         }
         // Also try the 4-arg constructor (Ne=0 → 256) which some stacks handle differently.
         val viaCtor = runCatching {
@@ -1147,9 +1153,23 @@ class DesktopPcscCardReader {
         }.getOrNull()
         if (viaCtor != null) {
             lastResponse = viaCtor
-            if (viaCtor.sw == SW_SUCCESS && viaCtor.data.isNotEmpty()) return viaCtor
+            if (viaCtor.sw == SW_SUCCESS && viaCtor.data.isNotEmpty()) {
+                successes += viaCtor
+            }
         }
-        return lastResponse
+        return preferredUidResponse(successes) ?: lastResponse
+    }
+
+    private fun preferredUidResponse(responses: List<ResponseAPDU>): ResponseAPDU? {
+        val plausible = responses.filter { it.data.size == 4 || it.data.size == 7 || it.data.size == 10 }
+        return (plausible.ifEmpty { responses.filter { it.data.size in 4..10 } })
+            .maxByOrNull { it.data.size }
+    }
+
+    private fun preferredUidBytes(candidates: List<ByteArray>): ByteArray? {
+        val plausible = candidates.filter { it.size == 4 || it.size == 7 || it.size == 10 }
+        return (plausible.ifEmpty { candidates.filter { it.size in 4..10 } })
+            .maxByOrNull { it.size }
     }
 
     private fun waitForCardAbsentQuietly(terminal: CardTerminal, card: Card) {
@@ -1216,20 +1236,27 @@ class DesktopPcscCardReader {
                 // Prefer basic channel when available (fast).
                 val channel = runCatching { card.basicChannel }.getOrNull()
                 if (channel != null) {
+                    val successes = mutableListOf<ByteArray>()
                     for (apdu in uidApdus) {
                         val response = runCatching {
                             channel.transmit(CommandAPDU(apdu))
                         }.getOrNull() ?: continue
                         if (response.sw == SW_SUCCESS && response.data.size in 4..10) {
-                            lastProbeNotes += "escapeGetUidChannel=$protocol"
-                            return UidReadResult.Success(response.data.toHexUid())
+                            successes += response.data
                         }
                     }
+                    preferredUidBytes(successes)?.let { uidBytes ->
+                        lastProbeNotes += "escapeGetUidChannel=$protocol"
+                        return UidReadResult.Success(uidBytes.toHexUid())
+                    }
                 }
+                val escapeUids = mutableListOf<String>()
                 for (apdu in uidApdus) {
                     val raw = transmitEscape(card, apdu, softFast) ?: continue
                     escapeOk = true
-                    val uid = parseUidFromGetDataEscape(raw) ?: continue
+                    parseUidFromGetDataEscape(raw)?.let { escapeUids += it }
+                }
+                escapeUids.maxByOrNull { it.length }?.let { uid ->
                     lastProbeNotes += "escapeGetUid=$protocol"
                     return UidReadResult.Success(uid)
                 }

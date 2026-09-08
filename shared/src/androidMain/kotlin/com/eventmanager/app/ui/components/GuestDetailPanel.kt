@@ -407,36 +407,14 @@ actual fun GuestDetailPanel(
                                 OutlinedButton(
                                     onClick = {
                                         qrImage.let { bitmap ->
-                                            try {
-                                                val file = File(qrContext.cacheDir, "qr_code_guest_${guest.id}.png")
-                                                val outputStream = FileOutputStream(file)
-                                                bitmap.asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, outputStream)
-                                                outputStream.close()
-                                                
-                                                val uri = FileProvider.getUriForFile(
-                                                    qrContext,
-                                                    "${qrContext.packageName}.fileprovider",
-                                                    file
+                                            runCatching {
+                                                sharePngImage(
+                                                    context = qrContext,
+                                                    image = bitmap,
+                                                    fileName = "qr_code_guest_${guest.id}.png",
+                                                    chooserTitle = qrContext.getString(R.string.share_qr_code),
+                                                    subject = qrContext.getString(R.string.qr_code_subject_guest, guest.name),
                                                 )
-                                                
-                                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                                    type = "image/png"
-                                                    putExtra(Intent.EXTRA_STREAM, uri)
-                                                    putExtra(Intent.EXTRA_SUBJECT, qrContext.getString(R.string.qr_code_subject_guest, guest.name))
-                                                    putExtra(Intent.EXTRA_TEXT, qrContext.getString(R.string.qr_code_for_guest, guest.name))
-                                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                                }
-                                                qrContext.startActivity(Intent.createChooser(shareIntent, qrContext.getString(R.string.share_qr_code)))
-                                            } catch (e: Exception) {
-                                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                                    type = "text/plain"
-                                                    putExtra(Intent.EXTRA_SUBJECT, "Guest QR")
-                                                    putExtra(
-                                                        Intent.EXTRA_TEXT,
-                                                        "Guest: ${guest.name}\nPayload: $payload"
-                                                    )
-                                                }
-                                                qrContext.startActivity(Intent.createChooser(shareIntent, qrContext.getString(R.string.share_qr_code)))
                                             }
                                         }
                                     },

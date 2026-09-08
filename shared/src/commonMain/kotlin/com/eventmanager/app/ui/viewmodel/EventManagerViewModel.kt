@@ -38,6 +38,8 @@ import com.eventmanager.app.data.remote.FirebaseOrgViewMode
 import com.eventmanager.app.data.remote.MultiOrgMerge
 import com.eventmanager.app.data.remote.PersistIdentityDedupe
 import com.eventmanager.app.data.remote.VolunteerBenefitGuestMerge
+import com.eventmanager.app.data.nfc.NfcUid
+import com.eventmanager.app.data.security.crypto.SensitiveFieldCodec
 import com.eventmanager.app.data.remote.FirebaseSyncStatus
 import com.eventmanager.app.data.remote.FirestoreRealtimeCapability
 import com.eventmanager.app.data.remote.InstitutionBackendAnnouncement
@@ -77,6 +79,7 @@ import com.eventmanager.app.data.security.guestEligibleForLocalAdminRights
 import com.eventmanager.app.data.security.institutionHasLocalAdminInOrg
 import com.eventmanager.app.data.security.isSuspiciousMissingAdminAfterSync
 import com.eventmanager.app.data.security.memberRosterCount
+import com.eventmanager.app.data.security.shouldOfferFirstAdminAfterSkippedStartupSync
 import com.eventmanager.app.data.security.shouldOfferFirstAdminSetupAfterSync
 import com.eventmanager.app.data.security.isAdminFlag
 import com.eventmanager.app.data.security.isFirebaseStrictMultiOrg
@@ -712,6 +715,12 @@ class EventManagerViewModel(
         }
     }
 
+    private val posSaleMutex = Mutex()
+    private val _posSaleInFlight = MutableStateFlow(false)
+    val posSaleInFlight: StateFlow<Boolean> = _posSaleInFlight
+    private val _posSaleUiResult = MutableStateFlow<PosSaleResult?>(null)
+    val posSaleUiResult: StateFlow<PosSaleResult?> = _posSaleUiResult
+
     private val _peopleCounterSelectedVenueId = MutableStateFlow(0L)
     val peopleCounterSelectedVenueId: StateFlow<Long> = _peopleCounterSelectedVenueId.asStateFlow()
 
@@ -999,6 +1008,7 @@ class EventManagerViewModel(
         eventDateMillis: Long,
         artistName: String,
         offeredAccessIds: Set<String>,
+        accessMaxRequests: Map<String, Int> = emptyMap(),
         maxGuests: Int,
         expiryMode: GuestFormExpiry,
         manualExpiryMillis: Long,
@@ -1025,6 +1035,7 @@ class EventManagerViewModel(
             try {
                 if (rejectIfCrudSoftLocked("creating a guest form")) return@launch
                 val now = System.currentTimeMillis()
+                val cappedMaxGuests = maxGuests.coerceIn(1, GuestForm.MAX_GUESTS_LIMIT)
                 val form = GuestForm(
                     formId = NanoIdGenerator.generateGuestFormId(),
                     firebaseOrgId = orgId,
@@ -1037,8 +1048,10 @@ class EventManagerViewModel(
                             _temporaryGuestVenueAccesses.value,
                             offeredAccessIds.filter { it.isNotBlank() }.toSet(),
                         ),
+                        accessMaxRequests,
+                        cappedMaxGuests,
                     ),
-                    maxGuests = maxGuests.coerceIn(1, GuestForm.MAX_GUESTS_LIMIT),
+                    maxGuests = cappedMaxGuests,
                     expiryMode = expiryMode.name,
                     expiresAtMillis = resolveGuestFormExpiry(expiryMode, eventDateMillis, manualExpiryMillis),
                     allowMultipleResponses = allowMultipleResponses,
@@ -2311,16 +2324,13 @@ class EventManagerViewModel(
         return institutionHasLocalAdminForActiveOrg(snapshot.guests, snapshot.volunteers)
     }
 
-    /** Local DB only — used when startup sync is intentionally skipped (e.g. right after wizard). */
-    suspend fun evaluateLocalAdminSetupNeed(): Boolean {
-        val snapshot = readStableMemberRosterSnapshot()
-        val hasAdmin = institutionHasLocalAdminForActiveOrg(snapshot.guests, snapshot.volunteers)
-        return shouldOfferFirstAdminSetupAfterSync(
-            syncSucceeded = true,
-            hasLocalAdmin = hasAdmin,
-            memberCount = snapshot.memberCount,
-        )
-    }
+    /**
+     * Local DB only — used when startup sync is intentionally skipped (wizard replay,
+     * theme/locale recreate). Must not treat an empty Room table as a brand-new org:
+     * a JOIN often lands here before members are visible locally.
+     */
+    suspend fun evaluateLocalAdminSetupNeed(): Boolean =
+        shouldOfferFirstAdminAfterSkippedStartupSync()
 
     /**
      * Full sync then stable DB read. Use before offering first-admin setup at app launch.
@@ -2486,18 +2496,30 @@ class EventManagerViewModel(
     fun assignNfcUidToAdmin(isGuest: Boolean, entityId: String, uid: String) {
         viewModelScope.launch {
             try {
+                val normalizedUid = NfcUid.normalize(uid)
                 if (isGuest) {
                     val guests = repository.getAllGuests().first()
                     val guest = guests.find { it.nanoId == entityId }
                     if (guest != null) {
-                        val updated = guest.copy(nfcCardUid = uid, lastModified = System.currentTimeMillis())
+                        val updated = guest.copy(
+                            nfcCardUid = normalizedUid,
+                            nfcCardUidHash = SensitiveFieldCodec.nfcLookupHash(normalizedUid, guest.firebaseOrgId),
+                            lastModified = System.currentTimeMillis(),
+                        )
                         repository.updateGuest(updated)
                         syncCoordinator?.afterGuestSaved(updated) ?: twoWaySyncService?.backupGuestsToSheets()
                     }
                 } else {
                     val volunteer = repository.getVolunteerById(entityId)
                     if (volunteer != null) {
-                        val updated = volunteer.copy(nfcCardUid = uid, lastModified = System.currentTimeMillis())
+                        val updated = volunteer.copy(
+                            nfcCardUid = normalizedUid,
+                            nfcCardUidHash = SensitiveFieldCodec.nfcLookupHash(
+                                normalizedUid,
+                                volunteer.firebaseOrgId,
+                            ),
+                            lastModified = System.currentTimeMillis(),
+                        )
                         repository.updateVolunteer(updated)
                         syncCoordinator?.afterVolunteerSaved(updated) ?: twoWaySyncService?.backupVolunteersToSheets()
                     }
@@ -3658,6 +3680,12 @@ class EventManagerViewModel(
     
     fun syncJobTypesOnly() {
         viewModelScope.launch {
+            if (settingsManagerCached?.getBackendType() == BackendType.FIREBASE) {
+                if (!skipAutomaticFirebasePull()) {
+                    syncCoordinator?.performManualSync()
+                }
+                return@launch
+            }
             _isSyncing.value = true
             _syncError.value = null
             
@@ -3711,6 +3739,12 @@ class EventManagerViewModel(
     @Suppress("unused")
     fun syncVenuesOnly() {
         viewModelScope.launch {
+            if (settingsManagerCached?.getBackendType() == BackendType.FIREBASE) {
+                if (!skipAutomaticFirebasePull()) {
+                    syncCoordinator?.performManualSync()
+                }
+                return@launch
+            }
             _isSyncing.value = true
             _syncError.value = null
             
@@ -6847,6 +6881,12 @@ class EventManagerViewModel(
      */
     fun syncJobTypesWithTargetedUpdates() {
         viewModelScope.launch {
+            if (settingsManagerCached?.getBackendType() == BackendType.FIREBASE) {
+                if (!skipAutomaticFirebasePull()) {
+                    syncCoordinator?.performManualSync()
+                }
+                return@launch
+            }
             _isSyncing.value = true
             _syncError.value = null
             
@@ -6949,6 +6989,12 @@ class EventManagerViewModel(
      */
     fun syncVenuesWithTargetedUpdates() {
         viewModelScope.launch {
+            if (settingsManagerCached?.getBackendType() == BackendType.FIREBASE) {
+                if (!skipAutomaticFirebasePull()) {
+                    syncCoordinator?.performManualSync()
+                }
+                return@launch
+            }
             _isSyncing.value = true
             _syncError.value = null
             
@@ -7058,16 +7104,19 @@ class EventManagerViewModel(
         // Firebase: transactional ledger path
         if (settings?.getBackendType() == BackendType.FIREBASE) {
             val draft = accountCreditService.completePosSale(
-                holderType, holderId, holderName, cart, barDiscountPercent, posVenueName, buffer, customerOrgId
+                holderType, holderId, holderName, cart, barDiscountPercent, posVenueName, buffer,
+                customerOrgId, writeAsPending = true,
             )
             draft.transfer?.let { transfer ->
                 when (val ledger = syncCoordinator?.commitTransfer(transfer, customerOrgId)) {
                     is FirebaseLedgerResult.Rejected -> {
                         _syncError.value = ledger.reason
+                        refreshAccountBalancesFromDb()
                         return draft.copy(success = false, message = ledger.reason)
                     }
                     is FirebaseLedgerResult.Pending -> {
-                        // Offline / SDK missing — keep local pending
+                        // Timeout/offline: keep PENDING with the same sourceReference so a retry
+                        // cannot insert a second POS sale. Treat as success for the till.
                     }
                     else -> Unit
                 }
@@ -7091,6 +7140,50 @@ class EventManagerViewModel(
             }
         }
         return result
+    }
+
+    fun submitPosSale(
+        holderType: AccountHolderType,
+        holderId: String,
+        holderName: String,
+        cart: List<PosCartLine>,
+        barDiscountPercent: Int = 0,
+        posVenueName: String = PosVenueScope.GLOBAL,
+        customerOrgId: String = "",
+    ) {
+        if (!posSaleMutex.tryLock()) return
+        _posSaleInFlight.value = true
+        viewModelScope.launch {
+            try {
+                _posSaleUiResult.value = completePosSale(
+                    holderType = holderType,
+                    holderId = holderId,
+                    holderName = holderName,
+                    cart = cart,
+                    barDiscountPercent = barDiscountPercent,
+                    posVenueName = posVenueName,
+                    customerOrgId = customerOrgId,
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _posSaleUiResult.value = PosSaleResult(
+                    success = false,
+                    totalAmount = 0.0,
+                    creditPaid = 0.0,
+                    cashOrCardDue = 0.0,
+                    remainingBalance = 0.0,
+                    message = e.message ?: "Sale failed",
+                )
+            } finally {
+                _posSaleInFlight.value = false
+                posSaleMutex.unlock()
+            }
+        }
+    }
+
+    fun consumePosSaleUiResult() {
+        _posSaleUiResult.value = null
     }
 
     fun endPosSession() {

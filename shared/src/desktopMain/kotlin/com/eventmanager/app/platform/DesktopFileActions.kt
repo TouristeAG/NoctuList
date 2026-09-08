@@ -34,6 +34,33 @@ internal object DesktopFileActions {
         }
     }
 
+    /**
+     * Opens a local file with the OS handler (installer, folder item, etc.).
+     *
+     * Do not use [Desktop.open] on Windows: AWT ShellExecute converts the path to a
+     * `file:` URI and throws `IOException: Failed to open … Unsupported URI content`
+     * for downloaded `.msi` / `.exe` updates (especially under `~/.noctulist`).
+     */
+    fun open(file: File) {
+        if (!file.exists()) return
+        when {
+            isWindows -> openWindows(file)
+            isMacOs -> {
+                if (runDetached("open", file.absolutePath)) return
+                openDefault(file)
+            }
+            else -> {
+                if (file.name.endsWith(".AppImage", ignoreCase = true) &&
+                    runDetached(file.absolutePath)
+                ) {
+                    return
+                }
+                if (runDetached("xdg-open", file.absolutePath)) return
+                openDefault(file)
+            }
+        }
+    }
+
     private fun shareWindows(file: File) {
         val path = file.absolutePath
         val escaped = path.replace("'", "''")
@@ -68,6 +95,38 @@ internal object DesktopFileActions {
         }.getOrDefault(false)
         if (!started) openDefault(file)
     }
+
+    private fun openWindows(file: File) {
+        val path = file.absolutePath
+        val msiexec = windowsSystem32("msiexec.exe")
+        val rundll32 = windowsSystem32("rundll32.exe")
+        val launched = when {
+            path.endsWith(".msi", ignoreCase = true) ->
+                runDetached(msiexec, "/i", path) ||
+                    runDetached(rundll32, "url.dll,FileProtocolHandler", path)
+            path.endsWith(".exe", ignoreCase = true) ->
+                runDetached(path) ||
+                    runDetached(rundll32, "url.dll,FileProtocolHandler", path)
+            else ->
+                runDetached(rundll32, "url.dll,FileProtocolHandler", path)
+        }
+        if (launched) return
+        revealInExplorer(file)
+    }
+
+    private fun windowsSystem32(exe: String): String {
+        val root = System.getenv("SystemRoot") ?: "C:\\Windows"
+        return "$root\\System32\\$exe"
+    }
+
+    private fun runDetached(vararg command: String): Boolean =
+        runCatching {
+            ProcessBuilder(*command)
+                .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                .redirectError(ProcessBuilder.Redirect.DISCARD)
+                .start()
+            true
+        }.getOrDefault(false)
 
     private fun shareMac(file: File) {
         // Reveal in Finder so the user can use Share from the context menu / toolbar.

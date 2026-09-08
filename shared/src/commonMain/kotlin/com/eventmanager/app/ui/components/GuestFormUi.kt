@@ -42,6 +42,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -61,7 +62,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
@@ -155,6 +156,7 @@ fun GuestFormArrivalToastHost(
     var toastForm by remember { mutableStateOf<GuestForm?>(null) }
     var visible by remember { mutableStateOf(false) }
     val density = LocalDensity.current
+    val slideClearancePx = with(density) { 48.dp.roundToPx() }
 
     LaunchedEffect(enabled) {
         if (!enabled) return@LaunchedEffect
@@ -179,17 +181,22 @@ fun GuestFormArrivalToastHost(
         }
         val newcomers = pending.filter { it.formId !in previous }
         seenIds = ids
-        for (form in newcomers) {
-            toastForm = form
-            visible = true
-            delay(5_000L)
+        try {
+            for (form in newcomers) {
+                toastForm = form
+                visible = true
+                delay(5_000L)
+                visible = false
+                // Exit tween is 300ms; wait it out so the Popup is not left mid-slide.
+                delay(400L)
+            }
+        } finally {
             visible = false
-            delay(320L)
+            toastForm = null
         }
-        toastForm = null
     }
 
-    if (toastForm == null && !visible) return
+    if (toastForm == null) return
 
     Popup(
         alignment = Alignment.TopEnd,
@@ -203,68 +210,69 @@ fun GuestFormArrivalToastHost(
             dismissOnClickOutside = false,
         ),
     ) {
-        AnimatedVisibility(
-            visible = visible && toastForm != null,
-            enter = slideInHorizontally(
-                animationSpec = tween(320),
-                initialOffsetX = { full -> full },
-            ) + fadeIn(animationSpec = tween(280)),
-            exit = slideOutHorizontally(
-                animationSpec = tween(300),
-                targetOffsetX = { full -> full },
-            ) + fadeOut(animationSpec = tween(240)),
-            modifier = modifier,
-        ) {
-            val form = toastForm ?: return@AnimatedVisibility
-            Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = palette.container,
-                contentColor = palette.onContainer,
-                border = BorderStroke(1.dp, palette.border),
-                shadowElevation = 10.dp,
-                tonalElevation = 0.dp,
-                modifier = Modifier
-                    .widthIn(max = 340.dp)
-                    .shadow(10.dp, RoundedCornerShape(14.dp), clip = false)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = { /* intentionally no-op */ },
-                    ),
+        Box(Modifier.clipToBounds()) {
+            AnimatedVisibility(
+                visible = visible && toastForm != null,
+                enter = slideInHorizontally(
+                    animationSpec = tween(320),
+                    initialOffsetX = { full -> full + slideClearancePx },
+                ) + fadeIn(animationSpec = tween(280)),
+                exit = slideOutHorizontally(
+                    animationSpec = tween(300),
+                    targetOffsetX = { full -> full + slideClearancePx },
+                ) + fadeOut(animationSpec = tween(240)),
+                modifier = modifier,
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                val form = toastForm ?: return@AnimatedVisibility
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = palette.container,
+                    contentColor = palette.onContainer,
+                    border = BorderStroke(1.dp, palette.border),
+                    shadowElevation = 6.dp,
+                    tonalElevation = 0.dp,
+                    modifier = Modifier
+                        .widthIn(max = 340.dp)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = { /* intentionally no-op */ },
+                        ),
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(palette.iconBg),
-                        contentAlignment = Alignment.Center,
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.Assignment,
-                            contentDescription = null,
-                            tint = palette.accent,
-                            modifier = Modifier.size(20.dp),
-                        )
-                    }
-                    Column(modifier = Modifier.weight(1f, fill = false)) {
-                        Text(
-                            stringResource(Res.string.guest_form_pending_title),
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = palette.accent,
-                        )
-                        Text(
-                            stringResource(Res.string.guest_form_pending_one, form.artistName),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = palette.onContainer,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(palette.iconBg),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Assignment,
+                                contentDescription = null,
+                                tint = palette.accent,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f, fill = false)) {
+                            Text(
+                                stringResource(Res.string.guest_form_pending_title),
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = palette.accent,
+                            )
+                            Text(
+                                stringResource(Res.string.guest_form_pending_one, form.artistName),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = palette.onContainer,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                 }
             }
@@ -287,6 +295,7 @@ fun GuestFormCreatorDialog(
     var eventDateMillis by remember { mutableStateOf<Long?>(null) }
     var artistName by remember { mutableStateOf("") }
     var offeredIds by remember { mutableStateOf(setOf<String>()) }
+    var accessMaxRequests by remember { mutableStateOf(mapOf<String, String>()) }
     var maxGuests by remember { mutableStateOf(GuestForm.DEFAULT_MAX_GUESTS.toString()) }
     var allowMultipleResponses by remember { mutableStateOf(false) }
     var expiryMode by remember { mutableStateOf(GuestFormExpiry.AFTER_RESPONSE) }
@@ -305,6 +314,16 @@ fun GuestFormCreatorDialog(
     var created by remember { mutableStateOf<GuestForm?>(null) }
     val venueAccessesForVenue = remember(venueAccesses, venueName) {
         VenueAccessCatalog.forVenue(venueAccesses, venueName.orEmpty())
+    }
+    val parsedMaxGuests = remember(maxGuests) {
+        maxGuests.toIntOrNull()?.coerceIn(1, GuestForm.MAX_GUESTS_LIMIT)
+            ?: GuestForm.DEFAULT_MAX_GUESTS
+    }
+    LaunchedEffect(parsedMaxGuests) {
+        accessMaxRequests = accessMaxRequests.mapValues { (_, raw) ->
+            val n = raw.toIntOrNull() ?: return@mapValues raw
+            if (n > parsedMaxGuests) parsedMaxGuests.toString() else raw
+        }
     }
 
     created?.let { form ->
@@ -353,6 +372,7 @@ fun GuestFormCreatorDialog(
                         offeredIds = VenueAccessCatalog.forVenue(venueAccesses, picked.orEmpty())
                             .map { it.id }
                             .toSet()
+                        accessMaxRequests = emptyMap()
                     },
                 )
                 Text(
@@ -375,15 +395,20 @@ fun GuestFormCreatorDialog(
                         )
                     }
                     else -> {
-                        TemporaryGuestAccessSelector(
+                        GuestFormOfferedAccessQuotaEditor(
                             venueAccesses = venueAccessesForVenue,
-                            selectedAccessIds = offeredIds,
+                            offeredIds = offeredIds,
+                            accessMaxRequests = accessMaxRequests,
+                            maxGuests = parsedMaxGuests,
                             onToggleAccess = { id ->
                                 offeredIds = if (offeredIds.contains(id)) {
                                     offeredIds - id
                                 } else {
                                     offeredIds + id
                                 }
+                            },
+                            onMaxRequestsChange = { id, raw ->
+                                accessMaxRequests = accessMaxRequests + (id to raw)
                             },
                         )
                     }
@@ -507,7 +532,10 @@ fun GuestFormCreatorDialog(
                         eventDateMillis = date,
                         artistName = artist,
                         offeredAccessIds = offeredIds,
-                        maxGuests = maxGuests.toIntOrNull() ?: GuestForm.DEFAULT_MAX_GUESTS,
+                        accessMaxRequests = offeredIds.associateWith { id ->
+                            accessMaxRequests[id]?.toIntOrNull() ?: 0
+                        },
+                        maxGuests = parsedMaxGuests,
                         expiryMode = expiryMode,
                         manualExpiryMillis = manualExpiry ?: 0L,
                         showInstitutionLogo = showInstitutionLogo && hasInstitutionLogo,
@@ -535,6 +563,107 @@ fun GuestFormCreatorDialog(
             }
         },
     )
+}
+
+@Composable
+private fun GuestFormOfferedAccessQuotaEditor(
+    venueAccesses: List<VenueAccess>,
+    offeredIds: Set<String>,
+    accessMaxRequests: Map<String, String>,
+    maxGuests: Int,
+    onToggleAccess: (String) -> Unit,
+    onMaxRequestsChange: (id: String, raw: String) -> Unit,
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+        ),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            val single = venueAccesses.size == 1
+            venueAccesses.forEach { access ->
+                val offered = offeredIds.contains(access.id)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    if (single) {
+                        Text(
+                            text = access.name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        Switch(
+                            checked = offered,
+                            onCheckedChange = { onToggleAccess(access.id) },
+                        )
+                    } else {
+                        FilterChip(
+                            selected = offered,
+                            onClick = { onToggleAccess(access.id) },
+                            modifier = Modifier.weight(1f, fill = false),
+                            label = {
+                                Text(
+                                    access.name,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            },
+                            leadingIcon = if (offered) {
+                                {
+                                    Icon(
+                                        Icons.Default.Check,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(FilterChipDefaults.IconSize),
+                                    )
+                                }
+                            } else {
+                                null
+                            },
+                        )
+                    }
+                    if (offered) {
+                        OutlinedTextField(
+                            value = accessMaxRequests[access.id].orEmpty(),
+                            onValueChange = { raw ->
+                                val digits = raw.filter(Char::isDigit).take(3)
+                                val n = digits.toIntOrNull()
+                                onMaxRequestsChange(
+                                    access.id,
+                                    if (n != null && n > maxGuests) maxGuests.toString() else digits,
+                                )
+                            },
+                            label = {
+                                Text(
+                                    stringResource(Res.string.guest_form_access_max_requests),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Clip,
+                                    softWrap = false,
+                                )
+                            },
+                            modifier = Modifier
+                                .widthIn(min = 168.dp)
+                                .weight(1f),
+                            singleLine = true,
+                        )
+                    }
+                }
+            }
+            Text(
+                stringResource(Res.string.guest_form_access_max_requests_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
 }
 
 @OptIn(ExperimentalLayoutApi::class)

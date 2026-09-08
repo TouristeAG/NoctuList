@@ -488,7 +488,7 @@
     
     <!-- App Information -->
     <string name="app_info_title">ऐप की जानकारी</string>
-    <string name="app_version">NoctuList 2.1.2</string>
+    <string name="app_version">NoctuList 2.1.3</string>
     <string name="app_designed_for">कलेक्टिफ़ नॉक्टर्न स्थानों के लिए डिज़ाइन किया गया</string>
     <!-- Single full sentence to avoid spacing issues across locales -->
     <string name="app_developed_full">लियोनार्डो मोंडाडा द्वारा कलेक्टिफ़ नॉक्टर्न के लिए विकसित किया गया</string>
@@ -2271,6 +2271,8 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="guest_form_prefill_phone">पूर्व-भरा आपातकालीन फ़ोन</string>
     <string name="guest_form_offered_access">वे जो एक्सेस मांग सकते हैं</string>
     <string name="guest_form_offered_access_hint">अनुरोध गारंटी नहीं है — फैसला रात को आपका होगा।</string>
+    <string name="guest_form_access_max_requests">अधिकतम अनुरोध</string>
+    <string name="guest_form_access_max_requests_hint">खाली = कोई अतिरिक्त सीमा नहीं (लोगों की अधिकतम संख्या के अलावा)।</string>
     <string name="guest_form_create_action">फ़ॉर्म बनाएँ</string>
     <string name="guest_form_link_title">फ़ॉर्म तैयार</string>
     <string name="guest_form_link_body">यह अनूठा लिंक %1$s को भेजें। यह खत्म होने या जवाब तक चलता है।</string>

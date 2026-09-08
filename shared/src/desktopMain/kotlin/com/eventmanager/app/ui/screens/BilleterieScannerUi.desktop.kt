@@ -45,9 +45,6 @@ import com.eventmanager.app.ui.components.temporaryEntryValidatedLabel
 import com.eventmanager.app.ui.viewmodel.EventManagerViewModel
 import org.jetbrains.compose.resources.stringResource
 
-/** A spent single-use temporary entry: a warning, not a rejection. */
-private val TemporaryGuestUsedAmber = Color(0xFF8D6E00)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DesktopBilleterieScanningScreen(
@@ -476,18 +473,19 @@ fun DesktopBilleterieResultScreen(
                 )
             }
         } else {
+            val alreadyUsedAtScan = result is BilleterieScanResult.TemporaryGuestFound &&
+                result.alreadyValidated
             val isSuccess = when (result) {
                 is BilleterieScanResult.FreeEntry,
                 is BilleterieScanResult.GuestFound,
                 -> true
                 is BilleterieScanResult.TicketsAvailable -> ticketConfirmed
-                is BilleterieScanResult.TemporaryGuestFound -> temporaryGuestValidated
+                is BilleterieScanResult.TemporaryGuestFound -> !alreadyUsedAtScan
                 else -> false
             }
             val verdictColor = when {
-                // A spent single-use entry is not an error, just a "no more entry left" warning.
-                result is BilleterieScanResult.TemporaryGuestFound && temporaryGuestValidated ->
-                    TemporaryGuestUsedAmber
+                // Amber only on a re-scan after the single-use entry was already spent.
+                alreadyUsedAtScan -> TemporaryGuestUsedAmber
                 isSuccess -> SuccessGreen
                 else -> ErrorRed
             }
@@ -553,12 +551,17 @@ private fun DesktopBilleterieFullScreenVerdict(
     onValidateTemporaryGuest: (Guest) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    val alreadyUsedAtScan = result is BilleterieScanResult.TemporaryGuestFound &&
+        result.alreadyValidated
+    val justValidatedTemporary = result is BilleterieScanResult.TemporaryGuestFound &&
+        temporaryGuestValidated &&
+        !alreadyUsedAtScan
     val isSuccess = when (result) {
         is BilleterieScanResult.FreeEntry,
         is BilleterieScanResult.GuestFound,
         -> true
         is BilleterieScanResult.TicketsAvailable -> ticketConfirmed
-        is BilleterieScanResult.TemporaryGuestFound -> temporaryGuestValidated
+        is BilleterieScanResult.TemporaryGuestFound -> !alreadyUsedAtScan
         is BilleterieScanResult.NoEntry,
         is BilleterieScanResult.ScanError,
         -> false
@@ -589,7 +592,7 @@ private fun DesktopBilleterieFullScreenVerdict(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            if (result is BilleterieScanResult.TemporaryGuestFound && temporaryGuestValidated) {
+            if (alreadyUsedAtScan) {
                 Icon(
                     Icons.Default.History,
                     contentDescription = null,
@@ -621,7 +624,11 @@ private fun DesktopBilleterieFullScreenVerdict(
             Spacer(Modifier.height(28.dp))
 
             Text(
-                text = desktopBilleterieStatusTitle(result, ticketConfirmed),
+                text = desktopBilleterieStatusTitle(
+                    result = result,
+                    ticketConfirmed = ticketConfirmed,
+                    justValidatedTemporary = justValidatedTemporary,
+                ),
                 style = MaterialTheme.typography.displaySmall,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
@@ -714,7 +721,7 @@ private fun DesktopBilleterieFullScreenVerdict(
                         Spacer(Modifier.height(28.dp))
                         DesktopBilleterieVerdictPerksCard(
                             perkTexts = perkTexts,
-                            muted = temporaryGuestValidated,
+                            muted = result.alreadyValidated,
                             title = stringResource(
                                 if (hasNonAccessBenefits) Res.string.benefit_details
                                 else Res.string.access_details,
@@ -722,7 +729,7 @@ private fun DesktopBilleterieFullScreenVerdict(
                         )
                     }
                     Spacer(Modifier.height(24.dp))
-                    if (temporaryGuestValidated) {
+                    if (result.alreadyValidated) {
                         Text(
                             text = temporaryEntryValidatedLabel(result.guest)?.let {
                                 stringResource(Res.string.temp_guest_scan_already_used, it)
@@ -731,7 +738,7 @@ private fun DesktopBilleterieFullScreenVerdict(
                             color = Color.White,
                             textAlign = TextAlign.Center,
                         )
-                    } else {
+                    } else if (!temporaryGuestValidated) {
                         Box(modifier = Modifier.widthIn(max = 480.dp)) {
                             EntryConfirmControl(
                                 onConfirm = {
@@ -938,7 +945,11 @@ private fun DesktopBilleterieResultActionBar(
 }
 
 @Composable
-private fun desktopBilleterieStatusTitle(result: BilleterieScanResult, ticketConfirmed: Boolean): String =
+private fun desktopBilleterieStatusTitle(
+    result: BilleterieScanResult,
+    ticketConfirmed: Boolean,
+    justValidatedTemporary: Boolean = false,
+): String =
     when (result) {
         is BilleterieScanResult.FreeEntry -> stringResource(Res.string.billeterie_scanner_entry_approved)
         is BilleterieScanResult.TicketsAvailable -> if (ticketConfirmed) {
@@ -948,7 +959,11 @@ private fun desktopBilleterieStatusTitle(result: BilleterieScanResult, ticketCon
         }
         is BilleterieScanResult.NoEntry -> stringResource(Res.string.billeterie_scanner_no_entry)
         is BilleterieScanResult.GuestFound -> stringResource(Res.string.billeterie_scanner_guest_found)
-        is BilleterieScanResult.TemporaryGuestFound -> stringResource(Res.string.temp_guest_scan_title)
+        is BilleterieScanResult.TemporaryGuestFound -> if (justValidatedTemporary) {
+            stringResource(Res.string.billeterie_scanner_entry_validated)
+        } else {
+            stringResource(Res.string.temp_guest_scan_title)
+        }
         is BilleterieScanResult.ScanError -> stringResource(Res.string.billeterie_scanner_error)
     }
 

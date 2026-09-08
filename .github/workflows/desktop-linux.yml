@@ -39,10 +39,21 @@ jobs:
         run: |
           ./gradlew :desktopApp:packageReleaseDeb :desktopApp:packageReleaseAppImage --no-daemon
 
-      - name: Rename .deb for release manifest
+      - name: Flatten Linux packages
         run: |
-          DEB=$(ls desktopApp/build/compose/packaged/main-release/deb/*.deb | head -1)
-          cp "$DEB" "NoctuList-${{ steps.version.outputs.name }}.deb"
+          VERSION="${{ steps.version.outputs.name }}"
+          DEB=$(ls desktopApp/build/compose/packaged/main-release/deb/*.deb 2>/dev/null | head -1)
+          APPIMAGE=$(ls desktopApp/build/compose/packaged/main-release/appImage/*.AppImage 2>/dev/null | head -1)
+          if [ -z "$APPIMAGE" ]; then
+            APPIMAGE=$(find desktopApp/build/compose/packaged -iname "*.AppImage" | head -1)
+          fi
+          if [ -z "$DEB" ] || [ -z "$APPIMAGE" ]; then
+            echo "ERROR: Linux packages missing"
+            exit 1
+          fi
+          cp "$DEB" "NoctuList-${VERSION}.deb"
+          cp "$APPIMAGE" "NoctuList-${VERSION}.AppImage"
+          chmod +x "NoctuList-${VERSION}.AppImage"
 
       - name: Upload workflow artifacts
         if: github.event_name == 'workflow_dispatch'
@@ -51,12 +62,14 @@ jobs:
           name: noctulist-linux-desktop
           path: |
             NoctuList-*.deb
-            desktopApp/build/compose/packaged/main-release/appImage/*.AppImage
+            NoctuList-*.AppImage
+          if-no-files-found: error
 
       - name: Upload release assets
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
+          fail_on_unmatched_files: true
           files: |
             NoctuList-*.deb
-            desktopApp/build/compose/packaged/main-release/appImage/*.AppImage
+            NoctuList-*.AppImage

@@ -891,7 +891,7 @@
     
     <!-- App Information -->
     <string name="app_info_title">Informations sur l'application</string>
-    <string name="app_version">NoctuList 2.1.2</string>
+    <string name="app_version">NoctuList 2.1.3</string>
     <string name="app_designed_for">Conçu pour les lieux du Collectif Nocturne</string>
     <string name="app_developed_full">Développé pour le Collectif Nocturne par Leonardo Mondada</string>
     <string name="last_sync">Dernière mise à jour : %1$s</string>
@@ -2181,7 +2181,7 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="temp_guest_entry_not_yet">Pas encore entré·e</string>
     <string name="temp_guest_validate_entry">Valider l’entrée</string>
     <string name="temp_guest_entry_single_use_hint">Entrée unique : une fois validée, ce guest quitte la liste du soir.</string>
-    <string name="temp_guest_email_tab">Guestlist artiste</string>
+    <string name="temp_guest_email_tab">Invités temp</string>
     <string name="temp_guest_send_choice_title">Quels QR codes envoyer ?</string>
     <string name="temp_guest_send_choice_all">Toute la guestlist de %1$s</string>
     <string name="temp_guest_send_choice_all_description">Un seul email avec les %1$d QR codes de la soirée.</string>
@@ -2231,6 +2231,8 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="guest_form_prefill_phone">Téléphone d'urgence prérempli</string>
     <string name="guest_form_offered_access">Accès qu'ils peuvent demander</string>
     <string name="guest_form_offered_access_hint">Une demande n'est jamais une garantie - vous décidez le soir.</string>
+    <string name="guest_form_access_max_requests">Max. demandes</string>
+    <string name="guest_form_access_max_requests_hint">Vide = pas de limite (hors nombre max. de personnes).</string>
     <string name="guest_form_create_action">Créer le formulaire</string>
     <string name="guest_form_link_title">Formulaire prêt</string>
     <string name="guest_form_link_body">Envoyez ce lien unique à %1$s. Il fonctionne jusqu'à l'expiration ou la réponse.</string>

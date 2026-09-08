@@ -488,7 +488,7 @@
     
     <!-- App Information -->
     <string name="app_info_title">Informations inapplication</string>
-    <string name="app_version">NoctuList 2.1.2</string>
+    <string name="app_version">NoctuList 2.1.3</string>
     <string name="app_designed_for">Nocturne Collective locis disposito</string>
     <!-- Single full sentence to avoid spacing issues across locales -->
     <string name="app_developed_full">Developed for Nocturne Collective by Leonardo Mondada</string>
@@ -2220,7 +2220,7 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="temp_guest_entry_not_yet">Nondum ingressus</string>
     <string name="temp_guest_validate_entry">Introitum confirma</string>
     <string name="temp_guest_entry_single_use_hint">Introitus semel tantum: confirmatus, hospes ex indice huius noctis exit.</string>
-    <string name="temp_guest_email_tab">Index artificis</string>
+    <string name="temp_guest_email_tab">Hosp. temp</string>
     <string name="temp_guest_send_choice_title">Qui codices QR mittendi sunt?</string>
     <string name="temp_guest_send_choice_all">Totus index %1$s</string>
     <string name="temp_guest_send_choice_all_description">Una epistula cum %1$d codicibus QR noctis.</string>
@@ -2271,6 +2271,8 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="guest_form_prefill_phone">Telephonum subsidiarium præscriptum</string>
     <string name="guest_form_offered_access">Aditus quos petere licet</string>
     <string name="guest_form_offered_access_hint">Petitio numquam promissio est.</string>
+    <string name="guest_form_access_max_requests">Max. petitiones</string>
+    <string name="guest_form_access_max_requests_hint">Vacuum = nullus limes praeter numerum maximum personarum.</string>
     <string name="guest_form_create_action">Formularum condere</string>
     <string name="guest_form_link_title">Formula parata</string>
     <string name="guest_form_link_body">Hunc nexum unicum ad %1$s mitte.</string>

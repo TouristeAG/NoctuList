@@ -321,6 +321,7 @@ fun SetupWizardScreen(
 
     fun finishSetup() {
         settingsManager.setSetupWizardCompleted(true)
+        settingsManager.markOpenWelcomeAfterSetup()
         onSetupComplete()
     }
 

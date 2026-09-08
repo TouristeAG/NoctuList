@@ -53,6 +53,17 @@ sealed class MembershipProbe {
 }
 
 /**
+ * Result of an append-only POS/ledger Firestore transaction.
+ *
+ * [Unknown] is not a failure: the write may already be on the server (timeout after commit).
+ */
+enum class LedgerCommitResult {
+    Accepted,
+    RejectedInsufficientFunds,
+    Unknown,
+}
+
+/**
  * Abstraction over GitLive Firestore so Desktop spike / missing config can no-op safely.
  */
 interface FirestoreGateway {
@@ -98,13 +109,18 @@ interface FirestoreGateway {
         writerAccountEmail: String = "",
         lastModified: Long = 0L,
     )
+    /**
+     * Append-only ledger write. [LedgerCommitResult.Unknown] means the client cannot tell whether
+     * the server committed (timeout). Callers must retry the *same* [AccountTransfer.sourceReference]
+     * instead of creating a second sale.
+     */
     suspend fun runLedgerTransaction(
         orgId: String,
         transfer: AccountTransfer,
         holderKey: String,
         newBalance: Double,
         buffer: Double,
-    ): Boolean
+    ): LedgerCommitResult
 
     fun guestToMap(guest: Guest): Map<String, Any?>
     fun volunteerToMap(volunteer: Volunteer): Map<String, Any?>
@@ -148,7 +164,7 @@ class NoOpFirestoreGateway : FirestoreGateway {
         holderKey: String,
         newBalance: Double,
         buffer: Double,
-    ): Boolean = false
+    ): LedgerCommitResult = LedgerCommitResult.Unknown
 
     override fun guestToMap(guest: Guest) = mapOf("nanoId" to guest.nanoId, "name" to guest.name)
     override fun volunteerToMap(volunteer: Volunteer) = mapOf("id" to volunteer.id, "name" to volunteer.name)

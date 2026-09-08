@@ -24,6 +24,8 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.eventmanager.app.R
 import com.eventmanager.app.data.models.*
+import com.eventmanager.app.data.nfc.NfcUid
+import com.eventmanager.app.data.security.crypto.SensitiveFieldCodec
 import com.eventmanager.app.data.sync.settingsManagerFor
 import com.eventmanager.app.data.utils.groupFutureEntriesByInvites
 import com.eventmanager.app.hardware.Acr122uUsbNfcReader
@@ -88,14 +90,6 @@ actual fun BilleterieScannerScreen(
     // On Firebase, temporary guests carry a scannable single-use entry too.
     val scannableTemporaryGuests = remember(guests, temporaryFeatures.enabled) {
         if (temporaryFeatures.enabled) guests.filter { it.isTemporaryGuest } else emptyList()
-    }
-    val volunteersByNfcUid = remember(volunteers) {
-        volunteers.filter { it.nfcCardUid.isNotBlank() }
-            .groupBy { it.nfcCardUid.billeterieNormalizeUid() }
-    }
-    val guestsByNfcUid = remember(permanentGuests) {
-        permanentGuests.filter { it.nfcCardUid.isNotBlank() }
-            .groupBy { it.nfcCardUid.billeterieNormalizeUid() }
     }
 
     val processMatch: (ScannerMatch) -> Unit = { match ->
@@ -184,8 +178,8 @@ actual fun BilleterieScannerScreen(
             if (uid.isBlank()) {
                 errorMessage = context.getString(R.string.nfc_uid_read_failed)
             } else {
-                val volunteerMatches = volunteersByNfcUid[uid].orEmpty()
-                val guestMatches = guestsByNfcUid[uid].orEmpty()
+                val volunteerMatches = volunteers.filter { SensitiveFieldCodec.matchesNfcUid(it, uid) }
+                val guestMatches = permanentGuests.filter { SensitiveFieldCodec.matchesNfcUid(it, uid) }
                 val allMatches = buildList {
                     volunteerMatches.forEach { v ->
                         add(NfcUidMatchOption(
@@ -514,8 +508,7 @@ actual fun BilleterieScannerScreen(
 private fun ByteArray.billeterieToHexUid(): String =
     joinToString(separator = "") { byte -> "%02X".format(byte) }
 
-private fun String.billeterieNormalizeUid(): String =
-    trim().replace(" ", "").replace(":", "").uppercase()
+private fun String.billeterieNormalizeUid(): String = NfcUid.normalize(this)
 
 private tailrec fun Context.billeterieFindActivity(): Activity? = when (this) {
     is Activity -> this

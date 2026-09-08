@@ -6,6 +6,9 @@ import com.eventmanager.app.data.models.AccountTransferSyncState
 import com.eventmanager.app.data.repository.EventManagerRepository
 import com.eventmanager.app.data.sync.SettingsManager
 import com.eventmanager.app.data.utils.AccountBalanceService
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
+import kotlin.coroutines.cancellation.CancellationException
 
 sealed class FirebaseLedgerResult {
     data class Confirmed(val transfer: AccountTransfer) : FirebaseLedgerResult()
@@ -52,28 +55,39 @@ class FirebaseLedgerService(
         val newBalance = balanceBefore + transfer.amount
         val buffer = settingsManager.getPurchaseCreditBuffer()
 
-        val ok = try {
-            firestoreGateway.runLedgerTransaction(
-                orgId = targetOrg,
-                transfer = persisted,
-                holderKey = holderKey,
-                newBalance = newBalance,
-                buffer = buffer,
-            )
+        val commit = try {
+            withContext(NonCancellable) {
+                firestoreGateway.runLedgerTransaction(
+                    orgId = targetOrg,
+                    transfer = persisted,
+                    holderKey = holderKey,
+                    newBalance = newBalance,
+                    buffer = buffer,
+                )
+            }
         } catch (e: Exception) {
-            val rejected = stampLedgerTransfer(persisted, targetOrg, AccountTransferSyncState.REJECTED)
-            repository.updateAccountTransfer(rejected)
-            return FirebaseLedgerResult.Rejected(e.message ?: "Ledger transaction failed", rejected)
+            if (e is CancellationException) throw e
+            LedgerCommitResult.Unknown
         }
 
-        return if (ok) {
-            val confirmed = stampLedgerTransfer(persisted, targetOrg, AccountTransferSyncState.CONFIRMED)
-            repository.updateAccountTransfer(confirmed)
-            FirebaseLedgerResult.Confirmed(confirmed)
-        } else {
-            val rejected = stampLedgerTransfer(persisted, targetOrg, AccountTransferSyncState.REJECTED)
-            repository.updateAccountTransfer(rejected)
-            FirebaseLedgerResult.Rejected("Insufficient balance after peer updates (buffer=$buffer)", rejected)
+        return when (commit) {
+            LedgerCommitResult.Accepted -> {
+                val confirmed = stampLedgerTransfer(persisted, targetOrg, AccountTransferSyncState.CONFIRMED)
+                repository.updateAccountTransfer(confirmed)
+                FirebaseLedgerResult.Confirmed(confirmed)
+            }
+            LedgerCommitResult.RejectedInsufficientFunds -> {
+                repository.deleteAccountTransfer(persisted)
+                FirebaseLedgerResult.Rejected(
+                    "Insufficient balance after peer updates (buffer=$buffer)",
+                    persisted,
+                )
+            }
+            LedgerCommitResult.Unknown -> {
+                // Timeout / transport error: the server may already have the transfer.
+                // Keep PENDING so a later retry uses the same sourceReference (idempotent).
+                FirebaseLedgerResult.Pending(persisted)
+            }
         }
     }
 }

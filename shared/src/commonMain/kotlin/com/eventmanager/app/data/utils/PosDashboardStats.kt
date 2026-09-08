@@ -4,6 +4,7 @@ import com.eventmanager.app.data.models.AccountHolderKey
 import com.eventmanager.app.data.models.AccountHolderType
 import com.eventmanager.app.data.models.AccountTransfer
 import com.eventmanager.app.data.models.AccountTransferType
+import com.eventmanager.app.data.models.affectsAccountLedger
 import com.eventmanager.app.data.models.PosVenueScope
 import com.eventmanager.app.data.models.SalesCategory
 import com.eventmanager.app.data.models.SalesSheetItem
@@ -151,7 +152,7 @@ object PosDashboardStats {
     ): PosDashboardSnapshot {
         if (aggregationMs <= 0L) return PosDashboardSnapshot.EMPTY
 
-        val inRange = transfers.filter { it.createdAt in startTime..endTime }
+        val inRange = transfers.filter { it.createdAt in startTime..endTime && it.affectsAccountLedger() }
         val (byId, byName) = PosItemParser.categoryLookups(salesItems)
         val posSales = inRange
             .filter { it.type == AccountTransferType.POS_SALE }

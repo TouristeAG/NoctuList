@@ -16,6 +16,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.eventmanager.app.data.security.LocalAdminAccessResult
 import com.eventmanager.app.data.security.profileBelongsToAdminOrg
+import com.eventmanager.app.data.security.crypto.SensitiveFieldCodec
+import com.eventmanager.app.data.nfc.NfcUid
 import com.eventmanager.app.platform.PlatformContext
 import com.eventmanager.app.resources.Res
 import com.eventmanager.app.resources.*
@@ -111,14 +113,6 @@ private fun BiometricAdminVerificationBody(
         if (!scopeByOrg) permanentGuests
         else permanentGuests.filter { profileBelongsToAdminOrg(it.firebaseOrgId, scopedOrgId, strictMultiOrg) }
     }
-    val volunteersByNfcUid = remember(scopedVolunteers) {
-        scopedVolunteers.filter { it.nfcCardUid.isNotBlank() }
-            .groupBy { it.nfcCardUid.trim().replace(" ", "").replace(":", "").uppercase() }
-    }
-    val guestsByNfcUid = remember(scopedPermanentGuests) {
-        scopedPermanentGuests.filter { it.nfcCardUid.isNotBlank() }
-            .groupBy { it.nfcCardUid.trim().replace(" ", "").replace(":", "").uppercase() }
-    }
 
     fun applyAccessResult(result: LocalAdminAccessResult) {
         when (result) {
@@ -140,13 +134,13 @@ private fun BiometricAdminVerificationBody(
     }
 
     fun resolveUidMatch(rawUid: String) {
-        val uid = rawUid.trim().replace(" ", "").replace(":", "").uppercase()
+        val uid = NfcUid.normalize(rawUid)
         if (uid.isBlank()) return
-        val volunteerMatches = volunteersByNfcUid[uid].orEmpty()
-        val guestMatches = guestsByNfcUid[uid].orEmpty()
         val allMatches: List<ScannerMatch> =
-            volunteerMatches.map { ScannerMatch.VolunteerMatch(it) } +
-                guestMatches.map { ScannerMatch.GuestMatch(it) }
+            scopedVolunteers.filter { SensitiveFieldCodec.matchesNfcUid(it, uid) }
+                .map { ScannerMatch.VolunteerMatch(it) } +
+                scopedPermanentGuests.filter { SensitiveFieldCodec.matchesNfcUid(it, uid) }
+                    .map { ScannerMatch.GuestMatch(it) }
         applyVerifiedAdminFromCandidates(allMatches)
     }
 

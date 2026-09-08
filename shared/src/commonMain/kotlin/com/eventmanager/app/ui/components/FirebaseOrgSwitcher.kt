@@ -79,6 +79,11 @@ enum class FirebaseOrgSwitcherPlacement {
     BilleterieContent,
 }
 
+/** True when the org switcher actually draws (Firebase + at least two configured orgs). */
+fun isFirebaseOrgSwitcherVisible(viewModel: EventManagerViewModel): Boolean =
+    viewModel.getActiveBackendType() == BackendType.FIREBASE &&
+        viewModel.getFirebaseConfiguredOrgs().size > 1
+
 private fun FirebaseOrgSwitcherPlacement.allowsAllOrgsOptionByDefault(): Boolean = when (this) {
     FirebaseOrgSwitcherPlacement.WelcomeTopEnd,
     FirebaseOrgSwitcherPlacement.TopBarBeforeSync,

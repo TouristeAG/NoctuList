@@ -160,6 +160,7 @@ class LocalAdminGrantTest {
         assertFalse(shouldOfferFirstAdminSetupAfterSync(syncSucceeded = true, hasLocalAdmin = false, memberCount = 3))
         assertFalse(shouldOfferFirstAdminSetupAfterSync(syncSucceeded = true, hasLocalAdmin = true, memberCount = 0))
         assertFalse(shouldOfferFirstAdminSetupAfterSync(syncSucceeded = false, hasLocalAdmin = false, memberCount = 0))
+        assertFalse(shouldOfferFirstAdminAfterSkippedStartupSync())
     }
 
     @Test

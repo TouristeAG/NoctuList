@@ -5,6 +5,7 @@ import com.eventmanager.app.data.models.OrgScoped
 import com.eventmanager.app.data.models.SalesSheetItem
 import com.eventmanager.app.data.models.VenueEntity
 import com.eventmanager.app.data.models.Volunteer
+import com.eventmanager.app.data.security.crypto.SensitiveFieldCodec
 
 data class MergedVenueFilter(
     val displayName: String,
@@ -84,12 +85,12 @@ object MultiOrgMerge {
 
     fun findGuestsByNfcUid(guests: List<Guest>, uid: String): List<OrgScoped<Guest>> =
         guests
-            .filter { it.nfcCardUid.equals(uid, ignoreCase = true) && it.nfcCardUid.isNotBlank() }
+            .filter { it.nfcCardUid.isNotBlank() && SensitiveFieldCodec.matchesNfcUid(it, uid) }
             .map { OrgScoped(it.firebaseOrgId, it) }
 
     fun findVolunteersByNfcUid(volunteers: List<Volunteer>, uid: String): List<OrgScoped<Volunteer>> =
         volunteers
-            .filter { it.nfcCardUid.equals(uid, ignoreCase = true) && it.nfcCardUid.isNotBlank() }
+            .filter { it.nfcCardUid.isNotBlank() && SensitiveFieldCodec.matchesNfcUid(it, uid) }
             .map { OrgScoped(it.firebaseOrgId, it) }
 
     fun findGuestByNanoId(guests: List<Guest>, nanoId: String): List<OrgScoped<Guest>> =

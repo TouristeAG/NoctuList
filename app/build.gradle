@@ -8,9 +8,33 @@ plugins {
     id 'kotlin-parcelize'
 }
 
+def localProps = new Properties()
+def localPropsFile = rootProject.file("local.properties")
+if (localPropsFile.exists()) {
+    localPropsFile.withInputStream { localProps.load(it) }
+}
+def envOrProp = { String key ->
+    def value = System.getenv(key) ?: project.findProperty(key) ?: localProps.getProperty(key)
+    value != null ? value.toString().trim() : null
+}
+def releaseKeystorePath = envOrProp("ANDROID_KEYSTORE_PATH")
+def releaseKeystoreFile = releaseKeystorePath ? file(releaseKeystorePath) : null
+def hasReleaseSigning = releaseKeystoreFile != null && releaseKeystoreFile.exists()
+
 android {
     namespace 'com.eventmanager.app'
     compileSdk 34
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            release {
+                storeFile releaseKeystoreFile
+                storePassword envOrProp("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias envOrProp("ANDROID_KEY_ALIAS")
+                keyPassword envOrProp("ANDROID_KEY_PASSWORD")
+            }
+        }
+    }
 
     defaultConfig {
         applicationId "com.eventmanager.app"
@@ -47,7 +71,9 @@ android {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.debug
+            // CI must use the Android Studio keystore (same SHA-1 as installed devices).
+            // Local builds without ANDROID_KEYSTORE_* fall back to the machine debug keystore.
+            signingConfig hasReleaseSigning ? signingConfigs.release : signingConfigs.debug
         }
     }
     compileOptions {

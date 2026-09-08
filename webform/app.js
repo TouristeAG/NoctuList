@@ -15,6 +15,7 @@ const formEl = document.getElementById("form");
 const peopleEl = document.getElementById("people");
 const addBtn = document.getElementById("add-person");
 const errorEl = document.getElementById("error");
+const quotaLegendEl = document.getElementById("quota-legend");
 const langEl = document.getElementById("lang");
 
 let offeredAccesses = [];
@@ -45,7 +46,13 @@ function parseAccesses(raw) {
   try {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
-      return parsed.filter((item) => item && item.id && item.name);
+      return parsed
+        .filter((item) => item && item.id && item.name)
+        .map((item) => ({
+          id: String(item.id),
+          name: String(item.name),
+          maxRequests: Math.max(0, Number(item.maxRequests) || 0),
+        }));
     }
   } catch (_) {
     /* comma-separated IDs from an older build */
@@ -54,7 +61,61 @@ function parseAccesses(raw) {
     .split(",")
     .map((id) => id.trim())
     .filter(Boolean)
-    .map((id) => ({ id, name: id }));
+    .map((id) => ({ id, name: id, maxRequests: 0 }));
+}
+
+function accessCap(access) {
+  const n = Number(access && access.maxRequests) || 0;
+  return n > 0 ? n : 0;
+}
+
+function chipsForAccess(accessId, onOnly = false) {
+  return [...peopleEl.querySelectorAll(".chip")].filter((chip) => {
+    if (chip.dataset.id !== accessId) return false;
+    if (onOnly && !chip.classList.contains("on")) return false;
+    return true;
+  });
+}
+
+function countRequested(accessId) {
+  return chipsForAccess(accessId, true).length;
+}
+
+function firstQuotaViolation(people) {
+  for (const access of offeredAccesses) {
+    const cap = accessCap(access);
+    if (cap <= 0) continue;
+    const count = people.filter((person) => person.access.includes(access.id)).length;
+    if (count > cap) return access;
+  }
+  return null;
+}
+
+function showQuotaError(access) {
+  errorEl.textContent = t("quotaExceeded", { n: accessCap(access), name: access.name });
+  errorEl.classList.remove("hidden");
+}
+
+function refreshQuotaUi() {
+  const capped = offeredAccesses.filter((access) => accessCap(access) > 0);
+  if (!quotaLegendEl) return;
+  if (!capped.length) {
+    quotaLegendEl.classList.add("hidden");
+    quotaLegendEl.textContent = "";
+  } else {
+    quotaLegendEl.classList.remove("hidden");
+    quotaLegendEl.textContent = capped
+      .map((access) => `${access.name} ${countRequested(access.id)}/${accessCap(access)}`)
+      .join(" · ");
+  }
+  offeredAccesses.forEach((access) => {
+    const cap = accessCap(access);
+    const used = countRequested(access.id);
+    const full = cap > 0 && used >= cap;
+    chipsForAccess(access.id).forEach((chip) => {
+      chip.classList.toggle("full", full && !chip.classList.contains("on"));
+    });
+  });
 }
 
 function formatDate(millis) {
@@ -166,7 +227,19 @@ function personRow(index, accesses, selectedIds = []) {
       chip.textContent = access.name;
       chip.dataset.id = access.id;
       if (selectedIds.includes(access.id)) chip.classList.add("on");
-      chip.addEventListener("click", () => chip.classList.toggle("on"));
+      chip.addEventListener("click", () => {
+        const turningOn = !chip.classList.contains("on");
+        if (turningOn) {
+          const cap = accessCap(access);
+          if (cap > 0 && countRequested(access.id) >= cap) {
+            showQuotaError(access);
+            return;
+          }
+        }
+        errorEl.classList.add("hidden");
+        chip.classList.toggle("on");
+        refreshQuotaUi();
+      });
       chips.appendChild(chip);
     });
     block.appendChild(label);
@@ -190,6 +263,7 @@ function relabelPeople() {
     const label = row.querySelector(".access-label");
     if (label) label.textContent = t("accessLabel");
   });
+  refreshQuotaUi();
 }
 
 function bindLanguage() {
@@ -262,10 +336,12 @@ async function main() {
   document.getElementById("disclaimer").hidden = offeredAccesses.length === 0;
   renderLogos(form);
   peopleEl.appendChild(personRow(0, offeredAccesses));
+  refreshQuotaUi();
   addBtn.addEventListener("click", () => {
     if (peopleEl.children.length >= maxGuests) return;
     peopleEl.appendChild(personRow(peopleEl.children.length, offeredAccesses));
     addBtn.hidden = peopleEl.children.length >= maxGuests;
+    refreshQuotaUi();
   });
 
   formEl.addEventListener("submit", async (event) => {
@@ -275,6 +351,11 @@ async function main() {
     if (!people.length) {
       errorEl.textContent = t("needName");
       errorEl.classList.remove("hidden");
+      return;
+    }
+    const quotaHit = firstQuotaViolation(people);
+    if (quotaHit) {
+      showQuotaError(quotaHit);
       return;
     }
     const payload = JSON.stringify({

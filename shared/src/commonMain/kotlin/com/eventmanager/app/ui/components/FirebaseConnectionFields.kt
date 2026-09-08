@@ -266,13 +266,17 @@ fun SettingsManager.persistFirebaseConnectionFields(
     webClientId: String,
     webClientSecret: String = "",
 ) {
+    val previousProject = getFirebaseProjectId().trim()
+    val nextProject = projectId.trim()
+    val switchingProject = previousProject.isNotBlank() && previousProject != nextProject
     setFirebaseConfiguredOrgs(configuredOrgs)
-    setFirebaseProjectId(projectId.trim())
+    setFirebaseProjectId(nextProject)
     setFirebaseApplicationId(applicationId.trim())
     setFirebaseApiKey(apiKey.trim())
     setFirebaseWebClientId(webClientId.trim())
-    if (webClientSecret.isNotBlank()) {
-        setFirebaseWebClientSecret(webClientSecret.trim())
+    when {
+        webClientSecret.isNotBlank() -> setFirebaseWebClientSecret(webClientSecret.trim())
+        switchingProject -> setFirebaseWebClientSecret("")
     }
 }
 

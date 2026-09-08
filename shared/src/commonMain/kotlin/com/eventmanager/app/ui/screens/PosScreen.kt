@@ -67,6 +67,7 @@ import androidx.compose.ui.window.Dialog
 import com.eventmanager.app.data.models.*
 import com.eventmanager.app.data.remote.BackendType
 import com.eventmanager.app.data.remote.MultiOrgMerge
+import com.eventmanager.app.data.nfc.NfcUid
 import com.eventmanager.app.data.sync.SettingsManager
 import com.eventmanager.app.data.utils.DepositReturnPolicy
 import com.eventmanager.app.data.utils.PosCartLine
@@ -311,8 +312,11 @@ fun PosScreen(
     var cart by remember { mutableStateOf<List<PosCartEntry>>(emptyList()) }
     var showQr by remember { mutableStateOf(false) }
     var showManualAmount by remember { mutableStateOf(false) }
-    var showResult by remember { mutableStateOf<PosResultState?>(null) }
-    var isProcessing by remember { mutableStateOf(false) }
+    val saleUiResult by viewModel.posSaleUiResult.collectAsState()
+    val isProcessing by viewModel.posSaleInFlight.collectAsState()
+    val showResult = saleUiResult?.let { result ->
+        if (result.success) PosResultState.Success(result) else PosResultState.Failure(result.message)
+    }
     var readerStatus by remember { mutableStateOf<String?>(null) }
     var scanFeedback by remember { mutableStateOf<PosScanFeedback?>(null) }
     /** Bumped on every feedback banner so an identical message replays its entry animation. */
@@ -528,7 +532,7 @@ fun PosScreen(
     }
 
     fun resolveUid(uid: String) {
-        showResult = null
+        viewModel.consumePosSaleUiResult()
         val normalized = uid.trim().replace(" ", "").replace(":", "").uppercase()
         val volMatches = MultiOrgMerge.findVolunteersByNfcUid(volunteers, normalized)
         if (volMatches.size == 1) {
@@ -577,32 +581,23 @@ fun PosScreen(
         val venueSnapshot = selectedVenue
         // Keep the cash dialog open with frozen snapshot + loading until the sale
         // finishes — closing it early left a blank gap before the success overlay.
-        isProcessing = true
-        scope.launch {
-            try {
-                val result = viewModel.completePosSale(
-                    holderType = if (vol != null) AccountHolderType.VOLUNTEER else AccountHolderType.GUEST,
-                    holderId = vol?.id ?: gst!!.nanoId,
-                    holderName = vol?.name ?: gst!!.name,
-                    cart = cartSnapshot,
-                    barDiscountPercent = discountSnapshot,
-                    posVenueName = venueSnapshot,
-                    customerOrgId = customerOrgId,
-                )
-                pendingCashConfirmation = false
-                cashConfirmSnapshot = null
-                isProcessing = false
-                showResult = if (result.success) {
-                    PosResultState.Success(result)
-                } else {
-                    PosResultState.Failure(result.message)
-                }
-            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                isProcessing = false
-                println("POS sale failed: ${e.message}")
-            }
+        viewModel.submitPosSale(
+            holderType = if (vol != null) AccountHolderType.VOLUNTEER else AccountHolderType.GUEST,
+            holderId = vol?.id ?: gst!!.nanoId,
+            holderName = vol?.name ?: gst!!.name,
+            cart = cartSnapshot,
+            barDiscountPercent = discountSnapshot,
+            posVenueName = venueSnapshot,
+            customerOrgId = customerOrgId,
+        )
+    }
+
+    LaunchedEffect(saleUiResult) {
+        val result = saleUiResult ?: return@LaunchedEffect
+        pendingCashConfirmation = false
+        cashConfirmSnapshot = null
+        if (result.success) {
+            cart = emptyList()
         }
     }
 
@@ -716,14 +711,14 @@ fun PosScreen(
     }
 
     if (showResult != null) {
-        val refused = showResult is PosResultState.Failure
         PosResultOverlay(
             state = showResult!!,
             currencyCode = currencyCode,
             isDesktop = isDesktop,
             focusRequester = focusRequester,
             onDismiss = {
-                showResult = null
+                val refused = saleUiResult?.success != true
+                viewModel.consumePosSaleUiResult()
                 // A refused sale wrote nothing, so hand the till back its cart and customer.
                 if (!refused) {
                     cart = emptyList()
@@ -988,7 +983,7 @@ private fun PosManualAmountPanel(
     }
 }
 
-private fun String.normalizeNfc() = trim().replace(" ", "").replace(":", "").uppercase()
+private fun String.normalizeNfc() = NfcUid.normalize(this)
 
 private sealed class PosResultState {
     data class Success(val result: com.eventmanager.app.data.utils.PosSaleResult) : PosResultState()

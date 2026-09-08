@@ -80,6 +80,13 @@ fun shouldOfferFirstAdminSetupAfterSync(
 ): Boolean = syncSucceeded && !hasLocalAdmin && memberCount == 0
 
 /**
+ * A skipped startup sync (wizard replay, theme/locale recreate) cannot prove the
+ * remote roster is empty. Local Room often looks empty right after joining an
+ * existing Firebase org — never open the passwordless first-admin wizard then.
+ */
+fun shouldOfferFirstAdminAfterSkippedStartupSync(): Boolean = false
+
+/**
  * Members are present locally but none is admin — usually incomplete sync, not a missing admin.
  */
 fun isSuspiciousMissingAdminAfterSync(

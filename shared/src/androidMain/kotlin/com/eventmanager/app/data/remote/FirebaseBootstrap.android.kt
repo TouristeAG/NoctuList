@@ -1,6 +1,7 @@
 package com.eventmanager.app.data.remote
 
 import com.eventmanager.app.platform.PlatformContext
+import com.google.firebase.FirebaseApp
 import dev.gitlive.firebase.Firebase
 import dev.gitlive.firebase.FirebaseOptions
 import dev.gitlive.firebase.app
@@ -11,10 +12,12 @@ actual object FirebaseBootstrap {
         platformContext: PlatformContext,
         options: FirebaseProjectOptions?,
     ): Boolean {
-        if (isInitialized()) return true
-        // Prefer google-services.json auto-init when present
-        if (runCatching { Firebase.app; true }.getOrDefault(false)) return true
-        val opts = options ?: return false
+        val opts = options?.takeIf { it.isComplete() }
+        if (isInitialized()) {
+            if (opts == null || nativeMatches(opts)) return true
+            release()
+        }
+        if (opts == null) return false
         return runCatching {
             Firebase.initialize(
                 context = platformContext.androidContext,
@@ -34,4 +37,15 @@ actual object FirebaseBootstrap {
         Firebase.app
         true
     }.getOrDefault(false)
+
+    actual fun release() {
+        runCatching { FirebaseApp.getInstance().delete() }
+    }
+
+    private fun nativeMatches(opts: FirebaseProjectOptions): Boolean {
+        val native = runCatching { FirebaseApp.getInstance().options }.getOrNull() ?: return false
+        return native.apiKey == opts.apiKey &&
+            native.applicationId == opts.applicationId &&
+            native.projectId == opts.projectId
+    }
 }

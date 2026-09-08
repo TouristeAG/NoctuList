@@ -50,6 +50,8 @@ import com.eventmanager.app.data.security.LocalAdminAccessResult
 import com.eventmanager.app.data.security.LocalAdminGrantResult
 import com.eventmanager.app.data.security.LocalAdminTargetKind
 import com.eventmanager.app.data.security.shouldShowLocalAdminRightsSection
+import com.eventmanager.app.data.security.crypto.SensitiveFieldCodec
+import com.eventmanager.app.data.nfc.NfcUid
 import com.eventmanager.app.platform.LocalPlatformContext
 import com.eventmanager.app.resources.Res
 import com.eventmanager.app.resources.*
@@ -213,14 +215,6 @@ private fun GrantLocalAdminDialog(
     val permanentGuests = remember(guests) {
         guests.filter { !it.isVolunteerBenefit && !it.isTemporaryGuest }
     }
-    val volunteersByNfcUid = remember(volunteers) {
-        volunteers.filter { it.nfcCardUid.isNotBlank() }
-            .groupBy { it.nfcCardUid.trim().replace(" ", "").replace(":", "").uppercase() }
-    }
-    val guestsByNfcUid = remember(permanentGuests) {
-        permanentGuests.filter { it.nfcCardUid.isNotBlank() }
-            .groupBy { it.nfcCardUid.trim().replace(" ", "").replace(":", "").uppercase() }
-    }
 
     fun applyGrant(grantor: ScannerMatch) {
         step = GrantLocalAdminUiStep.CHECKING
@@ -289,10 +283,14 @@ private fun GrantLocalAdminDialog(
 
     fun resolveUidMatch(rawUid: String) {
         if (step != GrantLocalAdminUiStep.SCAN) return
-        val uid = rawUid.trim().replace(" ", "").replace(":", "").uppercase()
+        val uid = NfcUid.normalize(rawUid)
         if (uid.isBlank()) return
-        val allMatches = volunteersByNfcUid[uid].orEmpty().map { ScannerMatch.VolunteerMatch(it) } +
-            guestsByNfcUid[uid].orEmpty().map { ScannerMatch.GuestMatch(it) }
+        val allMatches = volunteers
+            .filter { SensitiveFieldCodec.matchesNfcUid(it, uid) }
+            .map { ScannerMatch.VolunteerMatch(it) } +
+            permanentGuests
+                .filter { SensitiveFieldCodec.matchesNfcUid(it, uid) }
+                .map { ScannerMatch.GuestMatch(it) }
         applyVerifiedAdminFromCandidates(allMatches)
     }
 

@@ -16,6 +16,12 @@ data class FirebaseProjectOptions(
 ) {
     fun isComplete(): Boolean =
         apiKey.isNotBlank() && applicationId.isNotBlank() && projectId.isNotBlank()
+
+    /** Project identity used to decide whether a live Firebase.app must be replaced. */
+    fun sameProjectAs(other: FirebaseProjectOptions): Boolean =
+        apiKey == other.apiKey &&
+            applicationId == other.applicationId &&
+            projectId == other.projectId
 }
 
 object FirebaseOptionsReader {
@@ -44,4 +50,6 @@ expect object FirebaseBootstrap {
     /** Returns true if Firebase.app is usable after this call. */
     fun ensureInitialized(platformContext: PlatformContext, options: FirebaseProjectOptions?): Boolean
     fun isInitialized(): Boolean
+    /** Drops the in-process Firebase app so the next [ensureInitialized] can use new options. */
+    fun release()
 }

@@ -69,5 +69,9 @@ data class AccountTransfer(
     val firebaseOrgId: String = "",
 )
 
+/** Rejected Firebase ledger rows must not debit the account or appear in POS reports. */
+fun AccountTransfer.affectsAccountLedger(): Boolean =
+    syncState != AccountTransferSyncState.REJECTED
+
 fun jobReferenceKey(job: Job): String =
     "${job.volunteerId}|${job.jobTypeName}|${job.date}|${job.venueName}|${job.shiftTime}"

@@ -2,6 +2,7 @@ package com.eventmanager.app.data.utils
 
 import com.eventmanager.app.data.models.AccountHolderType
 import com.eventmanager.app.data.models.AccountTransfer
+import com.eventmanager.app.data.models.AccountTransferSyncState
 import com.eventmanager.app.data.models.AccountTransferType
 import com.eventmanager.app.data.models.PosVenueScope
 import com.eventmanager.app.data.models.SalesSheetItem
@@ -330,6 +331,37 @@ class PosDashboardStatsTest {
         assertEquals(1, volunteers[PosDashboardStats.BALANCE_D50_PLUS])
         assertEquals(1, guests[PosDashboardStats.BALANCE_D0_10])
         assertEquals(0, guests[PosDashboardStats.BALANCE_LE_ZERO])
+    }
+
+    @Test
+    fun rejectedPosSalesAreExcludedFromCountsAndBalances() {
+        val t1 = start + dayMs + 1_000
+        val confirmed = transfer(
+            type = AccountTransferType.POS_SALE,
+            createdAt = t1,
+            amount = -10.0,
+            credit = 10.0,
+            posItemsJson = "1:Beer:5.0:2",
+        )
+        val rejected = confirmed.copy(
+            sourceReference = "rejected-sale",
+            syncState = AccountTransferSyncState.REJECTED,
+        )
+        val snapshot = PosDashboardStats.build(
+            transfers = listOf(confirmed, rejected),
+            salesItems = listOf(beer),
+            startTime = start,
+            endTime = now,
+            aggregationMs = aggregation,
+        )
+        val bucket = snapshot.salesCount.first { it.value > 0.0 }
+        assertEquals(1.0, bucket.value)
+        val balance = AccountBalanceService.computeBalance(
+            AccountHolderType.VOLUNTEER,
+            "v1",
+            listOf(confirmed, rejected),
+        )
+        assertEquals(-10.0, balance)
     }
 
     private fun atZurichHour(around: Long, hour: Int): Long {

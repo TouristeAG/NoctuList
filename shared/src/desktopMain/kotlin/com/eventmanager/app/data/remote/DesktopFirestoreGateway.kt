@@ -415,10 +415,10 @@ internal class DesktopFirestoreGateway(
         holderKey: String,
         newBalance: Double,
         buffer: Double,
-    ): Boolean =
+    ): LedgerCommitResult =
         withTimeoutOrNull(TRANSACTION_TIMEOUT_MS) {
             gitlive.runLedgerTransaction(orgId, transfer, holderKey, newBalance, buffer)
-        } ?: false
+        } ?: LedgerCommitResult.Unknown
 
     override fun guestToMap(guest: Guest) = gitlive.guestToMap(guest)
     override fun volunteerToMap(volunteer: Volunteer) = gitlive.volunteerToMap(volunteer)

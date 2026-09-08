@@ -203,6 +203,67 @@ class FirebaseOrgBootstrapProbeTest {
         assertEquals("ABCD2345", settings.getFirebaseBootstrapCode())
     }
 
+    @Test
+    fun applyFirebaseJoinPayload_replacesApiKeyAndClearsStaleSecretsOnProjectSwitch() {
+        val settings = SettingsManager(InMemoryAppStorage())
+        settings.applyFirebaseJoinPayload(
+            FirebaseJoinPayload(
+                orgId = orgId,
+                projectId = "old-project",
+                applicationId = "1:2:android:old",
+                apiKey = "old-key",
+                webClientId = "old-client",
+                webClientSecret = "old-secret",
+                bootstrapCode = "OLDCODE1",
+            ),
+        )
+        settings.applyFirebaseJoinPayload(
+            FirebaseJoinPayload(
+                orgId = orgId,
+                projectId = "new-project",
+                applicationId = "1:2:android:new",
+                apiKey = "new-key",
+                webClientId = "new-client",
+                webClientSecret = "",
+                bootstrapCode = "",
+            ),
+        )
+        assertEquals("new-key", settings.getFirebaseApiKey())
+        assertEquals("new-project", settings.getFirebaseProjectId())
+        assertEquals("", settings.getFirebaseWebClientSecret())
+        assertEquals("", settings.getFirebaseBootstrapCode())
+    }
+
+    @Test
+    fun applyFirebaseJoinPayload_keepsSecretWhenSameProjectOmitsIt() {
+        val settings = SettingsManager(InMemoryAppStorage())
+        settings.applyFirebaseJoinPayload(
+            FirebaseJoinPayload(
+                orgId = orgId,
+                projectId = "proj",
+                applicationId = "1:2:android:3",
+                apiKey = "key-1",
+                webClientId = "client",
+                webClientSecret = "keep-secret",
+                bootstrapCode = "ABCD2345",
+            ),
+        )
+        settings.applyFirebaseJoinPayload(
+            FirebaseJoinPayload(
+                orgId = orgId,
+                projectId = "proj",
+                applicationId = "1:2:android:3",
+                apiKey = "key-2",
+                webClientId = "client",
+                webClientSecret = "",
+                bootstrapCode = "",
+            ),
+        )
+        assertEquals("key-2", settings.getFirebaseApiKey())
+        assertEquals("keep-secret", settings.getFirebaseWebClientSecret())
+        assertEquals("ABCD2345", settings.getFirebaseBootstrapCode())
+    }
+
     private fun settingsWith(invitationCode: String, joinImported: Boolean = false): SettingsManager {
         val settings = SettingsManager(InMemoryAppStorage())
         if (invitationCode.isNotBlank()) settings.setFirebaseBootstrapCode(invitationCode)
@@ -337,7 +398,7 @@ private class FakeFirestoreGateway(
         holderKey: String,
         newBalance: Double,
         buffer: Double,
-    ): Boolean = false
+    ): LedgerCommitResult = LedgerCommitResult.Unknown
 
     override fun guestToMap(guest: Guest): Map<String, Any?> = emptyMap()
     override fun volunteerToMap(volunteer: Volunteer): Map<String, Any?> = emptyMap()

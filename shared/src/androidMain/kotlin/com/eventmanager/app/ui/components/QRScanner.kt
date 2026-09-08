@@ -55,6 +55,8 @@ import com.journeyapps.barcodescanner.BarcodeResult
 import com.google.zxing.DecodeHintType
 import com.eventmanager.app.data.models.Volunteer
 import com.eventmanager.app.data.models.Guest
+import com.eventmanager.app.data.nfc.NfcUid
+import com.eventmanager.app.data.security.crypto.SensitiveFieldCodec
 import com.eventmanager.app.hardware.Acr122uUsbNfcReader
 import com.eventmanager.app.hardware.Acr1255uj1BleNfcReader
 import com.eventmanager.app.hardware.ExternalAcsUidReader
@@ -223,16 +225,6 @@ fun AndroidQrScannerDialog(
         ExternalAcsUidReader.shouldSuppressPhoneNfcReaderMode(context)
     }
     val permanentGuests = remember(guests) { guests.filter { !it.isVolunteerBenefit && !it.isTemporaryGuest } }
-    val volunteersByNfcUid = remember(volunteers) {
-        volunteers
-            .filter { it.nfcCardUid.isNotBlank() }
-            .groupBy { it.nfcCardUid.normalizeUid() }
-    }
-    val guestsByNfcUid = remember(permanentGuests) {
-        permanentGuests
-            .filter { it.nfcCardUid.isNotBlank() }
-            .groupBy { it.nfcCardUid.normalizeUid() }
-    }
 
     val resolveUidMatch: (String) -> Unit = { rawUid ->
         val uid = rawUid.normalizeUid()
@@ -240,8 +232,8 @@ fun AndroidQrScannerDialog(
             errorMessage = context.getString(R.string.nfc_uid_read_failed)
         } else {
             lastNfcUid = uid
-            val volunteerMatches = volunteersByNfcUid[uid].orEmpty()
-            val guestMatches = guestsByNfcUid[uid].orEmpty()
+            val volunteerMatches = volunteers.filter { SensitiveFieldCodec.matchesNfcUid(it, uid) }
+            val guestMatches = permanentGuests.filter { SensitiveFieldCodec.matchesNfcUid(it, uid) }
 
             val allMatches = buildList {
                 volunteerMatches.forEach { volunteer ->
@@ -1374,10 +1366,7 @@ private fun ByteArray.toHexUid(): String = joinToString(separator = "") { byte -
     "%02X".format(byte)
 }
 
-private fun String.normalizeUid(): String = trim()
-    .replace(" ", "")
-    .replace(":", "")
-    .uppercase()
+private fun String.normalizeUid(): String = NfcUid.normalize(this)
 
 private tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this

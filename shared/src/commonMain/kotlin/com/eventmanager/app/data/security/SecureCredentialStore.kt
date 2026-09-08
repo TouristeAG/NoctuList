@@ -11,6 +11,7 @@ interface SecureCredentialStore {
     fun putSecret(key: String, value: String)
     fun removeSecret(key: String)
     fun containsSecret(key: String): Boolean
+    fun clearAll()
 }
 
 object SecureCredentialKeys {

@@ -33,6 +33,8 @@ import com.eventmanager.app.data.security.isSuspiciousMissingAdminAfterSync
 import com.eventmanager.app.data.security.memberRosterCount
 import com.eventmanager.app.data.security.profileBelongsToAdminOrg
 import com.eventmanager.app.data.security.shouldOfferFirstAdminSetupAfterSync
+import com.eventmanager.app.data.security.crypto.SensitiveFieldCodec
+import com.eventmanager.app.data.nfc.NfcUid
 import com.eventmanager.app.data.sync.settingsManagerFor
 import com.eventmanager.app.platform.PlatformContext
 import com.eventmanager.app.platform.PlatformBackHandler
@@ -141,14 +143,6 @@ fun AdminAuthScreen(
             profileBelongsToAdminOrg(it.firebaseOrgId, activeOrgId, strictMultiOrg)
         }
     }
-    val volunteersByNfcUid = remember(scopedVolunteers) {
-        scopedVolunteers.filter { it.nfcCardUid.isNotBlank() }
-            .groupBy { it.nfcCardUid.trim().replace(" ", "").replace(":", "").uppercase() }
-    }
-    val guestsByNfcUid = remember(scopedPermanentGuests) {
-        scopedPermanentGuests.filter { it.nfcCardUid.isNotBlank() }
-            .groupBy { it.nfcCardUid.trim().replace(" ", "").replace(":", "").uppercase() }
-    }
 
     fun applyAccessResult(result: LocalAdminAccessResult) {
         authState = when (result) {
@@ -166,10 +160,14 @@ fun AdminAuthScreen(
     }
 
     fun resolveUidMatch(rawUid: String) {
-        val uid = rawUid.trim().replace(" ", "").replace(":", "").uppercase()
+        val uid = NfcUid.normalize(rawUid)
         if (uid.isBlank()) return
-        val allMatches = volunteersByNfcUid[uid].orEmpty().map { ScannerMatch.VolunteerMatch(it) } +
-            guestsByNfcUid[uid].orEmpty().map { ScannerMatch.GuestMatch(it) }
+        val allMatches = scopedVolunteers
+            .filter { SensitiveFieldCodec.matchesNfcUid(it, uid) }
+            .map { ScannerMatch.VolunteerMatch(it) } +
+            scopedPermanentGuests
+                .filter { SensitiveFieldCodec.matchesNfcUid(it, uid) }
+                .map { ScannerMatch.GuestMatch(it) }
         applyVerifiedAdminFromCandidates(allMatches)
     }
 

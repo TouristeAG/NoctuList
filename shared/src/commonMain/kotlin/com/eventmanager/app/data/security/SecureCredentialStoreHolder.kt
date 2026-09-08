@@ -13,6 +13,10 @@ object SecureCredentialStoreHolder {
 
     fun get(): SecureCredentialStore? = store
 
+    fun clearAll() {
+        store?.clearAll()
+    }
+
     fun migratePlaintextFrom(storage: com.eventmanager.app.platform.AppStorage, keys: List<Pair<String, String>>) {
         val secure = store ?: return
         keys.forEach { (plainKey, secureKey) ->

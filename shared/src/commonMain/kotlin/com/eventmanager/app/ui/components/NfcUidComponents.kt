@@ -16,6 +16,7 @@ import com.eventmanager.app.platform.createCardReaderService
 import com.eventmanager.app.platform.isDesktop
 import com.eventmanager.app.resources.Res
 import com.eventmanager.app.resources.*
+import com.eventmanager.app.data.nfc.NfcUid
 import com.eventmanager.app.ui.platform.NfcUidListenerEffect
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -166,10 +167,7 @@ fun NfcUidCaptureContent(
             }
             Button(
                 onClick = {
-                    val uid = manualUid.trim()
-                        .replace(" ", "")
-                        .replace(":", "")
-                        .uppercase()
+                    val uid = NfcUid.normalize(manualUid)
                     if (uid.isBlank()) {
                         onStatusMessageChange?.invoke(readFailedMsg)
                     } else {

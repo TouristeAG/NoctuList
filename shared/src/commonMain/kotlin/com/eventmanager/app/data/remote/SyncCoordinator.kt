@@ -139,10 +139,7 @@ class SyncCoordinator(
                 return
             }
         val local = settingsManager.getBackendType()
-        val followedId = settingsManager.getFollowedBackendMigrationId()
-        val mismatch = announcement.backendType != local ||
-            (announcement.migrationId.isNotBlank() && announcement.migrationId != followedId)
-        if (mismatch) {
+        if (shouldPromptInstitutionBackendFollow(announcement, local)) {
             _pendingBackendFollow.value = announcement
             _crudSoftLocked.value = true
         } else {

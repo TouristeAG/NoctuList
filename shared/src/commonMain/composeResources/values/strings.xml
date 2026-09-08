@@ -494,7 +494,7 @@
     
     <!-- App Information -->
     <string name="app_info_title">App Information</string>
-    <string name="app_version">NoctuList 2.1.2</string>
+    <string name="app_version">NoctuList 2.1.3</string>
     <string name="app_designed_for">Designed for Collectif Nocturne venues</string>
     <!-- Single full sentence to avoid spacing issues across locales -->
     <string name="app_developed_full">Developed for the Collectif Nocturne by Leonardo Mondada</string>
@@ -2190,7 +2190,7 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="temp_guest_entry_not_yet">Not entered yet</string>
     <string name="temp_guest_validate_entry">Validate entry</string>
     <string name="temp_guest_entry_single_use_hint">Single-use entry: once validated, this guest leaves tonight’s list.</string>
-    <string name="temp_guest_email_tab">Artist guest list</string>
+    <string name="temp_guest_email_tab">Temp Guest</string>
     <string name="temp_guest_send_choice_title">Which QR codes should be sent?</string>
     <string name="temp_guest_send_choice_all">Whole guest list of %1$s</string>
     <string name="temp_guest_send_choice_all_description">One email with the %1$d QR codes of the night.</string>
@@ -2240,6 +2240,8 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="guest_form_prefill_phone">Prefill emergency phone</string>
     <string name="guest_form_offered_access">Accesses they may request</string>
     <string name="guest_form_offered_access_hint">A request is never a guarantee — you decide on the night.</string>
+    <string name="guest_form_access_max_requests">Max. requests</string>
+    <string name="guest_form_access_max_requests_hint">Empty = no extra limit (beyond the maximum number of people).</string>
     <string name="guest_form_create_action">Create the form</string>
     <string name="guest_form_link_title">Form ready</string>
     <string name="guest_form_link_body">Send this unique link to %1$s. It works until the form expires or they answer.</string>

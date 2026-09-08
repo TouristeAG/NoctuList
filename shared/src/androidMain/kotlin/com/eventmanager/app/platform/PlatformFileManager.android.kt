@@ -82,7 +82,36 @@ actual class PlatformFileManager actual constructor(private val context: Platfor
         mimeType: String,
     ): Boolean = false
 
-    // Android Firebase SDK manages its own auth token storage internally; we have no
-    // additional files to erase beyond what signOut() and clearAllData() handle.
-    actual fun getAuthRelatedFilesToErase(): List<File> = emptyList()
+    // Android Firebase / Google persist tokens in SharedPreferences and files that survive
+    // signOut() and our own settings.clear(). Wipe them on factory reset.
+    actual fun getAuthRelatedFilesToErase(): List<File> {
+        val ctx = context.androidContext
+        val files = mutableListOf<File>()
+        val prefsDir = File(ctx.applicationInfo.dataDir, "shared_prefs")
+        prefsDir.listFiles()?.forEach { file ->
+            val n = file.name
+            if (
+                n.equals("noctulist_secure_credentials.xml", ignoreCase = true) ||
+                n.equals("event_manager_settings.xml", ignoreCase = true) ||
+                n.equals("gmail_auth.xml", ignoreCase = true) ||
+                n.contains("firebase", ignoreCase = true) ||
+                n.startsWith("com.google.firebase") ||
+                n.startsWith("com.google.android.gms")
+            ) {
+                files += file
+            }
+        }
+        ctx.filesDir.listFiles()?.forEach { child ->
+            val n = child.name.lowercase()
+            if (n.contains("firebase") || n.contains("firestore") || n == "datastore") {
+                files += child
+            }
+        }
+        ctx.databaseList()?.forEach { name ->
+            if (name.contains("firestore", ignoreCase = true) || name.contains("firebase", ignoreCase = true)) {
+                files += ctx.getDatabasePath(name)
+            }
+        }
+        return files
+    }
 }

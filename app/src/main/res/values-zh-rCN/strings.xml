@@ -377,7 +377,7 @@
     
     <!-- App Information -->
     <string name="app_info_title">应用程序信息</string>
-    <string name="app_version">NoctuList 2.1.2</string>
+    <string name="app_version">NoctuList 2.1.3</string>
     <string name="app_designed_for">专为 Collectif Nocturne 场地设计</string>
     <string name="app_developed_full">为 Collectif Nocturne 开发，开发者：Leonardo Mondada</string>
     <string name="last_sync">上次更新：%s</string>
@@ -1434,6 +1434,8 @@
     <string name="guest_form_prefill_phone">预填紧急电话</string>
     <string name="guest_form_offered_access">可申请的通行权限</string>
     <string name="guest_form_offered_access_hint">申请不保证通过——当晚由你们决定。</string>
+    <string name="guest_form_access_max_requests">申请上限</string>
+    <string name="guest_form_access_max_requests_hint">留空 = 无额外限制（仍受人数上限约束）。</string>
     <string name="guest_form_create_action">创建表单</string>
     <string name="guest_form_link_title">表单已就绪</string>
     <string name="guest_form_link_body">把这个唯一链接发给 %1$s。在过期或提交前有效。</string>

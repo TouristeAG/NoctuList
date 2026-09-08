@@ -4,6 +4,26 @@ All notable changes to NoctuList are documented here. Version numbers follow [Se
 
 ---
 
+## 2.1.3 — 2026-09-08
+
+Optional patch: leftover Android Firebase credentials, duplicate POS sales, and per-access caps on artist guest forms.
+
+### Fixes
+
+- **Android reinstall / factory reset** — Auto Backup no longer restores API keys and org config after uninstall. Encrypted credential storage is wiped on in-app factory reset. Scanning a new join QR (or pasting a new Firebase project) re-initializes the SDK with those credentials instead of the previous project.
+- **POS** — a pending Firebase sale that times out is retried in place instead of creating a second transfer (duplicate sales on Android).
+- **NFC** — UIDs from phone NFC and ACS readers that return 4 of 7 bytes are treated as the same card.
+- **Artist forms** — production can set a maximum number of requests per offered access; the public page blocks extras with an error. Empty still means no extra cap beyond the person limit.
+
+### Upgrade notes
+
+- **Version code:** 30 (`2.1.3`). Minimum supported code remains **27** (2.1.0) — optional update for 2.1.0–2.1.2.
+- **Database / Firestore rules:** unchanged.
+- **Hosting:** redeploy the guest-form site (`webform/`) so per-access quotas apply on the public page.
+- **Publishing:** tag `2.1.3`, then copy `version.json` to the AdminList update manifest. Do not raise `minSupportedVersionCode`.
+
+---
+
 ## 2.1.2 — 2026-09-07
 
 Artists can fill in their own temporary guest list through a public form. **Firebase only** — Google Sheets is unchanged.

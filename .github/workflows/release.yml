@@ -68,8 +68,51 @@ jobs:
           VERSION=$(python3 -c "import json; print(json.load(open('version.json'))['latestVersionName'])")
           echo "name=$VERSION" >> "$GITHUB_OUTPUT"
 
+      # Existing devices were installed from Android Studio APKs signed with
+      # ~/.android/debug.keystore. A runner-generated debug key is a different
+      # cert → Package Installer reports "App not updated".
+      - name: Decode Android release keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          missing=0
+          for var in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            if [ -z "${!var}" ]; then
+              echo "::error::Missing repository secret ${var}."
+              missing=1
+            fi
+          done
+          if [ "$missing" -eq 1 ]; then
+            exit 1
+          fi
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/noctulist-release.keystore"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/noctulist-release.keystore" >> "$GITHUB_ENV"
+
       - name: Build Android APK
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/noctulist-release.keystore
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: ./gradlew :app:assembleRelease --no-daemon
+
+      - name: Verify APK is signed with the production cert
+        run: |
+          APK="app/build/outputs/apk/release/app-release.apk"
+          CERT=$(keytool -printcert -jarfile "$APK")
+          echo "$CERT"
+          EXPECTED="67:1C:E8:D6:DD:CC:01:5D:2C:62:C8:82:DC:5C:84:FA:05:EC:3D:29"
+          ACTUAL=$(echo "$CERT" | tr -d ' \t' | grep -ioE 'SHA1:([0-9A-Fa-f]{2}:){19}[0-9A-Fa-f]{2}' | head -1 | cut -d: -f2-)
+          echo "Expected SHA-1: $EXPECTED"
+          echo "Actual SHA-1:   $ACTUAL"
+          ACTUAL_NORM=$(printf '%s' "$ACTUAL" | tr '[:lower:]' '[:upper:]')
+          if [ "$ACTUAL_NORM" != "$EXPECTED" ]; then
+            echo "::error::APK SHA-1 does not match the production keystore. Devices will refuse the update."
+            exit 1
+          fi
 
       - name: Rename APK
         run: |
@@ -82,6 +125,7 @@ jobs:
         with:
           name: android-apk
           path: app-release-*.apk
+          if-no-files-found: error
           retention-days: 3
 
   # ═══════════════════════════════════════════════════════════════════════════
@@ -169,6 +213,7 @@ jobs:
         with:
           name: macos-${{ matrix.arch }}-dmg
           path: ${{ steps.dmg.outputs.path }}
+          if-no-files-found: error
           retention-days: 3
 
   # ═══════════════════════════════════════════════════════════════════════════
@@ -191,22 +236,49 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Read version
+        id: version
+        shell: bash
+        run: |
+          VERSION=$(python -c "import json; print(json.load(open('version.json'))['latestVersionName'])")
+          echo "name=$VERSION" >> "$GITHUB_OUTPUT"
+
       - name: Build Windows packages
         run: ./gradlew :desktopApp:packageReleaseMsi :desktopApp:packageReleaseExe --no-daemon
 
-      - name: List produced files
+      # upload-artifact keeps the nested compose/packaged/... path. The publish
+      # job previously attached only release-artifacts/* (one level), so MSI/EXE
+      # were built but never added to the GitHub Release.
+      - name: Flatten Windows installers
+        id: files
         shell: bash
         run: |
-          ls -lh desktopApp/build/compose/packaged/main-release/msi/ || true
-          ls -lh desktopApp/build/compose/packaged/main-release/exe/ || true
+          VERSION="${{ steps.version.outputs.name }}"
+          MSI=$(ls desktopApp/build/compose/packaged/main-release/msi/*.msi 2>/dev/null | head -1)
+          EXE=$(ls desktopApp/build/compose/packaged/main-release/exe/*.exe 2>/dev/null | head -1)
+          if [ -z "$MSI" ]; then
+            MSI=$(find desktopApp/build/compose/packaged -name "*.msi" | head -1)
+          fi
+          if [ -z "$EXE" ]; then
+            EXE=$(find desktopApp/build/compose/packaged -name "*.exe" | head -1)
+          fi
+          if [ -z "$MSI" ] || [ -z "$EXE" ]; then
+            echo "ERROR: Windows packages missing"
+            find desktopApp/build/compose/packaged -type f \( -name "*.msi" -o -name "*.exe" \) || true
+            exit 1
+          fi
+          cp "$MSI" "NoctuList-${VERSION}.msi"
+          cp "$EXE" "NoctuList-${VERSION}.exe"
+          ls -lh "NoctuList-${VERSION}.msi" "NoctuList-${VERSION}.exe"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-installers
           path: |
-            desktopApp/build/compose/packaged/main-release/msi/*.msi
-            desktopApp/build/compose/packaged/main-release/exe/*.exe
+            NoctuList-*.msi
+            NoctuList-*.exe
+          if-no-files-found: error
           retention-days: 3
 
   # ═══════════════════════════════════════════════════════════════════════════
@@ -243,13 +315,28 @@ jobs:
       - name: Build Linux packages
         run: ./gradlew :desktopApp:packageReleaseDeb :desktopApp:packageReleaseAppImage --no-daemon
 
-      # Compose names the .deb with a lowercase package name; rename to match
-      # the standard NoctuList-<version>.deb format used in version.json.
-      - name: Rename DEB
+      # Compose nests DEB/AppImage under compose/packaged/... — flatten and
+      # rename to the version.json URLs so publish can attach them.
+      - name: Flatten Linux packages
         run: |
-          DEB=$(ls desktopApp/build/compose/packaged/main-release/deb/*.deb | head -1)
-          cp "$DEB" "NoctuList-${{ steps.version.outputs.name }}.deb"
-          echo "Produced: NoctuList-${{ steps.version.outputs.name }}.deb"
+          VERSION="${{ steps.version.outputs.name }}"
+          DEB=$(ls desktopApp/build/compose/packaged/main-release/deb/*.deb 2>/dev/null | head -1)
+          APPIMAGE=$(ls desktopApp/build/compose/packaged/main-release/appImage/*.AppImage 2>/dev/null | head -1)
+          if [ -z "$DEB" ]; then
+            DEB=$(find desktopApp/build/compose/packaged -name "*.deb" | head -1)
+          fi
+          if [ -z "$APPIMAGE" ]; then
+            APPIMAGE=$(find desktopApp/build/compose/packaged -iname "*.AppImage" | head -1)
+          fi
+          if [ -z "$DEB" ] || [ -z "$APPIMAGE" ]; then
+            echo "ERROR: Linux packages missing"
+            find desktopApp/build/compose/packaged -type f \( -name "*.deb" -o -iname "*.AppImage" \) || true
+            exit 1
+          fi
+          cp "$DEB" "NoctuList-${VERSION}.deb"
+          cp "$APPIMAGE" "NoctuList-${VERSION}.AppImage"
+          chmod +x "NoctuList-${VERSION}.AppImage"
+          ls -lh "NoctuList-${VERSION}.deb" "NoctuList-${VERSION}.AppImage"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -257,7 +344,8 @@ jobs:
           name: linux-packages
           path: |
             NoctuList-*.deb
-            desktopApp/build/compose/packaged/main-release/appImage/*.AppImage
+            NoctuList-*.AppImage
+          if-no-files-found: error
           retention-days: 3
 
   # ═══════════════════════════════════════════════════════════════════════════
@@ -302,8 +390,32 @@ jobs:
           path: release-artifacts
           merge-multiple: true    # flatten into a single directory
 
-      - name: List release artifacts
-        run: ls -lh release-artifacts/
+      - name: Verify expected release artifacts
+        run: |
+          VER="${{ steps.version.outputs.name }}"
+          cd release-artifacts
+          find . -type f -mindepth 2 -exec mv -n {} . \;
+          ls -lh
+          missing=0
+          for f in \
+            "app-release-${VER}.apk" \
+            "NoctuList-${VER}-arm64.dmg" \
+            "NoctuList-${VER}-x86_64.dmg" \
+            "NoctuList-${VER}.msi" \
+            "NoctuList-${VER}.exe" \
+            "NoctuList-${VER}.deb" \
+            "NoctuList-${VER}.AppImage"
+          do
+            if [ ! -f "$f" ]; then
+              echo "::error::Missing release asset $f"
+              missing=1
+            fi
+          done
+          if [ "$missing" -eq 1 ]; then
+            echo "Files present:"
+            find . -type f
+            exit 1
+          fi
 
       # Use the per-version release notes if they exist (.github/release-notes/<ver>.md),
       # otherwise fall back to the changelogShort string in version.json.
@@ -337,5 +449,12 @@ jobs:
           draft: false
           prerelease: ${{ inputs.prerelease == 'true' }}
           make_latest: true
-          fail_on_unmatched_files: false
-          files: release-artifacts/*
+          fail_on_unmatched_files: true
+          files: |
+            release-artifacts/app-release-${{ steps.version.outputs.name }}.apk
+            release-artifacts/NoctuList-${{ steps.version.outputs.name }}-arm64.dmg
+            release-artifacts/NoctuList-${{ steps.version.outputs.name }}-x86_64.dmg
+            release-artifacts/NoctuList-${{ steps.version.outputs.name }}.msi
+            release-artifacts/NoctuList-${{ steps.version.outputs.name }}.exe
+            release-artifacts/NoctuList-${{ steps.version.outputs.name }}.deb
+            release-artifacts/NoctuList-${{ steps.version.outputs.name }}.AppImage

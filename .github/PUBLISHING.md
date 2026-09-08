@@ -86,6 +86,9 @@ These names must match the download URLs in `version.json`:
 | `NoctuList-X.Y.Z.deb` | Linux Debian/Ubuntu |
 | `NoctuList-X.Y.Z.AppImage` | Linux (universal) |
 
+The publish job **fails** if any of these seven files is missing (including
+Windows installers and the AppImage). Do not upload them by hand.
+
 > **Why two macOS DMGs?**  
 > Compose Desktop bundles the JVM of the build host — there is no cross-compilation
 > path. An Intel DMG runs on Apple Silicon only via Rosetta 2 (performance penalty,

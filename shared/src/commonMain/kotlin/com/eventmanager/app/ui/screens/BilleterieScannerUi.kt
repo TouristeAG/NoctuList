@@ -43,6 +43,8 @@ import org.jetbrains.compose.resources.stringResource
 
 internal val SuccessGreen = Color(0xFF1B5E20)
 internal val ErrorRed = Color(0xFFB71C1C)
+/** Re-scan of a temporary guest whose single-use entry is already spent. */
+internal val TemporaryGuestUsedAmber = Color(0xFF8D6E00)
 internal val ScannerDark = Color(0xFF121212)
 internal val ScannerCardDark = Color(0xFF1E1E1E)
 
@@ -967,9 +969,9 @@ private fun BilleterieGuestFoundContent(
 }
 
 /**
- * Temporary guest result. Green while the single entry is still available, amber once it has been
- * used — the accesses stay visible either way, since the door still needs to know where the person
- * is allowed to go.
+ * Temporary guest result.
+ * Green while the entry is still available, and still green right after this door validates it.
+ * Amber only when the same QR is scanned again after the entry was already used.
  */
 @Composable
 private fun BilleterieTemporaryGuestContent(
@@ -980,8 +982,22 @@ private fun BilleterieTemporaryGuestContent(
     onValidate: () -> Unit,
     onScanNext: () -> Unit,
 ) {
-    var validated by remember(guest.nanoId) { mutableStateOf(alreadyValidated) }
-    val background = if (validated) Color(0xFF8D6E00) else SuccessGreen
+    var justValidated by remember(guest.nanoId) { mutableStateOf(false) }
+    val alreadyUsedAtScan = alreadyValidated
+    val background = if (alreadyUsedAtScan) TemporaryGuestUsedAmber else SuccessGreen
+    val checkScale = remember(guest.nanoId, justValidated) { Animatable(if (justValidated) 0f else 1f) }
+    LaunchedEffect(justValidated) {
+        if (!justValidated) return@LaunchedEffect
+        checkScale.snapTo(0f)
+        delay(80)
+        checkScale.animateTo(
+            1f,
+            spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMedium,
+            ),
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -995,17 +1011,28 @@ private fun BilleterieTemporaryGuestContent(
         Spacer(modifier = Modifier.height(24.dp))
 
         Icon(
-            if (validated) Icons.Default.History else Icons.Default.CheckCircle,
+            if (alreadyUsedAtScan) Icons.Default.History else Icons.Default.CheckCircle,
             contentDescription = null,
-            modifier = Modifier.size(88.dp),
+            modifier = Modifier
+                .size(if (justValidated) 100.dp else 88.dp)
+                .scale(checkScale.value),
             tint = Color.White,
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = stringResource(Res.string.temp_guest_scan_title),
-            style = MaterialTheme.typography.headlineMedium,
+            text = stringResource(
+                when {
+                    justValidated -> Res.string.billeterie_scanner_entry_validated
+                    else -> Res.string.temp_guest_scan_title
+                },
+            ),
+            style = if (justValidated) {
+                MaterialTheme.typography.headlineLarge
+            } else {
+                MaterialTheme.typography.headlineMedium
+            },
             fontWeight = FontWeight.Bold,
             color = Color.White,
             textAlign = TextAlign.Center,
@@ -1097,7 +1124,7 @@ private fun BilleterieTemporaryGuestContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        if (validated) {
+        if (alreadyUsedAtScan) {
             Text(
                 text = temporaryEntryValidatedLabel(guest)?.let {
                     stringResource(Res.string.temp_guest_scan_already_used, it)
@@ -1106,7 +1133,7 @@ private fun BilleterieTemporaryGuestContent(
                 color = Color.White,
                 textAlign = TextAlign.Center,
             )
-        } else {
+        } else if (!justValidated) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -1123,7 +1150,7 @@ private fun BilleterieTemporaryGuestContent(
                     )
                     EntryConfirmControl(
                         onConfirm = {
-                            validated = true
+                            justValidated = true
                             onValidate()
                         },
                     )

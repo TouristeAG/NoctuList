@@ -2,6 +2,7 @@ package com.eventmanager.app.data.reports
 
 import com.eventmanager.app.data.models.AccountTransfer
 import com.eventmanager.app.data.models.AccountTransferType
+import com.eventmanager.app.data.models.affectsAccountLedger
 import com.eventmanager.app.data.models.PosVenueScope
 import com.eventmanager.app.data.models.SalesCategory
 import com.eventmanager.app.data.models.SalesSheetItem
@@ -76,6 +77,7 @@ object PosAccountingReportBuilder {
     ): PosAccountingReport {
         val inRange = transfers
             .filter { it.createdAt in period.startMs..period.endMs }
+            .filter { it.affectsAccountLedger() }
             .filter { PosVenueScope.matchesTransferVenue(it.posVenueName, period.venueScope, period.venueName) }
             .sortedBy { it.createdAt }
 

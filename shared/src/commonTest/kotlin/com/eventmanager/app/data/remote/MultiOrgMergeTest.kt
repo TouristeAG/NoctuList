@@ -62,6 +62,23 @@ class MultiOrgMergeTest {
     }
 
     @Test
+    fun findGuestsByNfcUid_matchesTruncatedFourByteUid() {
+        val guests = listOf(
+            Guest(
+                nanoId = "g1",
+                name = "A",
+                invitations = 1,
+                venueName = "Main",
+                nfcCardUid = "04AABBCC",
+                firebaseOrgId = "org-a",
+            ),
+        )
+        val matches = MultiOrgMerge.findGuestsByNfcUid(guests, "04AABBCCDDEE80")
+        assertEquals(1, matches.size)
+        assertEquals("g1", matches.first().value.nanoId)
+    }
+
+    @Test
     fun belongsToVisibleOrg_singleModeHidesOtherOrgs() {
         val configured = setOf("org-a", "org-b")
         assertTrue(MultiOrgMerge.belongsToVisibleOrg("org-a", false, "org-a", configured))

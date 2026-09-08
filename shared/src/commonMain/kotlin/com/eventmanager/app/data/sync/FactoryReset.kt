@@ -1,6 +1,7 @@
 package com.eventmanager.app.data.sync
 
 import com.eventmanager.app.data.remote.FirebaseAuthBridge
+import com.eventmanager.app.data.remote.FirebaseBootstrap
 import com.eventmanager.app.data.repository.EventManagerRepository
 import com.eventmanager.app.platform.PlatformFileManager
 import kotlinx.coroutines.Dispatchers
@@ -23,7 +24,11 @@ object FactoryReset {
             // The Firebase SDK persists its session outside our preference storage, so without
             // this the app restarts signed in to an org it no longer has any settings for.
             runCatching { FirebaseAuthBridge.signOut() }
+            runCatching { FirebaseBootstrap.release() }
             runCatching { repository.clearAllData() }
+            // Wipe prefs + EncryptedSharedPreferences before deleting leftover files so
+            // in-memory editors cannot recreate the old API keys on disk.
+            settingsManager.clearAllSettings()
 
             // Known credential / config files
             runCatching { fileManager.getServiceAccountFile()?.delete() }
@@ -54,8 +59,6 @@ object FactoryReset {
                     if (child.isDirectory) child.deleteRecursively() else child.delete()
                 }
             }
-
-            settingsManager.clearAllSettings()
         }
     }
 }
