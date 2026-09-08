@@ -199,9 +199,12 @@ Compose Desktop packages must be built **on the target OS** (no cross-compilatio
 # Linux
 ./gradlew :desktopApp:packageReleaseDeb
 ./gradlew :desktopApp:packageReleaseAppImage
+APP_VERSION_NAME=X.Y.Z ./scripts/build-appimage.sh
 ```
 
 Outputs land under `desktopApp/build/compose/packaged/main-release/`.
+
+`packageReleaseAppImage` writes a jpackage application directory, not a `.AppImage` file. `scripts/build-appimage.sh` wraps that directory with `appimagetool`.
 
 Before packaging on Windows, quit any running NoctuList build you launched from a previous package (otherwise the old `exe` folder can stay locked).
 

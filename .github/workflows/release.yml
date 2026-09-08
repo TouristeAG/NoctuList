@@ -97,19 +97,41 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          REQUIRE_RELEASE_SIGNING: "true"
         run: ./gradlew :app:assembleRelease --no-daemon
 
       - name: Verify APK is signed with the production cert
         run: |
           APK="app/build/outputs/apk/release/app-release.apk"
-          CERT=$(keytool -printcert -jarfile "$APK")
+          if [ ! -f "$APK" ]; then
+            echo "::error::APK not found at $APK"
+            exit 1
+          fi
+          # AGP 8 + minSdk 26 signs with v2/v3 only. keytool -printcert -jarfile
+          # only reads JAR (v1) signatures and reports "Not a signed jar file".
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          APSIGNER=""
+          if [ -n "$SDK_ROOT" ]; then
+            APSIGNER=$(find "$SDK_ROOT/build-tools" -name apksigner 2>/dev/null | sort -V | tail -1)
+          fi
+          if [ -z "$APSIGNER" ]; then
+            echo "::error::apksigner not found (ANDROID_HOME=${SDK_ROOT:-unset})"
+            exit 1
+          fi
+          CERT=$("$APSIGNER" verify --print-certs "$APK" 2>&1) || {
+            echo "::error::APK failed apksigner verify (unsigned or corrupt)."
+            echo "$CERT"
+            exit 1
+          }
           echo "$CERT"
           EXPECTED="67:1C:E8:D6:DD:CC:01:5D:2C:62:C8:82:DC:5C:84:FA:05:EC:3D:29"
-          ACTUAL=$(echo "$CERT" | tr -d ' \t' | grep -ioE 'SHA1:([0-9A-Fa-f]{2}:){19}[0-9A-Fa-f]{2}' | head -1 | cut -d: -f2-)
+          ACTUAL=$(printf '%s\n' "$CERT" | grep -iE 'SHA-1 digest:|SHA1 digest:' | head -1 | awk '{print $NF}')
+          normalize_sha1() { printf '%s' "$1" | tr -d ' \t:' | tr '[:lower:]' '[:upper:]'; }
+          EXPECTED_NORM=$(normalize_sha1 "$EXPECTED")
+          ACTUAL_NORM=$(normalize_sha1 "$ACTUAL")
           echo "Expected SHA-1: $EXPECTED"
           echo "Actual SHA-1:   $ACTUAL"
-          ACTUAL_NORM=$(printf '%s' "$ACTUAL" | tr '[:lower:]' '[:upper:]')
-          if [ "$ACTUAL_NORM" != "$EXPECTED" ]; then
+          if [ -z "$ACTUAL_NORM" ] || [ "$ACTUAL_NORM" != "$EXPECTED_NORM" ]; then
             echo "::error::APK SHA-1 does not match the production keystore. Devices will refuse the update."
             exit 1
           fi
@@ -315,6 +337,13 @@ jobs:
       - name: Build Linux packages
         run: ./gradlew :desktopApp:packageReleaseDeb :desktopApp:packageReleaseAppImage --no-daemon
 
+      # Compose's packageReleaseAppImage is jpackage --type app-image (a directory
+      # under main-release/app/), not a Linux .AppImage file. Wrap it with appimagetool.
+      - name: Wrap jpackage directory into .AppImage
+        run: |
+          chmod +x scripts/build-appimage.sh
+          APP_VERSION_NAME="${{ steps.version.outputs.name }}" ./scripts/build-appimage.sh
+
       # Compose nests DEB/AppImage under compose/packaged/... — flatten and
       # rename to the version.json URLs so publish can attach them.
       - name: Flatten Linux packages
@@ -330,7 +359,7 @@ jobs:
           fi
           if [ -z "$DEB" ] || [ -z "$APPIMAGE" ]; then
             echo "ERROR: Linux packages missing"
-            find desktopApp/build/compose/packaged -type f \( -name "*.deb" -o -iname "*.AppImage" \) || true
+            find desktopApp/build/compose/packaged -maxdepth 4 || true
             exit 1
           fi
           cp "$DEB" "NoctuList-${VERSION}.deb"

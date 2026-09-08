@@ -39,16 +39,27 @@ jobs:
         run: |
           ./gradlew :desktopApp:packageReleaseDeb :desktopApp:packageReleaseAppImage --no-daemon
 
+      # Compose's packageReleaseAppImage is jpackage --type app-image (a directory
+      # under main-release/app/), not a Linux .AppImage file. Wrap it with appimagetool.
+      - name: Wrap jpackage directory into .AppImage
+        run: |
+          chmod +x scripts/build-appimage.sh
+          APP_VERSION_NAME="${{ steps.version.outputs.name }}" ./scripts/build-appimage.sh
+
       - name: Flatten Linux packages
         run: |
           VERSION="${{ steps.version.outputs.name }}"
           DEB=$(ls desktopApp/build/compose/packaged/main-release/deb/*.deb 2>/dev/null | head -1)
           APPIMAGE=$(ls desktopApp/build/compose/packaged/main-release/appImage/*.AppImage 2>/dev/null | head -1)
+          if [ -z "$DEB" ]; then
+            DEB=$(find desktopApp/build/compose/packaged -name "*.deb" | head -1)
+          fi
           if [ -z "$APPIMAGE" ]; then
             APPIMAGE=$(find desktopApp/build/compose/packaged -iname "*.AppImage" | head -1)
           fi
           if [ -z "$DEB" ] || [ -z "$APPIMAGE" ]; then
             echo "ERROR: Linux packages missing"
+            find desktopApp/build/compose/packaged -maxdepth 4 || true
             exit 1
           fi
           cp "$DEB" "NoctuList-${VERSION}.deb"

@@ -20,6 +20,18 @@ def envOrProp = { String key ->
 def releaseKeystorePath = envOrProp("ANDROID_KEYSTORE_PATH")
 def releaseKeystoreFile = releaseKeystorePath ? file(releaseKeystorePath) : null
 def hasReleaseSigning = releaseKeystoreFile != null && releaseKeystoreFile.exists()
+if (releaseKeystorePath && !hasReleaseSigning) {
+    throw new GradleException(
+        "ANDROID_KEYSTORE_PATH is set (${releaseKeystorePath}) but the file does not exist."
+    )
+}
+def requireReleaseSigning = ["true", "1", "yes"].contains((envOrProp("REQUIRE_RELEASE_SIGNING") ?: "").toLowerCase())
+if (requireReleaseSigning && !hasReleaseSigning) {
+    throw new GradleException(
+        "REQUIRE_RELEASE_SIGNING is set but ANDROID_KEYSTORE_PATH is missing. " +
+        "CI would otherwise sign with a runner debug keystore and devices would reject the update."
+    )
+}
 
 android {
     namespace 'com.eventmanager.app'
