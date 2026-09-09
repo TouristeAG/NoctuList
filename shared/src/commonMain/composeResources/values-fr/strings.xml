@@ -2272,4 +2272,18 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="guest_form_project_id_hint">Remplacez YOUR_PROJECT_ID par le Project ID affiché dans Réglages → Firebase.</string>
     <string name="guest_form_offered_access_pick_venue">Choisissez d'abord un lieu.</string>
     <string name="guest_form_offered_access_empty">Aucun accès spécial pour ce lieu.</string>
+    <string name="guest_form_labels_title">Personnaliser les libellés</string>
+    <string name="guest_form_labels_hint">Laisser vide pour le texte par défaut. S'applique à toutes les langues de la page publique.</string>
+    <string name="guest_form_label_comments">Commentaires</string>
+    <string name="guest_form_label_comments_default">Commentaires</string>
+    <string name="guest_form_label_comments_placeholder">Placeholder commentaires</string>
+    <string name="guest_form_label_comments_placeholder_default">Notes optionnelles…</string>
+    <string name="guest_form_label_access">Demande d'accès</string>
+    <string name="guest_form_label_access_default">Demande d'accès pour cette personne</string>
+    <string name="guest_form_label_email">E-mail de contact</string>
+    <string name="guest_form_label_email_default">E-mail de contact</string>
+    <string name="guest_form_label_phone">Téléphone d'urgence</string>
+    <string name="guest_form_label_phone_default">Téléphone d'urgence</string>
+    <string name="guest_form_label_people">Titre de la liste</string>
+    <string name="guest_form_label_people_default">Personnes sur la guestlist</string>
 </resources>

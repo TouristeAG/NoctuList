@@ -631,6 +631,7 @@ class GitLiveFirestoreGateway(
         "askPhone" to form.askPhone,
         "prefillEmail" to form.prefillEmail,
         "prefillPhone" to form.prefillPhone,
+        "fieldLabelsJson" to form.fieldLabelsJson,
         "status" to form.status,
         "submissionJson" to form.submissionJson,
         "submittedAt" to form.submittedAt,

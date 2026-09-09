@@ -154,4 +154,49 @@ class GuestFormTest {
         assertEquals("Ada", entries.single().name)
         assertEquals(setOf("a1", "a2"), entries.single().accessIds)
     }
+
+    @Test
+    fun fieldLabels_roundTrip() {
+        val encoded = GuestFormFieldLabelsCodec.encode(
+            mapOf(
+                GuestFormFieldLabelsCodec.KEY_COMMENTS to "Envie de quelque chose à manger",
+                GuestFormFieldLabelsCodec.KEY_ACCESS_LABEL to "Autres demandes",
+            ),
+        )
+        val decoded = GuestFormFieldLabelsCodec.decode(encoded)
+        assertEquals("Envie de quelque chose à manger", decoded[GuestFormFieldLabelsCodec.KEY_COMMENTS])
+        assertEquals("Autres demandes", decoded[GuestFormFieldLabelsCodec.KEY_ACCESS_LABEL])
+        assertEquals(2, decoded.size)
+    }
+
+    @Test
+    fun fieldLabels_emptyAndBlankAreDropped() {
+        assertEquals("", GuestFormFieldLabelsCodec.encode(emptyMap()))
+        assertEquals("", GuestFormFieldLabelsCodec.encode(mapOf(GuestFormFieldLabelsCodec.KEY_COMMENTS to "  ")))
+        assertEquals(emptyMap(), GuestFormFieldLabelsCodec.decode(""))
+        assertEquals(emptyMap(), GuestFormFieldLabelsCodec.decode("{}"))
+        assertEquals(emptyMap(), GuestFormFieldLabelsCodec.decode("not json"))
+    }
+
+    @Test
+    fun fieldLabels_unknownKeysIgnoredAndValuesTrimmed() {
+        val encoded = GuestFormFieldLabelsCodec.encode(
+            mapOf(
+                "submit" to "Nope",
+                GuestFormFieldLabelsCodec.KEY_EMAIL to "  Contact resto  ",
+            ),
+        )
+        val decoded = GuestFormFieldLabelsCodec.decode(encoded)
+        assertEquals(mapOf(GuestFormFieldLabelsCodec.KEY_EMAIL to "Contact resto"), decoded)
+        assertTrue("submit" !in decoded)
+    }
+
+    @Test
+    fun fieldLabels_capsLength() {
+        val tooLong = "x".repeat(GuestFormFieldLabelsCodec.MAX_LABEL_LENGTH + 20)
+        val decoded = GuestFormFieldLabelsCodec.decode(
+            GuestFormFieldLabelsCodec.encode(mapOf(GuestFormFieldLabelsCodec.KEY_PHONE to tooLong)),
+        )
+        assertEquals(GuestFormFieldLabelsCodec.MAX_LABEL_LENGTH, decoded.getValue(GuestFormFieldLabelsCodec.KEY_PHONE).length)
+    }
 }

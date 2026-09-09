@@ -6,7 +6,7 @@ import {
   setDoc,
   updateDoc,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-import { applyStaticI18n, currentLang, setLang, t } from "./i18n.js";
+import { applyStaticI18n, currentLang, setLang, setLabelOverrides, t } from "./i18n.js?v=field-labels-1";
 
 const loadingEl = document.getElementById("state-loading");
 const closedEl = document.getElementById("state-closed");
@@ -334,6 +334,8 @@ async function main() {
     document.getElementById("phone").value = form.prefillPhone || "";
   }
   document.getElementById("disclaimer").hidden = offeredAccesses.length === 0;
+  setLabelOverrides(form.fieldLabelsJson);
+  applyStaticI18n();
   renderLogos(form);
   peopleEl.appendChild(personRow(0, offeredAccesses));
   refreshQuotaUi();

@@ -1022,6 +1022,7 @@ class EventManagerViewModel(
         askPhone: Boolean = true,
         prefillEmail: String,
         prefillPhone: String,
+        fieldLabels: Map<String, String> = emptyMap(),
         allowMultipleResponses: Boolean = false,
         onCreated: (GuestForm) -> Unit = {},
     ) {
@@ -1071,6 +1072,7 @@ class EventManagerViewModel(
                     askPhone = askPhone,
                     prefillEmail = if (askEmail) prefillEmail.trim() else "",
                     prefillPhone = if (askPhone) prefillPhone.trim() else "",
+                    fieldLabelsJson = GuestFormFieldLabelsCodec.encode(fieldLabels),
                     status = GuestFormStatus.OPEN.name,
                     createdAt = now,
                     lastModified = now,

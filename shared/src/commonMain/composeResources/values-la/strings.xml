@@ -2312,4 +2312,18 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="guest_form_project_id_hint">YOUR_PROJECT_ID substitue Project ID ex Optiones → Firebase.</string>
     <string name="guest_form_offered_access_pick_venue">Prius locum elige.</string>
     <string name="guest_form_offered_access_empty">Huic loco nulli accessus speciales.</string>
+    <string name="guest_form_labels_title">Titulos mutare</string>
+    <string name="guest_form_labels_hint">Vacuum relinque ut textus solitus maneat. Omnes linguae paginae publicae afficiuntur.</string>
+    <string name="guest_form_label_comments">Commentaria</string>
+    <string name="guest_form_label_comments_default">Commentaria</string>
+    <string name="guest_form_label_comments_placeholder">Commentariorum locus</string>
+    <string name="guest_form_label_comments_placeholder_default">Notae optionales…</string>
+    <string name="guest_form_label_access">Accessus postulatio</string>
+    <string name="guest_form_label_access_default">Accessus huius personae</string>
+    <string name="guest_form_label_email">Inscriptio electronica</string>
+    <string name="guest_form_label_email_default">Inscriptio electronica</string>
+    <string name="guest_form_label_phone">Telephonum urgentiae</string>
+    <string name="guest_form_label_phone_default">Telephonum urgentiae</string>
+    <string name="guest_form_label_people">Titulus hominum</string>
+    <string name="guest_form_label_people_default">Personae in guestlist</string>
 </resources>

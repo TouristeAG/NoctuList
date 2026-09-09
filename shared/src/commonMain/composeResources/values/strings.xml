@@ -2281,4 +2281,18 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="guest_form_project_id_hint">Replace YOUR_PROJECT_ID with the Project ID from Settings → Firebase.</string>
     <string name="guest_form_offered_access_pick_venue">Pick a venue first.</string>
     <string name="guest_form_offered_access_empty">No special accesses for this venue.</string>
+    <string name="guest_form_labels_title">Customize labels</string>
+    <string name="guest_form_labels_hint">Leave empty to keep the default text. Applies to every language on the public page.</string>
+    <string name="guest_form_label_comments">Comments</string>
+    <string name="guest_form_label_comments_default">Comments</string>
+    <string name="guest_form_label_comments_placeholder">Comments placeholder</string>
+    <string name="guest_form_label_comments_placeholder_default">Optional notes…</string>
+    <string name="guest_form_label_access">Access request</string>
+    <string name="guest_form_label_access_default">Access for this person</string>
+    <string name="guest_form_label_email">Contact email</string>
+    <string name="guest_form_label_email_default">Contact email</string>
+    <string name="guest_form_label_phone">Emergency phone</string>
+    <string name="guest_form_label_phone_default">Emergency phone</string>
+    <string name="guest_form_label_people">People heading</string>
+    <string name="guest_form_label_people_default">People on the guest list</string>
 </resources>

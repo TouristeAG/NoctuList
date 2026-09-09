@@ -2307,4 +2307,18 @@ D) Application ID（appId）
     <string name="guest_form_project_id_hint">将 YOUR_PROJECT_ID 替换为设置 → Firebase 中的 Project ID。</string>
     <string name="guest_form_offered_access_pick_venue">请先选择场地。</string>
     <string name="guest_form_offered_access_empty">此场地没有特殊通行权限。</string>
+    <string name="guest_form_labels_title">自定义标签</string>
+    <string name="guest_form_labels_hint">留空则使用默认文本。适用于公开页面的所有语言。</string>
+    <string name="guest_form_label_comments">备注</string>
+    <string name="guest_form_label_comments_default">备注</string>
+    <string name="guest_form_label_comments_placeholder">备注占位符</string>
+    <string name="guest_form_label_comments_placeholder_default">可选备注…</string>
+    <string name="guest_form_label_access">通行申请</string>
+    <string name="guest_form_label_access_default">此人的通行申请</string>
+    <string name="guest_form_label_email">联系邮箱</string>
+    <string name="guest_form_label_email_default">联系邮箱</string>
+    <string name="guest_form_label_phone">紧急电话</string>
+    <string name="guest_form_label_phone_default">紧急电话</string>
+    <string name="guest_form_label_people">名单标题</string>
+    <string name="guest_form_label_people_default">嘉宾名单上的人员</string>
 </resources>

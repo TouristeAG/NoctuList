@@ -412,6 +412,7 @@ object FirestoreChangeApplier {
             askPhone = boolOf(data["askPhone"]) ?: existing?.askPhone ?: true,
             prefillEmail = stringOf(data["prefillEmail"]) ?: existing?.prefillEmail.orEmpty(),
             prefillPhone = stringOf(data["prefillPhone"]) ?: existing?.prefillPhone.orEmpty(),
+            fieldLabelsJson = stringOf(data["fieldLabelsJson"]) ?: existing?.fieldLabelsJson.orEmpty(),
             status = remoteStatus ?: existing?.status ?: GuestFormStatus.OPEN.name,
             submissionJson = remoteSubmission.ifBlank { existing?.submissionJson.orEmpty() },
             submittedAt = longOf(data["submittedAt"]) ?: existing?.submittedAt ?: 0L,

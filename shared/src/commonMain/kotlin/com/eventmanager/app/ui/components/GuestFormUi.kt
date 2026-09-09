@@ -2,8 +2,10 @@ package com.eventmanager.app.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.BorderStroke
@@ -36,6 +38,8 @@ import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -81,6 +85,7 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.eventmanager.app.data.models.GuestForm
 import com.eventmanager.app.data.models.GuestFormExpiry
+import com.eventmanager.app.data.models.GuestFormFieldLabelsCodec
 import com.eventmanager.app.data.models.GuestFormLogoShape
 import com.eventmanager.app.data.models.GuestFormOfferedAccess
 import com.eventmanager.app.data.models.GuestFormPerson
@@ -311,6 +316,7 @@ fun GuestFormCreatorDialog(
     var prefillPhone by remember { mutableStateOf("") }
     var askEmail by remember { mutableStateOf(true) }
     var askPhone by remember { mutableStateOf(true) }
+    var fieldLabels by remember { mutableStateOf(mapOf<String, String>()) }
     var created by remember { mutableStateOf<GuestForm?>(null) }
     val venueAccessesForVenue = remember(venueAccesses, venueName) {
         VenueAccessCatalog.forVenue(venueAccesses, venueName.orEmpty())
@@ -518,6 +524,12 @@ fun GuestFormCreatorDialog(
                     invert = guestLogoInvert,
                     onInvertChange = { guestLogoInvert = it },
                 )
+                GuestFormFieldLabelsSection(
+                    labels = fieldLabels,
+                    onLabelChange = { key, value ->
+                        fieldLabels = fieldLabels + (key to value)
+                    },
+                )
             }
         },
         confirmButton = {
@@ -548,6 +560,7 @@ fun GuestFormCreatorDialog(
                         askPhone = askPhone,
                         prefillEmail = prefillEmail,
                         prefillPhone = prefillPhone,
+                        fieldLabels = fieldLabels,
                         allowMultipleResponses = allowMultipleResponses,
                         onCreated = { created = it },
                     )
@@ -562,6 +575,104 @@ fun GuestFormCreatorDialog(
                 Text(stringResource(Res.string.cancel))
             }
         },
+    )
+}
+
+@Composable
+private fun GuestFormFieldLabelsSection(
+    labels: Map<String, String>,
+    onLabelChange: (key: String, value: String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = !expanded }
+                .padding(vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                stringResource(Res.string.guest_form_labels_title),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            Icon(
+                imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+        AnimatedVisibility(
+            visible = expanded,
+            enter = expandVertically(),
+            exit = shrinkVertically(),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    stringResource(Res.string.guest_form_labels_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                GuestFormFieldLabelField(
+                    value = labels[GuestFormFieldLabelsCodec.KEY_COMMENTS].orEmpty(),
+                    onValueChange = { onLabelChange(GuestFormFieldLabelsCodec.KEY_COMMENTS, it) },
+                    label = stringResource(Res.string.guest_form_label_comments),
+                    placeholder = stringResource(Res.string.guest_form_label_comments_default),
+                )
+                GuestFormFieldLabelField(
+                    value = labels[GuestFormFieldLabelsCodec.KEY_COMMENTS_PLACEHOLDER].orEmpty(),
+                    onValueChange = {
+                        onLabelChange(GuestFormFieldLabelsCodec.KEY_COMMENTS_PLACEHOLDER, it)
+                    },
+                    label = stringResource(Res.string.guest_form_label_comments_placeholder),
+                    placeholder = stringResource(Res.string.guest_form_label_comments_placeholder_default),
+                )
+                GuestFormFieldLabelField(
+                    value = labels[GuestFormFieldLabelsCodec.KEY_ACCESS_LABEL].orEmpty(),
+                    onValueChange = { onLabelChange(GuestFormFieldLabelsCodec.KEY_ACCESS_LABEL, it) },
+                    label = stringResource(Res.string.guest_form_label_access),
+                    placeholder = stringResource(Res.string.guest_form_label_access_default),
+                )
+                GuestFormFieldLabelField(
+                    value = labels[GuestFormFieldLabelsCodec.KEY_EMAIL].orEmpty(),
+                    onValueChange = { onLabelChange(GuestFormFieldLabelsCodec.KEY_EMAIL, it) },
+                    label = stringResource(Res.string.guest_form_label_email),
+                    placeholder = stringResource(Res.string.guest_form_label_email_default),
+                )
+                GuestFormFieldLabelField(
+                    value = labels[GuestFormFieldLabelsCodec.KEY_PHONE].orEmpty(),
+                    onValueChange = { onLabelChange(GuestFormFieldLabelsCodec.KEY_PHONE, it) },
+                    label = stringResource(Res.string.guest_form_label_phone),
+                    placeholder = stringResource(Res.string.guest_form_label_phone_default),
+                )
+                GuestFormFieldLabelField(
+                    value = labels[GuestFormFieldLabelsCodec.KEY_PEOPLE_HEADING].orEmpty(),
+                    onValueChange = { onLabelChange(GuestFormFieldLabelsCodec.KEY_PEOPLE_HEADING, it) },
+                    label = stringResource(Res.string.guest_form_label_people),
+                    placeholder = stringResource(Res.string.guest_form_label_people_default),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun GuestFormFieldLabelField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    placeholder: String,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = { onValueChange(it.take(GuestFormFieldLabelsCodec.MAX_LABEL_LENGTH)) },
+        label = { Text(label) },
+        placeholder = { Text(placeholder) },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
     )
 }
 

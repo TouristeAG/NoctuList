@@ -2312,4 +2312,18 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="guest_form_project_id_hint">YOUR_PROJECT_ID को सेटिंग्स → Firebase के Project ID से बदलें।</string>
     <string name="guest_form_offered_access_pick_venue">पहले एक स्थान चुनें।</string>
     <string name="guest_form_offered_access_empty">इस स्थान के लिए कोई विशेष पहुँच नहीं।</string>
+    <string name="guest_form_labels_title">लेबल बदलें</string>
+    <string name="guest_form_labels_hint">डिफ़ॉल्ट टेक्स्ट रखने के लिए खाली छोड़ें। सार्वजनिक पेज की हर भाषा पर लागू होता है।</string>
+    <string name="guest_form_label_comments">टिप्पणियाँ</string>
+    <string name="guest_form_label_comments_default">टिप्पणियाँ</string>
+    <string name="guest_form_label_comments_placeholder">टिप्पणियाँ प्लेसहोल्डर</string>
+    <string name="guest_form_label_comments_placeholder_default">वैकल्पिक नोट्स…</string>
+    <string name="guest_form_label_access">पहुँच अनुरोध</string>
+    <string name="guest_form_label_access_default">इस व्यक्ति के लिए पहुँच</string>
+    <string name="guest_form_label_email">संपर्क ईमेल</string>
+    <string name="guest_form_label_email_default">संपर्क ईमेल</string>
+    <string name="guest_form_label_phone">आपातकालीन फ़ोन</string>
+    <string name="guest_form_label_phone_default">आपातकालीन फ़ोन</string>
+    <string name="guest_form_label_people">सूची शीर्षक</string>
+    <string name="guest_form_label_people_default">गेस्टलिस्ट पर व्यक्ति</string>
 </resources>

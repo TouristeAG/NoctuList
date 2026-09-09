@@ -133,6 +133,16 @@ const TRANSLATIONS = {
 
 const SUPPORTED = ["en", "fr", "es", "de", "it"];
 const STORAGE_KEY = "noctulist-form-lang";
+const LABEL_OVERRIDE_KEYS = [
+  "comments",
+  "commentsPlaceholder",
+  "accessLabel",
+  "email",
+  "phone",
+  "peopleHeading",
+];
+const MAX_LABEL_LENGTH = 80;
+let labelOverrides = {};
 
 function browserLang() {
   const raw = (navigator.language || navigator.userLanguage || "en").slice(0, 2).toLowerCase();
@@ -154,7 +164,8 @@ export function setLang(lang) {
 
 export function t(key, vars = {}) {
   const table = TRANSLATIONS[currentLang()] || TRANSLATIONS.en;
-  let text = table[key] || TRANSLATIONS.en[key] || key;
+  const override = (labelOverrides[key] || "").trim();
+  let text = override || table[key] || TRANSLATIONS.en[key] || key;
   Object.entries(vars).forEach(([name, value]) => {
     text = text.replaceAll(`{${name}}`, String(value));
   });
@@ -171,4 +182,23 @@ export function applyStaticI18n() {
   const title = document.getElementById("title");
   if (title && !title.dataset.locked) title.textContent = t("title");
   document.title = t("title");
+}
+
+export function setLabelOverrides(raw) {
+  let parsed = {};
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    parsed = raw;
+  } else if (typeof raw === "string" && raw.trim()) {
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      parsed = {};
+    }
+  }
+  const next = {};
+  LABEL_OVERRIDE_KEYS.forEach((key) => {
+    const value = typeof parsed[key] === "string" ? parsed[key].trim() : "";
+    if (value) next[key] = value.slice(0, MAX_LABEL_LENGTH);
+  });
+  labelOverrides = next;
 }

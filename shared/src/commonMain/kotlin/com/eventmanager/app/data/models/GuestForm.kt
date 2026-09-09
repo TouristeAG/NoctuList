@@ -6,6 +6,8 @@ import androidx.room.PrimaryKey
 import com.eventmanager.app.data.remote.BackendType
 import com.eventmanager.app.data.utils.AppTimeZone
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import java.util.Calendar
 
@@ -115,6 +117,11 @@ data class GuestForm(
     val askPhone: Boolean = true,
     val prefillEmail: String = "",
     val prefillPhone: String = "",
+    /**
+     * Optional public-page i18n overrides ([GuestFormFieldLabelsCodec]). Empty means the
+     * bundled translations. Strings only — field identity and submit shape stay fixed.
+     */
+    val fieldLabelsJson: String = "",
     val status: String = GuestFormStatus.OPEN.name,
     /** [GuestFormSubmissionCodec] payload; empty until the artist answers. */
     val submissionJson: String = "",
@@ -295,6 +302,57 @@ object GuestFormOfferedAccessCodec {
     fun normalizeMaxRequests(raw: Int, maxGuests: Int): Int {
         if (raw <= 0) return 0
         return raw.coerceIn(1, maxGuests.coerceIn(1, GuestForm.MAX_GUESTS_LIMIT))
+    }
+}
+
+/**
+ * Optional overrides for public-form labels. Keys match the webform i18n table. Empty /
+ * unknown keys are dropped so the page keeps its translations.
+ */
+object GuestFormFieldLabelsCodec {
+    const val MAX_LABEL_LENGTH = 80
+
+    const val KEY_COMMENTS = "comments"
+    const val KEY_COMMENTS_PLACEHOLDER = "commentsPlaceholder"
+    const val KEY_ACCESS_LABEL = "accessLabel"
+    const val KEY_EMAIL = "email"
+    const val KEY_PHONE = "phone"
+    const val KEY_PEOPLE_HEADING = "peopleHeading"
+
+    val KEYS: Set<String> = setOf(
+        KEY_COMMENTS,
+        KEY_COMMENTS_PLACEHOLDER,
+        KEY_ACCESS_LABEL,
+        KEY_EMAIL,
+        KEY_PHONE,
+        KEY_PEOPLE_HEADING,
+    )
+
+    private val json = Json { ignoreUnknownKeys = true }
+    private val mapSerializer = MapSerializer(String.serializer(), String.serializer())
+
+    fun encode(labels: Map<String, String>): String {
+        val cleaned = normalize(labels)
+        if (cleaned.isEmpty()) return ""
+        return json.encodeToString(mapSerializer, cleaned)
+    }
+
+    fun decode(raw: String): Map<String, String> {
+        val trimmed = raw.trim()
+        if (trimmed.isEmpty() || trimmed == "{}") return emptyMap()
+        val parsed = runCatching {
+            json.decodeFromString(mapSerializer, trimmed)
+        }.getOrElse { return emptyMap() }
+        return normalize(parsed)
+    }
+
+    private fun normalize(labels: Map<String, String>): Map<String, String> {
+        val out = linkedMapOf<String, String>()
+        for (key in KEYS) {
+            val value = labels[key].orEmpty().trim().take(MAX_LABEL_LENGTH)
+            if (value.isNotEmpty()) out[key] = value
+        }
+        return out
     }
 }
 

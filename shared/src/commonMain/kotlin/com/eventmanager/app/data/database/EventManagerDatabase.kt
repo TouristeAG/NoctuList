@@ -53,7 +53,7 @@ private fun SQLiteConnection.query(sql: String): MigrationCursor =
         PendingRemoteWrite::class,
         GuestForm::class,
     ],
-    version = 50,
+    version = 51,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -1665,6 +1665,22 @@ abstract class EventManagerDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_50_51 = object : Migration(50, 51) {
+            override fun migrate(connection: SQLiteConnection) {
+                try {
+                    println("Starting migration 50→51: guest form field label overrides")
+                    connection.execSQL(
+                        "ALTER TABLE guest_forms ADD COLUMN fieldLabelsJson TEXT NOT NULL DEFAULT ''",
+                    )
+                    println("Migration 50→51 completed successfully")
+                } catch (e: Exception) {
+                    println("Migration 50→51 failed: ${e.message}")
+                    e.printStackTrace()
+                    throw e
+                }
+            }
+        }
+
         val ALL_MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2,
             MIGRATION_2_3,
@@ -1714,7 +1730,8 @@ abstract class EventManagerDatabase : RoomDatabase() {
             MIGRATION_46_47,
             MIGRATION_47_48,
             MIGRATION_48_49,
-            MIGRATION_49_50
+            MIGRATION_49_50,
+            MIGRATION_50_51
         )
     }
 }
