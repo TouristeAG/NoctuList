@@ -199,4 +199,14 @@ class GuestFormTest {
         )
         assertEquals(GuestFormFieldLabelsCodec.MAX_LABEL_LENGTH, decoded.getValue(GuestFormFieldLabelsCodec.KEY_PHONE).length)
     }
+
+    @Test
+    fun fieldLabels_disclaimerAllowsLongerText() {
+        val text = "Les accès cochés sont une demande uniquement. Ils ne sont jamais garantis — une confirmation sera donnée le soir, selon le contexte de la soirée."
+        assertTrue(text.length > GuestFormFieldLabelsCodec.MAX_LABEL_LENGTH)
+        val decoded = GuestFormFieldLabelsCodec.decode(
+            GuestFormFieldLabelsCodec.encode(mapOf(GuestFormFieldLabelsCodec.KEY_DISCLAIMER to text)),
+        )
+        assertEquals(text, decoded[GuestFormFieldLabelsCodec.KEY_DISCLAIMER])
+    }
 }

@@ -891,7 +891,7 @@
     
     <!-- App Information -->
     <string name="app_info_title">Informations sur l'application</string>
-    <string name="app_version">NoctuList 2.1.3</string>
+    <string name="app_version">NoctuList 2.1.4</string>
     <string name="app_designed_for">Conçu pour les lieux du Collectif Nocturne</string>
     <string name="app_developed_full">Développé pour le Collectif Nocturne par Leonardo Mondada</string>
     <string name="last_sync">Dernière mise à jour : %1$s</string>
@@ -2280,6 +2280,8 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="guest_form_label_comments_placeholder_default">Notes optionnelles…</string>
     <string name="guest_form_label_access">Demande d'accès</string>
     <string name="guest_form_label_access_default">Demande d'accès pour cette personne</string>
+    <string name="guest_form_label_disclaimer">Mention sur les accès</string>
+    <string name="guest_form_label_disclaimer_default">Les accès cochés sont une demande uniquement. Ils ne sont jamais garantis — une confirmation sera donnée le soir, selon le contexte de la soirée.</string>
     <string name="guest_form_label_email">E-mail de contact</string>
     <string name="guest_form_label_email_default">E-mail de contact</string>
     <string name="guest_form_label_phone">Téléphone d'urgence</string>

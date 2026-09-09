@@ -494,7 +494,7 @@
     
     <!-- App Information -->
     <string name="app_info_title">App Information</string>
-    <string name="app_version">NoctuList 2.1.3</string>
+    <string name="app_version">NoctuList 2.1.4</string>
     <string name="app_designed_for">Designed for Collectif Nocturne venues</string>
     <!-- Single full sentence to avoid spacing issues across locales -->
     <string name="app_developed_full">Developed for the Collectif Nocturne by Leonardo Mondada</string>
@@ -2289,6 +2289,8 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="guest_form_label_comments_placeholder_default">Optional notes…</string>
     <string name="guest_form_label_access">Access request</string>
     <string name="guest_form_label_access_default">Access for this person</string>
+    <string name="guest_form_label_disclaimer">Access disclaimer</string>
+    <string name="guest_form_label_disclaimer_default">Accesses you tick are a request only. They are never guaranteed — confirmation comes on the night, depending on the show.</string>
     <string name="guest_form_label_email">Contact email</string>
     <string name="guest_form_label_email_default">Contact email</string>
     <string name="guest_form_label_phone">Emergency phone</string>

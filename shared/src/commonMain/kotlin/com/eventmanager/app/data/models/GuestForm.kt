@@ -311,10 +311,12 @@ object GuestFormOfferedAccessCodec {
  */
 object GuestFormFieldLabelsCodec {
     const val MAX_LABEL_LENGTH = 80
+    const val MAX_DISCLAIMER_LENGTH = 400
 
     const val KEY_COMMENTS = "comments"
     const val KEY_COMMENTS_PLACEHOLDER = "commentsPlaceholder"
     const val KEY_ACCESS_LABEL = "accessLabel"
+    const val KEY_DISCLAIMER = "disclaimer"
     const val KEY_EMAIL = "email"
     const val KEY_PHONE = "phone"
     const val KEY_PEOPLE_HEADING = "peopleHeading"
@@ -323,10 +325,14 @@ object GuestFormFieldLabelsCodec {
         KEY_COMMENTS,
         KEY_COMMENTS_PLACEHOLDER,
         KEY_ACCESS_LABEL,
+        KEY_DISCLAIMER,
         KEY_EMAIL,
         KEY_PHONE,
         KEY_PEOPLE_HEADING,
     )
+
+    fun maxLengthFor(key: String): Int =
+        if (key == KEY_DISCLAIMER) MAX_DISCLAIMER_LENGTH else MAX_LABEL_LENGTH
 
     private val json = Json { ignoreUnknownKeys = true }
     private val mapSerializer = MapSerializer(String.serializer(), String.serializer())
@@ -349,7 +355,7 @@ object GuestFormFieldLabelsCodec {
     private fun normalize(labels: Map<String, String>): Map<String, String> {
         val out = linkedMapOf<String, String>()
         for (key in KEYS) {
-            val value = labels[key].orEmpty().trim().take(MAX_LABEL_LENGTH)
+            val value = labels[key].orEmpty().trim().take(maxLengthFor(key))
             if (value.isNotEmpty()) out[key] = value
         }
         return out

@@ -380,7 +380,7 @@
     
     <!-- App Information -->
     <string name="app_info_title">應用程式資訊</string>
-    <string name="app_version">NoctuList 2.1.3</string>
+    <string name="app_version">NoctuList 2.1.4</string>
     <string name="app_designed_for">專為 Collectif Nocturne 場地設計</string>
     <string name="app_developed_full">為 Collectif Nocturne 開發，開發者：Leonardo Mondada</string>
     <string name="last_sync">上次更新：%1$s</string>
@@ -2315,6 +2315,8 @@ D) Application ID（appId）
     <string name="guest_form_label_comments_placeholder_default">選填備註…</string>
     <string name="guest_form_label_access">通行申請</string>
     <string name="guest_form_label_access_default">此人的通行申請</string>
+    <string name="guest_form_label_disclaimer">通行說明</string>
+    <string name="guest_form_label_disclaimer_default">勾選的通行權限僅為申請，從不保證獲准。當晚會依現場情況確認。</string>
     <string name="guest_form_label_email">聯絡電子郵件</string>
     <string name="guest_form_label_email_default">聯絡電子郵件</string>
     <string name="guest_form_label_phone">緊急電話</string>

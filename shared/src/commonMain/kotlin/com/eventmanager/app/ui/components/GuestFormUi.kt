@@ -637,6 +637,15 @@ private fun GuestFormFieldLabelsSection(
                     placeholder = stringResource(Res.string.guest_form_label_access_default),
                 )
                 GuestFormFieldLabelField(
+                    value = labels[GuestFormFieldLabelsCodec.KEY_DISCLAIMER].orEmpty(),
+                    onValueChange = { onLabelChange(GuestFormFieldLabelsCodec.KEY_DISCLAIMER, it) },
+                    label = stringResource(Res.string.guest_form_label_disclaimer),
+                    placeholder = stringResource(Res.string.guest_form_label_disclaimer_default),
+                    maxLength = GuestFormFieldLabelsCodec.MAX_DISCLAIMER_LENGTH,
+                    singleLine = false,
+                    minLines = 3,
+                )
+                GuestFormFieldLabelField(
                     value = labels[GuestFormFieldLabelsCodec.KEY_EMAIL].orEmpty(),
                     onValueChange = { onLabelChange(GuestFormFieldLabelsCodec.KEY_EMAIL, it) },
                     label = stringResource(Res.string.guest_form_label_email),
@@ -665,14 +674,18 @@ private fun GuestFormFieldLabelField(
     onValueChange: (String) -> Unit,
     label: String,
     placeholder: String,
+    maxLength: Int = GuestFormFieldLabelsCodec.MAX_LABEL_LENGTH,
+    singleLine: Boolean = true,
+    minLines: Int = 1,
 ) {
     OutlinedTextField(
         value = value,
-        onValueChange = { onValueChange(it.take(GuestFormFieldLabelsCodec.MAX_LABEL_LENGTH)) },
+        onValueChange = { onValueChange(it.take(maxLength)) },
         label = { Text(label) },
         placeholder = { Text(placeholder) },
         modifier = Modifier.fillMaxWidth(),
-        singleLine = true,
+        singleLine = singleLine,
+        minLines = minLines,
     )
 }
 

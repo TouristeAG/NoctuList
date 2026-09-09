@@ -6,7 +6,7 @@ import {
   setDoc,
   updateDoc,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-import { applyStaticI18n, currentLang, setLang, setLabelOverrides, t } from "./i18n.js?v=field-labels-1";
+import { applyStaticI18n, currentLang, setLang, setLabelOverrides, t } from "./i18n.js?v=field-labels-2";
 
 const loadingEl = document.getElementById("state-loading");
 const closedEl = document.getElementById("state-closed");

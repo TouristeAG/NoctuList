@@ -4,6 +4,24 @@ All notable changes to NoctuList are documented here. Version numbers follow [Se
 
 ---
 
+## 2.1.4 — 2026-09-09
+
+Optional patch: customizable public labels on artist guest forms.
+
+### Features
+
+- **Artist forms** — production can rename public field labels (comments, access request, access disclaimer, email, phone, people heading) from a collapsed panel at the bottom of the form creator. Empty keeps the default translations. Strings only; submit shape and review UI are unchanged.
+
+### Upgrade notes
+
+- **Version code:** 31 (`2.1.4`). Minimum supported code remains **27** (2.1.0) — optional update for 2.1.0–2.1.3.
+- **Database:** Room schema 50 → 51 (`guest_forms.fieldLabelsJson`).
+- **Firestore rules:** unchanged.
+- **Hosting:** redeploy the guest-form site (`webform/`) so custom labels apply on the public page.
+- **Publishing:** tag `2.1.4`, then copy `version.json` to the AdminList update manifest. Do not raise `minSupportedVersionCode`.
+
+---
+
 ## 2.1.3 — 2026-09-08
 
 Optional patch: leftover Android Firebase credentials, duplicate POS sales, and per-access caps on artist guest forms.

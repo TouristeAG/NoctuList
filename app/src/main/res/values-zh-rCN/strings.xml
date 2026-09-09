@@ -377,7 +377,7 @@
     
     <!-- App Information -->
     <string name="app_info_title">应用程序信息</string>
-    <string name="app_version">NoctuList 2.1.3</string>
+    <string name="app_version">NoctuList 2.1.4</string>
     <string name="app_designed_for">专为 Collectif Nocturne 场地设计</string>
     <string name="app_developed_full">为 Collectif Nocturne 开发，开发者：Leonardo Mondada</string>
     <string name="last_sync">上次更新：%s</string>

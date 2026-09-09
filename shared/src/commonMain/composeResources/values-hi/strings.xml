@@ -488,7 +488,7 @@
     
     <!-- App Information -->
     <string name="app_info_title">ऐप की जानकारी</string>
-    <string name="app_version">NoctuList 2.1.3</string>
+    <string name="app_version">NoctuList 2.1.4</string>
     <string name="app_designed_for">कलेक्टिफ़ नॉक्टर्न स्थानों के लिए डिज़ाइन किया गया</string>
     <!-- Single full sentence to avoid spacing issues across locales -->
     <string name="app_developed_full">लियोनार्डो मोंडाडा द्वारा कलेक्टिफ़ नॉक्टर्न के लिए विकसित किया गया</string>
@@ -2320,6 +2320,8 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="guest_form_label_comments_placeholder_default">वैकल्पिक नोट्स…</string>
     <string name="guest_form_label_access">पहुँच अनुरोध</string>
     <string name="guest_form_label_access_default">इस व्यक्ति के लिए पहुँच</string>
+    <string name="guest_form_label_disclaimer">पहुँच संबंधी सूचना</string>
+    <string name="guest_form_label_disclaimer_default">चुनी गई पहुँच केवल एक अनुरोध है। यह कभी गारंटी नहीं है — पुष्टि शाम को, स्थिति के अनुसार मिलती है।</string>
     <string name="guest_form_label_email">संपर्क ईमेल</string>
     <string name="guest_form_label_email_default">संपर्क ईमेल</string>
     <string name="guest_form_label_phone">आपातकालीन फ़ोन</string>

@@ -380,7 +380,7 @@
     
     <!-- App Information -->
     <string name="app_info_title">Información de la aplicación</string>
-    <string name="app_version">NoctuList 2.1.3</string>
+    <string name="app_version">NoctuList 2.1.4</string>
     <string name="app_designed_for">Diseñado para lugares del Collectif Nocturne</string>
     <string name="app_developed_full">Desarrollado para el Collectif Nocturne por Leonardo Mondada</string>
     <string name="last_sync">Última actualización: %1$s</string>
@@ -2315,6 +2315,8 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="guest_form_label_comments_placeholder_default">Notas opcionales…</string>
     <string name="guest_form_label_access">Solicitud de acceso</string>
     <string name="guest_form_label_access_default">Acceso para esta persona</string>
+    <string name="guest_form_label_disclaimer">Aviso sobre los accesos</string>
+    <string name="guest_form_label_disclaimer_default">Los accesos que marques son solo una solicitud. Nunca están garantizados: la confirmación llega esa noche, según el contexto.</string>
     <string name="guest_form_label_email">Correo de contacto</string>
     <string name="guest_form_label_email_default">Correo de contacto</string>
     <string name="guest_form_label_phone">Teléfono de emergencia</string>

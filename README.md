@@ -4,7 +4,7 @@
 
 Data lives locally in **Room (SQLite)** and syncs across devices through either **Firebase / Firestore** (realtime, recommended for new organizations) or **Google Sheets** (service account). You can migrate between the two.
 
-[![Version](https://img.shields.io/badge/version-2.1.3-blue)](https://github.com/TouristeAG/NoctuList/releases)
+[![Version](https://img.shields.io/badge/version-2.1.4-blue)](https://github.com/TouristeAG/NoctuList/releases)
 [![Platforms](https://img.shields.io/badge/platforms-Android%20%7C%20macOS%20%7C%20Windows%20%7C%20Linux-brightgreen)](https://github.com/TouristeAG/NoctuList/releases)
 [![Kotlin](https://img.shields.io/badge/Kotlin-Multiplatform-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org/docs/multiplatform.html)
 [![Compose](https://img.shields.io/badge/UI-Compose%20Multiplatform-4285F4)](https://www.jetbrains.com/compose-multiplatform/)

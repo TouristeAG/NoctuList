@@ -137,11 +137,13 @@ const LABEL_OVERRIDE_KEYS = [
   "comments",
   "commentsPlaceholder",
   "accessLabel",
+  "disclaimer",
   "email",
   "phone",
   "peopleHeading",
 ];
 const MAX_LABEL_LENGTH = 80;
+const MAX_DISCLAIMER_LENGTH = 400;
 let labelOverrides = {};
 
 function browserLang() {
@@ -198,7 +200,8 @@ export function setLabelOverrides(raw) {
   const next = {};
   LABEL_OVERRIDE_KEYS.forEach((key) => {
     const value = typeof parsed[key] === "string" ? parsed[key].trim() : "";
-    if (value) next[key] = value.slice(0, MAX_LABEL_LENGTH);
+    const max = key === "disclaimer" ? MAX_DISCLAIMER_LENGTH : MAX_LABEL_LENGTH;
+    if (value) next[key] = value.slice(0, max);
   });
   labelOverrides = next;
 }
