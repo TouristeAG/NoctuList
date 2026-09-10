@@ -6,11 +6,16 @@ All notable changes to NoctuList are documented here. Version numbers follow [Se
 
 ## 2.1.4 — 2026-09-09
 
-Optional patch: customizable public labels on artist guest forms.
+Optional patch: customizable public labels on artist guest forms, and a publish fix so forms with logos actually reach Firestore.
 
 ### Features
 
 - **Artist forms** — production can rename public field labels (comments, access request, access disclaimer, email, phone, people heading) from a collapsed panel at the bottom of the form creator. Empty keeps the default translations. Strings only; submit shape and review UI are unchanged.
+
+### Fixes
+
+- **Artist forms** — creating a form no longer reports success if Firestore never received the document (the public page then stayed "closed"). Logo data URIs are stored once, not duplicated in the json envelope, so large logos no longer exceed the 1 MiB document cap.
+- **Artist forms** — association logos larger than a Firestore field (~1 MiB) are compressed (or omitted) at publish time so Create no longer fails with `institutionLogoDataUri` INVALID_ARGUMENT.
 
 ### Upgrade notes
 

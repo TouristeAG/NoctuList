@@ -16,8 +16,12 @@ private class AndroidGmailAuth(private val context: PlatformContext) : GmailAuth
     override val lastSignInError: String? get() = null
 
     override suspend fun signIn(): Boolean {
-        authService.createGmailService()
-        return authService.isCredentialReady()
+        return try {
+            authService.createGmailService()
+            authService.isCredentialReady()
+        } catch (_: com.eventmanager.app.data.sync.GmailAuthorizationRequiredException) {
+            false
+        }
     }
 
     override suspend fun signOut() {
@@ -31,7 +35,11 @@ private class AndroidGmailAuth(private val context: PlatformContext) : GmailAuth
         htmlBody: String,
         attachments: List<EmailAttachment>
     ): Boolean = withContext(Dispatchers.IO) {
-        val service = authService.createGmailService() ?: return@withContext false
+        val service = try {
+            authService.createGmailService()
+        } catch (_: com.eventmanager.app.data.sync.GmailAuthorizationRequiredException) {
+            return@withContext false
+        } ?: return@withContext false
         GmailSendService(context.androidContext).sendEmail(
             gmailService = service,
             to = to,

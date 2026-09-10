@@ -49,8 +49,10 @@ import com.eventmanager.app.R
 import com.eventmanager.app.data.sync.settingsManagerFor
 import com.eventmanager.app.data.sync.SettingsManager
 import com.eventmanager.app.data.sync.GmailAuthService
+import com.eventmanager.app.data.sync.GmailAuthorizationRequiredException
 import com.eventmanager.app.data.sync.GmailQrAttachment
 import com.eventmanager.app.data.sync.GmailSendService
+import com.eventmanager.app.data.sync.tryLaunchGmailConsent
 import com.eventmanager.app.email.MimeEmailBuilder
 import com.eventmanager.app.email.QrEmailCode
 import com.eventmanager.app.email.QrEmailHtmlBuilder
@@ -578,7 +580,12 @@ actual fun GuestDetailPanel(
         ) {
             try {
                 // Get Gmail service
-                val gmailService = gmailAuthService.createGmailService()
+                val gmailService = try {
+                    gmailAuthService.createGmailService()
+                } catch (e: GmailAuthorizationRequiredException) {
+                    tryLaunchGmailConsent(e, authLauncherHolder.value, emailContext)
+                    return
+                }
                 if (gmailService == null) {
                     Toast.makeText(
                         emailContext,
@@ -782,31 +789,8 @@ actual fun GuestDetailPanel(
                     },
                     onFailure = { e ->
                         android.util.Log.d("GmailAuth", "Email send failed: ${e.javaClass.simpleName} - ${e.message}")
-                        // Check if authorization is required
-                        if (e is com.eventmanager.app.data.sync.GmailAuthorizationRequiredException) {
-                            // Launch authorization dialog
-                            android.util.Log.d("GmailAuth", "Launching OAuth consent screen")
-                            val launcher = authLauncherHolder.value
-                            if (launcher != null) {
-                                try {
-                                    launcher.launch(e.authIntent)
-                                    android.util.Log.d("GmailAuth", "OAuth consent screen launched successfully")
-                                } catch (ex: Exception) {
-                                    android.util.Log.e("GmailAuth", "Error launching OAuth consent screen", ex)
-                                    Toast.makeText(
-                                        emailContext,
-                                        "Error launching authorization screen: ${ex.message}",
-                                        Toast.LENGTH_LONG
-                                    ).show()
-                                }
-                            } else {
-                                android.util.Log.e("GmailAuth", "Auth launcher is null! Cannot launch OAuth consent")
-                                Toast.makeText(
-                                    emailContext,
-                                    "Error: Authorization launcher not ready. Please try again.",
-                                    Toast.LENGTH_LONG
-                                ).show()
-                            }
+                        if (tryLaunchGmailConsent(e, authLauncherHolder.value, emailContext)) {
+                            return@fold
                         } else if (e is com.eventmanager.app.data.sync.GmailNotConfiguredException ||
                             e is com.eventmanager.app.data.sync.GmailPlayServicesUnavailableException
                         ) {
@@ -825,11 +809,13 @@ actual fun GuestDetailPanel(
                     }
                 )
             } catch (e: Exception) {
-                Toast.makeText(
-                    emailContext,
-                    emailContext.getString(R.string.email_api_error_message, e.message ?: "Unknown error"),
-                    Toast.LENGTH_LONG
-                ).show()
+                if (!tryLaunchGmailConsent(e, authLauncherHolder.value, emailContext)) {
+                    Toast.makeText(
+                        emailContext,
+                        emailContext.getString(R.string.email_api_error_message, e.message ?: "Unknown error"),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
             }
         }
         

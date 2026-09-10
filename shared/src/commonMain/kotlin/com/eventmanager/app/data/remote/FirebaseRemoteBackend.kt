@@ -355,6 +355,29 @@ class FirebaseRemoteBackend(
         upsert("guestForms", form.formId, firestoreGateway.guestFormToMap(form), form.firebaseOrgId)
     }
 
+    /**
+     * Same write as [afterGuestFormSaved], but failures are not queued: the public URL is
+     * useless until Firestore actually has the OPEN document.
+     */
+    suspend fun publishGuestForm(form: GuestForm) {
+        upsert(
+            "guestForms",
+            form.formId,
+            firestoreGateway.guestFormToMap(form),
+            form.firebaseOrgId,
+            requireRemote = true,
+        )
+        firestoreWaitForPendingWrites()
+        val remote = firestoreGateway.getDocumentFromServer(
+            form.firebaseOrgId,
+            "guestForms",
+            form.formId,
+        ) ?: throw IllegalStateException("The guest form did not reach Firestore")
+        if (remote["status"]?.toString() != GuestFormStatus.OPEN.name) {
+            throw IllegalStateException("The guest form is not OPEN on the server")
+        }
+    }
+
     override suspend fun afterGuestFormDeleted(form: GuestForm) {
         delete("guestForms", form.formId, form.firebaseOrgId)
     }
@@ -585,9 +608,13 @@ class FirebaseRemoteBackend(
         docId: String,
         data: Map<String, Any?>,
         orgId: String? = null,
+        requireRemote: Boolean = false,
     ) {
         val targetOrg = resolveWriteOrgId(orgId)
-        if (targetOrg.isBlank()) return
+        if (targetOrg.isBlank()) {
+            if (requireRemote) throw IllegalStateException("Firebase organization is not configured")
+            return
+        }
         val stamped = data.toMutableMap().apply {
             // Public guest-form answers must never look like a write from this device: the
             // creator's sourceDeviceId used to make NoctuList drop PENDING_REVIEW as an echo.
@@ -600,12 +627,16 @@ class FirebaseRemoteBackend(
                 firestoreGateway.upsertDocument(targetOrg, collection, docId, stamped)
                 return
             } catch (e: Exception) {
+                if (requireRemote) throw e
                 if (FirestoreErrors.isPermissionDenied(e)) {
                     pendingWrites.enqueueUpsert(collection, docId, encodeMap(stamped), targetOrg)
                     notifySyncStatusChanged()
                     return
                 }
             }
+        }
+        if (requireRemote) {
+            throw IllegalStateException("Firebase is not available")
         }
         pendingWrites.enqueueUpsert(collection, docId, encodeMap(stamped), targetOrg)
     }

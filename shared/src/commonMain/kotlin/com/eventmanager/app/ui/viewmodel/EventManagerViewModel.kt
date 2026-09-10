@@ -1058,14 +1058,15 @@ class EventManagerViewModel(
                     allowMultipleResponses = allowMultipleResponses,
                     showInstitutionLogo = showInstitutionLogo,
                     institutionLogoDataUri = if (showInstitutionLogo) {
-                        val raw = settingsManagerCached?.getInstitutionLogoPng().orEmpty()
-                        if (raw.isBlank()) "" else "data:image/png;base64,$raw"
+                        GuestFormLogoCodec.fitForFirestore(
+                            settingsManagerCached?.getInstitutionLogoPng().orEmpty(),
+                        )
                     } else {
                         ""
                     },
                     institutionLogoShape = institutionLogoShape.name,
                     institutionLogoInvert = institutionLogoInvert,
-                    guestLogoDataUri = guestLogoDataUri,
+                    guestLogoDataUri = GuestFormLogoCodec.fitForFirestore(guestLogoDataUri),
                     guestLogoShape = guestLogoShape.name,
                     guestLogoInvert = guestLogoInvert,
                     askEmail = askEmail,
@@ -1077,10 +1078,27 @@ class EventManagerViewModel(
                     createdAt = now,
                     lastModified = now,
                 )
+                if (form.wouldBeClosedOnPublicPage(now)) {
+                    _syncError.value =
+                        "This form would already be closed. Choose a later event date or expiry."
+                    return@launch
+                }
                 val rowId = repository.insertGuestForm(form)
                 val saved = form.copy(id = rowId)
-                syncCoordinator?.afterGuestFormSaved(saved)
+                try {
+                    val coordinator = syncCoordinator
+                        ?: throw IllegalStateException("Firebase sync is not ready")
+                    coordinator.publishGuestForm(saved)
+                } catch (e: CancellationException) {
+                    repository.deleteGuestForm(saved)
+                    throw e
+                } catch (e: Exception) {
+                    repository.deleteGuestForm(saved)
+                    throw e
+                }
                 withContext(Dispatchers.Main) { onCreated(saved) }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 println("Failed to create guest form: ${e.message}")
                 _syncError.value = "Failed to create guest form: ${e.message}"

@@ -171,6 +171,10 @@ val GuestForm.isClosed: Boolean get() = statusValue != GuestFormStatus.OPEN
 fun GuestForm.isExpiredAt(nowMillis: Long): Boolean =
     statusValue == GuestFormStatus.OPEN && expiresAtMillis in 1 until nowMillis
 
+/** True when a newly created form would already fail the public-page OPEN + unexpired check. */
+fun GuestForm.wouldBeClosedOnPublicPage(nowMillis: Long): Boolean =
+    statusValue != GuestFormStatus.OPEN || expiresAtMillis <= nowMillis
+
 /**
  * Public guest list forms are a Firebase-only surface behind an opt-in institution setting: the
  * Sheets backend has no place to store a form and no rules engine to expose one safely.

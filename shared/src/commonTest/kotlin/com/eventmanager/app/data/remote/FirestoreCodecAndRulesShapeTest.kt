@@ -22,6 +22,21 @@ class FirestoreCodecAndRulesShapeTest {
     }
 
     @Test
+    fun ruleCompatibleMap_keepsOversizedStringsFlatOnly() {
+        val logo = "x".repeat(FIRESTORE_ENVELOPE_MAX_STRING_CHARS + 50)
+        val mapped = ruleCompatibleFirestoreMap(
+            mapOf(
+                "institutionLogoDataUri" to logo,
+                "artistName" to "Ada",
+            ),
+        )
+        assertEquals(logo, mapped["institutionLogoDataUri"])
+        val envelope = mapped["json"] as String
+        assertTrue(envelope.contains("Ada"))
+        assertFalse(envelope.contains(logo))
+    }
+
+    @Test
     fun encodeDecodeRoundTrip_preservesStringsWithCommas() {
         val original = mapOf(
             "description" to "Beer, wine, and snacks",
@@ -78,6 +93,21 @@ class FirestoreCodecAndRulesShapeTest {
         assertEquals(12.5, fields["balance"])
         val nested = fields["allowedEmailDomains"] as? Map<*, *>
         assertEquals(true, nested?.get("gmail.com"))
+    }
+
+    @Test
+    fun guestFormToMap_writesMillisAsDoubleSoRulesSeeANumber() {
+        val form = com.eventmanager.app.data.models.GuestForm(
+            formId = "f1",
+            eventDateMillis = 1_700_000_000_000L,
+            expiresAtMillis = 1_700_086_399_999L,
+            status = "OPEN",
+        )
+        val mapped = GitLiveFirestoreGateway().guestFormToMap(form)
+        assertEquals(1_700_086_399_999.0, mapped["expiresAtMillis"])
+        assertEquals(1_700_000_000_000.0, mapped["eventDateMillis"])
+        val stamped = ruleCompatibleFirestoreMap(mapped)
+        assertTrue(stamped["expiresAtMillis"] is Double)
     }
 
     @Test
@@ -211,6 +241,14 @@ class FirestoreCodecAndRulesShapeTest {
         assertTrue(
             rules.contains("match /orgs/{orgId}/guestForms/{formId}"),
             "artist guest list forms need their own match block",
+        )
+        assertTrue(
+            rules.contains("function guestFormIsOpen"),
+            "public get must treat numeric strings as millis, not only `is number`",
+        )
+        assertTrue(
+            rules.contains("allow get: if guestFormIsOpen(resource.data)"),
+            "anonymous get must use guestFormIsOpen so a string expiry does not look closed",
         )
         assertTrue(
             rules.contains("isPublicMultiGuestFormCreate"),

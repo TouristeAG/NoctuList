@@ -158,13 +158,50 @@ internal class DesktopFirestoreGateway(
         docId: String,
         data: Map<String, Any?>,
     ) = withContext(Dispatchers.IO) {
-        if (tryGitLive { gitlive.upsertDocument(orgId, collection, docId, data) }) {
+        val gitLiveOk = tryGitLive { gitlive.upsertDocument(orgId, collection, docId, data) }
+        // Public pages read the server. GitLive set() can succeed on the local cache only, and
+        // GitLive sometimes stores millis as strings — REST writes typed numbers and waits for HTTP 200.
+        val restClient = rest
+        if (collection == "guestForms" && restClient?.isReady() == true) {
+            restClient.upsertDocument(orgId, collection, docId, data)
+            noteServerReachable(true)
+            return@withContext
+        }
+        if (gitLiveOk) {
             noteServerReachable(true)
             return@withContext
         }
         val client = rest ?: throw IllegalStateException("Firestore REST client not configured")
         client.upsertDocument(orgId, collection, docId, data)
         noteServerReachable(true)
+    }
+
+    override suspend fun getDocumentFromServer(
+        orgId: String,
+        collection: String,
+        docId: String,
+    ): Map<String, Any?>? = withContext(Dispatchers.IO) {
+        if (orgId.isBlank() || collection.isBlank() || docId.isBlank()) return@withContext null
+        val restClient = rest
+        if (collection == "guestForms" && restClient?.isReady() == true) {
+            val fromRest = runCatching { restClient.getDocument(orgId, collection, docId) }.getOrNull()
+            if (fromRest != null) {
+                noteServerReachable(true)
+                return@withContext fromRest
+            }
+        }
+        val fromGitLive = withTimeoutOrNull(READ_TIMEOUT_MS) {
+            gitlive.getDocumentFromServer(orgId, collection, docId)
+        }
+        if (fromGitLive != null) {
+            noteServerReachable(true)
+            return@withContext fromGitLive
+        }
+        val fromRest = rest?.let { client ->
+            runCatching { client.getDocument(orgId, collection, docId) }.getOrNull()
+        }
+        if (fromRest != null) noteServerReachable(true)
+        fromRest
     }
 
     override suspend fun deleteDocument(orgId: String, collection: String, docId: String) =

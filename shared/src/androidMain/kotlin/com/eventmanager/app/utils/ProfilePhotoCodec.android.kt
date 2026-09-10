@@ -22,6 +22,14 @@ actual object ProfilePhotoCodec {
             maxBytes = PROFILE_PHOTO_THUMB_MAX_BYTES,
         )
 
+    actual fun compressToGuestFormLogoJpeg(sourceBytes: ByteArray): ByteArray? =
+        compress(
+            sourceBytes = sourceBytes,
+            maxEdge = GUEST_FORM_LOGO_MAX_EDGE_PX,
+            quality = GUEST_FORM_LOGO_JPEG_QUALITY,
+            maxBytes = GUEST_FORM_LOGO_MAX_JPEG_BYTES,
+        )
+
     private fun compress(
         sourceBytes: ByteArray,
         maxEdge: Int,

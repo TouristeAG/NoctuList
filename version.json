@@ -2,7 +2,7 @@
   "latestVersionCode": 31,
   "latestVersionName": "2.1.4",
   "minSupportedVersionCode": "27",
-  "changelogShort": "Libellés personnalisables sur les formulaires guestlist. Mise à jour facultative.",
+  "changelogShort": "Libellés personnalisables sur les formulaires guestlist, et correctif de publication (logos). Mise à jour facultative.",
   "downloadUrl": "https://github.com/TouristeAG/NoctuList/releases/download/2.1.4/app-release-2.1.4.apk",
   "desktopDownloadUrlDmgArm64": "https://github.com/TouristeAG/NoctuList/releases/download/2.1.4/NoctuList-2.1.4-arm64.dmg",
   "desktopDownloadUrlDmgX86": "https://github.com/TouristeAG/NoctuList/releases/download/2.1.4/NoctuList-2.1.4-x86_64.dmg",

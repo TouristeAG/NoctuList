@@ -302,7 +302,14 @@ async function main() {
   }
   const db = getFirestore(app);
   const ref = doc(db, "orgs", path.orgId, "guestForms", path.formId);
-  const snap = await getDoc(ref).catch(() => null);
+  let snap;
+  try {
+    snap = await getDoc(ref);
+  } catch (error) {
+    console.error("guest form get failed", path, error?.code, error?.message);
+    show(closedEl);
+    return;
+  }
   if (!snap || !snap.exists()) {
     show(closedEl);
     return;

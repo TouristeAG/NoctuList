@@ -76,6 +76,8 @@ interface FirestoreGateway {
     suspend fun flushPendingWrites()
     suspend fun upsertDocument(orgId: String, collection: String, docId: String, data: Map<String, Any?>)
     suspend fun deleteDocument(orgId: String, collection: String, docId: String)
+    /** Server-backed get. Null when the document is missing or the server cannot be reached. */
+    suspend fun getDocumentFromServer(orgId: String, collection: String, docId: String): Map<String, Any?>? = null
     suspend fun pullAllIntoRepository(
         orgId: String,
         repository: EventManagerRepository,

@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.util.Base64
 import android.util.Log
+import android.widget.Toast
+import androidx.activity.result.ActivityResultLauncher
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAuthIOException
 import com.google.api.client.googleapis.extensions.android.gms.auth.UserRecoverableAuthIOException
 import com.google.api.services.gmail.Gmail
@@ -17,6 +19,45 @@ import java.util.UUID
  * Exception that contains an authorization Intent for the user to grant permissions
  */
 class GmailAuthorizationRequiredException(val authIntent: Intent, message: String) : Exception(message)
+
+/**
+ * Opens the Gmail OAuth consent screen when [error] carries a recoverable auth Intent.
+ * Returns true when the error was an authorization request (launched or reported).
+ */
+fun tryLaunchGmailConsent(
+    error: Throwable,
+    launcher: ActivityResultLauncher<Intent>?,
+    context: Context
+): Boolean {
+    val intent = (error as? GmailAuthorizationRequiredException)?.authIntent
+        ?: (error as? UserRecoverableAuthIOException)?.intent
+        ?: (error.cause as? com.google.android.gms.auth.UserRecoverableAuthException)?.intent
+    if (intent == null) return false
+
+    Log.d("GmailAuth", "Launching OAuth consent screen")
+    if (launcher == null) {
+        Log.e("GmailAuth", "Auth launcher is null! Cannot launch OAuth consent")
+        Toast.makeText(
+            context,
+            "Error: Authorization launcher not ready. Please try again.",
+            Toast.LENGTH_LONG
+        ).show()
+        return true
+    }
+    return try {
+        launcher.launch(intent)
+        Log.d("GmailAuth", "OAuth consent screen launched successfully")
+        true
+    } catch (ex: Exception) {
+        Log.e("GmailAuth", "Error launching OAuth consent screen", ex)
+        Toast.makeText(
+            context,
+            "Error launching authorization screen: ${ex.message}",
+            Toast.LENGTH_LONG
+        ).show()
+        true
+    }
+}
 
 /**
  * Exception thrown when Gmail API is not configured in Google Cloud Console

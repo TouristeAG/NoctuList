@@ -75,4 +75,4 @@ fun firebaseMigrationAdminDenialMessage(orgId: String, probe: MembershipProbe): 
  * Rules revision this build expects to be published. Must match `NOCTULIST_RULES_VERSION` in
  * [firebase/firestore.rules] — a mismatch is the most common cause of PERMISSION_DENIED.
  */
-const val NOCTULIST_FIRESTORE_RULES_VERSION: Int = 9
+const val NOCTULIST_FIRESTORE_RULES_VERSION: Int = 10

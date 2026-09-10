@@ -1393,7 +1393,6 @@ private fun GmailAuthSection(
                 }
                 
                 needsPermission = true
-                Toast.makeText(context, context.getString(R.string.email_gmail_auth_success), Toast.LENGTH_SHORT).show()
             }
         } else {
             Toast.makeText(context, context.getString(R.string.email_gmail_auth_error, "Account selection cancelled"), Toast.LENGTH_SHORT).show()
@@ -1405,18 +1404,28 @@ private fun GmailAuthSection(
     ) { result ->
         needsPermission = false
         if (result.resultCode == android.app.Activity.RESULT_OK) {
-            Toast.makeText(context, "Gmail permission granted!", Toast.LENGTH_SHORT).show()
+            coroutineScope.launch {
+                try {
+                    gmailAuthService.createGmailService()
+                } catch (_: com.eventmanager.app.data.sync.GmailAuthorizationRequiredException) {
+                    // Consent activity returned OK; token fetch can still need a follow-up grant.
+                }
+                isCredentialReady = gmailAuthService.isCredentialReady() || gmailAuthService.hasValidCachedToken()
+                Toast.makeText(context, context.getString(R.string.email_gmail_auth_success), Toast.LENGTH_SHORT).show()
+            }
         } else {
             Toast.makeText(context, "Gmail permission denied", Toast.LENGTH_SHORT).show()
         }
     }
     
     // Check and request permission after account selection
-    LaunchedEffect(needsPermission, isAccountSelected) {
-        if (needsPermission && isAccountSelected && isCredentialReady) {
+    LaunchedEffect(needsPermission, isAccountSelected, isCredentialReady, selectedEmail) {
+        if (needsPermission && isAccountSelected) {
             val authIntent = gmailAuthService.testPermissionAndGetAuthIntent()
             if (authIntent != null) {
                 permissionLauncher.launch(authIntent)
+            } else {
+                Toast.makeText(context, context.getString(R.string.email_gmail_auth_success), Toast.LENGTH_SHORT).show()
             }
             needsPermission = false
         }

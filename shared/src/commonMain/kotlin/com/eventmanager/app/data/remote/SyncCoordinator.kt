@@ -84,6 +84,20 @@ class SyncCoordinator(
     suspend fun afterSalesItemSaved(item: SalesSheetItem) = activeBackend().afterSalesItemSaved(item)
     suspend fun afterSalesItemDeleted(item: SalesSheetItem) = activeBackend().afterSalesItemDeleted(item)
     suspend fun afterGuestFormSaved(form: GuestForm) = activeBackend().afterGuestFormSaved(form)
+
+    /**
+     * Create-time publish: the share link must not be shown until Firestore holds the OPEN doc.
+     * Queued / silent failures are how the public page stays "closed".
+     */
+    suspend fun publishGuestForm(form: GuestForm) {
+        val firebase = firebaseBackend
+            ?: throw IllegalStateException("Guest forms require Firebase")
+        if (settingsManager.getBackendType() != BackendType.FIREBASE) {
+            throw IllegalStateException("Guest forms require Firebase")
+        }
+        firebase.publishGuestForm(form)
+    }
+
     suspend fun afterGuestFormDeleted(form: GuestForm) = activeBackend().afterGuestFormDeleted(form)
 
     /** Force-refresh artist form documents so a public PENDING_REVIEW answer surfaces quickly. */

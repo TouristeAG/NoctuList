@@ -10,6 +10,12 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import com.google.android.gms.auth.UserRecoverableAuthException
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.ConnectionResult
+import com.google.android.gms.common.GoogleApiAvailability
+import com.google.android.gms.common.api.Scope
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
 import com.google.api.client.googleapis.extensions.android.gms.auth.UserRecoverableAuthIOException
 import com.google.api.client.http.HttpRequestInitializer
@@ -150,6 +156,10 @@ class GmailAuthService(private val context: Context) {
     
     fun setSelectedAccount(accountName: String) {
         logAllAccountTypes()
+        val previous = getSavedAccountEmail()
+        if (previous != null && previous != accountName) {
+            clearCachedToken()
+        }
         saveAccountEmail(accountName)
         credential.selectedAccountName = accountName
         
@@ -185,62 +195,95 @@ class GmailAuthService(private val context: Context) {
         try {
             val selectedEmail = credential.selectedAccountName ?: getSavedAccountEmail()
             if (selectedEmail != null) {
-                // Prefer direct bearer-token initialization so sending does not depend on
-                // GoogleAccountCredential request interceptors at runtime (more robust on microG/LineageOS).
-                val token = getBestAvailableToken(selectedEmail)
-                if (token != null) {
-                    val transport = NetHttpTransport()
-                    val jsonFactory = GsonFactory.getDefaultInstance()
-                    val tokenInitializer = HttpRequestInitializer { request ->
-                        request.headers.authorization = "Bearer $token"
+                when (val acquisition = acquireToken(selectedEmail)) {
+                    is TokenAcquisition.Token -> {
+                        // Bearer token is more robust on microG/LineageOS once consent is already granted.
+                        return@withContext buildGmailWithBearerToken(acquisition.value)
                     }
-                    return@withContext Gmail.Builder(transport, jsonFactory, tokenInitializer)
-                        .setApplicationName("Event Manager App")
-                        .build()
+                    is TokenAcquisition.ConsentRequired -> {
+                        throw GmailAuthorizationRequiredException(
+                            authIntent = acquisition.intent,
+                            message = "Please authorize the app to send emails via Gmail"
+                        )
+                    }
+                    TokenAcquisition.Unavailable -> {
+                        if (credential.selectedAccountName != null) {
+                            // Let GmailSendService surface UserRecoverableAuthIOException on the first send.
+                            Log.w(TAG, "No token yet; using GoogleAccountCredential so Gmail send can request consent")
+                            val transport = NetHttpTransport()
+                            val jsonFactory = GsonFactory.getDefaultInstance()
+                            return@withContext Gmail.Builder(transport, jsonFactory, credential)
+                                .setApplicationName("Event Manager App")
+                                .build()
+                        }
+                        if (isGooglePlayServicesAvailable()) {
+                            throw GmailAuthorizationRequiredException(
+                                authIntent = getGmailConsentSignInIntent(selectedEmail),
+                                message = "Please authorize the app to send emails via Gmail"
+                            )
+                        }
+                    }
                 }
             }
-            
+
             if (hasValidCachedToken() && cachedOAuthToken != null) {
-                val transport = NetHttpTransport()
-                val jsonFactory = GsonFactory.getDefaultInstance()
-                val tokenInitializer = HttpRequestInitializer { request ->
-                    request.headers.authorization = "Bearer ${cachedOAuthToken!!}"
-                }
-                return@withContext Gmail.Builder(transport, jsonFactory, tokenInitializer)
-                    .setApplicationName("Event Manager App")
-                    .build()
+                return@withContext buildGmailWithBearerToken(cachedOAuthToken!!)
             }
-            
+
             Log.w(TAG, "Cannot create Gmail service - no valid credential or token")
             null
+        } catch (e: GmailAuthorizationRequiredException) {
+            throw e
         } catch (e: Exception) {
+            extractConsentIntent(e)?.let { intent ->
+                throw GmailAuthorizationRequiredException(
+                    authIntent = intent,
+                    message = "Please authorize the app to send emails via Gmail"
+                )
+            }
             Log.e(TAG, "Error creating Gmail service", e)
             null
         }
     }
 
-    private fun getBestAvailableToken(selectedEmail: String): String? {
+    private fun buildGmailWithBearerToken(token: String): Gmail {
+        val transport = NetHttpTransport()
+        val jsonFactory = GsonFactory.getDefaultInstance()
+        val tokenInitializer = HttpRequestInitializer { request ->
+            request.headers.authorization = "Bearer $token"
+        }
+        return Gmail.Builder(transport, jsonFactory, tokenInitializer)
+            .setApplicationName("Event Manager App")
+            .build()
+    }
+
+    private sealed class TokenAcquisition {
+        data class Token(val value: String) : TokenAcquisition()
+        data class ConsentRequired(val intent: Intent) : TokenAcquisition()
+        data object Unavailable : TokenAcquisition()
+    }
+
+    private fun acquireToken(selectedEmail: String): TokenAcquisition {
         if (hasValidCachedToken() && cachedOAuthToken != null) {
-            return cachedOAuthToken
+            return TokenAcquisition.Token(cachedOAuthToken!!)
         }
 
-        // First try GoogleAccountCredential token flow.
         try {
             credential.selectedAccountName = selectedEmail
             val credentialToken = credential.token
             if (!credentialToken.isNullOrBlank()) {
                 saveCachedToken(credentialToken, System.currentTimeMillis() + 3600000)
-                return credentialToken
+                return TokenAcquisition.Token(credentialToken)
             }
         } catch (e: Exception) {
+            extractConsentIntent(e)?.let { return TokenAcquisition.ConsentRequired(it) }
             Log.w(TAG, "GoogleAccountCredential token retrieval failed, trying AccountManager fallback: ${e.javaClass.simpleName}")
         }
 
-        // Fallback for devices where GoogleAccountCredential fails (e.g. some microG/LineageOS setups).
         return tryGetAccountManagerToken(selectedEmail)
     }
 
-    private fun tryGetAccountManagerToken(selectedEmail: String): String? {
+    private fun tryGetAccountManagerToken(selectedEmail: String): TokenAcquisition {
         return try {
             val accountManager = AccountManager.get(context)
             val account = Account(selectedEmail, "com.google")
@@ -248,15 +291,57 @@ class GmailAuthService(private val context: Context) {
             val authToken = bundle?.getString(AccountManager.KEY_AUTHTOKEN)
             if (!authToken.isNullOrBlank()) {
                 saveCachedToken(authToken, System.currentTimeMillis() + 3600000)
-                authToken
+                TokenAcquisition.Token(authToken)
             } else {
-                Log.w(TAG, "AccountManager fallback returned no token for $selectedEmail")
-                null
+                val consentIntent = parcelableIntent(bundle)
+                if (consentIntent != null) {
+                    TokenAcquisition.ConsentRequired(consentIntent)
+                } else {
+                    Log.w(TAG, "AccountManager fallback returned no token for $selectedEmail")
+                    TokenAcquisition.Unavailable
+                }
             }
         } catch (e: Exception) {
+            extractConsentIntent(e)?.let { return TokenAcquisition.ConsentRequired(it) }
             Log.e(TAG, "AccountManager fallback token retrieval failed: ${e.javaClass.simpleName} - ${e.message}")
-            null
+            TokenAcquisition.Unavailable
         }
+    }
+
+    fun extractConsentIntent(error: Throwable): Intent? {
+        var current: Throwable? = error
+        var depth = 0
+        while (current != null && depth < 10) {
+            when (current) {
+                is UserRecoverableAuthIOException -> current.intent?.let { return it }
+                is UserRecoverableAuthException -> current.intent?.let { return it }
+            }
+            current = current.cause
+            depth++
+        }
+        return null
+    }
+
+    fun getGmailConsentSignInIntent(email: String): Intent {
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .setAccountName(email)
+            .requestEmail()
+            .requestScopes(Scope(GmailScopes.GMAIL_SEND))
+            .build()
+        return GoogleSignIn.getClient(context, gso).signInIntent
+    }
+
+    private fun isGooglePlayServicesAvailable(): Boolean {
+        return try {
+            GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context) == ConnectionResult.SUCCESS
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun parcelableIntent(bundle: Bundle?): Intent? {
+        return bundle?.getParcelable(AccountManager.KEY_INTENT)
     }
     
     suspend fun tryGetTokenForAndroidTV(activity: Activity): Intent? = withContext(Dispatchers.IO) {
@@ -281,7 +366,7 @@ class GmailAuthService(private val context: Context) {
             }
             
             val authToken = result.getString(AccountManager.KEY_AUTHTOKEN)
-            val authIntent = result.getParcelable<Intent>(AccountManager.KEY_INTENT)
+            val authIntent = parcelableIntent(result)
             
             if (authToken != null) {
                 saveCachedToken(authToken, System.currentTimeMillis() + 3600000)
@@ -296,7 +381,7 @@ class GmailAuthService(private val context: Context) {
                     saveCachedToken(token, System.currentTimeMillis() + 3600000)
                     return@withContext null
                 }
-                return@withContext bundle?.getParcelable<Intent>(AccountManager.KEY_INTENT)
+                return@withContext parcelableIntent(bundle)
             } catch (e2: Exception) {
                 Log.e(TAG, "Alternative approach failed: ${e2.message}")
                 null
@@ -359,15 +444,16 @@ class GmailAuthService(private val context: Context) {
     }
     
     suspend fun testPermissionAndGetAuthIntent(): Intent? = withContext(Dispatchers.IO) {
-        try {
-            if (credential.selectedAccountName == null) return@withContext null
-            credential.token
-            null
-        } catch (e: UserRecoverableAuthIOException) {
-            e.intent
-        } catch (e: Exception) {
-            Log.e(TAG, "Error testing permission", e)
-            null
+        val email = credential.selectedAccountName ?: getSavedAccountEmail() ?: return@withContext null
+        if (credential.selectedAccountName == null) {
+            credential.selectedAccountName = email
+        }
+        when (val acquisition = acquireToken(email)) {
+            is TokenAcquisition.Token -> null
+            is TokenAcquisition.ConsentRequired -> acquisition.intent
+            TokenAcquisition.Unavailable -> {
+                if (isGooglePlayServicesAvailable()) getGmailConsentSignInIntent(email) else null
+            }
         }
     }
     

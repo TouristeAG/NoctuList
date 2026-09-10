@@ -147,6 +147,15 @@ class GuestFormTest {
     }
 
     @Test
+    fun wouldBeClosedOnPublicPage_whenExpiryAlreadyPast() {
+        val now = 1_700_000_000_000L
+        val open = GuestForm(formId = "f1", status = GuestFormStatus.OPEN.name, expiresAtMillis = now + 1)
+        val past = GuestForm(formId = "f2", status = GuestFormStatus.OPEN.name, expiresAtMillis = now)
+        assertTrue(!open.wouldBeClosedOnPublicPage(now))
+        assertTrue(past.wouldBeClosedOnPublicPage(now))
+    }
+
+    @Test
     fun submission_toManualEntries_keepsAccesses() {
         val entries = GuestFormSubmission(
             people = listOf(GuestFormPerson("Ada", setOf("a1", "a2"))),
@@ -208,5 +217,25 @@ class GuestFormTest {
             GuestFormFieldLabelsCodec.encode(mapOf(GuestFormFieldLabelsCodec.KEY_DISCLAIMER to text)),
         )
         assertEquals(text, decoded[GuestFormFieldLabelsCodec.KEY_DISCLAIMER])
+    }
+
+    @Test
+    fun logo_emptyStaysEmpty() {
+        assertEquals("", GuestFormLogoCodec.fitForFirestore(""))
+        assertEquals("", GuestFormLogoCodec.fitForFirestore("   "))
+    }
+
+    @Test
+    fun logo_smallPayloadPassesThrough() {
+        val raw = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+        assertEquals("data:image/png;base64,$raw", GuestFormLogoCodec.fitForFirestore(raw))
+        val uri = "data:image/png;base64,$raw"
+        assertEquals(uri, GuestFormLogoCodec.fitForFirestore(uri))
+    }
+
+    @Test
+    fun logo_oversizedUndecodablePayloadIsDropped() {
+        val huge = "x".repeat(GuestFormLogoCodec.MAX_DATA_URI_CHARS + 20)
+        assertEquals("", GuestFormLogoCodec.fitForFirestore(huge))
     }
 }

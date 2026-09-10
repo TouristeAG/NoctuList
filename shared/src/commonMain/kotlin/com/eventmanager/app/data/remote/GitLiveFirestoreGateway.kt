@@ -143,7 +143,7 @@ class GitLiveFirestoreGateway(
     }
 
     override suspend fun flushPendingWrites() {
-        // GitLive / native SDK flush is automatic; hook kept for API parity.
+        firestoreWaitForPendingWrites()
     }
 
     override suspend fun upsertDocument(orgId: String, collection: String, docId: String, data: Map<String, Any?>) {
@@ -168,6 +168,9 @@ class GitLiveFirestoreGateway(
                 else -> {
                     ref.set(toFirestoreFieldMap(fields), merge = true)
                 }
+            }
+            if (collection == "guestForms") {
+                firestoreWaitForPendingWrites()
             }
         } catch (e: CancellationException) {
             throw e
@@ -205,6 +208,19 @@ class GitLiveFirestoreGateway(
         val firestore = db() ?: return
         if (orgId.isBlank() || docId.isBlank()) return
         firestore.collection("orgs").document(orgId).collection(collection).document(docId).delete()
+    }
+
+    override suspend fun getDocumentFromServer(
+        orgId: String,
+        collection: String,
+        docId: String,
+    ): Map<String, Any?>? {
+        val firestore = db() ?: return null
+        if (orgId.isBlank() || collection.isBlank() || docId.isBlank()) return null
+        val snap = firestore.collection("orgs").document(orgId).collection(collection).document(docId)
+            .get(source = Source.SERVER)
+        if (!snap.exists) return null
+        return decodeSnapshot(snap)
     }
 
     override suspend fun pullAllIntoRepository(
@@ -612,12 +628,12 @@ class GitLiveFirestoreGateway(
         "formId" to form.formId,
         "venueName" to form.venueName,
         "eventName" to form.eventName,
-        "eventDateMillis" to form.eventDateMillis,
+        "eventDateMillis" to firestoreMillis(form.eventDateMillis),
         "artistName" to form.artistName,
         "offeredAccessIds" to form.offeredAccessIds,
         "maxGuests" to form.maxGuests,
         "expiryMode" to form.expiryMode,
-        "expiresAtMillis" to form.expiresAtMillis,
+        "expiresAtMillis" to firestoreMillis(form.expiresAtMillis),
         "allowMultipleResponses" to form.allowMultipleResponses,
         "parentFormId" to form.parentFormId,
         "showInstitutionLogo" to form.showInstitutionLogo,
@@ -634,11 +650,11 @@ class GitLiveFirestoreGateway(
         "fieldLabelsJson" to form.fieldLabelsJson,
         "status" to form.status,
         "submissionJson" to form.submissionJson,
-        "submittedAt" to form.submittedAt,
-        "reviewedAt" to form.reviewedAt,
+        "submittedAt" to firestoreMillis(form.submittedAt),
+        "reviewedAt" to firestoreMillis(form.reviewedAt),
         "reviewedBy" to form.reviewedBy,
-        "createdAt" to form.createdAt,
-        "lastModified" to form.lastModified,
+        "createdAt" to firestoreMillis(form.createdAt),
+        "lastModified" to firestoreMillis(form.lastModified),
     )
 
     override fun venueToMap(venue: VenueEntity) = mapOf(
