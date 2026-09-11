@@ -2288,4 +2288,23 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="guest_form_label_phone_default">Téléphone d'urgence</string>
     <string name="guest_form_label_people">Titre de la liste</string>
     <string name="guest_form_label_people_default">Personnes sur la guestlist</string>
+    <string name="guest_form_edit_title">Modifier le formulaire guestlist</string>
+    <string name="guest_form_save_action">Enregistrer</string>
+    <string name="guest_form_management_title">Formulaires guestlist</string>
+    <string name="guest_form_management_description">Formulaires ouverts, réponses en attente de validation, et formulaires fermés depuis moins de 48 h.</string>
+    <string name="guest_form_manage">Gérer les formulaires</string>
+    <string name="guest_form_search_placeholder">Rechercher artiste, événement ou lieu</string>
+    <string name="guest_form_filter_open">Ouverts</string>
+    <string name="guest_form_filter_pending">En attente</string>
+    <string name="guest_form_filter_closed">Fermés</string>
+    <string name="guest_form_count">%1$d sur %2$d formulaires</string>
+    <string name="guest_form_empty">Aucun formulaire dans cette liste.</string>
+    <string name="guest_form_status_open">Ouvert</string>
+    <string name="guest_form_status_pending">En attente de validation</string>
+    <string name="guest_form_status_accepted">Accepté</string>
+    <string name="guest_form_status_rejected">Refusé</string>
+    <string name="guest_form_status_expired">Fermé</string>
+    <string name="guest_form_close_action">Fermer le formulaire</string>
+    <string name="guest_form_close_confirm_title">Fermer ce formulaire ?</string>
+    <string name="guest_form_close_confirm_body">Le lien public pour %1$s cessera de fonctionner immédiatement.</string>
 </resources>

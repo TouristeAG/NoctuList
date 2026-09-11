@@ -169,9 +169,10 @@ class GitLiveFirestoreGateway(
                     ref.set(toFirestoreFieldMap(fields), merge = true)
                 }
             }
-            if (collection == "guestForms") {
-                firestoreWaitForPendingWrites()
-            }
+            // Do not waitForPendingWrites() here. That call waits for the entire SDK queue
+            // (other large guest-form logo writes, unrelated docs). Close/expire already
+            // awaited this document's set(); a later queue timeout used to look like a
+            // failed write and fill pending_remote_writes while the public page was closed.
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

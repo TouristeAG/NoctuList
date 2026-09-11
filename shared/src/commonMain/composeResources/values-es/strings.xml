@@ -2323,4 +2323,23 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="guest_form_label_phone_default">Teléfono de emergencia</string>
     <string name="guest_form_label_people">Título de la lista</string>
     <string name="guest_form_label_people_default">Personas en la guestlist</string>
+    <string name="guest_form_edit_title">Editar formulario de guestlist</string>
+    <string name="guest_form_save_action">Guardar cambios</string>
+    <string name="guest_form_management_title">Formularios de guestlist</string>
+    <string name="guest_form_management_description">Formularios abiertos, respuestas pendientes de revisión y formularios cerrados en las últimas 48 horas.</string>
+    <string name="guest_form_manage">Gestionar formularios</string>
+    <string name="guest_form_search_placeholder">Buscar artista, evento o lugar</string>
+    <string name="guest_form_filter_open">Abiertos</string>
+    <string name="guest_form_filter_pending">Pendientes</string>
+    <string name="guest_form_filter_closed">Cerrados</string>
+    <string name="guest_form_count">%1$d de %2$d formularios</string>
+    <string name="guest_form_empty">No hay formularios en esta lista.</string>
+    <string name="guest_form_status_open">Abierto</string>
+    <string name="guest_form_status_pending">Pendiente de revisión</string>
+    <string name="guest_form_status_accepted">Aceptado</string>
+    <string name="guest_form_status_rejected">Rechazado</string>
+    <string name="guest_form_status_expired">Cerrado</string>
+    <string name="guest_form_close_action">Cerrar formulario</string>
+    <string name="guest_form_close_confirm_title">¿Cerrar este formulario?</string>
+    <string name="guest_form_close_confirm_body">El enlace público de %1$s dejará de funcionar de inmediato.</string>
 </resources>

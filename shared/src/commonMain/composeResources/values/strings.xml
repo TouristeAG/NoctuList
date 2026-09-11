@@ -2297,4 +2297,23 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="guest_form_label_phone_default">Emergency phone</string>
     <string name="guest_form_label_people">People heading</string>
     <string name="guest_form_label_people_default">People on the guest list</string>
+    <string name="guest_form_edit_title">Edit guest list form</string>
+    <string name="guest_form_save_action">Save changes</string>
+    <string name="guest_form_management_title">Guest list forms</string>
+    <string name="guest_form_management_description">Open forms, answers waiting for review, and forms closed in the last 48 hours.</string>
+    <string name="guest_form_manage">Manage forms</string>
+    <string name="guest_form_search_placeholder">Search artist, event or venue</string>
+    <string name="guest_form_filter_open">Open</string>
+    <string name="guest_form_filter_pending">Pending</string>
+    <string name="guest_form_filter_closed">Closed</string>
+    <string name="guest_form_count">%1$d of %2$d forms</string>
+    <string name="guest_form_empty">No forms in this list.</string>
+    <string name="guest_form_status_open">Open</string>
+    <string name="guest_form_status_pending">Pending review</string>
+    <string name="guest_form_status_accepted">Accepted</string>
+    <string name="guest_form_status_rejected">Refused</string>
+    <string name="guest_form_status_expired">Closed</string>
+    <string name="guest_form_close_action">Close form</string>
+    <string name="guest_form_close_confirm_title">Close this form?</string>
+    <string name="guest_form_close_confirm_body">The public link for %1$s will stop working immediately.</string>
 </resources>

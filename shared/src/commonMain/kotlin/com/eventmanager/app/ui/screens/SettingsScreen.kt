@@ -10,6 +10,7 @@ expect fun SettingsScreen(
     onNavigateToJobTypeManagement: () -> Unit = {},
     onNavigateToVenueManagement: () -> Unit = {},
     onNavigateToSalesSheetItemManagement: () -> Unit = {},
+    onNavigateToGuestFormManagement: () -> Unit = {},
     variant: SettingsScreenVariant = SettingsScreenVariant.Full,
     modifier: Modifier = Modifier,
     onDesktopAdminNavLayoutChanged: () -> Unit = {},

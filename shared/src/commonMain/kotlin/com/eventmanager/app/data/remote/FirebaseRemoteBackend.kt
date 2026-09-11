@@ -4,6 +4,7 @@ import com.eventmanager.app.data.models.AccountTransfer
 import com.eventmanager.app.data.models.Guest
 import com.eventmanager.app.data.models.GuestForm
 import com.eventmanager.app.data.models.GuestFormStatus
+import com.eventmanager.app.data.models.guestFormRemoteStatusAlreadyMatches
 import com.eventmanager.app.data.models.Job
 import com.eventmanager.app.data.models.JobTypeConfig
 import com.eventmanager.app.data.models.ManualTemporaryGuestBatch
@@ -23,6 +24,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Firebase-mode remote backend. Uses Firestore when available; queues writes otherwise.
@@ -628,6 +630,11 @@ class FirebaseRemoteBackend(
                 return
             } catch (e: Exception) {
                 if (requireRemote) throw e
+                if (collection == "guestForms" &&
+                    guestFormWriteAlreadyOnServer(targetOrg, docId, stamped)
+                ) {
+                    return
+                }
                 if (FirestoreErrors.isPermissionDenied(e)) {
                     pendingWrites.enqueueUpsert(collection, docId, encodeMap(stamped), targetOrg)
                     notifySyncStatusChanged()
@@ -689,6 +696,17 @@ class FirebaseRemoteBackend(
                 }
                 pendingWrites.acknowledge(row.id)
             } catch (e: Exception) {
+                if (row.operation != "DELETE" &&
+                    row.collection == "guestForms" &&
+                    guestFormWriteAlreadyOnServer(
+                        trimmed,
+                        row.documentId,
+                        runCatching { decodeMap(row.payloadJson, trimmed) }.getOrDefault(emptyMap()),
+                    )
+                ) {
+                    pendingWrites.acknowledge(row.id)
+                    continue
+                }
                 pendingWrites.recordFailedAttempt(row.id)
                 notifySyncStatusChanged()
             }
@@ -733,6 +751,26 @@ class FirebaseRemoteBackend(
                 )
             }
         }
+    }
+
+    /**
+     * Close/expire can land on the server (GitLive set or desktop REST) even when a later
+     * waitForPendingWrites / transport timeout throws. Queuing that write again is what
+     * made the sync pill show "N pending" while the public form was already closed.
+     */
+    private suspend fun guestFormWriteAlreadyOnServer(
+        orgId: String,
+        docId: String,
+        data: Map<String, Any?>,
+    ): Boolean {
+        val attempted = data["status"]?.toString()
+        if (attempted.isNullOrBlank() || data.isEmpty()) return false
+        val remote = withTimeoutOrNull(8_000L) {
+            runCatching {
+                firestoreGateway.getDocumentFromServer(orgId, "guestForms", docId)
+            }.getOrNull()
+        } ?: return false
+        return guestFormRemoteStatusAlreadyMatches(attempted, remote["status"]?.toString())
     }
 
     private fun encodeMap(data: Map<String, Any?>): String =

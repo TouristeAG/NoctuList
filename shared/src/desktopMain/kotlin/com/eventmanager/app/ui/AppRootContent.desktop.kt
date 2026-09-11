@@ -144,6 +144,7 @@ actual fun AppRootContent(
         var showJobTypeManagement by nav::showJobTypeManagement
         var showVenueManagement by nav::showVenueManagement
         var showSalesSheetItemManagement by nav::showSalesSheetItemManagement
+        var showGuestFormManagement by nav::showGuestFormManagement
         var showPosAccountingReport by nav::showPosAccountingReport
         var showQRScanner by nav::showQRScanner
         var showVolunteerBenefits by remember { mutableStateOf<Volunteer?>(null) }
@@ -395,6 +396,7 @@ actual fun AppRootContent(
                     showJobTypeManagement = false
                     showVenueManagement = false
                     showSalesSheetItemManagement = false
+                    showGuestFormManagement = false
                     showPosAccountingReport = false
                 }
 
@@ -458,6 +460,7 @@ actual fun AppRootContent(
                             showJobTypeManagement = false
                             showVenueManagement = false
                             showSalesSheetItemManagement = false
+                            showGuestFormManagement = false
                             showPosAccountingReport = false
                             if (showQRScanner) showQRScanner = false
                             if (showSyncErrorDialog) viewModel.dismissSyncErrorDialog()
@@ -588,6 +591,7 @@ actual fun AppRootContent(
                             showJobTypeManagement = false
                             showVenueManagement = false
                             showSalesSheetItemManagement = false
+                            showGuestFormManagement = false
                             showPosAccountingReport = false
                         },
                         viewModel = viewModel,
@@ -610,6 +614,7 @@ actual fun AppRootContent(
                                 showJobTypeManagement -> DesktopJobTypeManagement(viewModel) { showJobTypeManagement = false }
                                 showVenueManagement -> DesktopVenueManagement(viewModel) { showVenueManagement = false }
                                 showSalesSheetItemManagement -> DesktopSalesSheetManagement(viewModel) { showSalesSheetItemManagement = false }
+                                showGuestFormManagement -> DesktopGuestFormManagement(viewModel) { showGuestFormManagement = false }
                                 showPosAccountingReport -> {
                                     val accountTransfers by viewModel.accountTransfers.collectAsState()
                                     val salesSheetItems by viewModel.salesSheetItems.collectAsState()
@@ -687,11 +692,16 @@ actual fun AppRootContent(
                                             viewModel.syncSalesSheetItemsWithTargetedUpdates()
                                             showSalesSheetItemManagement = true
                                         },
+                                        onNavigateToGuestFormManagement = {
+                                            viewModel.refreshGuestFormsFromRemote()
+                                            showGuestFormManagement = true
+                                        },
                                         onDesktopAdminNavLayoutChanged = { refreshAdminNavPreferences() },
                                         onFactoryResetComplete = {
                                             showJobTypeManagement = false
                                             showVenueManagement = false
                                             showSalesSheetItemManagement = false
+                                            showGuestFormManagement = false
                                             showPosAccountingReport = false
                                             showQRScanner = false
                                             showAdminAuth = false
@@ -1338,6 +1348,14 @@ private fun DesktopVenueManagement(viewModel: EventManagerViewModel, onBack: () 
             }
         },
         onBack = onBack
+    )
+}
+
+@Composable
+private fun DesktopGuestFormManagement(viewModel: EventManagerViewModel, onBack: () -> Unit) {
+    GuestFormManagementScreen(
+        viewModel = viewModel,
+        onBack = onBack,
     )
 }
 

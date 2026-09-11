@@ -2323,4 +2323,23 @@ D) Application ID（appId）
     <string name="guest_form_label_phone_default">緊急電話</string>
     <string name="guest_form_label_people">名單標題</string>
     <string name="guest_form_label_people_default">嘉賓名單上的人員</string>
+    <string name="guest_form_edit_title">編輯嘉賓名單表單</string>
+    <string name="guest_form_save_action">儲存變更</string>
+    <string name="guest_form_management_title">嘉賓名單表單</string>
+    <string name="guest_form_management_description">已開放的表單、待審核的回覆，以及過去 48 小時內關閉的表單。</string>
+    <string name="guest_form_manage">管理表單</string>
+    <string name="guest_form_search_placeholder">搜尋藝人、活動或場地</string>
+    <string name="guest_form_filter_open">開放</string>
+    <string name="guest_form_filter_pending">待審核</string>
+    <string name="guest_form_filter_closed">已關閉</string>
+    <string name="guest_form_count">%1$d / %2$d 個表單</string>
+    <string name="guest_form_empty">此列表中沒有表單。</string>
+    <string name="guest_form_status_open">開放</string>
+    <string name="guest_form_status_pending">待審核</string>
+    <string name="guest_form_status_accepted">已接受</string>
+    <string name="guest_form_status_rejected">已拒絕</string>
+    <string name="guest_form_status_expired">已關閉</string>
+    <string name="guest_form_close_action">關閉表單</string>
+    <string name="guest_form_close_confirm_title">關閉此表單？</string>
+    <string name="guest_form_close_confirm_body">%1$s 的公開連結將立即失效。</string>
 </resources>

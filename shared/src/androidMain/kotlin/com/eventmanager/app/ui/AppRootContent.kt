@@ -143,6 +143,7 @@ import com.eventmanager.app.ui.screens.WideWelcomeContent
 import com.eventmanager.app.ui.screens.performPosFlowExit
 import com.eventmanager.app.ui.screens.SalesSheetItemManagementScreen
 import com.eventmanager.app.ui.screens.VenueManagementScreen
+import com.eventmanager.app.ui.screens.GuestFormManagementScreen
 import com.eventmanager.app.ui.screens.VolunteerScreen
 import com.eventmanager.app.ui.theme.EventManagerTheme
 import com.eventmanager.app.ui.theme.ThemeMode
@@ -240,6 +241,7 @@ actual fun AppRootContent(
     var showJobTypeManagement by rememberSaveable { mutableStateOf(false) }
     var showVenueManagement by rememberSaveable { mutableStateOf(false) }
     var showSalesSheetItemManagement by rememberSaveable { mutableStateOf(false) }
+    var showGuestFormManagement by rememberSaveable { mutableStateOf(false) }
     var showPosAccountingReport by rememberSaveable { mutableStateOf(false) }
     var showQRScanner by rememberSaveable { mutableStateOf(false) }
     var showVolunteerBenefits: Volunteer? by remember { mutableStateOf(null) }
@@ -541,6 +543,7 @@ actual fun AppRootContent(
             showJobTypeManagement = false
             showVenueManagement = false
             showSalesSheetItemManagement = false
+            showGuestFormManagement = false
             showPosAccountingReport = false
         }
         val adminSessionHost = getAdminSessionHost(platformContext)
@@ -1008,6 +1011,7 @@ actual fun AppRootContent(
                                                 showJobTypeManagement = false
                                                 showVenueManagement = false
                                                 showSalesSheetItemManagement = false
+                                                showGuestFormManagement = false
                                                 showPosAccountingReport = false
                                                 // Very subtle haptic feedback for page change
                                                 performSubtleHaptic(vibrator)
@@ -1090,6 +1094,7 @@ actual fun AppRootContent(
                                             showJobTypeManagement = false
                                             showVenueManagement = false
                                             showSalesSheetItemManagement = false
+                                            showGuestFormManagement = false
                                             showPosAccountingReport = false
                                             // Very subtle haptic feedback for page change
                                             performSubtleHaptic(vibrator)
@@ -1144,6 +1149,7 @@ actual fun AppRootContent(
                         showJobTypeManagement = false
                         showVenueManagement = false
                         showSalesSheetItemManagement = false
+                        showGuestFormManagement = false
                         showPosAccountingReport = false
                     }
                     // Animated background
@@ -1230,6 +1236,7 @@ actual fun AppRootContent(
                                                 showJobTypeManagement = false
                                                 showVenueManagement = false
                                                 showSalesSheetItemManagement = false
+                                                showGuestFormManagement = false
                                                 showPosAccountingReport = false
                                                 // Very subtle haptic feedback for page change
                                                 performSubtleHaptic(capturedVibrator)
@@ -1245,6 +1252,7 @@ actual fun AppRootContent(
                                                 showJobTypeManagement = false
                                                 showVenueManagement = false
                                                 showSalesSheetItemManagement = false
+                                                showGuestFormManagement = false
                                                 showPosAccountingReport = false
                                                 // Very subtle haptic feedback for page change
                                                 performSubtleHaptic(capturedVibrator)
@@ -1269,6 +1277,7 @@ actual fun AppRootContent(
                     showJobTypeManagement -> "management:jobtype"
                     showVenueManagement -> "management:venue"
                     showSalesSheetItemManagement -> "management:sales-items"
+                    showGuestFormManagement -> "management:guest-forms"
                     showPosAccountingReport -> "management:pos-report"
                     else -> "tab:$selectedTab"
                 }
@@ -1344,6 +1353,11 @@ if (pageAnimationsEnabled) {
                                     showSalesSheetItemManagement = false
                                 }
                             }
+                            screenState == "management:guest-forms" -> key("guest_form_management") {
+                                GuestFormManagementScreenWithViewModel(viewModel) {
+                                    showGuestFormManagement = false
+                                }
+                            }
                             screenState == "management:pos-report" -> key("pos_accounting_report") {
                                 val accountTransfers by viewModel.accountTransfers.collectAsState()
                                 val salesSheetItems by viewModel.salesSheetItems.collectAsState()
@@ -1393,10 +1407,15 @@ if (pageAnimationsEnabled) {
                                         viewModel.syncSalesSheetItemsWithTargetedUpdates()
                                         showSalesSheetItemManagement = true
                                     },
+                                    onNavigateToGuestFormManagement = {
+                                        viewModel.refreshGuestFormsFromRemote()
+                                        showGuestFormManagement = true
+                                    },
                                     onFactoryResetComplete = {
                                         showJobTypeManagement = false
                                         showVenueManagement = false
                                         showSalesSheetItemManagement = false
+                                        showGuestFormManagement = false
                                         showPosAccountingReport = false
                                         showWelcome = false
                                         showAdminAuth = false
@@ -1428,6 +1447,11 @@ if (pageAnimationsEnabled) {
                             SalesSheetItemManagementScreenWithViewModel(viewModel) {
                                 println("Exiting Sales Sheet Item Management")
                                 showSalesSheetItemManagement = false
+                            }
+                        }
+                        showGuestFormManagement -> key("guest_form_management") {
+                            GuestFormManagementScreenWithViewModel(viewModel) {
+                                showGuestFormManagement = false
                             }
                         }
                         showPosAccountingReport -> key("pos_accounting_report") {
@@ -1479,10 +1503,15 @@ if (pageAnimationsEnabled) {
                                     viewModel.syncSalesSheetItemsWithTargetedUpdates()
                                     showSalesSheetItemManagement = true
                                 },
+                                onNavigateToGuestFormManagement = {
+                                    viewModel.refreshGuestFormsFromRemote()
+                                    showGuestFormManagement = true
+                                },
                                 onFactoryResetComplete = {
                                     showJobTypeManagement = false
                                     showVenueManagement = false
                                     showSalesSheetItemManagement = false
+                                    showGuestFormManagement = false
                                     showPosAccountingReport = false
                                     showWelcome = false
                                     showAdminAuth = false
@@ -3233,6 +3262,18 @@ fun VenueManagementScreenWithViewModel(
             }
         },
         onBack = _onBack
+    )
+}
+
+@Composable
+fun GuestFormManagementScreenWithViewModel(
+    viewModel: EventManagerViewModel,
+    _onBack: () -> Unit,
+) {
+    BackHandler { _onBack() }
+    GuestFormManagementScreen(
+        viewModel = viewModel,
+        onBack = _onBack,
     )
 }
 

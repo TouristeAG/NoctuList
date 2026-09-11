@@ -1459,6 +1459,9 @@
     <string name="guest_form_person_n">व्यक्ति %1$d</string>
     <string name="guest_form_settings_title">कलाकार गेस्टलिस्ट फ़ॉर्म (वैकल्पिक)</string>
     <string name="guest_form_settings_body">कलाकार अपनी गेस्टलिस्ट एक सार्वजनिक पेज पर भेजते हैं (Firebase Hosting, मुफ़्त)। साइट एक बार Firebase सेटअप गाइड से प्रकाशित करें।</string>
+    <string name="guest_form_management_title">गेस्टलिस्ट फ़ॉर्म</string>
+    <string name="guest_form_management_description">खुले फ़ॉर्म, समीक्षा की प्रतीक्षा में उत्तर, और पिछले 48 घंटों में बंद फ़ॉर्म।</string>
+    <string name="guest_form_manage">फ़ॉर्म प्रबंधित करें</string>
     <string name="guest_form_enable">कलाकार गेस्टलिस्ट फ़ॉर्म चालू करें</string>
     <string name="guest_form_site_url">साइट: %1$s</string>
     <string name="guest_form_export">फ़ॉर्म साइट एक्सपोर्ट करें</string>

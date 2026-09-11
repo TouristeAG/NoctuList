@@ -1454,6 +1454,9 @@
     <string name="guest_form_person_n">第 %1$d 人</string>
     <string name="guest_form_settings_title">艺人嘉宾名单表单（可选）</string>
     <string name="guest_form_settings_body">艺人在公开页面提交嘉宾名单（Firebase Hosting，免费）。请通过 Firebase 安装指南发布一次站点。</string>
+    <string name="guest_form_management_title">嘉宾名单表单</string>
+    <string name="guest_form_management_description">已开放的表单、待审核的回复，以及过去 48 小时内关闭的表单。</string>
+    <string name="guest_form_manage">管理表单</string>
     <string name="guest_form_enable">启用艺人嘉宾名单表单</string>
     <string name="guest_form_site_url">站点：%1$s</string>
     <string name="guest_form_export">导出表单站点</string>

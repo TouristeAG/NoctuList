@@ -15,6 +15,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
@@ -1595,6 +1596,7 @@ actual fun SettingsScreen(
     onNavigateToJobTypeManagement: () -> Unit,
     onNavigateToVenueManagement: () -> Unit,
     onNavigateToSalesSheetItemManagement: () -> Unit,
+    onNavigateToGuestFormManagement: () -> Unit,
     variant: SettingsScreenVariant,
     modifier: Modifier,
     onDesktopAdminNavLayoutChanged: () -> Unit,
@@ -4410,6 +4412,56 @@ actual fun SettingsScreen(
                     Icon(Icons.Default.Settings, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(context.getString(R.string.manage_venues))
+                }
+            }
+        }
+
+        if (guestFormsEnabled) {
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.Assignment,
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = context.getString(R.string.guest_form_management_title),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = context.getString(R.string.guest_form_management_description),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = onNavigateToGuestFormManagement,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Settings, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(context.getString(R.string.guest_form_manage))
+                    }
                 }
             }
         }

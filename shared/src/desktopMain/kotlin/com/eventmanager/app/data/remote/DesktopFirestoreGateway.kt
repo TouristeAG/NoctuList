@@ -491,13 +491,20 @@ internal class DesktopFirestoreGateway(
 
     private suspend fun tryGitLive(block: suspend () -> Unit): Boolean {
         if (transport == Transport.REST || !gitlive.isAvailable()) return false
-        val completed = withTimeoutOrNull(WRITE_TIMEOUT_MS) {
-            block()
-            true
+        return try {
+            val completed = withTimeoutOrNull(WRITE_TIMEOUT_MS) {
+                block()
+                true
+            }
+            if (completed == true) return true
+            markRestFallback("gitlive call timed out")
+            false
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            markRestFallback("gitlive call error: ${e.message}")
+            false
         }
-        if (completed == true) return true
-        markRestFallback("gitlive call timed out")
-        return false
     }
 
     private fun markRestFallback(reason: String) {

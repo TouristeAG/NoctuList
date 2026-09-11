@@ -26,6 +26,7 @@ class DesktopNavigationHolder(
     var showJobTypeManagement by mutableStateOf(false)
     var showVenueManagement by mutableStateOf(false)
     var showSalesSheetItemManagement by mutableStateOf(false)
+    var showGuestFormManagement by mutableStateOf(false)
     var showPosAccountingReport by mutableStateOf(false)
     var showQRScanner by mutableStateOf(false)
     var showAdminSetup by mutableStateOf(false)
@@ -53,6 +54,7 @@ class DesktopNavigationHolder(
                     it.adminCheckDone,
                     it.billeterieSection,
                     it.showBilleterieSettings,
+                    it.showGuestFormManagement,
                 )
             },
             restore = {
@@ -73,6 +75,7 @@ class DesktopNavigationHolder(
                     adminCheckDone = it[13] as Boolean
                     billeterieSection = it[14] as String
                     showBilleterieSettings = it[15] as Boolean
+                    showGuestFormManagement = (it.getOrNull(16) as? Boolean) ?: false
                 }
             }
         )

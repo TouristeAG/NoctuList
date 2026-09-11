@@ -2328,4 +2328,23 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="guest_form_label_phone_default">आपातकालीन फ़ोन</string>
     <string name="guest_form_label_people">सूची शीर्षक</string>
     <string name="guest_form_label_people_default">गेस्टलिस्ट पर व्यक्ति</string>
+    <string name="guest_form_edit_title">गेस्टलिस्ट फ़ॉर्म संपादित करें</string>
+    <string name="guest_form_save_action">परिवर्तन सहेजें</string>
+    <string name="guest_form_management_title">गेस्टलिस्ट फ़ॉर्म</string>
+    <string name="guest_form_management_description">खुले फ़ॉर्म, समीक्षा की प्रतीक्षा में उत्तर, और पिछले 48 घंटों में बंद फ़ॉर्म।</string>
+    <string name="guest_form_manage">फ़ॉर्म प्रबंधित करें</string>
+    <string name="guest_form_search_placeholder">कलाकार, इवेंट या स्थल खोजें</string>
+    <string name="guest_form_filter_open">खुले</string>
+    <string name="guest_form_filter_pending">लंबित</string>
+    <string name="guest_form_filter_closed">बंद</string>
+    <string name="guest_form_count">%1$d में से %2$d फ़ॉर्म</string>
+    <string name="guest_form_empty">इस सूची में कोई फ़ॉर्म नहीं है।</string>
+    <string name="guest_form_status_open">खुला</string>
+    <string name="guest_form_status_pending">समीक्षा लंबित</string>
+    <string name="guest_form_status_accepted">स्वीकृत</string>
+    <string name="guest_form_status_rejected">अस्वीकृत</string>
+    <string name="guest_form_status_expired">बंद</string>
+    <string name="guest_form_close_action">फ़ॉर्म बंद करें</string>
+    <string name="guest_form_close_confirm_title">यह फ़ॉर्म बंद करें?</string>
+    <string name="guest_form_close_confirm_body">%1$s का सार्वजनिक लिंक तुरंत काम करना बंद कर देगा।</string>
 </resources>

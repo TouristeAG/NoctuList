@@ -117,6 +117,7 @@ class EventManagerViewModel(
     private val pendingRemoteWriteDao: com.eventmanager.app.data.dao.PendingRemoteWriteDao? = null,
 ) : ViewModel() {
     private val benefitConsumeMutex = Mutex()
+    private val guestFormSweepMutex = Mutex()
     private companion object {
         const val VM_LOG_TAG = "EventManagerVM"
     }
@@ -1107,6 +1108,121 @@ class EventManagerViewModel(
     }
 
     /**
+     * Rewrites the parameters of an OPEN form and republishes it. Aborts if the row has already
+     * left OPEN (artist submit racing the admin save). [allowMultipleResponses] stays as stored.
+     */
+    fun updateGuestFormParameters(
+        form: GuestForm,
+        venueName: String,
+        eventName: String,
+        eventDateMillis: Long,
+        artistName: String,
+        offeredAccessIds: Set<String>,
+        accessMaxRequests: Map<String, Int> = emptyMap(),
+        maxGuests: Int,
+        expiryMode: GuestFormExpiry,
+        manualExpiryMillis: Long,
+        showInstitutionLogo: Boolean,
+        institutionLogoShape: GuestFormLogoShape = GuestFormLogoShape.ROUNDED,
+        institutionLogoInvert: Boolean = false,
+        guestLogoDataUri: String,
+        guestLogoShape: GuestFormLogoShape = GuestFormLogoShape.ROUNDED,
+        guestLogoInvert: Boolean = false,
+        askEmail: Boolean = true,
+        askPhone: Boolean = true,
+        prefillEmail: String,
+        prefillPhone: String,
+        fieldLabels: Map<String, String> = emptyMap(),
+        onUpdated: () -> Unit = {},
+    ) {
+        if (!isGuestFormFeaturesEnabled()) return
+        viewModelScope.launch {
+            try {
+                if (rejectIfCrudSoftLocked("updating a guest form")) return@launch
+                val current = repository.getGuestFormByFormIdAndOrg(form.formId, form.firebaseOrgId)
+                    ?: repository.getGuestFormByFormId(form.formId)
+                    ?: form
+                if (current.statusValue != GuestFormStatus.OPEN) {
+                    _syncError.value = "This form is no longer open and cannot be edited"
+                    return@launch
+                }
+                val now = System.currentTimeMillis()
+                val cappedMaxGuests = maxGuests.coerceIn(1, GuestForm.MAX_GUESTS_LIMIT)
+                val updated = current.copy(
+                    venueName = venueName.trim(),
+                    eventName = eventName.trim(),
+                    eventDateMillis = eventDateMillis,
+                    artistName = artistName.trim(),
+                    offeredAccessIds = GuestFormOfferedAccessCodec.encode(
+                        VenueAccessCatalog.resolve(
+                            _temporaryGuestVenueAccesses.value,
+                            offeredAccessIds.filter { it.isNotBlank() }.toSet(),
+                        ),
+                        accessMaxRequests,
+                        cappedMaxGuests,
+                    ),
+                    maxGuests = cappedMaxGuests,
+                    expiryMode = expiryMode.name,
+                    expiresAtMillis = resolveGuestFormExpiry(expiryMode, eventDateMillis, manualExpiryMillis),
+                    showInstitutionLogo = showInstitutionLogo,
+                    institutionLogoDataUri = if (showInstitutionLogo) {
+                        GuestFormLogoCodec.fitForFirestore(
+                            settingsManagerCached?.getInstitutionLogoPng().orEmpty(),
+                        )
+                    } else {
+                        ""
+                    },
+                    institutionLogoShape = institutionLogoShape.name,
+                    institutionLogoInvert = institutionLogoInvert,
+                    guestLogoDataUri = GuestFormLogoCodec.fitForFirestore(guestLogoDataUri),
+                    guestLogoShape = guestLogoShape.name,
+                    guestLogoInvert = guestLogoInvert,
+                    askEmail = askEmail,
+                    askPhone = askPhone,
+                    prefillEmail = if (askEmail) prefillEmail.trim() else "",
+                    prefillPhone = if (askPhone) prefillPhone.trim() else "",
+                    fieldLabelsJson = GuestFormFieldLabelsCodec.encode(fieldLabels),
+                    lastModified = now,
+                )
+                if (updated.wouldBeClosedOnPublicPage(now)) {
+                    _syncError.value =
+                        "This form would already be closed. Choose a later event date or expiry."
+                    return@launch
+                }
+                repository.updateGuestForm(updated)
+                syncCoordinator?.afterGuestFormSaved(updated)
+                withContext(Dispatchers.Main) { onUpdated() }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                println("Failed to update guest form: ${e.message}")
+                _syncError.value = "Failed to update guest form: ${e.message}"
+            }
+        }
+    }
+
+    /**
+     * Admin close of an OPEN form: the public link dies immediately. Multi-response children
+     * are left as-is so pending answers can still be reviewed on the guest list.
+     */
+    fun expireGuestForm(form: GuestForm) {
+        if (!isGuestFormFeaturesEnabled()) return
+        viewModelScope.launch {
+            try {
+                if (rejectIfCrudSoftLocked("closing a guest form")) return@launch
+                val current = repository.getGuestFormByFormIdAndOrg(form.formId, form.firebaseOrgId)
+                    ?: repository.getGuestFormByFormId(form.formId)
+                    ?: form
+                if (current.statusValue != GuestFormStatus.OPEN) return@launch
+                markGuestFormExpired(current, System.currentTimeMillis())
+            } catch (e: Exception) {
+                println("Failed to close guest form: ${e.message}")
+                _syncError.value = "Failed to update guest form: ${e.message}"
+            }
+        }
+    }
+
+    /**
      * Turns a reviewed answer into real temporary guests. [people] is passed in rather than read
      * from the form so an admin can edit the list before accepting it.
      */
@@ -1138,6 +1254,17 @@ class EventManagerViewModel(
     fun rejectGuestForm(form: GuestForm, reviewedBy: String = "") {
         if (!isGuestFormFeaturesEnabled()) return
         closeGuestForm(form, GuestFormStatus.REJECTED, reviewedBy)
+    }
+
+    private suspend fun markGuestFormExpired(form: GuestForm, now: Long) {
+        val expired = form.copy(
+            status = GuestFormStatus.EXPIRED.name,
+            institutionLogoDataUri = "",
+            guestLogoDataUri = "",
+            lastModified = now,
+        )
+        repository.updateGuestForm(expired)
+        syncCoordinator?.afterGuestFormSaved(expired)
     }
 
     /**
@@ -1220,33 +1347,28 @@ class EventManagerViewModel(
     private fun sweepExpiredGuestForms() {
         if (!isGuestFormFeaturesEnabled()) return
         viewModelScope.launch {
-            try {
-                val now = System.currentTimeMillis()
-                val snapshot = _guestForms.value
-                val pastRetention = snapshot.filter { it.isPastHardRetention(now) }
-                // Templates first so cascade can still find local children before they are swept.
-                val deletedIds = linkedSetOf<String>()
-                pastRetention
-                    .sortedByDescending { it.allowMultipleResponses && it.parentFormId.isBlank() }
-                    .forEach { form ->
-                        if (form.formId in deletedIds) return@forEach
-                        deletedIds += deleteGuestFormCascade(form)
-                    }
-                val retainedIds = deletedIds
-                snapshot
-                    .filter { it.formId !in retainedIds && it.isExpiredAt(now) }
-                    .forEach { form ->
-                        val expired = form.copy(
-                            status = GuestFormStatus.EXPIRED.name,
-                            institutionLogoDataUri = "",
-                            guestLogoDataUri = "",
-                            lastModified = now,
-                        )
-                        repository.updateGuestForm(expired)
-                        syncCoordinator?.afterGuestFormSaved(expired)
-                    }
-            } catch (e: Exception) {
-                println("Failed to sweep expired guest forms: ${e.message}")
+            guestFormSweepMutex.withLock {
+                try {
+                    val now = System.currentTimeMillis()
+                    val snapshot = _guestForms.value
+                    val pastRetention = snapshot.filter { it.isPastHardRetention(now) }
+                    // Templates first so cascade can still find local children before they are swept.
+                    val deletedIds = linkedSetOf<String>()
+                    pastRetention
+                        .sortedByDescending { it.allowMultipleResponses && it.parentFormId.isBlank() }
+                        .forEach { form ->
+                            if (form.formId in deletedIds) return@forEach
+                            deletedIds += deleteGuestFormCascade(form)
+                        }
+                    val retainedIds = deletedIds
+                    snapshot
+                        .filter { it.formId !in retainedIds && it.isExpiredAt(now) }
+                        .forEach { form ->
+                            markGuestFormExpired(form, now)
+                        }
+                } catch (e: Exception) {
+                    println("Failed to sweep expired guest forms: ${e.message}")
+                }
             }
         }
     }

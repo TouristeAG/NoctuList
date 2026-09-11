@@ -2328,4 +2328,23 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="guest_form_label_phone_default">Telephonum urgentiae</string>
     <string name="guest_form_label_people">Titulus hominum</string>
     <string name="guest_form_label_people_default">Personae in guestlist</string>
+    <string name="guest_form_edit_title">Formulam invitatorum muta</string>
+    <string name="guest_form_save_action">Mutationes serva</string>
+    <string name="guest_form_management_title">Formulæ invitatorum</string>
+    <string name="guest_form_management_description">Formulæ apertæ, responsa recognoscenda, et formulæ intra 48 horas clausæ.</string>
+    <string name="guest_form_manage">Formulas gere</string>
+    <string name="guest_form_search_placeholder">Artificem, eventum vel locum quære</string>
+    <string name="guest_form_filter_open">Apertæ</string>
+    <string name="guest_form_filter_pending">Pendentes</string>
+    <string name="guest_form_filter_closed">Clausæ</string>
+    <string name="guest_form_count">%1$d ex %2$d formulis</string>
+    <string name="guest_form_empty">Nullæ formulæ in hac indice.</string>
+    <string name="guest_form_status_open">Aperta</string>
+    <string name="guest_form_status_pending">Recognoscenda</string>
+    <string name="guest_form_status_accepted">Probata</string>
+    <string name="guest_form_status_rejected">Recusata</string>
+    <string name="guest_form_status_expired">Clausa</string>
+    <string name="guest_form_close_action">Formulam claude</string>
+    <string name="guest_form_close_confirm_title">Hanc formulam claudere?</string>
+    <string name="guest_form_close_confirm_body">Nexus publicus %1$s statim desinet.</string>
 </resources>

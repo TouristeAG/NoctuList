@@ -12,6 +12,7 @@ import com.eventmanager.app.data.models.GuestForm
 import com.eventmanager.app.data.models.GuestFormExpiry
 import com.eventmanager.app.data.models.GuestFormLogoShape
 import com.eventmanager.app.data.models.GuestFormStatus
+import com.eventmanager.app.data.models.shouldIgnoreRemoteOpenGuestForm
 import com.eventmanager.app.data.models.statusValue
 import com.eventmanager.app.data.models.Job
 import com.eventmanager.app.data.models.JobType
@@ -367,11 +368,10 @@ object FirestoreChangeApplier {
             return
         }
         if (existing != null &&
-            existing.statusValue != GuestFormStatus.OPEN &&
-            remoteStatus == GuestFormStatus.OPEN.name &&
-            existing.lastModified >= remoteLm
+            shouldIgnoreRemoteOpenGuestForm(existing.statusValue, remoteStatus)
         ) {
-            // Do not resurrect a decided/pending form from a stale OPEN snapshot.
+            // Do not resurrect a decided/pending form from an OPEN snapshot, even if that
+            // snapshot carries a newer lastModified (admin parameter edit racing a submit).
             return
         }
         val remote = GuestForm(

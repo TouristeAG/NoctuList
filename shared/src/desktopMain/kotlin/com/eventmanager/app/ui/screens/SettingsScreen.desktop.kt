@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.*
@@ -110,6 +111,7 @@ actual fun SettingsScreen(
     onNavigateToJobTypeManagement: () -> Unit,
     onNavigateToVenueManagement: () -> Unit,
     onNavigateToSalesSheetItemManagement: () -> Unit,
+    onNavigateToGuestFormManagement: () -> Unit,
     variant: SettingsScreenVariant,
     modifier: Modifier,
     onDesktopAdminNavLayoutChanged: () -> Unit,
@@ -852,6 +854,15 @@ actual fun SettingsScreen(
                     buttonLabel = stringResource(Res.string.manage_venues),
                     onClick = onNavigateToVenueManagement,
                 )
+                if (guestFormsEnabled) {
+                    DesktopManagementCard(
+                        title = stringResource(Res.string.guest_form_management_title),
+                        description = stringResource(Res.string.guest_form_management_description),
+                        icon = Icons.AutoMirrored.Filled.Assignment,
+                        buttonLabel = stringResource(Res.string.guest_form_manage),
+                        onClick = onNavigateToGuestFormManagement,
+                    )
+                }
                 if (temporaryGuestFeaturesEnabled) {
                     Spacer(Modifier.height(8.dp))
                     Text(

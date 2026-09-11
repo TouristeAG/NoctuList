@@ -238,4 +238,91 @@ class GuestFormTest {
         val huge = "x".repeat(GuestFormLogoCodec.MAX_DATA_URI_CHARS + 20)
         assertEquals("", GuestFormLogoCodec.fitForFirestore(huge))
     }
+
+    @Test
+    fun recentlyClosed_usesReviewedAtForDecidedForms() {
+        val now = 2_000_000_000_000L
+        val window = GuestForm.RECENTLY_CLOSED_WINDOW_MS
+        val accepted = GuestForm(
+            formId = "a1",
+            status = GuestFormStatus.ACCEPTED.name,
+            reviewedAt = now - 1_000L,
+            lastModified = now - window * 2,
+        )
+        assertTrue(accepted.isListedAsRecentlyClosed(now))
+        assertEquals(now - 1_000L, accepted.closedAtMillis())
+
+        val stale = accepted.copy(reviewedAt = now - window - 1L)
+        assertTrue(!stale.isListedAsRecentlyClosed(now))
+    }
+
+    @Test
+    fun recentlyClosed_excludesPendingAndOpen() {
+        val now = 2_000_000_000_000L
+        val pending = GuestForm(
+            formId = "p1",
+            status = GuestFormStatus.PENDING_REVIEW.name,
+            lastModified = now,
+            submittedAt = now,
+        )
+        val open = GuestForm(
+            formId = "o1",
+            status = GuestFormStatus.OPEN.name,
+            expiresAtMillis = now + 10_000L,
+        )
+        assertTrue(!pending.isListedAsRecentlyClosed(now))
+        assertTrue(pending.isListedAsPending())
+        assertTrue(!open.isListedAsRecentlyClosed(now))
+        assertTrue(open.isListedAsOpen(now))
+    }
+
+    @Test
+    fun recentlyClosed_expiredUsesLastModified() {
+        val now = 2_000_000_000_000L
+        val expired = GuestForm(
+            formId = "e1",
+            status = GuestFormStatus.EXPIRED.name,
+            lastModified = now - 3_600_000L,
+        )
+        assertEquals(now - 3_600_000L, expired.closedAtMillis())
+        assertTrue(expired.isListedAsRecentlyClosed(now))
+    }
+
+    @Test
+    fun listedAsOpen_excludesResponseChildrenAndExpired() {
+        val now = 2_000_000_000_000L
+        val child = GuestForm(
+            formId = "c1",
+            status = GuestFormStatus.OPEN.name,
+            parentFormId = "parent",
+            expiresAtMillis = now + 1L,
+        )
+        val expiredOpen = GuestForm(
+            formId = "x1",
+            status = GuestFormStatus.OPEN.name,
+            expiresAtMillis = now - 1L,
+        )
+        assertTrue(!child.isListedAsOpen(now))
+        assertTrue(!expiredOpen.isListedAsOpen(now))
+        assertTrue(expiredOpen.isListedAsRecentlyClosed(now))
+    }
+
+    @Test
+    fun shouldIgnoreRemoteOpen_neverResurrectsDecidedOrPending() {
+        assertTrue(shouldIgnoreRemoteOpenGuestForm(GuestFormStatus.PENDING_REVIEW, "OPEN"))
+        assertTrue(shouldIgnoreRemoteOpenGuestForm(GuestFormStatus.ACCEPTED, "OPEN"))
+        assertTrue(shouldIgnoreRemoteOpenGuestForm(GuestFormStatus.REJECTED, "OPEN"))
+        assertTrue(shouldIgnoreRemoteOpenGuestForm(GuestFormStatus.EXPIRED, "OPEN"))
+        assertTrue(!shouldIgnoreRemoteOpenGuestForm(GuestFormStatus.OPEN, "OPEN"))
+        assertTrue(!shouldIgnoreRemoteOpenGuestForm(GuestFormStatus.PENDING_REVIEW, "PENDING_REVIEW"))
+    }
+
+    @Test
+    fun remoteStatusAlreadyMatches_skipsEnqueueWhenServerHasAttemptedStatus() {
+        assertTrue(guestFormRemoteStatusAlreadyMatches("EXPIRED", "EXPIRED"))
+        assertTrue(guestFormRemoteStatusAlreadyMatches("expired", "EXPIRED"))
+        assertTrue(!guestFormRemoteStatusAlreadyMatches("EXPIRED", "OPEN"))
+        assertTrue(!guestFormRemoteStatusAlreadyMatches("EXPIRED", null))
+        assertTrue(!guestFormRemoteStatusAlreadyMatches("", "EXPIRED"))
+    }
 }

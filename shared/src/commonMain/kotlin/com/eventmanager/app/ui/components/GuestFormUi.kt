@@ -95,7 +95,11 @@ import com.eventmanager.app.data.models.ManualTemporaryGuestEntry
 import com.eventmanager.app.data.models.VenueAccess
 import com.eventmanager.app.data.models.VenueAccessCatalog
 import com.eventmanager.app.data.models.VenueEntity
+import com.eventmanager.app.data.models.expiryModeValue
+import com.eventmanager.app.data.models.guestLogoShapeValue
+import com.eventmanager.app.data.models.institutionLogoShapeValue
 import com.eventmanager.app.data.models.isResponseChild
+import com.eventmanager.app.data.models.offeredAccessIdSet
 import com.eventmanager.app.data.models.offeredAccesses
 import com.eventmanager.app.data.models.toManualEntries
 import com.eventmanager.app.data.sync.InstitutionLogoStore
@@ -291,32 +295,68 @@ fun GuestFormCreatorDialog(
     venues: List<VenueEntity>,
     venueAccesses: List<VenueAccess>,
     onDismiss: () -> Unit,
+    editing: GuestForm? = null,
 ) {
     LaunchedEffect(Unit) { viewModel.ensureInstitutionLogoFromEmail() }
     val institutionLogo by viewModel.institutionLogoPng.collectAsState()
     val hasInstitutionLogo = institutionLogo.isNotBlank()
-    var venueName by remember { mutableStateOf<String?>(null) }
-    var eventName by remember { mutableStateOf("") }
-    var eventDateMillis by remember { mutableStateOf<Long?>(null) }
-    var artistName by remember { mutableStateOf("") }
-    var offeredIds by remember { mutableStateOf(setOf<String>()) }
-    var accessMaxRequests by remember { mutableStateOf(mapOf<String, String>()) }
-    var maxGuests by remember { mutableStateOf(GuestForm.DEFAULT_MAX_GUESTS.toString()) }
-    var allowMultipleResponses by remember { mutableStateOf(false) }
-    var expiryMode by remember { mutableStateOf(GuestFormExpiry.AFTER_RESPONSE) }
-    var manualExpiry by remember { mutableStateOf<Long?>(null) }
-    var showInstitutionLogo by remember { mutableStateOf(hasInstitutionLogo) }
-    LaunchedEffect(hasInstitutionLogo) { if (hasInstitutionLogo) showInstitutionLogo = true }
-    var institutionLogoShape by remember { mutableStateOf(GuestFormLogoShape.ROUNDED) }
-    var institutionLogoInvert by remember { mutableStateOf(false) }
-    var guestLogoUri by remember { mutableStateOf("") }
-    var guestLogoShape by remember { mutableStateOf(GuestFormLogoShape.ROUNDED) }
-    var guestLogoInvert by remember { mutableStateOf(false) }
-    var prefillEmail by remember { mutableStateOf("") }
-    var prefillPhone by remember { mutableStateOf("") }
-    var askEmail by remember { mutableStateOf(true) }
-    var askPhone by remember { mutableStateOf(true) }
-    var fieldLabels by remember { mutableStateOf(mapOf<String, String>()) }
+    val editingAccesses = remember(editing) { editing?.offeredAccesses().orEmpty() }
+    var venueName by remember {
+        mutableStateOf(editing?.venueName?.takeIf { it.isNotBlank() })
+    }
+    var eventName by remember { mutableStateOf(editing?.eventName.orEmpty()) }
+    var eventDateMillis by remember { mutableStateOf(editing?.eventDateMillis?.takeIf { it > 0L }) }
+    var artistName by remember { mutableStateOf(editing?.artistName.orEmpty()) }
+    var offeredIds by remember { mutableStateOf(editing?.offeredAccessIdSet().orEmpty()) }
+    var accessMaxRequests by remember {
+        mutableStateOf(
+            editingAccesses.associate { access ->
+                access.id to if (access.maxRequests > 0) access.maxRequests.toString() else ""
+            },
+        )
+    }
+    var maxGuests by remember {
+        mutableStateOf((editing?.maxGuests ?: GuestForm.DEFAULT_MAX_GUESTS).toString())
+    }
+    var allowMultipleResponses by remember {
+        mutableStateOf(editing?.allowMultipleResponses ?: false)
+    }
+    var expiryMode by remember {
+        mutableStateOf(editing?.expiryModeValue ?: GuestFormExpiry.AFTER_RESPONSE)
+    }
+    var manualExpiry by remember {
+        mutableStateOf(
+            editing?.takeIf { it.expiryModeValue == GuestFormExpiry.MANUAL }
+                ?.expiresAtMillis
+                ?.takeIf { it > 0L },
+        )
+    }
+    var showInstitutionLogo by remember {
+        mutableStateOf(editing?.showInstitutionLogo ?: hasInstitutionLogo)
+    }
+    LaunchedEffect(hasInstitutionLogo) {
+        if (editing == null && hasInstitutionLogo) showInstitutionLogo = true
+    }
+    var institutionLogoShape by remember {
+        mutableStateOf(editing?.institutionLogoShapeValue ?: GuestFormLogoShape.ROUNDED)
+    }
+    var institutionLogoInvert by remember {
+        mutableStateOf(editing?.institutionLogoInvert ?: false)
+    }
+    var guestLogoUri by remember { mutableStateOf(editing?.guestLogoDataUri.orEmpty()) }
+    var guestLogoShape by remember {
+        mutableStateOf(editing?.guestLogoShapeValue ?: GuestFormLogoShape.ROUNDED)
+    }
+    var guestLogoInvert by remember { mutableStateOf(editing?.guestLogoInvert ?: false) }
+    var prefillEmail by remember { mutableStateOf(editing?.prefillEmail.orEmpty()) }
+    var prefillPhone by remember { mutableStateOf(editing?.prefillPhone.orEmpty()) }
+    var askEmail by remember { mutableStateOf(editing?.askEmail ?: true) }
+    var askPhone by remember { mutableStateOf(editing?.askPhone ?: true) }
+    var fieldLabels by remember {
+        mutableStateOf(
+            editing?.let { GuestFormFieldLabelsCodec.decode(it.fieldLabelsJson) } ?: emptyMap(),
+        )
+    }
     var created by remember { mutableStateOf<GuestForm?>(null) }
     val venueAccessesForVenue = remember(venueAccesses, venueName) {
         VenueAccessCatalog.forVenue(venueAccesses, venueName.orEmpty())
@@ -344,7 +384,14 @@ fun GuestFormCreatorDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(Res.string.guest_form_create_title)) },
+        title = {
+            Text(
+                stringResource(
+                    if (editing != null) Res.string.guest_form_edit_title
+                    else Res.string.guest_form_create_title,
+                ),
+            )
+        },
         text = {
             Column(
                 modifier = Modifier
@@ -444,6 +491,7 @@ fun GuestFormCreatorDialog(
                     Switch(
                         checked = allowMultipleResponses,
                         onCheckedChange = { allowMultipleResponses = it },
+                        enabled = editing == null,
                     )
                 }
                 Text(
@@ -538,36 +586,70 @@ fun GuestFormCreatorDialog(
                     val date = eventDateMillis ?: return@Button
                     val artist = artistName.trim()
                     if (artist.isEmpty()) return@Button
-                    viewModel.createGuestForm(
-                        venueName = venueName.orEmpty(),
-                        eventName = eventName.trim(),
-                        eventDateMillis = date,
-                        artistName = artist,
-                        offeredAccessIds = offeredIds,
-                        accessMaxRequests = offeredIds.associateWith { id ->
-                            accessMaxRequests[id]?.toIntOrNull() ?: 0
-                        },
-                        maxGuests = parsedMaxGuests,
-                        expiryMode = expiryMode,
-                        manualExpiryMillis = manualExpiry ?: 0L,
-                        showInstitutionLogo = showInstitutionLogo && hasInstitutionLogo,
-                        institutionLogoShape = institutionLogoShape,
-                        institutionLogoInvert = institutionLogoInvert,
-                        guestLogoDataUri = guestLogoUri,
-                        guestLogoShape = guestLogoShape,
-                        guestLogoInvert = guestLogoInvert,
-                        askEmail = askEmail,
-                        askPhone = askPhone,
-                        prefillEmail = prefillEmail,
-                        prefillPhone = prefillPhone,
-                        fieldLabels = fieldLabels,
-                        allowMultipleResponses = allowMultipleResponses,
-                        onCreated = { created = it },
-                    )
+                    val accessCaps = offeredIds.associateWith { id ->
+                        accessMaxRequests[id]?.toIntOrNull() ?: 0
+                    }
+                    val existing = editing
+                    if (existing != null) {
+                        viewModel.updateGuestFormParameters(
+                            form = existing,
+                            venueName = venueName.orEmpty(),
+                            eventName = eventName.trim(),
+                            eventDateMillis = date,
+                            artistName = artist,
+                            offeredAccessIds = offeredIds,
+                            accessMaxRequests = accessCaps,
+                            maxGuests = parsedMaxGuests,
+                            expiryMode = expiryMode,
+                            manualExpiryMillis = manualExpiry ?: 0L,
+                            showInstitutionLogo = showInstitutionLogo && hasInstitutionLogo,
+                            institutionLogoShape = institutionLogoShape,
+                            institutionLogoInvert = institutionLogoInvert,
+                            guestLogoDataUri = guestLogoUri,
+                            guestLogoShape = guestLogoShape,
+                            guestLogoInvert = guestLogoInvert,
+                            askEmail = askEmail,
+                            askPhone = askPhone,
+                            prefillEmail = prefillEmail,
+                            prefillPhone = prefillPhone,
+                            fieldLabels = fieldLabels,
+                            onUpdated = onDismiss,
+                        )
+                    } else {
+                        viewModel.createGuestForm(
+                            venueName = venueName.orEmpty(),
+                            eventName = eventName.trim(),
+                            eventDateMillis = date,
+                            artistName = artist,
+                            offeredAccessIds = offeredIds,
+                            accessMaxRequests = accessCaps,
+                            maxGuests = parsedMaxGuests,
+                            expiryMode = expiryMode,
+                            manualExpiryMillis = manualExpiry ?: 0L,
+                            showInstitutionLogo = showInstitutionLogo && hasInstitutionLogo,
+                            institutionLogoShape = institutionLogoShape,
+                            institutionLogoInvert = institutionLogoInvert,
+                            guestLogoDataUri = guestLogoUri,
+                            guestLogoShape = guestLogoShape,
+                            guestLogoInvert = guestLogoInvert,
+                            askEmail = askEmail,
+                            askPhone = askPhone,
+                            prefillEmail = prefillEmail,
+                            prefillPhone = prefillPhone,
+                            fieldLabels = fieldLabels,
+                            allowMultipleResponses = allowMultipleResponses,
+                            onCreated = { created = it },
+                        )
+                    }
                 },
                 enabled = !artistName.isBlank() && eventDateMillis != null,
             ) {
-                Text(stringResource(Res.string.guest_form_create_action))
+                Text(
+                    stringResource(
+                        if (editing != null) Res.string.guest_form_save_action
+                        else Res.string.guest_form_create_action,
+                    ),
+                )
             }
         },
         dismissButton = {

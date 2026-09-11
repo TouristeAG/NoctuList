@@ -2323,4 +2323,23 @@ D) Application ID（appId）
     <string name="guest_form_label_phone_default">紧急电话</string>
     <string name="guest_form_label_people">名单标题</string>
     <string name="guest_form_label_people_default">嘉宾名单上的人员</string>
+    <string name="guest_form_edit_title">编辑嘉宾名单表单</string>
+    <string name="guest_form_save_action">保存更改</string>
+    <string name="guest_form_management_title">嘉宾名单表单</string>
+    <string name="guest_form_management_description">已开放的表单、待审核的回复，以及过去 48 小时内关闭的表单。</string>
+    <string name="guest_form_manage">管理表单</string>
+    <string name="guest_form_search_placeholder">搜索艺人、活动或场地</string>
+    <string name="guest_form_filter_open">开放</string>
+    <string name="guest_form_filter_pending">待审核</string>
+    <string name="guest_form_filter_closed">已关闭</string>
+    <string name="guest_form_count">%1$d / %2$d 个表单</string>
+    <string name="guest_form_empty">此列表中没有表单。</string>
+    <string name="guest_form_status_open">开放</string>
+    <string name="guest_form_status_pending">待审核</string>
+    <string name="guest_form_status_accepted">已接受</string>
+    <string name="guest_form_status_rejected">已拒绝</string>
+    <string name="guest_form_status_expired">已关闭</string>
+    <string name="guest_form_close_action">关闭表单</string>
+    <string name="guest_form_close_confirm_title">关闭此表单？</string>
+    <string name="guest_form_close_confirm_body">%1$s 的公开链接将立即失效。</string>
 </resources>

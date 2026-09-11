@@ -1454,6 +1454,9 @@
     <string name="guest_form_person_n">Persona %1$d</string>
     <string name="guest_form_settings_title">Formularios de guestlist de artista (opcional)</string>
     <string name="guest_form_settings_body">Los artistas envían su guestlist en una página pública (Firebase Hosting, gratis). Publicad el sitio una vez desde la guía de instalación de Firebase.</string>
+    <string name="guest_form_management_title">Formularios de guestlist</string>
+    <string name="guest_form_management_description">Formularios abiertos, respuestas pendientes de revisión y formularios cerrados en las últimas 48 horas.</string>
+    <string name="guest_form_manage">Gestionar formularios</string>
     <string name="guest_form_enable">Activar los formularios de guestlist</string>
     <string name="guest_form_site_url">Sitio: %1$s</string>
     <string name="guest_form_export">Exportar el sitio de formularios</string>

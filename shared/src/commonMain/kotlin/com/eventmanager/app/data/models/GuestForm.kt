@@ -138,6 +138,9 @@ data class GuestForm(
         /** Hard retention: forms are deleted at end of day this many days after the event. */
         const val MAX_DAYS_AFTER_EVENT = 3
 
+        /** Display window for recently closed forms on the admin management page. */
+        const val RECENTLY_CLOSED_WINDOW_MS = 48L * 60 * 60 * 1000
+
         /** Mirrors the ceiling the Firestore rules enforce on `submissionJson`. */
         const val MAX_SUBMISSION_CHARS = 20_000
     }
@@ -170,6 +173,60 @@ val GuestForm.isClosed: Boolean get() = statusValue != GuestFormStatus.OPEN
 
 fun GuestForm.isExpiredAt(nowMillis: Long): Boolean =
     statusValue == GuestFormStatus.OPEN && expiresAtMillis in 1 until nowMillis
+
+/**
+ * Instant used to decide whether a form belongs in the "closed < 48h" management bucket.
+ * Pending answers are never closed in that sense.
+ */
+fun GuestForm.closedAtMillis(): Long = when (statusValue) {
+    GuestFormStatus.ACCEPTED, GuestFormStatus.REJECTED ->
+        if (reviewedAt > 0L) reviewedAt else lastModified
+    GuestFormStatus.EXPIRED -> lastModified
+    GuestFormStatus.OPEN -> if (expiresAtMillis > 0L) expiresAtMillis else lastModified
+    GuestFormStatus.PENDING_REVIEW -> 0L
+}
+
+/** Open templates still answerable on the public page (excludes multi-response children). */
+fun GuestForm.isListedAsOpen(nowMillis: Long): Boolean =
+    statusValue == GuestFormStatus.OPEN && !isExpiredAt(nowMillis) && parentFormId.isBlank()
+
+fun GuestForm.isListedAsPending(): Boolean = awaitsReview
+
+fun GuestForm.isListedAsRecentlyClosed(
+    nowMillis: Long,
+    windowMs: Long = GuestForm.RECENTLY_CLOSED_WINDOW_MS,
+): Boolean {
+    if (awaitsReview || isListedAsOpen(nowMillis)) return false
+    val closedAt = closedAtMillis()
+    if (closedAt <= 0L) return false
+    return closedAt in (nowMillis - windowMs)..nowMillis
+}
+
+/**
+ * True when a remote OPEN snapshot must not overwrite a local form that already left OPEN
+ * (artist answer or review). [lastModified] is ignored: an admin parameter edit must never
+ * resurrect a decided or pending form.
+ */
+fun shouldIgnoreRemoteOpenGuestForm(
+    existingStatus: GuestFormStatus,
+    remoteStatus: String?,
+): Boolean = existingStatus != GuestFormStatus.OPEN &&
+    remoteStatus == GuestFormStatus.OPEN.name
+
+/**
+ * True when a failed guest-form upsert must not be queued: Firestore already has the
+ * status we tried to write (typically EXPIRED after close). Waiting on the global SDK
+ * write queue often fails after [set] already landed, which used to leave
+ * "Firebase · N pending" while the public page was already closed.
+ */
+fun guestFormRemoteStatusAlreadyMatches(
+    attemptedStatus: String?,
+    remoteStatus: String?,
+): Boolean {
+    val attempted = attemptedStatus?.trim().orEmpty()
+    val remote = remoteStatus?.trim().orEmpty()
+    return attempted.isNotEmpty() && attempted.equals(remote, ignoreCase = true)
+}
 
 /** True when a newly created form would already fail the public-page OPEN + unexpired check. */
 fun GuestForm.wouldBeClosedOnPublicPage(nowMillis: Long): Boolean =

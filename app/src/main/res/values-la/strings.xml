@@ -1459,6 +1459,9 @@
     <string name="guest_form_person_n">Persona %1$d</string>
     <string name="guest_form_settings_title">Formulæ invitatorum (optio)</string>
     <string name="guest_form_settings_body">Artifices album suum in pagina publica mittunt (Firebase Hosting, gratuitum). Situm semel per Firebase institutionis ducem prome.</string>
+    <string name="guest_form_management_title">Formulæ invitatorum</string>
+    <string name="guest_form_management_description">Formulæ apertæ, responsa recognoscenda, et formulæ intra 48 horas clausæ.</string>
+    <string name="guest_form_manage">Formulas gere</string>
     <string name="guest_form_enable">Formulas invitatorum accendere</string>
     <string name="guest_form_site_url">Situs: %1$s</string>
     <string name="guest_form_export">Situm formularum exportare</string>

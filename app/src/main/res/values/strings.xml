@@ -1459,6 +1459,9 @@
     <string name="guest_form_person_n">Person %1$d</string>
     <string name="guest_form_settings_title">Artist guest list forms (optional)</string>
     <string name="guest_form_settings_body">Artists submit their guest list on a public page (Firebase Hosting, free). Publish the site once from the Firebase setup guide.</string>
+    <string name="guest_form_management_title">Guest list forms</string>
+    <string name="guest_form_management_description">Open forms, answers waiting for review, and forms closed in the last 48 hours.</string>
+    <string name="guest_form_manage">Manage forms</string>
     <string name="guest_form_enable">Enable artist guest list forms</string>
     <string name="guest_form_site_url">Site: %1$s</string>
     <string name="guest_form_export">Export the form site</string>

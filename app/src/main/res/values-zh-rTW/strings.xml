@@ -1454,6 +1454,9 @@
     <string name="guest_form_person_n">第 %1$d 人</string>
     <string name="guest_form_settings_title">藝人嘉賓名單表單（選用）</string>
     <string name="guest_form_settings_body">藝人在公開頁面提交嘉賓名單（Firebase Hosting，免費）。請透過 Firebase 安裝指南發布一次網站。</string>
+    <string name="guest_form_management_title">嘉賓名單表單</string>
+    <string name="guest_form_management_description">已開放的表單、待審核的回覆，以及過去 48 小時內關閉的表單。</string>
+    <string name="guest_form_manage">管理表單</string>
     <string name="guest_form_enable">啟用藝人嘉賓名單表單</string>
     <string name="guest_form_site_url">網站：%1$s</string>
     <string name="guest_form_export">匯出表單網站</string>
