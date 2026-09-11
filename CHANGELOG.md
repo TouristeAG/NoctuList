@@ -4,6 +4,26 @@ All notable changes to NoctuList are documented here. Version numbers follow [Se
 
 ---
 
+## 2.1.5 — 2026-09-11
+
+Optional patch: a Catalog page to manage artist guest forms, and a Firebase sync-pill fix after closing a form.
+
+### Features
+
+- **Artist forms** — admin Catalog in Settings lists open forms, pending reviews (read-only here), and forms closed in the last 48 hours. Open forms can be edited, have their public link copied, or be closed (status `EXPIRED`). Multi-response templates expire without rejecting already-submitted children.
+
+### Fixes
+
+- **Firebase** — closing a form no longer queues leftover `pending_remote_writes` after the public document is already `EXPIRED`. The sync pill no longer shows “N pending” for writes that already landed. A remote `OPEN` snapshot cannot reopen a decided or pending form.
+
+### Upgrade notes
+
+- **Version code:** 32 (`2.1.5`). Minimum supported code remains **27** (2.1.0) — optional update for 2.1.0–2.1.4.
+- **Database / Firestore rules / Hosting:** unchanged.
+- **Publishing:** tag `2.1.5`, then copy `version.json` to the AdminList update manifest. Do not raise `minSupportedVersionCode`.
+
+---
+
 ## 2.1.4 — 2026-09-09
 
 Optional patch: customizable public labels on artist guest forms, and a publish fix so forms with logos actually reach Firestore.
