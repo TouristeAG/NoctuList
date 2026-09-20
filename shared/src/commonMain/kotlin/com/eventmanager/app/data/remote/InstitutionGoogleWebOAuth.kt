@@ -35,13 +35,38 @@ object InstitutionGoogleWebOAuth {
         "https://www.googleapis.com/auth/userinfo.profile",
     )
 
+    const val SCOPE_DOCS_READONLY = "https://www.googleapis.com/auth/documents.readonly"
+    const val SCOPE_SHEETS_READONLY = "https://www.googleapis.com/auth/spreadsheets.readonly"
+    const val SCOPE_CONTACTS_READONLY = "https://www.googleapis.com/auth/contacts.readonly"
+    const val SCOPE_DRIVE_METADATA_READONLY = "https://www.googleapis.com/auth/drive.metadata.readonly"
+
+    /**
+     * Requested on top of [OAUTH_SCOPES] when the institution enabled Drive shift import.
+     * Docs/Sheets/Contacts are "sensitive" scopes; [SCOPE_DRIVE_METADATA_READONLY] is "restricted"
+     * and only powers the recent-files list — the import degrades to URL paste without it.
+     */
+    val DRIVE_IMPORT_SCOPES: List<String> = listOf(
+        SCOPE_DOCS_READONLY,
+        SCOPE_SHEETS_READONLY,
+        SCOPE_CONTACTS_READONLY,
+        SCOPE_DRIVE_METADATA_READONLY,
+    )
+
+    fun scopesFor(driveImport: Boolean): List<String> =
+        if (driveImport) OAUTH_SCOPES + DRIVE_IMPORT_SCOPES else OAUTH_SCOPES
+
+    /** Google returns the granted scopes space-separated; blanks and duplicates are common. */
+    fun parseGrantedScopes(raw: String?): Set<String> =
+        raw.orEmpty().split(' ', '\n', '\t').filter { it.isNotBlank() }.toSet()
+
     fun buildAuthorizationUrl(
         webClientId: String,
         redirectUri: String,
         promptConsent: Boolean = true,
         forceAccountPicker: Boolean = false,
+        driveImport: Boolean = false,
     ): String {
-        val scope = OAUTH_SCOPES.joinToString(" ")
+        val scope = scopesFor(driveImport).joinToString(" ")
         val params = linkedMapOf(
             "client_id" to webClientId.trim(),
             "redirect_uri" to redirectUri,

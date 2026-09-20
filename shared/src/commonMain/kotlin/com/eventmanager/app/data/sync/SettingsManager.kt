@@ -195,6 +195,9 @@ class SettingsManager(private val storage: AppStorage) {
         private const val KEY_FIREBASE_GCM_SENDER_ID = "firebase_gcm_sender_id"
         private const val KEY_FIREBASE_STORAGE_BUCKET = "firebase_storage_bucket"
         private const val KEY_PROFILE_PHOTOS_ENABLED = "profile_photos_enabled"
+        private const val KEY_DRIVE_IMPORT_ENABLED = "drive_import_enabled"
+        private const val KEY_DRIVE_IMPORT_GRANTED_SCOPES = "drive_import_granted_scopes"
+        private const val KEY_DRIVE_IMPORT_SCOPE_ERROR = "drive_import_scope_error"
         private const val KEY_POS_SUBCATEGORIES = "pos_subcategories"
         private const val KEY_TEMP_GUEST_VENUE_ACCESSES = "temp_guest_venue_accesses"
         private const val KEY_TEMP_GUEST_CREDITS_ENABLED = "temp_guest_credits_enabled"
@@ -339,6 +342,43 @@ class SettingsManager(private val storage: AppStorage) {
     fun setProfilePhotosEnabled(enabled: Boolean) {
         storage.putBoolean(KEY_PROFILE_PHOTOS_ENABLED, enabled)
         touchInstitutionSettingLastModified(InstitutionSettingsKeys.PROFILE_PHOTOS_ENABLED)
+    }
+
+    /**
+     * Opt-in shift import from Google Docs/Sheets. Default off: enabling it makes Google Sign-In
+     * ask for Drive/Docs/Sheets/People scopes, which an institution must first enable in its own
+     * Cloud project and declare on its OAuth consent screen.
+     */
+    fun isDriveImportEnabled(): Boolean = storage.getBoolean(KEY_DRIVE_IMPORT_ENABLED, false)
+    fun setDriveImportEnabled(enabled: Boolean) {
+        storage.putBoolean(KEY_DRIVE_IMPORT_ENABLED, enabled)
+        if (!enabled) setDriveImportGrantedScopes(emptySet())
+        touchInstitutionSettingLastModified(InstitutionSettingsKeys.DRIVE_IMPORT_ENABLED)
+    }
+
+    /**
+     * Scopes Google actually granted at the last sign-in. Google may hand back a subset of what
+     * was asked for, so the import UI reads this rather than assuming the request succeeded.
+     * Device-local — never part of the institution settings.
+     */
+    fun getDriveImportGrantedScopes(): Set<String> =
+        storage.getString(KEY_DRIVE_IMPORT_GRANTED_SCOPES, "")
+            .orEmpty()
+            .split(' ')
+            .filter { it.isNotBlank() }
+            .toSet()
+
+    fun setDriveImportGrantedScopes(scopes: Set<String>) {
+        storage.putString(KEY_DRIVE_IMPORT_GRANTED_SCOPES, scopes.joinToString(" "))
+    }
+
+    /**
+     * Why the last sign-in could not obtain the Drive scopes (usually the institution's Cloud
+     * project has not enabled the APIs). Shown in Settings; never blocks signing in.
+     */
+    fun getDriveImportScopeError(): String = storage.getString(KEY_DRIVE_IMPORT_SCOPE_ERROR, "").orEmpty()
+    fun setDriveImportScopeError(message: String) {
+        storage.putString(KEY_DRIVE_IMPORT_SCOPE_ERROR, message)
     }
 
     /** Admin-defined POS sub-categories, serialized by [PosSubcategoryCatalog]. */
@@ -972,6 +1012,7 @@ class SettingsManager(private val storage: AppStorage) {
             }
         }
         touchIfUnset(InstitutionSettingsKeys.PROFILE_PHOTOS_ENABLED, isProfilePhotosEnabled())
+        touchIfUnset(InstitutionSettingsKeys.DRIVE_IMPORT_ENABLED, isDriveImportEnabled())
         touchIfUnset(InstitutionSettingsKeys.ANNOUNCEMENTS_NON_ADMIN_SEND_ENABLED, isAnnouncementsNonAdminSendEnabled())
         touchIfUnset(InstitutionSettingsKeys.SHEETS_MIRROR_ENABLED, isSheetsMirrorEnabled())
         touchIfUnset(
@@ -1022,6 +1063,7 @@ class SettingsManager(private val storage: AppStorage) {
             InstitutionSettingsKeys.ALLOWED_EMAIL_DOMAINS ->
                 com.eventmanager.app.data.remote.FirebaseEmailDomainPolicy.serialize(getAllowedEmailDomains())
             InstitutionSettingsKeys.PROFILE_PHOTOS_ENABLED -> isProfilePhotosEnabled().toString()
+            InstitutionSettingsKeys.DRIVE_IMPORT_ENABLED -> isDriveImportEnabled().toString()
             InstitutionSettingsKeys.ANNOUNCEMENTS_NON_ADMIN_SEND_ENABLED ->
                 isAnnouncementsNonAdminSendEnabled().toString()
             InstitutionSettingsKeys.POS_SUBCATEGORIES ->
@@ -1148,6 +1190,12 @@ class SettingsManager(private val storage: AppStorage) {
             }
             InstitutionSettingsKeys.PROFILE_PHOTOS_ENABLED ->
                 storage.putBoolean(KEY_PROFILE_PHOTOS_ENABLED, value.trim().equals("true", ignoreCase = true))
+            InstitutionSettingsKeys.DRIVE_IMPORT_ENABLED -> {
+                val enabled = value.trim().equals("true", ignoreCase = true)
+                storage.putBoolean(KEY_DRIVE_IMPORT_ENABLED, enabled)
+                // Scopes are per-device: a remote "on" does not mean this device ever consented.
+                if (!enabled) setDriveImportGrantedScopes(emptySet())
+            }
             InstitutionSettingsKeys.ANNOUNCEMENTS_NON_ADMIN_SEND_ENABLED ->
                 storage.putBoolean(
                     KEY_ANNOUNCEMENTS_NON_ADMIN_SEND_ENABLED,

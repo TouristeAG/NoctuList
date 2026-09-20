@@ -670,7 +670,11 @@ actual fun AppRootContent(
                                         scrollBehavior = settingsManager.getScrollBehavior(),
                                         onAddJob = { viewModel.addJob(it) },
                                         onUpdateJob = { viewModel.updateJob(it) },
-                                        onDeleteJob = { viewModel.deleteJob(it) }
+                                        onDeleteJob = { viewModel.deleteJob(it) },
+                                        driveImportAvailable = viewModel.isDriveShiftImportAvailable(),
+                                        onImportJobs = { importedJobs, onComplete ->
+                                            viewModel.importJobs(importedJobs, onComplete)
+                                        },
                                     )
                                     AdminTab.Benefits -> BenefitsScreen(
                                         volunteers = volunteers,

@@ -37,6 +37,7 @@ import com.eventmanager.app.ui.util.shiftTimeLabel
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import com.eventmanager.app.ui.components.driveimport.DriveShiftImportEntry
 import java.text.Collator
 import java.text.SimpleDateFormat
 import java.util.*
@@ -51,7 +52,9 @@ fun JobTrackingScreen(
     onAddJob: (Job) -> Unit,
     onUpdateJob: (Job) -> Unit,
     onDeleteJob: (Job) -> Unit,
-    scrollBehavior: String = SettingsManager.FULL_SCROLL
+    scrollBehavior: String = SettingsManager.FULL_SCROLL,
+    driveImportAvailable: Boolean = false,
+    onImportJobs: (List<Job>, (Result<Int>) -> Unit) -> Unit = { _, callback -> callback(Result.success(0)) },
 ) {
     val platformContext = LocalPlatformContext.current
     var showAddDialog by remember { mutableStateOf(false) }
@@ -522,7 +525,9 @@ fun JobTrackingScreen(
             onConfirm = { job ->
                 onAddJob(job)
                 showAddDialog = false
-            }
+            },
+            driveImportAvailable = driveImportAvailable,
+            onImportJobs = onImportJobs,
         )
     }
     
@@ -688,7 +693,9 @@ fun AddJobDialog(
     jobTypeConfigs: List<JobTypeConfig>,
     venues: List<VenueEntity>,
     onDismiss: () -> Unit,
-    onConfirm: (Job) -> Unit
+    onConfirm: (Job) -> Unit,
+    driveImportAvailable: Boolean = false,
+    onImportJobs: (List<Job>, (Result<Int>) -> Unit) -> Unit = { _, callback -> callback(Result.success(0)) },
 ) {
     val platformContext = LocalPlatformContext.current
     var selectedVolunteer by remember { mutableStateOf<Volunteer?>(null) }
@@ -767,6 +774,18 @@ fun AddJobDialog(
                         .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(if (isCompact) 12.dp else 16.dp)
             ) {
+                // Bulk import from a Google Docs/Sheets planning document or meeting minutes.
+                if (driveImportAvailable) {
+                    DriveShiftImportEntry(
+                        volunteers = volunteersAlphabetical,
+                        jobTypeConfigs = jobTypeConfigs,
+                        venues = venues,
+                        defaultDateTime = selectedDateTime,
+                        onImport = onImportJobs,
+                        onImported = onDismiss,
+                    )
+                }
+
                 // Volunteer selection with search
                 SearchableDropdown(
                     items = volunteersAlphabetical,

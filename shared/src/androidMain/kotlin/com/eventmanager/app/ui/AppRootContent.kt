@@ -2676,7 +2676,11 @@ fun JobTrackingScreenWithViewModel(viewModel: EventManagerViewModel) {
                     println("Job deletion failed: ${e.message}")
                 }
             }
-        }
+        },
+        driveImportAvailable = viewModel.isDriveShiftImportAvailable(),
+        onImportJobs = { importedJobs, onComplete ->
+            viewModel.importJobs(importedJobs, onComplete)
+        },
     )
 }
 

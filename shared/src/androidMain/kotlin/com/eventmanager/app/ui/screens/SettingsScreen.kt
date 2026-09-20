@@ -1746,6 +1746,7 @@ actual fun SettingsScreen(
     val syncStatusMessage by viewModel.syncStatusMessage.collectAsState()
     val showSyncStatusDialog by viewModel.showSyncStatusDialog.collectAsState()
     val profilePhotosEnabled by viewModel.profilePhotosUploadEnabled.collectAsState()
+    var driveImportEnabled by remember { mutableStateOf(viewModel.isDriveImportEnabled()) }
     val guestFormsEnabled by viewModel.guestFormsEnabled.collectAsState()
     val billeterieSendEnabled by viewModel.announcementsBilleterieSendEnabled.collectAsState()
     
@@ -1971,6 +1972,11 @@ actual fun SettingsScreen(
                     settingsManager = settingsManager,
                     profilePhotosEnabled = profilePhotosEnabled,
                     onProfilePhotosEnabledChange = { viewModel.setProfilePhotosEnabled(it) },
+                    driveImportEnabled = driveImportEnabled,
+                    onDriveImportEnabledChange = {
+                        driveImportEnabled = it
+                        viewModel.setDriveImportEnabled(it)
+                    },
                     guestFormsEnabled = guestFormsEnabled,
                     onGuestFormsEnabledChange = { viewModel.setGuestFormsEnabled(it) },
                     guestFormSiteOrigin = viewModel.guestFormSiteOrigin(),

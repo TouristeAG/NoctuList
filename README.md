@@ -14,7 +14,7 @@ Data lives locally in **Room (SQLite)** and syncs across devices through either 
 ## Features
 
 - **Guest lists** — permanent guests, one-off event guests, invitations, notes, venue assignment, optional NFC cards
-- **Volunteer roster & shifts** — profiles, job history, configurable job types
+- **Volunteer roster & shifts** — profiles, job history, configurable job types; Firebase Desktop can import shifts from a Google Doc or Sheet (see [GOOGLE_DRIVE_IMPORT_SETUP.md](GOOGLE_DRIVE_IMPORT_SETUP.md))
 - **Benefit system** — ranks and perks (Nova, Galaxie, Orion, Veteran, manual rewards) driven by job-type configuration
 - **Billeterie** — door / ticketing: guest views for the night, QR/barcode and NFC check-in, optional POS
 - **Internal POS** — merch / bar / entry against guest or volunteer account credit, cash remainder, purchase credit buffer, bar discounts by rank
@@ -90,7 +90,7 @@ Each device uses one live backend. Existing installs default to **Sheets** until
 - Several org IDs can share one Firebase project; switch orgs from the admin / billeterie UI
 - Publish [`firebase/firestore.rules`](firebase/firestore.rules) from Firebase Console (or the in-app tutorial clipboard) before going live
 
-See [FIREBASE_SETUP.md](FIREBASE_SETUP.md) for consoles, redirect URIs, GDPR notes, and the smoke checklist.
+See [FIREBASE_SETUP.md](FIREBASE_SETUP.md) for consoles, redirect URIs, GDPR notes, and the smoke checklist. Optional Drive shift import: [GOOGLE_DRIVE_IMPORT_SETUP.md](GOOGLE_DRIVE_IMPORT_SETUP.md).
 
 ### Google Sheets
 

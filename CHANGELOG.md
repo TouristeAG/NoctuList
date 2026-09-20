@@ -4,6 +4,24 @@ All notable changes to NoctuList are documented here. Version numbers follow [Se
 
 ---
 
+## 2.1.6 — 2026-09-20
+
+Optional patch: import shifts from a Google Doc or Sheet (Desktop + Firebase).
+
+### Features
+
+- **Drive import** — from Add a shift, pick a recent Doc/Sheet or paste its URL. `@` mentions (Google chips and plain text) are matched to NoctuList volunteers, then reviewed (profile, shift type, date) before bulk create. Unique first names are preselected with low confidence; first + last name with medium confidence. Several people sharing a first name stay unselected.
+- **Drive import** — loading animation while recent Drive files are fetched.
+
+### Upgrade notes
+
+- **Version code:** 33 (`2.1.6`). Minimum supported code remains **27** (2.1.0) — optional update for 2.1.0–2.1.5.
+- **Database / Firestore rules / Hosting:** unchanged.
+- **Platform:** Desktop only in this release. The institution Google Cloud project must enable Drive, Docs, Sheets and People APIs; see `GOOGLE_DRIVE_IMPORT_SETUP.md`.
+- **Publishing:** tag `2.1.6`, then copy `version.json` to the AdminList update manifest. Do not raise `minSupportedVersionCode`.
+
+---
+
 ## 2.1.5 — 2026-09-11
 
 Optional patch: a Catalog page to manage artist guest forms, and a Firebase sync-pill fix after closing a form.

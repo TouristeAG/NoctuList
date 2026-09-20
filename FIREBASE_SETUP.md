@@ -89,6 +89,54 @@ If you want profile photos later:
 
 Without that toggle, there is no upload UI and no Storage `put`. You can copy the same rules from the in-app Firebase help (`?`).
 
+### Optional — import shifts from Google Docs/Sheets (Desktop)
+
+A shorter operator-facing copy of this section lives in [GOOGLE_DRIVE_IMPORT_SETUP.md](GOOGLE_DRIVE_IMPORT_SETUP.md).
+
+**Skip this section unless you want to create shifts from a planning document or meeting minutes.**
+With it enabled, an admin opens **Admin → Shifts → Add Shift → Import**, picks a Google Doc or
+Sheet, and NoctuList extracts every person mentioned in it (contact smart chips and plain
+`@Name` text), matches each one to a volunteer, and creates the shifts in one pass.
+
+This is **Desktop only** for now. Android discards the OAuth refresh token during sign-in, so
+there is no durable credential to call the Google APIs with; the entry point simply does not
+appear there.
+
+1. Google Cloud Console (**the same project as your Web OAuth client**) → **APIs & Services →
+   Library** → enable all four: **Google Drive API**, **Google Docs API**, **Google Sheets API**,
+   **People API**.
+2. **APIs & Services → OAuth consent screen → Data access** → add the four scopes:
+
+   | Scope | Google class | Used for |
+   | --- | --- | --- |
+   | `.../auth/documents.readonly` | Sensitive | Reading a Google Doc |
+   | `.../auth/spreadsheets.readonly` | Sensitive | Reading a Google Sheet |
+   | `.../auth/contacts.readonly` | Sensitive | Phone/birthday enrichment, which sharpens matching |
+   | `.../auth/drive.metadata.readonly` | **Restricted** | The "Recent documents" list only |
+
+3. In NoctuList **Settings → Firebase**, turn on **Import shifts from Google documents** (off by
+   default). The setting syncs to every device in the organization.
+4. **Sign out and sign in again.** The extra scopes are requested as part of Google Sign-In, so an
+   existing session does not have them. If you skip this, the import dialog offers a *Grant Google
+   Drive access* button that runs the consent flow on its own.
+
+Notes on the scopes:
+
+- `drive.metadata.readonly` is a **restricted** scope. If you publish the consent screen to
+  *External / In production*, Google requires a (paid) third-party security assessment for
+  restricted scopes. Two ways to avoid that: keep the app in **Testing** with your admins as test
+  users, or use an **Internal** consent screen if you have Google Workspace. You can also simply
+  not grant it — everything still works, the **Recent documents** tab disappears, and admins paste
+  a document link instead.
+- Google may grant a subset of what was requested. NoctuList records what it actually received and
+  enables only the matching parts of the import.
+- If the whole authorization is rejected (typically because the APIs above are not enabled),
+  **sign-in is retried automatically with the basic identity scopes so login never breaks**. The
+  reason is shown under the toggle in Settings → Firebase.
+- Sheets person chips carry only an email address, with no display name — that is a Sheets API
+  limitation. The People API enrichment fills the name back in; without the contacts scope, the
+  review list shows the email's local part instead.
+
 ### Android Sign-In (Web OAuth loopback — no SHA-1 per institution)
 
 Phones and tablets use **Chrome Custom Tabs** with your institution **Web OAuth client** — the **same localhost redirect URIs as Desktop**. You do **not** register an Android app or SHA-1 in each institution Firebase project.

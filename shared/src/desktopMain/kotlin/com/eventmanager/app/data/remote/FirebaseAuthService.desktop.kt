@@ -17,6 +17,27 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.StringReader
 
+/** Result of one interactive authorization round-trip, so scope failures stay distinguishable. */
+internal sealed class DesktopAuthorizeOutcome {
+    data class Success(
+        val credential: Credential,
+        val idToken: String?,
+        val grantedScopes: Set<String>,
+    ) : DesktopAuthorizeOutcome()
+
+    /** Google refused the requested scope set — retryable with fewer scopes. */
+    data class ScopeRejected(val detail: String) : DesktopAuthorizeOutcome()
+
+    data class Failure(val message: String) : DesktopAuthorizeOutcome()
+}
+
+/** Where the desktop sign-in parks its refreshable Google credential. */
+internal object DesktopGoogleCredentialStore {
+    const val USER_ID = "firebase-user"
+    fun tokenDir(platformContext: PlatformContext): File =
+        File(platformContext.appDataDir, "firebase_auth_tokens").also { it.mkdirs() }
+}
+
 /**
  * Desktop Google OAuth → GitLive Firebase Auth.
  * Always runs an interactive OAuth code exchange so an OpenID [id_token] is present
@@ -27,7 +48,7 @@ class DesktopFirebaseAuthService(
 ) : FirebaseAuthService {
     private val settings by lazy { SettingsManager(platformContext) }
     private val accountFile = File(platformContext.appDataDir, "firebase_auth_account.properties")
-    private val tokenDir = File(platformContext.appDataDir, "firebase_auth_tokens").also { it.mkdirs() }
+    private val tokenDir = DesktopGoogleCredentialStore.tokenDir(platformContext)
     private val idTokenFile = File(platformContext.appDataDir, "firebase_auth_id_token.txt")
 
     override suspend fun signInWithGoogle(): FirebaseAuthResult = withContext(Dispatchers.IO) {
@@ -69,90 +90,49 @@ class DesktopFirebaseAuthService(
                 GsonFactory.getDefaultInstance(),
                 StringReader(buildInstitutionWebClientSecretsJson(webClientId, webClientSecret)),
             )
-            val flow = GoogleAuthorizationCodeFlow.Builder(
-                GoogleNetHttpTransport.newTrustedTransport(),
-                GsonFactory.getDefaultInstance(),
-                secrets,
-                listOf(
-                    "openid",
-                    "email",
-                    "profile",
-                    "https://www.googleapis.com/auth/userinfo.email",
-                    "https://www.googleapis.com/auth/userinfo.profile",
-                ),
+
+            val wantsDriveImport = settings.isDriveImportEnabled()
+            var authorized = authorizeInteractively(
+                secrets = secrets,
+                scopes = InstitutionGoogleWebOAuth.scopesFor(wantsDriveImport),
             )
-                .setDataStoreFactory(FileDataStoreFactory(tokenDir))
-                .setAccessType("offline")
-                .build()
-
-            // Always interactive for Firebase — stored refresh tokens do not yield id_token.
-            runCatching { flow.credentialDataStore?.delete("firebase-user") }
-
-            val receiver = DesktopOAuthLoopbackReceiver()
-            val redirectUri = try {
-                receiver.start()
-            } catch (e: Exception) {
-                return@withContext FirebaseAuthResult.Error(
-                    e.message ?: "Could not start the local OAuth callback server (ports 8889–9090). " +
-                        "Close any other NoctuList window still waiting for Google Sign-In, then retry.",
+            // An institution that has not enabled the Drive/Docs/Sheets APIs in its own Cloud
+            // project gets the whole request rejected. Sign-in must still work for them.
+            var scopeRejection: String? = null
+            if (wantsDriveImport && authorized is DesktopAuthorizeOutcome.ScopeRejected) {
+                scopeRejection = (authorized as DesktopAuthorizeOutcome.ScopeRejected).detail
+                authorized = authorizeInteractively(
+                    secrets = secrets,
+                    scopes = InstitutionGoogleWebOAuth.OAUTH_SCOPES,
                 )
             }
-            val idToken: String?
-            val credential: Credential
-            try {
-                val authUrl = flow.newAuthorizationUrl()
-                    .setRedirectUri(redirectUri)
-                    .set("prompt", "consent")
-                    .build()
-                runCatching { openExternalBrowser(authUrl) }
-                    .getOrElse { browserError ->
-                        return@withContext FirebaseAuthResult.Error(
-                            "Could not open the system browser for Google Sign-In (${browserError.message}). " +
-                                "Copy this URL into Safari/Chrome, complete sign-in, then return to NoctuList:\n$authUrl",
-                        )
-                    }
-                when (val loopback = receiver.waitForResult()) {
-                    is DesktopLoopbackOAuthResult.Success -> {
-                        val tokenResponse: GoogleTokenResponse = flow.newTokenRequest(loopback.code)
-                            .setRedirectUri(redirectUri)
-                            .execute()
-                        idToken = tokenResponse.idToken
-                        credential = flow.createAndStoreCredential(tokenResponse, "firebase-user")
-                        if (!idToken.isNullOrBlank()) {
-                            writeOwnerOnlyText(idTokenFile, idToken)
-                        }
-                    }
-                    is DesktopLoopbackOAuthResult.OAuthError -> {
-                        val detail = loopback.description?.takeIf { it.isNotBlank() } ?: loopback.error
-                        return@withContext FirebaseAuthResult.Error("Google Sign-In failed: $detail")
-                    }
-                    DesktopLoopbackOAuthResult.TimedOut -> {
-                        return@withContext FirebaseAuthResult.Error(
-                            "Google Sign-In timed out. Complete sign-in in the browser, then try again.",
-                        )
-                    }
-                    DesktopLoopbackOAuthResult.Cancelled -> {
-                        return@withContext FirebaseAuthResult.Error("Google Sign-In cancelled.")
-                    }
-                }
-            } catch (e: Exception) {
-                val msg = e.message.orEmpty()
-                if (msg.contains("redirect_uri_mismatch", ignoreCase = true) ||
-                    msg.contains("redirect_uri", ignoreCase = true)
-                ) {
-                    return@withContext FirebaseAuthResult.Error(
-                        "redirect_uri_mismatch: Google rejected callback $redirectUri. " +
-                            "In Cloud Console → APIs & Services → Credentials → your Web OAuth client → " +
-                            "Authorized redirect URIs, add exactly: $redirectUri " +
-                            "(also add http://localhost:8888/Callback, http://localhost:8765/Callback, " +
-                            "http://localhost:9090/Callback). Save, wait ~1 minute, retry Sign-In.",
-                    )
-                }
-                return@withContext FirebaseAuthResult.Error(msg.ifBlank { "Desktop Google Sign-In failed" })
-            } finally {
-                runCatching { receiver.stop() }
+
+            val success = when (val outcome = authorized) {
+                is DesktopAuthorizeOutcome.Success -> outcome
+                is DesktopAuthorizeOutcome.ScopeRejected ->
+                    return@withContext FirebaseAuthResult.Error("Google Sign-In failed: ${outcome.detail}")
+                is DesktopAuthorizeOutcome.Failure ->
+                    return@withContext FirebaseAuthResult.Error(outcome.message)
             }
 
+            if (wantsDriveImport) {
+                val granted = success.grantedScopes
+                val missing = InstitutionGoogleWebOAuth.DRIVE_IMPORT_SCOPES.filterNot { it in granted }
+                settings.setDriveImportGrantedScopes(granted)
+                settings.setDriveImportScopeError(
+                    when {
+                        scopeRejection != null -> scopeRejection
+                        missing.isEmpty() -> ""
+                        else -> "Scopes not granted: ${missing.joinToString(", ")}"
+                    },
+                )
+            } else {
+                settings.setDriveImportGrantedScopes(emptySet())
+                settings.setDriveImportScopeError("")
+            }
+
+            val idToken: String? = success.idToken
+            val credential: Credential = success.credential
             val accessToken = credential.accessToken
             val resolvedEmail = fetchOAuthUserEmail(credential)
                 ?: return@withContext FirebaseAuthResult.Error("Could not resolve Google account email")
@@ -203,6 +183,110 @@ class DesktopFirebaseAuthService(
         }
     }
 
+    /**
+     * One interactive browser round-trip for [scopes]. Split out from [signInWithGoogle] so the
+     * caller can retry with fewer scopes when Google rejects the optional Drive ones.
+     */
+    private fun authorizeInteractively(
+        secrets: GoogleClientSecrets,
+        scopes: List<String>,
+    ): DesktopAuthorizeOutcome {
+        val flow = GoogleAuthorizationCodeFlow.Builder(
+            GoogleNetHttpTransport.newTrustedTransport(),
+            GsonFactory.getDefaultInstance(),
+            secrets,
+            scopes,
+        )
+            .setDataStoreFactory(FileDataStoreFactory(tokenDir))
+            .setAccessType("offline")
+            .build()
+
+        // Always interactive for Firebase — stored refresh tokens do not yield id_token.
+        runCatching { flow.credentialDataStore?.delete(DesktopGoogleCredentialStore.USER_ID) }
+
+        val receiver = DesktopOAuthLoopbackReceiver()
+        val redirectUri = try {
+            receiver.start()
+        } catch (e: Exception) {
+            return DesktopAuthorizeOutcome.Failure(
+                e.message ?: "Could not start the local OAuth callback server (ports 8889–9090). " +
+                    "Close any other NoctuList window still waiting for Google Sign-In, then retry.",
+            )
+        }
+        try {
+            val authUrl = flow.newAuthorizationUrl()
+                .setRedirectUri(redirectUri)
+                .set("prompt", "consent")
+                .build()
+            runCatching { openExternalBrowser(authUrl) }
+                .getOrElse { browserError ->
+                    return DesktopAuthorizeOutcome.Failure(
+                        "Could not open the system browser for Google Sign-In (${browserError.message}). " +
+                            "Copy this URL into Safari/Chrome, complete sign-in, then return to NoctuList:\n$authUrl",
+                    )
+                }
+            when (val loopback = receiver.waitForResult()) {
+                is DesktopLoopbackOAuthResult.Success -> {
+                    val tokenResponse: GoogleTokenResponse = flow.newTokenRequest(loopback.code)
+                        .setRedirectUri(redirectUri)
+                        .execute()
+                    val idToken = tokenResponse.idToken
+                    val credential = flow.createAndStoreCredential(tokenResponse, DesktopGoogleCredentialStore.USER_ID)
+                    if (!idToken.isNullOrBlank()) {
+                        writeOwnerOnlyText(idTokenFile, idToken)
+                    }
+                    return DesktopAuthorizeOutcome.Success(
+                        credential = credential,
+                        idToken = idToken,
+                        // Google may grant a subset; fall back to what we asked for when silent.
+                        grantedScopes = InstitutionGoogleWebOAuth.parseGrantedScopes(tokenResponse.scope)
+                            .ifEmpty { scopes.toSet() },
+                    )
+                }
+                is DesktopLoopbackOAuthResult.OAuthError -> {
+                    val detail = loopback.description?.takeIf { it.isNotBlank() } ?: loopback.error
+                    return if (isScopeRejection(loopback.error, loopback.description)) {
+                        DesktopAuthorizeOutcome.ScopeRejected(detail)
+                    } else {
+                        DesktopAuthorizeOutcome.Failure("Google Sign-In failed: $detail")
+                    }
+                }
+                DesktopLoopbackOAuthResult.TimedOut -> return DesktopAuthorizeOutcome.Failure(
+                    "Google Sign-In timed out. Complete sign-in in the browser, then try again.",
+                )
+                DesktopLoopbackOAuthResult.Cancelled ->
+                    return DesktopAuthorizeOutcome.Failure("Google Sign-In cancelled.")
+            }
+        } catch (e: Exception) {
+            val msg = e.message.orEmpty()
+            if (isScopeRejection(msg, null)) {
+                return DesktopAuthorizeOutcome.ScopeRejected(msg)
+            }
+            if (msg.contains("redirect_uri_mismatch", ignoreCase = true) ||
+                msg.contains("redirect_uri", ignoreCase = true)
+            ) {
+                return DesktopAuthorizeOutcome.Failure(
+                    "redirect_uri_mismatch: Google rejected callback $redirectUri. " +
+                        "In Cloud Console → APIs & Services → Credentials → your Web OAuth client → " +
+                        "Authorized redirect URIs, add exactly: $redirectUri " +
+                        "(also add http://localhost:8888/Callback, http://localhost:8765/Callback, " +
+                        "http://localhost:9090/Callback). Save, wait ~1 minute, retry Sign-In.",
+                )
+            }
+            return DesktopAuthorizeOutcome.Failure(msg.ifBlank { "Desktop Google Sign-In failed" })
+        } finally {
+            runCatching { receiver.stop() }
+        }
+    }
+
+    private fun isScopeRejection(error: String?, description: String?): Boolean {
+        val haystack = "${error.orEmpty()} ${description.orEmpty()}"
+        return haystack.contains("invalid_scope", ignoreCase = true) ||
+            haystack.contains("access_denied", ignoreCase = true) ||
+            haystack.contains("admin_policy_enforced", ignoreCase = true) ||
+            haystack.contains("has not been used in project", ignoreCase = true)
+    }
+
     private fun fetchOAuthUserEmail(credential: Credential): String? = runCatching {
         val transport = GoogleNetHttpTransport.newTrustedTransport()
         val jsonFactory = GsonFactory.getDefaultInstance()
@@ -245,6 +329,7 @@ class DesktopFirebaseAuthService(
             tokenDir.deleteRecursively()
             tokenDir.mkdirs()
             settings.setFirebaseAuthEmail("")
+            settings.setDriveImportGrantedScopes(emptySet())
         }
     }
 

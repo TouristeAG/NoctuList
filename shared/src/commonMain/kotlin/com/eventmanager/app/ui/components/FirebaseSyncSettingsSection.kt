@@ -89,6 +89,9 @@ import com.eventmanager.app.resources.sheets_migrate_card_body
 import com.eventmanager.app.resources.sheets_migrate_card_title
 import com.eventmanager.app.resources.sheets_migrate_to_firebase
 import com.eventmanager.app.resources.firebase_tutorial_help_cd
+import com.eventmanager.app.resources.drive_import_settings_description
+import com.eventmanager.app.resources.drive_import_settings_scope_error
+import com.eventmanager.app.resources.drive_import_settings_title
 import com.eventmanager.app.resources.profile_photos_enable
 import com.eventmanager.app.resources.profile_photos_settings_body
 import com.eventmanager.app.resources.profile_photos_settings_title
@@ -136,6 +139,8 @@ fun FirebaseSyncSettingsSection(
     signInFeedback: String? = null,
     profilePhotosEnabled: Boolean = false,
     onProfilePhotosEnabledChange: (Boolean) -> Unit = {},
+    driveImportEnabled: Boolean = false,
+    onDriveImportEnabledChange: (Boolean) -> Unit = {},
     guestFormsEnabled: Boolean = false,
     onGuestFormsEnabledChange: (Boolean) -> Unit = {},
     guestFormSiteOrigin: String = "",
@@ -335,6 +340,37 @@ fun FirebaseSyncSettingsSection(
                                 onProfilePhotosEnabledChange(enabled)
                             },
                             enabled = isFirebaseOrgAdmin,
+                        )
+                    }
+                }
+                GuidedStepCard(
+                    title = stringResource(Res.string.drive_import_settings_title),
+                    body = stringResource(Res.string.drive_import_settings_description),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            stringResource(Res.string.drive_import_settings_title),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f).padding(end = 8.dp),
+                        )
+                        Switch(
+                            checked = driveImportEnabled,
+                            onCheckedChange = onDriveImportEnabledChange,
+                            enabled = isFirebaseOrgAdmin,
+                        )
+                    }
+                    // Surfaced here rather than blocking sign-in: an institution whose Cloud
+                    // project lacks the APIs still logs in, it just cannot import.
+                    val scopeError = settingsManager.getDriveImportScopeError()
+                    if (driveImportEnabled && scopeError.isNotBlank()) {
+                        Text(
+                            text = stringResource(Res.string.drive_import_settings_scope_error, scopeError),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
                         )
                     }
                 }

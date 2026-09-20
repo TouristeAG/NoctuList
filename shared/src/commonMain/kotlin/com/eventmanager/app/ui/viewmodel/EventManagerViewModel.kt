@@ -3,6 +3,7 @@ package com.eventmanager.app.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.eventmanager.app.data.models.*
+import com.eventmanager.app.data.drive.createGoogleUserApiAuth
 import com.eventmanager.app.data.repository.EventManagerRepository
 import com.eventmanager.app.data.sync.FactoryReset
 import com.eventmanager.app.data.sync.InstitutionLogoStore
@@ -805,6 +806,28 @@ class EventManagerViewModel(
         val settings = settingsManagerCached ?: return false
         return settings.getBackendType() == BackendType.FIREBASE && settings.isProfilePhotosEnabled()
     }
+
+    /**
+     * Whether the "import shifts from a Google document" entry point should appear: Firebase
+     * backend, the institution opted in, and the platform can produce a user credential.
+     * Missing scopes are handled inside the import dialog rather than by hiding it, so the admin
+     * gets a "grant access" path instead of a silently absent feature.
+     */
+    fun isDriveShiftImportAvailable(): Boolean {
+        val settings = settingsManagerCached ?: return false
+        return settings.getBackendType() == BackendType.FIREBASE &&
+            settings.isDriveImportEnabled() &&
+            createGoogleUserApiAuth(platformContext).isSupported
+    }
+
+    fun setDriveImportEnabled(enabled: Boolean) {
+        settingsManagerCached?.setDriveImportEnabled(enabled)
+        backupInstitutionSettingsToSheets()
+    }
+
+    fun isDriveImportEnabled(): Boolean = settingsManagerCached?.isDriveImportEnabled() ?: false
+
+    fun driveImportScopeError(): String = settingsManagerCached?.getDriveImportScopeError().orEmpty()
 
     private val _profilePhotosUploadEnabled = MutableStateFlow(isProfilePhotoUploadEnabled())
     val profilePhotosUploadEnabled: StateFlow<Boolean> = _profilePhotosUploadEnabled.asStateFlow()
@@ -3017,6 +3040,82 @@ class EventManagerViewModel(
             } catch (e: Exception) {
                 println("Failed to add job: ${e.message}")
                 _syncError.value = "Failed to add job: ${e.message}"
+            }
+        }
+    }
+
+    /**
+     * Saves a batch of shifts in one pass (Google Drive document import).
+     *
+     * Deliberately not a loop over [addJob]: that would rebuild and re-upload the volunteer guest
+     * list once per shift, which for a 30-person planning document means 30 full recalculations.
+     * Benefits and credits are still applied per shift, exactly as a manual add would.
+     */
+    fun importJobs(jobs: List<Job>, onComplete: (Result<Int>) -> Unit = {}) {
+        viewModelScope.launch {
+            if (jobs.isEmpty()) {
+                onComplete(Result.success(0))
+                return@launch
+            }
+            try {
+                if (rejectIfCrudSoftLocked("importing shifts")) {
+                    onComplete(Result.failure(IllegalStateException("Shift changes are locked")))
+                    return@launch
+                }
+                val configs = _jobTypeConfigs.value
+                // Orion status is evaluated against the shifts that existed before this import, so
+                // every row of one document is treated consistently.
+                val orionByVolunteer = jobs.map { it.volunteerId }.distinct().associateWith { volunteerId ->
+                    BenefitCalculator.isVolunteerOrionActive(
+                        _jobs.value.filter { it.volunteerId == volunteerId },
+                        configs,
+                    )
+                }
+                val prepared = jobs.map { job ->
+                    applyInitialBenefitFutureEntries(
+                        job.copy(firebaseOrgId = tagEntityOrgId(job.firebaseOrgId)),
+                        configs,
+                        orionByVolunteer[job.volunteerId] == true,
+                    )
+                }
+
+                val ids = repository.insertJobsAll(prepared)
+                val saved = prepared.mapIndexed { index, job ->
+                    ids.getOrNull(index)?.let { job.copy(id = it) } ?: job
+                }
+
+                val coordinator = syncCoordinator
+                for (job in saved) {
+                    if (coordinator != null) {
+                        coordinator.afterJobSaved(job)
+                    } else if (isGoogleSheetsConfigured()) {
+                        val sheetsId = googleSheetsService.addJobToSheets(
+                            job,
+                            _venues.value,
+                            configs,
+                            volunteerDisplayNameForSheetsJob(job.volunteerId),
+                        )
+                        repository.updateJob(job.copy(sheetsId = sheetsId))
+                    }
+                }
+
+                val offset = platformContext?.let { SettingsManager(it).getDateChangeOffsetHours() } ?: 0
+                val credits = mutableListOf<AccountTransfer>()
+                for (job in saved) {
+                    val volunteer = repository.getVolunteerById(job.volunteerId) ?: continue
+                    credits += accountCreditService.applyShiftCredits(job, volunteer, configs, offset)
+                }
+                if (credits.isNotEmpty()) {
+                    refreshAccountBalancesFromDb()
+                    syncCreatedTransfers(credits)
+                }
+
+                recalcAndUploadVolunteerGuestList()
+                onComplete(Result.success(saved.size))
+            } catch (e: Exception) {
+                println("Failed to import jobs: ${e.message}")
+                _syncError.value = "Failed to import shifts: ${e.message}"
+                onComplete(Result.failure(e))
             }
         }
     }

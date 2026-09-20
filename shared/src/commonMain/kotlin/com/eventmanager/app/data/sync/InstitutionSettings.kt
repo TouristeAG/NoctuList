@@ -41,6 +41,13 @@ object InstitutionSettingsKeys {
     /** Opt-in Firebase Storage profile photos — synced so every org device shows the same upload UI. */
     const val PROFILE_PHOTOS_ENABLED = "profile_photos_enabled"
 
+    /**
+     * Opt-in shift import from Google Docs/Sheets. Off by default: it makes Google Sign-In request
+     * Drive/Docs/Sheets/People scopes, which only works once the institution enabled those APIs
+     * and declared the scopes on its own OAuth consent screen.
+     */
+    const val DRIVE_IMPORT_ENABLED = "drive_import_enabled"
+
     /** Allow billeterie/ticket-check interfaces to send venue announcements (synced across org devices). */
     const val ANNOUNCEMENTS_NON_ADMIN_SEND_ENABLED = "announcements_non_admin_send_enabled"
 
@@ -152,6 +159,7 @@ object InstitutionSettingsKeys {
         PROFILE_PHOTOS_ENABLED,
         ANNOUNCEMENTS_NON_ADMIN_SEND_ENABLED,
         POS_SUBCATEGORIES,
+        DRIVE_IMPORT_ENABLED,
     ) + TEMP_GUEST_KEYS + GUEST_FORM_KEYS + BACKEND_KEYS + SHEETS_MIRROR_KEYS
 
     /**
@@ -161,6 +169,7 @@ object InstitutionSettingsKeys {
      */
     val FIREBASE_ONLY_KEYS: Set<String> = setOf(
         POS_SUBCATEGORIES,
+        DRIVE_IMPORT_ENABLED,
     ) + TEMP_GUEST_KEYS + GUEST_FORM_KEYS
 
     fun isSyncedToSheets(key: String): Boolean = key !in FIREBASE_ONLY_KEYS
