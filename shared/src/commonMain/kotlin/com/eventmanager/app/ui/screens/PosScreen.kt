@@ -314,6 +314,7 @@ fun PosScreen(
     var showManualAmount by remember { mutableStateOf(false) }
     val saleUiResult by viewModel.posSaleUiResult.collectAsState()
     val isProcessing by viewModel.posSaleInFlight.collectAsState()
+    val announcementsSendEnabled by viewModel.announcementsBilleterieSendEnabled.collectAsState()
     val showResult = saleUiResult?.let { result ->
         if (result.success) PosResultState.Success(result) else PosResultState.Failure(result.message)
     }
@@ -785,6 +786,8 @@ fun PosScreen(
                             isDesktop = isDesktop,
                             onSelect = { selectedCategory = it },
                             viewModel = viewModel,
+                            announcementsSendEnabled = announcementsSendEnabled,
+                            onOpenAnnouncement = { viewModel.openSendAnnouncementDialog() },
                         )
                         PosItemsPane(
                             items = visibleItems,
@@ -821,6 +824,8 @@ fun PosScreen(
                         isDesktop = isDesktop,
                         onSelect = { selectedCategory = it },
                         viewModel = viewModel,
+                        announcementsSendEnabled = announcementsSendEnabled,
+                        onOpenAnnouncement = { viewModel.openSendAnnouncementDialog() },
                     )
                     PosItemsPane(
                         items = visibleItems,
@@ -1980,6 +1985,8 @@ private fun PosCategoryFilterRail(
     isDesktop: Boolean,
     onSelect: (SalesCategory?) -> Unit,
     viewModel: EventManagerViewModel? = null,
+    announcementsSendEnabled: Boolean = false,
+    onOpenAnnouncement: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val options = listOf(
@@ -2037,6 +2044,15 @@ private fun PosCategoryFilterRail(
                 selectedVenue = selectedVenue,
                 onVenueSelected = onVenueSelected,
             )
+            if (announcementsSendEnabled && onOpenAnnouncement != null) {
+                HorizontalDivider(
+                    modifier = Modifier
+                        .width(28.dp)
+                        .padding(vertical = 4.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                )
+                PosAnnouncementButton(onClick = onOpenAnnouncement)
+            }
         }
     }
 }
@@ -2164,6 +2180,47 @@ private fun PosVenueFilterItem(
                         },
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PosAnnouncementButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val buttonColor = if (isHovered) {
+        MaterialTheme.colorScheme.secondaryContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerHigh
+    }
+    val iconTint = if (isHovered) {
+        MaterialTheme.colorScheme.onSecondaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    Box(
+        modifier = modifier.size(40.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Surface(
+            onClick = onClick,
+            modifier = Modifier.size(40.dp),
+            shape = CircleShape,
+            color = buttonColor,
+            interactionSource = interactionSource,
+        ) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Icon(
+                    Icons.Default.Campaign,
+                    contentDescription = stringResource(Res.string.announcement_button_label),
+                    tint = iconTint,
+                    modifier = Modifier.size(22.dp),
+                )
             }
         }
     }

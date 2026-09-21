@@ -55,8 +55,6 @@ import com.eventmanager.app.ui.components.VolunteerBenefitsPanel
 import com.eventmanager.app.ui.components.GuestDetailPanel
 import com.eventmanager.app.ui.components.PeopleCounter
 import com.eventmanager.app.ui.components.PosAccountingReportEntryCard
-import com.eventmanager.app.platform.getAdminSessionHost
-import com.eventmanager.app.ui.ADMIN_SESSION_IDLE_TIMEOUT_MS
 import com.eventmanager.app.ui.components.SendAnnouncementButton
 import com.eventmanager.app.ui.components.SendAnnouncementDialog
 import com.eventmanager.app.ui.components.AnnouncementPopup
@@ -532,7 +530,7 @@ actual fun AppRootContent(
         val showSendAnnouncementDialog by viewModel.showSendAnnouncementDialog.collectAsState()
         val isAnnouncementSending by viewModel.isAnnouncementSending.collectAsState()
 
-        // Admin session: auto-return to welcome after idle timeout or after screen was turned off (sleep).
+        // Admin session: auto-return to welcome after idle timeout, screen off, or device lock.
         val adminSurfaceActive = !showWelcome && !showAdminAuth && !showTicketCheck && !showPos
         val endAdminSession by rememberUpdatedState {
             showWelcome = true
@@ -546,22 +544,11 @@ actual fun AppRootContent(
             showGuestFormManagement = false
             showPosAccountingReport = false
         }
-        val adminSessionHost = getAdminSessionHost(platformContext)
-        DisposableEffect(adminSurfaceActive, adminSessionHost) {
-            val host = adminSessionHost ?: return@DisposableEffect onDispose { }
-            if (adminSurfaceActive) {
-                host.adminSessionWatchdog.monitoring = true
-                host.adminSessionWatchdog.lastInteractionElapsedMs.set(SystemClock.elapsedRealtime())
-                host.adminSessionAutoLogout = { endAdminSession() }
-            } else {
-                host.adminSessionWatchdog.stopMonitoring()
-                host.adminSessionAutoLogout = null
-            }
-            onDispose {
-                host.adminSessionWatchdog.stopMonitoring()
-                host.adminSessionAutoLogout = null
-            }
-        }
+        BindAdminSessionWatchdog(
+            adminSurfaceActive = adminSurfaceActive,
+            platformContext = platformContext,
+            onEndAdminSession = endAdminSession,
+        )
         LaunchedEffect(adminSurfaceActive) {
             viewModel.setAdminPanelActive(adminSurfaceActive)
             if (!adminSurfaceActive || !viewModel.isFirebaseAllOrgsMode()) return@LaunchedEffect
@@ -574,20 +561,6 @@ actual fun AppRootContent(
                     viewModel.enterSingleOrgMode(configured.first().orgId)
                 configured.size >= 2 ->
                     showAdminOrgPicker = true
-            }
-        }
-        LaunchedEffect(adminSurfaceActive, adminSessionHost) {
-            if (!adminSurfaceActive || adminSessionHost == null) return@LaunchedEffect
-            val host = adminSessionHost
-            while (true) {
-                delay(15_000L)
-                val idleMs = SystemClock.elapsedRealtime() - host.adminSessionWatchdog.lastInteractionElapsedMs.get()
-                if (host.adminSessionWatchdog.consumeLogoutAfterSleepIfPending() ||
-                    idleMs >= ADMIN_SESSION_IDLE_TIMEOUT_MS
-                ) {
-                    endAdminSession()
-                    break
-                }
             }
         }
         

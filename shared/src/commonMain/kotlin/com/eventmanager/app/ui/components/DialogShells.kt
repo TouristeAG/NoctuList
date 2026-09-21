@@ -20,6 +20,8 @@ import com.eventmanager.app.platform.LocalPlatformContext
 import com.eventmanager.app.platform.isDesktop
 import com.eventmanager.app.ui.utils.getDialogHeightFraction
 import com.eventmanager.app.ui.utils.getDialogWidthFraction
+import com.eventmanager.app.ui.utils.getScreenHeightDp
+import com.eventmanager.app.ui.utils.getScreenWidthDp
 import com.eventmanager.app.ui.utils.getTabletConstrainedDialogMaxHeight
 import com.eventmanager.app.ui.utils.getTabletConstrainedDialogMaxWidth
 import com.eventmanager.app.ui.utils.isTablet
@@ -67,12 +69,18 @@ fun DialogFractionSizer(
 ) {
     val isDesktopPlatform = LocalPlatformContext.current.isDesktop
     val isTabletDevice = isTablet()
+    val screenWidth = getScreenWidthDp()
+    val screenHeight = getScreenHeightDp()
 
     BoxWithConstraints(
         modifier = modifier,
         contentAlignment = contentAlignment,
     ) {
-        val isLandscape = maxWidth > maxHeight
+        // Dialogs with usePlatformDefaultWidth=false can report unbounded/huge
+        // constraints. Never let those leak into fillMaxWidth() children.
+        val availableWidth = finiteDialogConstraint(maxWidth, screenWidth)
+        val availableHeight = finiteDialogConstraint(maxHeight, screenHeight)
+        val isLandscape = availableWidth > availableHeight
         val (widthFrac, heightFrac) = when (profile) {
             FractionalDialogProfile.Export ->
                 if (isLandscape) 0.6f to 0.8f else 0.9f to 0.9f
@@ -83,18 +91,26 @@ fun DialogFractionSizer(
         }
 
         val maxDialogWidth = when {
-            isDesktopPlatform -> maxWidth.coerceAtMost(desktopMaxWidth)
-            isTabletDevice -> minOf(maxWidth * getDialogWidthFraction(), getTabletConstrainedDialogMaxWidth())
-            else -> maxWidth * widthFrac
+            isDesktopPlatform -> availableWidth.coerceAtMost(desktopMaxWidth)
+            isTabletDevice -> minOf(availableWidth * getDialogWidthFraction(), getTabletConstrainedDialogMaxWidth())
+            else -> availableWidth * widthFrac
         }
 
         val maxDialogHeight = when {
-            isDesktopPlatform -> maxHeight
-            isTabletDevice -> minOf(maxHeight * getDialogHeightFraction(), getTabletConstrainedDialogMaxHeight())
-            else -> maxHeight * heightFrac
+            isDesktopPlatform -> availableHeight
+            isTabletDevice -> minOf(availableHeight * getDialogHeightFraction(), getTabletConstrainedDialogMaxHeight())
+            else -> availableHeight * heightFrac
         }
 
         content(maxDialogWidth, maxDialogHeight)
+    }
+}
+
+internal fun finiteDialogConstraint(constraint: Dp, screenSize: Dp): Dp {
+    val value = constraint.value
+    return when {
+        !value.isFinite() || constraint <= 0.dp -> screenSize
+        else -> constraint.coerceAtMost(screenSize)
     }
 }
 

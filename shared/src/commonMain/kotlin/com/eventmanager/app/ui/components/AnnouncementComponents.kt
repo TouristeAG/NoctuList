@@ -58,6 +58,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -66,6 +67,7 @@ import androidx.compose.ui.window.PopupProperties
 import com.eventmanager.app.data.models.VenueEntity
 import com.eventmanager.app.platform.LocalPlatformContext
 import com.eventmanager.app.platform.playAnnouncementReceivedFeedback
+import com.eventmanager.app.ui.utils.isTablet
 import com.eventmanager.app.resources.Res
 import com.eventmanager.app.resources.*
 import org.jetbrains.compose.resources.stringResource
@@ -127,6 +129,9 @@ fun SendAnnouncementDialog(
     val scrollState = rememberScrollState()
     val colorScheme = MaterialTheme.colorScheme
     val activeVenues = remember(venues) { venues.filter { it.isActive } }
+    val compactLayout = !isTablet()
+    val contentPadding = if (compactLayout) 16.dp else 20.dp
+    val fieldMinHeight = if (compactLayout) 88.dp else 120.dp
 
     Dialog(
         onDismissRequest = { if (!isSending) onDismiss() },
@@ -141,6 +146,7 @@ fun SendAnnouncementDialog(
         ) { maxDialogWidth, maxDialogHeight ->
             Card(
                 modifier = Modifier
+                    .fillMaxWidth()
                     .widthIn(max = maxDialogWidth)
                     .heightIn(max = maxDialogHeight.coerceAtMost(640.dp))
                     .padding(16.dp),
@@ -149,7 +155,7 @@ fun SendAnnouncementDialog(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(20.dp),
+                        .padding(contentPadding),
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -160,6 +166,8 @@ fun SendAnnouncementDialog(
                             text = stringResource(Res.string.announcement_send_title),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
                         )
                         IconButton(
@@ -187,8 +195,8 @@ fun SendAnnouncementDialog(
                     Column(
                         modifier = Modifier
                             .weight(1f, fill = false)
-                            .verticalScroll(scrollState)
-                            .fillMaxWidth(),
+                            .fillMaxWidth()
+                            .verticalScroll(scrollState),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
                         Row(
@@ -264,8 +272,8 @@ fun SendAnnouncementDialog(
                             label = { Text(stringResource(Res.string.announcement_message_label)) },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .heightIn(min = 120.dp),
-                            minLines = 4,
+                                .heightIn(min = fieldMinHeight),
+                            minLines = if (compactLayout) 3 else 4,
                             enabled = !isSending,
                         )
                     }
@@ -286,7 +294,11 @@ fun SendAnnouncementDialog(
                             enabled = !isSending,
                             modifier = Modifier.weight(1f),
                         ) {
-                            Text(stringResource(Res.string.cancel))
+                            Text(
+                                text = stringResource(Res.string.cancel),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                         }
                         Button(
                             onClick = {
@@ -300,6 +312,10 @@ fun SendAnnouncementDialog(
                             enabled = canSend,
                             modifier = Modifier.weight(1.4f),
                             shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(
+                                horizontal = if (compactLayout) 10.dp else 16.dp,
+                                vertical = 10.dp,
+                            ),
                         ) {
                             if (isSending) {
                                 CircularProgressIndicator(
@@ -314,7 +330,11 @@ fun SendAnnouncementDialog(
                                     modifier = Modifier.size(18.dp),
                                 )
                                 Spacer(Modifier.width(8.dp))
-                                Text(stringResource(Res.string.announcement_send_button))
+                                Text(
+                                    text = stringResource(Res.string.announcement_send_button),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
                             }
                         }
                     }

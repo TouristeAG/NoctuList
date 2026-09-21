@@ -150,7 +150,6 @@ actual fun AppRootContent(
         var showVolunteerBenefits by remember { mutableStateOf<Volunteer?>(null) }
         var showScannedGuestDetail by remember { mutableStateOf<Guest?>(null) }
         var searchFocusTick by remember { mutableIntStateOf(0) }
-        var lastAdminInteraction by remember { mutableLongStateOf(elapsedRealtimeMs()) }
         LaunchedEffect(openWelcomeAfterSetup) {
             if (openWelcomeAfterSetup) {
                 showWelcome = true
@@ -159,10 +158,6 @@ actual fun AppRootContent(
                 showPos = false
                 nav.showAdminSetup = false
             }
-        }
-
-        fun touchAdminSession() {
-            lastAdminInteraction = elapsedRealtimeMs()
         }
 
         if (showSetupWizard) {
@@ -399,6 +394,11 @@ actual fun AppRootContent(
                     showGuestFormManagement = false
                     showPosAccountingReport = false
                 }
+                BindAdminSessionWatchdog(
+                    adminSurfaceActive = adminSurfaceActive,
+                    platformContext = platformContext,
+                    onEndAdminSession = endAdminSession,
+                )
 
                 LaunchedEffect(adminSurfaceActive) {
                     viewModel.setAdminPanelActive(adminSurfaceActive)
@@ -412,17 +412,6 @@ actual fun AppRootContent(
                             viewModel.enterSingleOrgMode(configured.first().orgId)
                         configured.size >= 2 ->
                             showAdminOrgPicker = true
-                    }
-                }
-
-                LaunchedEffect(adminSurfaceActive) {
-                    if (!adminSurfaceActive) return@LaunchedEffect
-                    while (adminSurfaceActive) {
-                        delay(15_000)
-                        if (elapsedRealtimeMs() - lastAdminInteraction >= ADMIN_SESSION_IDLE_TIMEOUT_MS) {
-                            endAdminSession()
-                            break
-                        }
                     }
                 }
 
@@ -444,7 +433,7 @@ actual fun AppRootContent(
                 DisposableEffect(showAdminAuth, showTicketCheck, showPos, selectedTab, showQRScanner, showSyncErrorDialog) {
                     val inAdmin = !showAdminAuth && !showTicketCheck && !showPos
                     DesktopNavigationHooks.openSettingsTab = if (inAdmin) {
-                        { selectedTab = AdminTab.Settings.index; touchAdminSession() }
+                        { selectedTab = AdminTab.Settings.index }
                     } else null
                     DesktopNavigationHooks.focusListSearch = if (inAdmin && selectedTab in listOf(AdminTab.Guests.index, AdminTab.Volunteers.index)) {
                         { searchFocusTick++ }
@@ -475,7 +464,6 @@ actual fun AppRootContent(
                             }
                             previousTab = selectedTab
                             selectedTab = tabs[nextIdx].index
-                            touchAdminSession()
                         }
                     } else null
                     onDispose {
@@ -586,7 +574,6 @@ actual fun AppRootContent(
                         onTabSelected = { tab -> selectedTab = tab.index },
                         onBack = { endAdminSession() },
                         onSync = { viewModel.performDifferentialFullSync() },
-                        onTouchSession = { touchAdminSession() },
                         onClearOverlays = {
                             showJobTypeManagement = false
                             showVenueManagement = false
@@ -639,7 +626,6 @@ actual fun AppRootContent(
                                         viewModel = viewModel,
                                         isPhone = false,
                                         onLogout = {
-                                            touchAdminSession()
                                             showWelcome = true
                                             showAdminAuth = false
                                             selectedTab = AdminTab.Dashboard.index
@@ -721,7 +707,7 @@ actual fun AppRootContent(
                             }
 
                             FloatingActionButton(
-                                onClick = { touchAdminSession(); showQRScanner = true },
+                                onClick = { showQRScanner = true },
                                 modifier = Modifier.align(Alignment.BottomStart).padding(16.dp)
                             ) {
                                 Icon(Icons.Default.QrCodeScanner, contentDescription = null)

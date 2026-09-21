@@ -33,7 +33,6 @@ fun DesktopAdminShell(
     onTabSelected: (AdminTab) -> Unit,
     onBack: () -> Unit,
     onSync: () -> Unit,
-    onTouchSession: () -> Unit,
     onClearOverlays: () -> Unit,
     viewModel: EventManagerViewModel? = null,
     onAdminRequireReauth: (() -> Unit)? = null,
@@ -53,10 +52,7 @@ fun DesktopAdminShell(
                     SyncStatusPill(
                         viewModel = viewModel,
                         modifier = Modifier.padding(end = 12.dp),
-                        onSync = {
-                            onTouchSession()
-                            onSync()
-                        },
+                        onSync = onSync,
                     )
                 }
             }
@@ -68,7 +64,6 @@ fun DesktopAdminShell(
             DesktopAdminBottomNav(
                 selectedTab = selectedTab,
                 onTabSelected = { tab ->
-                    onTouchSession()
                     onClearOverlays()
                     onTabSelected(tab)
                 }
@@ -84,7 +79,6 @@ fun DesktopAdminShell(
             expanded = navRailExpanded,
             onExpandedChange = onNavRailExpandedChange,
             onTabSelected = { tab ->
-                onTouchSession()
                 onClearOverlays()
                 onTabSelected(tab)
             },

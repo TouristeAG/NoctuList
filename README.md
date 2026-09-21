@@ -4,7 +4,7 @@
 
 Data lives locally in **Room (SQLite)** and syncs across devices through either **Firebase / Firestore** (realtime, recommended for new organizations) or **Google Sheets** (service account). You can migrate between the two.
 
-[![Version](https://img.shields.io/badge/version-2.1.4-blue)](https://github.com/TouristeAG/NoctuList/releases)
+[![Version](https://img.shields.io/badge/version-2.1.8-blue)](https://github.com/TouristeAG/NoctuList/releases)
 [![Platforms](https://img.shields.io/badge/platforms-Android%20%7C%20macOS%20%7C%20Windows%20%7C%20Linux-brightgreen)](https://github.com/TouristeAG/NoctuList/releases)
 [![Kotlin](https://img.shields.io/badge/Kotlin-Multiplatform-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org/docs/multiplatform.html)
 [![Compose](https://img.shields.io/badge/UI-Compose%20Multiplatform-4285F4)](https://www.jetbrains.com/compose-multiplatform/)
@@ -39,7 +39,7 @@ Every launch starts on a welcome screen with three entry points:
 | **Billeterie** | Door / ticketing tablets | No full admin session — check-in focused; POS available from this mode |
 | **Internal POS** | Bar / merch selling | Opens from welcome; does not require admin |
 
-Admin sessions end after idle timeout or when the screen turns off, so shared tablets don't stay logged in. If the institution has no administrator yet, Admin auth can create one (NFC/QR enrollment).
+Admin sessions end after 10 minutes without input, when the screen turns off, or when the device/OS session is locked, so shared tablets and unattended desktops don't stay logged in. If the institution has no administrator yet, Admin auth can create one (NFC/QR enrollment).
 
 ---
 

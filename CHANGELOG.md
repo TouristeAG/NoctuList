@@ -4,6 +4,25 @@ All notable changes to NoctuList are documented here. Version numbers follow [Se
 
 ---
 
+## 2.1.8 — 2026-09-21
+
+Optional patch: announcement compose dialog fits on phones, and POS can send announcements.
+
+### Fixes
+
+- **Announcements** — the send dialog no longer overflows off the right edge on phones. Width/height are capped to the screen; the form scrolls and Cancel / Send stay on screen. Tablets keep the existing inset.
+- **POS** — category rail can open “send announcement” when non-admin send is enabled.
+- **Admin session** — idle timeout follows real typing (including the Android soft keyboard), keyguard lock, and desktop pointer/keyboard activity; screen-off or OS lock still returns to welcome.
+- **Desktop QR** — webcam scan prefers HD capture and extra ZXing passes so printed cards decode, not only bright phone-screen codes.
+
+### Upgrade notes
+
+- **Version code:** 35 (`2.1.8`). Minimum supported code remains **27** (2.1.0) — optional update for 2.1.0–2.1.7.
+- **Database / Firestore rules / Hosting:** unchanged.
+- **Publishing:** tag `2.1.8`, then copy `version.json` to the AdminList update manifest. Do not raise `minSupportedVersionCode`.
+
+---
+
 ## 2.1.7 — 2026-09-21
 
 Optional patch: more reliable automatic admin logout on Android and desktop.

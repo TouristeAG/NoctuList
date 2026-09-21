@@ -13,7 +13,10 @@ import java.net.URI
 
 actual fun recreateActivity(platformContext: PlatformContext) { /* desktop applies settings live */ }
 
-actual fun getAdminSessionHost(platformContext: PlatformContext): AdminSessionHost? = null
+actual fun getAdminSessionHost(platformContext: PlatformContext): AdminSessionHost? {
+    DesktopAdminSessionHost.ensureStarted()
+    return DesktopAdminSessionHost
+}
 
 actual fun finishApplication(platformContext: PlatformContext) {
     kotlin.system.exitProcess(0)
@@ -87,4 +90,4 @@ actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) {
     if (!enabled) return
 }
 
-actual fun elapsedRealtimeMs(): Long = System.currentTimeMillis()
+actual fun elapsedRealtimeMs(): Long = System.nanoTime() / 1_000_000L

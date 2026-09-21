@@ -1,5 +1,6 @@
 package com.eventmanager.app
 
+import android.app.KeyguardManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -7,7 +8,7 @@ import android.content.IntentFilter
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
-import android.os.SystemClock
+import android.view.KeyEvent
 import android.view.MotionEvent
 import androidx.activity.compose.setContent
 import androidx.fragment.app.FragmentActivity
@@ -33,8 +34,6 @@ import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.Locale
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicLong
 
 class MainActivity : FragmentActivity(), AdminSessionHost {
 
@@ -45,6 +44,10 @@ class MainActivity : FragmentActivity(), AdminSessionHost {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == Intent.ACTION_SCREEN_OFF) {
                 adminSessionWatchdog.onDisplayTurnedOff()
+                if (isKeyguardLocked()) {
+                    adminSessionWatchdog.onDeviceLocked()
+                }
+                invokeAdminAutoLogoutIfNeeded()
             }
         }
     }
@@ -108,9 +111,18 @@ class MainActivity : FragmentActivity(), AdminSessionHost {
     override fun onResume() {
         super.onResume()
         AndroidFragmentActivityProvider.current = this
-        if (adminSessionWatchdog.consumeLogoutAfterSleepIfPending()) {
-            adminSessionAutoLogout?.invoke()
+        if (isKeyguardLocked()) {
+            adminSessionWatchdog.onDeviceLocked()
         }
+        invokeAdminAutoLogoutIfNeeded()
+    }
+
+    override fun onStop() {
+        if (isKeyguardLocked()) {
+            adminSessionWatchdog.onDeviceLocked()
+            invokeAdminAutoLogoutIfNeeded()
+        }
+        super.onStop()
     }
 
     override fun onPause() {
@@ -118,16 +130,43 @@ class MainActivity : FragmentActivity(), AdminSessionHost {
         super.onPause()
     }
 
+    override fun onUserInteraction() {
+        super.onUserInteraction()
+        adminSessionWatchdog.onUserInput()
+    }
+
     override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
-        val result = super.dispatchTouchEvent(ev)
         if (ev != null && adminSessionWatchdog.monitoring) {
             when (ev.actionMasked) {
                 MotionEvent.ACTION_DOWN,
                 MotionEvent.ACTION_MOVE,
-                MotionEvent.ACTION_POINTER_DOWN -> adminSessionWatchdog.onUserInput()
+                MotionEvent.ACTION_POINTER_DOWN,
+                MotionEvent.ACTION_UP -> adminSessionWatchdog.onUserInput()
             }
         }
-        return result
+        return super.dispatchTouchEvent(ev)
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        adminSessionWatchdog.onUserInput()
+        return super.dispatchKeyEvent(event)
+    }
+
+    override fun dispatchGenericMotionEvent(ev: MotionEvent): Boolean {
+        adminSessionWatchdog.onUserInput()
+        return super.dispatchGenericMotionEvent(ev)
+    }
+
+    private fun isKeyguardLocked(): Boolean {
+        val keyguard = getSystemService(KeyguardManager::class.java) ?: return false
+        return keyguard.isKeyguardLocked
+    }
+
+    private fun invokeAdminAutoLogoutIfNeeded() {
+        if (!adminSessionWatchdog.shouldEndSession()) return
+        val logout = adminSessionAutoLogout ?: return
+        adminSessionWatchdog.consumeShouldEndSession()
+        logout.invoke()
     }
 
     override fun attachBaseContext(newBase: Context?) {

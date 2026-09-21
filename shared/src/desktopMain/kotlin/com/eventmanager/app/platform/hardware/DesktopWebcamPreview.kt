@@ -16,11 +16,6 @@ import androidx.compose.ui.unit.dp
 import com.eventmanager.app.resources.Res
 import com.eventmanager.app.resources.*
 import com.github.sarxos.webcam.Webcam
-import com.google.zxing.BinaryBitmap
-import com.google.zxing.MultiFormatReader
-import com.google.zxing.NotFoundException
-import com.google.zxing.client.j2se.BufferedImageLuminanceSource
-import com.google.zxing.common.HybridBinarizer
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -29,11 +24,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.stringResource
-import org.jetbrains.skia.Image as SkiaImage
 import java.awt.Dimension
-import java.awt.image.BufferedImage
-import java.io.ByteArrayOutputStream
-import javax.imageio.ImageIO
 
 @Composable
 fun DesktopWebcamQrScanView(
@@ -64,12 +55,11 @@ fun DesktopWebcamQrScanView(
                     }
                     return@withContext
                 }
-                cam.viewSize = Dimension(640, 480)
-                if (!cam.isOpen) cam.open()
+                openWebcamForScan(cam)
                 withContext(Dispatchers.Main.immediate) { status = pointMsg }
 
-                val reader = MultiFormatReader()
                 var framesWithoutImage = 0
+                var previewTick = 0
                 while (isActive) {
                     ensureActive()
                     val image = cam.image
@@ -85,14 +75,16 @@ fun DesktopWebcamQrScanView(
                         continue
                     }
                     framesWithoutImage = 0
-                    val decoded = decodeBufferedImage(image, reader)
+                    val decoded = DesktopQrDecoder.decode(image)
                     if (decoded != null) {
                         withContext(Dispatchers.Main.immediate) { onQrDetected(decoded) }
                         break
                     }
-                    val frame = image.toComposeImageBitmapFast()
-                    withContext(Dispatchers.Main.immediate) { preview = frame }
-                    delay(80)
+                    if (previewTick++ % 2 == 0) {
+                        val frame = image.toComposeImageBitmap()
+                        withContext(Dispatchers.Main.immediate) { preview = frame }
+                    }
+                    delay(30)
                 }
             }
         } catch (e: CancellationException) {
@@ -158,23 +150,13 @@ private fun desktopWebcamUnavailableMessage(): String {
     }
 }
 
-private fun decodeBufferedImage(image: BufferedImage, reader: MultiFormatReader): String? {
-    val source = BufferedImageLuminanceSource(image)
-    val bitmap = BinaryBitmap(HybridBinarizer(source))
-    return try {
-        reader.decode(bitmap).text
-    } catch (_: NotFoundException) {
-        null
+private fun openWebcamForScan(cam: Webcam) {
+    try {
+        DesktopWebcamSupport.applyPreferredScanResolution(cam)
+        if (!cam.isOpen) cam.open()
     } catch (_: Exception) {
-        // Corrupt / mid-teardown frames while the camera is closing.
-        null
+        runCatching { if (cam.isOpen) cam.close() }
+        cam.viewSize = Dimension(640, 480)
+        if (!cam.isOpen) cam.open()
     }
-}
-
-private fun BufferedImage.toComposeImageBitmapFast(): ImageBitmap {
-    val bytes = ByteArrayOutputStream().use { baos ->
-        ImageIO.write(this, "png", baos)
-        baos.toByteArray()
-    }
-    return SkiaImage.makeFromEncoded(bytes).toComposeImageBitmap()
 }
