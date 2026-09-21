@@ -4,6 +4,24 @@ All notable changes to NoctuList are documented here. Version numbers follow [Se
 
 ---
 
+## 2.1.7 — 2026-09-21
+
+Optional patch: more reliable automatic admin logout on Android and desktop.
+
+### Fixes
+
+- **Admin session** — idle timeout (10 minutes) now counts real input: touch, mouse, keyboard, scroll wheel, and text-field typing (including the Android soft keyboard). Editing a list or form no longer logs you out mid-work.
+- **Admin session** — the idle clock resets when entering admin, so a long stay on the welcome screen cannot expire the session immediately after login.
+- **Admin session** — turning the screen off or locking the device / OS session returns to welcome, even without a PIN, so a shared tablet or unattended PC cannot be reused as admin.
+
+### Upgrade notes
+
+- **Version code:** 34 (`2.1.7`). Minimum supported code remains **27** (2.1.0) — optional update for 2.1.0–2.1.6.
+- **Database / Firestore rules / Hosting:** unchanged.
+- **Publishing:** tag `2.1.7`, then copy `version.json` to the AdminList update manifest. Do not raise `minSupportedVersionCode`.
+
+---
+
 ## 2.1.6 — 2026-09-20
 
 Optional patch: import shifts from a Google Doc or Sheet (Desktop + Firebase).
