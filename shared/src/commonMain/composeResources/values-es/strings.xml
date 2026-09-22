@@ -2007,6 +2007,8 @@ Inicie sesión con Google (el primer administrador se convierte en admin de la o
     <string name="desktop_ble_unsupported_macos">Bluetooth no es compatible en macOS (sin controlador PC/SC BLE ACS). Use el modo USB con el controlador USB ACS.</string>
     <string name="desktop_list_pcsc_readers">Listar lectores PC/SC</string>
     <string name="desktop_qr_no_frames">La cámara está abierta pero no se reciben imágenes. Compruebe los permisos de la cámara.</string>
+    <string name="desktop_qr_camera_denied_mac">Se denegó el acceso a la cámara. Permita NoctuList en Ajustes del sistema → Privacidad y seguridad → Cámara e inténtelo de nuevo.</string>
+    <string name="desktop_qr_camera_denied_generic">Se denegó el acceso a la cámara. Conceda permiso de cámara a esta aplicación e inténtelo de nuevo.</string>
     <string name="desktop_qr_no_webcam_generic">No se detectó ninguna webcam. Compruebe los permisos de la cámara o abra una imagen QR.</string>
     <string name="desktop_qr_no_webcam_linux">No se detectó ninguna webcam. Compruebe los permisos de la cámara (V4L2/PipeWire) y su pertenencia al grupo video, o abra una imagen QR.</string>
     <string name="desktop_qr_no_webcam_mac">No se detectó ninguna webcam. Concede acceso a la cámara en Ajustes del sistema, o abra una imagen QR.</string>

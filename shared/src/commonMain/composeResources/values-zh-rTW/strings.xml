@@ -2007,6 +2007,8 @@ D) Application ID（appId）
     <string name="desktop_ble_unsupported_macos">macOS 不支援藍牙（無 ACS BLE PC/SC 驅動程式）。請改用 USB 模式與 ACS USB 驅動程式。</string>
     <string name="desktop_list_pcsc_readers">列出 PC/SC 讀卡機</string>
     <string name="desktop_qr_no_frames">相機已開啟但未收到影像。請檢查相機權限。</string>
+    <string name="desktop_qr_camera_denied_mac">相機存取被拒絕。請在系統設定 → 隱私權與安全性 → 相機 中允許 NoctuList，然後再試一次。</string>
+    <string name="desktop_qr_camera_denied_generic">相機存取被拒絕。請授予此應用程式相機權限後再試一次。</string>
     <string name="desktop_qr_no_webcam_generic">未偵測到網路攝影機。請檢查相機權限，或開啟 QR 圖片。</string>
     <string name="desktop_qr_no_webcam_linux">未偵測到網路攝影機。請檢查相機權限（V4L2/PipeWire）以及是否屬於 video 群組，或開啟 QR 圖片。</string>
     <string name="desktop_qr_no_webcam_mac">未偵測到網路攝影機。請在系統設定中授予相機存取權，或開啟 QR 圖片。</string>

@@ -1880,6 +1880,8 @@ Optional origins (no path): http://localhost:8889 etc.
     <string name="desktop_qr_no_webcam_linux">No webcam detected. Check camera permissions (V4L2/PipeWire) and that you are in the video group, or open a QR image file.</string>
     <string name="desktop_qr_no_webcam_generic">No webcam detected. Check camera permissions, or open a QR image file.</string>
     <string name="desktop_qr_no_frames">Camera opened but no video frames received. Check camera permissions.</string>
+    <string name="desktop_qr_camera_denied_mac">Camera access was denied. Allow NoctuList in System Settings → Privacy &amp; Security → Camera, then try again.</string>
+    <string name="desktop_qr_camera_denied_generic">Camera access was denied. Grant camera permission for this app, then try again.</string>
 
     <!-- Admin Setup (first admin creation) -->
     <string name="admin_setup_title">Create First Admin</string>

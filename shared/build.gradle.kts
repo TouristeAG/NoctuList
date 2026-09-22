@@ -283,18 +283,39 @@ tasks.register("prepareDesktopBiometricNativeLibs") {
             }
             into(desktopBiometricResourcesDir)
         }
-        val macSource = layout.projectDirectory.file("nativeengines/macos/LocalAuthenticationEngine.m").asFile
-        if (macSource.exists() && System.getProperty("os.name").startsWith("Mac OS")) {
-            val dylib = desktopBiometricResourcesDir.file("LocalAuthenticationEngine.dylib").asFile
-            project.exec {
-                commandLine(
-                    "clang",
-                    "-dynamiclib",
-                    "-framework", "LocalAuthentication",
-                    "-framework", "Foundation",
-                    "-o", dylib.absolutePath,
-                    macSource.absolutePath
-                )
+        if (System.getProperty("os.name").startsWith("Mac OS")) {
+            val macAuthSource = layout.projectDirectory.file("nativeengines/macos/LocalAuthenticationEngine.m").asFile
+            if (macAuthSource.exists()) {
+                val dylib = desktopBiometricResourcesDir.file("LocalAuthenticationEngine.dylib").asFile
+                project.exec {
+                    commandLine(
+                        "clang",
+                        "-dynamiclib",
+                        "-framework", "LocalAuthentication",
+                        "-framework", "Foundation",
+                        "-o", dylib.absolutePath,
+                        macAuthSource.absolutePath
+                    )
+                }
+            }
+            val macCameraSource = layout.projectDirectory.file("nativeengines/macos/CameraAuthorizationEngine.m").asFile
+            if (macCameraSource.exists()) {
+                val dylib = desktopBiometricResourcesDir.file("CameraAuthorizationEngine.dylib").asFile
+                project.exec {
+                    commandLine(
+                        "clang",
+                        "-arch", "x86_64",
+                        "-arch", "arm64",
+                        "-fobjc-arc",
+                        "-dynamiclib",
+                        "-framework", "AVFoundation",
+                        "-framework", "Foundation",
+                        "-framework", "CoreMedia",
+                        "-framework", "CoreVideo",
+                        "-o", dylib.absolutePath,
+                        macCameraSource.absolutePath
+                    )
+                }
             }
         }
     }

@@ -216,6 +216,22 @@ jobs:
           echo "Dylib archs:"
           lipo -info shared/src/desktopMain/resources/LocalAuthenticationEngine.dylib
 
+      - name: Rebuild CameraAuthorizationEngine.dylib (universal x86_64 + arm64)
+        run: |
+          clang \
+            -arch x86_64 \
+            -arch arm64 \
+            -fobjc-arc \
+            -dynamiclib \
+            -framework Foundation \
+            -framework AVFoundation \
+            -framework CoreMedia \
+            -framework CoreVideo \
+            -o shared/src/desktopMain/resources/CameraAuthorizationEngine.dylib \
+            shared/nativeengines/macos/CameraAuthorizationEngine.m
+          echo "Dylib archs:"
+          lipo -info shared/src/desktopMain/resources/CameraAuthorizationEngine.dylib
+
       - name: Build macOS DMG
         run: ./gradlew :desktopApp:packageReleaseDmg --no-daemon
 

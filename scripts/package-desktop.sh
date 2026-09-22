@@ -11,7 +11,8 @@
 #
 # Both DMGs should be published for every release.
 # Use `scripts/rebuild-macos-dylibs.sh` to regenerate LocalAuthenticationEngine.dylib
-# as a universal binary (x86_64 + arm64) before packaging on either platform.
+# and CameraAuthorizationEngine.dylib as universal binaries (x86_64 + arm64)
+# before packaging on either platform.
 #
 # JDK requirements: Temurin JDK 17.  Homebrew JDK is unsupported (jpackage is missing).
 #   • arm64: https://adoptium.net/  (Temurin 17 macOS aarch64)
@@ -63,6 +64,19 @@ if [[ "${OS_NAME}" == "Darwin" ]] && command -v clang &>/dev/null; then
     -o shared/src/desktopMain/resources/LocalAuthenticationEngine.dylib \
     shared/nativeengines/macos/LocalAuthenticationEngine.m
   echo "  → $(lipo -info shared/src/desktopMain/resources/LocalAuthenticationEngine.dylib)"
+  echo "Rebuilding CameraAuthorizationEngine.dylib as universal binary (x86_64 + arm64)…"
+  clang \
+    -arch x86_64 \
+    -arch arm64 \
+    -fobjc-arc \
+    -dynamiclib \
+    -framework Foundation \
+    -framework AVFoundation \
+    -framework CoreMedia \
+    -framework CoreVideo \
+    -o shared/src/desktopMain/resources/CameraAuthorizationEngine.dylib \
+    shared/nativeengines/macos/CameraAuthorizationEngine.m
+  echo "  → $(lipo -info shared/src/desktopMain/resources/CameraAuthorizationEngine.dylib)"
 fi
 
 # ── Gradle packaging ────────────────────────────────────────────────────────────

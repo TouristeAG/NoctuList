@@ -7,6 +7,10 @@ import java.awt.Dimension
 /**
  * Sarxos 0.3.12 defaults to OpenIMAJ, which fails on modern macOS (UnsatisfiedLinkError).
  * The native AVFoundation driver works on current Mac/Windows/Linux releases.
+ *
+ * On recent macOS the driver still lists cameras *before* requesting TCC access, so
+ * [MacCameraAuthorization.ensureAccess] must run first or [Webcam.getWebcams] is empty
+ * and the system prompt never appears.
  */
 object DesktopWebcamSupport {
     @Volatile

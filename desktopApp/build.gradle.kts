@@ -79,11 +79,16 @@ compose.desktop {
             macOS {
                 bundleID = "com.eventmanager.app.desktop"
                 iconFile.set(project.file("icons/icon.icns"))
+                // App + bundled JRE must both carry camera + JVM hardened-runtime entitlements.
+                // runtime-only left the main executable without camera access on recent macOS.
+                entitlementsFile.set(project.file("runtime-entitlements.plist"))
                 runtimeEntitlementsFile.set(project.file("runtime-entitlements.plist"))
                 infoPlist {
                     extraKeysRawXml = """
                         <key>NSCameraUsageDescription</key>
                         <string>NoctuList uses the camera to scan QR codes for admin login and door check-in.</string>
+                        <key>NSCameraUseContinuityCameraDeviceType</key>
+                        <true/>
                         <key>NSRequiresAquaSystemAppearance</key>
                         <false/>
                     """.trimIndent()

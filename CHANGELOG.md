@@ -4,6 +4,24 @@ All notable changes to NoctuList are documented here. Version numbers follow [Se
 
 ---
 
+## 2.1.9 — 2026-09-22
+
+Optional patch: desktop webcam preview stays fluid, and macOS asks for camera access before scanning.
+
+### Fixes
+
+- **Desktop QR** — the webcam preview no longer waits on ZXing. Video stays smooth while the same multi-pass decoder keeps reading the latest full-resolution frame, including printed cards.
+- **macOS** — camera permission is requested before devices are listed, so the system prompt appears instead of an empty webcam list. A denial points to System Settings → Privacy & Security → Camera.
+- **macOS** — the signed app itself carries the camera entitlement (not only the bundled JRE), and Continuity Camera is allowed.
+
+### Upgrade notes
+
+- **Version code:** 36 (`2.1.9`). Minimum supported code remains **27** (2.1.0) — optional update for 2.1.0–2.1.8.
+- **Database / Firestore rules / Hosting:** unchanged.
+- **Publishing:** tag `2.1.9`, then copy `version.json` to the AdminList update manifest. Do not raise `minSupportedVersionCode`.
+
+---
+
 ## 2.1.8 — 2026-09-21
 
 Optional patch: announcement compose dialog fits on phones, and POS can send announcements.

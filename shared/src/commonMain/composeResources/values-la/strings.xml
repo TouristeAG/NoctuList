@@ -1903,6 +1903,8 @@ Sign in cum Google (primus admin fit org admin). Solum post Sign-In felicem inci
     <string name="desktop_qr_no_webcam_linux">Nulla webcam deprehenditur. Perscriptio camera permissionum (V4L2/PipeWire) et membra coetus video vel imaginem QR aperi.</string>
     <string name="desktop_qr_no_webcam_generic">Nulla webcam deprehenditur. Reprehendo camera permissiones, vel imaginem QR aperi.</string>
     <string name="desktop_qr_no_frames">Camera aperta est sed nulla imago recipitur. Reprehendo camera permissiones.</string>
+    <string name="desktop_qr_camera_denied_mac">Aditus camerae recusatus est. Permitte NoctuList in Optiones Systematis → Privacy &amp; Securitas → Camera, deinde iterum conare.</string>
+    <string name="desktop_qr_camera_denied_generic">Aditus camerae recusatus est. Da permissionem camerae huic applicationi, deinde iterum conare.</string>
 
     <!-- Admin Setup (first admin creation) -->
     <string name="admin_setup_title">Primum creare Fusce</string>

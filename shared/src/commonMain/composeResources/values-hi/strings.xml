@@ -1903,6 +1903,8 @@ Google से साइन इन (पहला एडमिन org admin बन
     <string name="desktop_qr_no_webcam_linux">कोई वेबकैम नहीं मिला. कैमरा अनुमतियाँ (V4L2/पाइपवायर) जाँचें और देखें कि आप वीडियो समूह में हैं, या एक QR छवि फ़ाइल खोलें।</string>
     <string name="desktop_qr_no_webcam_generic">कोई वेबकैम नहीं मिला. कैमरा अनुमतियाँ जाँचें, या QR छवि फ़ाइल खोलें।</string>
     <string name="desktop_qr_no_frames">कैमरा खुला लेकिन कोई वीडियो फ़्रेम प्राप्त नहीं हुआ। कैमरा अनुमतियाँ जांचें.</string>
+    <string name="desktop_qr_camera_denied_mac">कैमरा एक्सेस अस्वीकार कर दिया गया. सिस्टम सेटिंग्स → गोपनीयता और सुरक्षा → कैमरा में NoctuList को अनुमति दें, फिर फिर से प्रयास करें.</string>
+    <string name="desktop_qr_camera_denied_generic">कैमरा एक्सेस अस्वीकार कर दिया गया. इस ऐप को कैमरा अनुमति दें, फिर फिर से प्रयास करें.</string>
 
     <!-- Admin Setup (first admin creation) -->
     <string name="admin_setup_title">पहला एडमिन बनाएं</string>
