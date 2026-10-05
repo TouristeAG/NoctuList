@@ -4,6 +4,25 @@ All notable changes to NoctuList are documented here. Version numbers follow [Se
 
 ---
 
+## 2.1.10 — 2026-10-02
+
+Optional patch: manual shifts credit the volunteer account, and the door can validate guest forms.
+
+### Features
+
+- **Manual shifts** — « Boissons gratuites » is an account credit in CHF, paid when the shift day starts (same timing as Nova, Orion, and Galaxie). A previously saved drink count is that amount, not multiplied by 5 CHF. It is no longer shown as drink tokens.
+- **Manual shifts** — the percentage is labeled « Réduction » and applies in the POS only during the configured duration, on eligible cash or card payment. Account credit is still charged at full price.
+- **Manual shifts** — « Invités accompagnants pendant la durée » is the number of extra people the volunteer can bring in while the duration is active, shown at the door.
+- **Guest forms** — optional setting so the read-only billeterie guest list can accept or refuse pending forms. Off by default, Firebase only.
+
+### Upgrade notes
+
+- **Version code:** 37 (`2.1.10`). Minimum supported code remains **27** (2.1.0) — optional update for 2.1.0–2.1.9.
+- **Database / Firestore rules / Hosting:** unchanged.
+- **Publishing:** tag `2.1.10`, then copy `version.json` to the AdminList update manifest. Do not raise `minSupportedVersionCode`.
+
+---
+
 ## 2.1.9 — 2026-09-22
 
 Optional patch: desktop webcam preview stays fluid, and macOS asks for camera access before scanning.

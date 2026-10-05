@@ -243,7 +243,7 @@
     <string name="bar_discount_percent_label">酒吧折扣（%）</string>
     <string name="free_entry_label">免費入場</string>
     <string name="number_of_invites_label">邀請人數</string>
-    <string name="duration_invites_label">獎勵有效期間的邀請人數</string>
+    <string name="duration_invites_label">有效期內的同行賓客</string>
     <string name="future_single_use_entries_label">未來活動入場（一次性）</string>
     <string name="future_entry_invites_label">每次未來入場的邀請人數（朋友）</string>
     <string name="future_entry_invites_helper">此數值會用於未來一次性入場顯示的「+n inv.」。</string>
@@ -264,7 +264,7 @@
     <string name="benefits_help_tab_nova">班次類型</string>
     <string name="benefits_help_tab_extras">加成與時間</string>
     <string name="benefits_help_app_stellar">開啟班次工作 → 選 Nova 類型\n開啟 Orion 工作 → 任期年（下一年 Veteran）\n飲品、名單、未來入場次數 → 自動算</string>
-    <string name="benefits_help_app_manual">自己填天數、飲品、酒吧折扣\u0025、邀請、額外項目\n表格外的感謝用\n已在恆星裡算過的同一班次別重複計</string>
+    <string name="benefits_help_app_manual">自己填寫時長、帳戶抵用、折扣、同行賓客等\n用於常規表之外的情況\n已在恆星模式計過的同一班次不要重複計</string>
     <string name="benefits_help_section_profité_title">Profité / non-profité</string>
     <string name="benefits_help_section_profité_body">僅預設班次 + 開啟「能否享受當晚」。\n與是否付費入場無關：只看排班時間是否仍讓人能享受當晚。\n其他 Nova 類型沒有這項。</string>
     <string name="benefits_help_section_nova_title">Nova（班次工作）- 權益一覽</string>

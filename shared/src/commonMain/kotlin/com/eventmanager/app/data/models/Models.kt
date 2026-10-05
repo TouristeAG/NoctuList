@@ -541,7 +541,17 @@ data class ManualRewards(
     /** How many friends/invites the holder gets with each future entry; only meaningful when futureSingleUseEntries > 0. */
     val futureSingleUseEntryInvites: Int = 1,
     val accountCreditChf: Double = 0.0
-) 
+) {
+    /**
+     * CHF credited to the volunteer account when the shift day is reached.
+     * A legacy free-drink count stored before this was a money field counts as that amount,
+     * and only when no explicit amount was saved.
+     */
+    fun creditedAmountChf(): Double {
+        if (accountCreditChf > 0.0) return accountCreditChf
+        return freeDrinks.toDouble().coerceAtLeast(0.0)
+    }
+} 
 
 // Type converters for Room database
 class Converters {
@@ -1058,8 +1068,9 @@ object BenefitCalculator {
         if (durationActive && activeRewards != null) {
             if (activeRewards.freeEntry) descriptionParts.add("Free entry")
             if (activeRewards.invites > 0) descriptionParts.add("${activeRewards.invites} invites")
-            if (activeRewards.freeDrinks > 0) descriptionParts.add("${activeRewards.freeDrinks} free drinks")
-            if (activeRewards.barDiscountPercentage > 0) descriptionParts.add("${activeRewards.barDiscountPercentage}% bar discount")
+            val credited = activeRewards.creditedAmountChf()
+            if (credited > 0.0) descriptionParts.add("$credited CHF account credit")
+            if (activeRewards.barDiscountPercentage > 0) descriptionParts.add("${activeRewards.barDiscountPercentage}% discount")
             if (activeRewards.otherNotes.isNotEmpty()) descriptionParts.add(activeRewards.otherNotes)
         }
         if (totalFutureCap > 0) {
@@ -1086,7 +1097,7 @@ object BenefitCalculator {
             freeEntry = durationActive && (activeRewards?.freeEntry == true),
             friendInvitation = durationActive && (activeRewards?.invites ?: 0) > 0,
             inviteCount = if (durationActive) (activeRewards?.invites ?: 0) else 0,
-            drinkTokens = if (durationActive) (activeRewards?.freeDrinks ?: 0) else 0,
+            drinkTokens = 0,
             barDiscount = if (durationActive) (activeRewards?.barDiscountPercentage ?: 0) else 0,
             guestListAccess = effectiveGuestListAccess,
             extraordinaryBenefits = false,

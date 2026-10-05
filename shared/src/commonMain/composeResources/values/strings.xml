@@ -230,6 +230,7 @@
     <string name="days_n">%1$d days</string>
     <string name="free_drinks_n">%1$d free drinks</string>
     <string name="bar_discount_n">%1$d% bar discount</string>
+    <string name="manual_discount_n">%1$d% discount</string>
     <string name="invites_n">%1$d invites</string>
     <string name="no_rewards_configured">No rewards configured</string>
     <!-- Shift Type Dialog -->
@@ -251,10 +252,15 @@
     <string name="requires_shift_time_label">Required can/can't enjoy evening setting</string>
     <string name="duration_days_label">Duration (days)</string>
     <string name="free_drinks_label">Free Drinks</string>
+    <string name="manual_account_credit_label">Account credit (CHF)</string>
+    <string name="manual_account_credit_helper">Credited to the account of the person who works this shift, on the day the shift is done.</string>
+    <string name="manual_account_credit_summary">%1$s CHF on the account</string>
     <string name="bar_discount_percent_label">Bar Discount (%)</string>
+    <string name="manual_discount_percent_label">Discount (%)</string>
     <string name="free_entry_label">Free Entry</string>
     <string name="number_of_invites_label">Number of Invites</string>
-    <string name="duration_invites_label">Invites during reward duration</string>
+    <string name="duration_invites_label">Accompanying guests during the duration</string>
+    <string name="duration_invites_helper">Extra people this volunteer can bring in, starting on the shift day and for the number of days above. Shown at the door.</string>
     <string name="future_single_use_entries_label">Future event entries (single use)</string>
     <string name="future_entry_invites_label">Invites per future entry (friends)</string>
     <string name="future_entry_invites_helper">Used for the &quot;+n inv.&quot; shown on future single-use entries.</string>
@@ -275,7 +281,7 @@
     <string name="benefits_help_tab_nova">Shift types</string>
     <string name="benefits_help_tab_extras">Bonuses &amp; timing</string>
     <string name="benefits_help_app_stellar">Shift job on → pick a Nova type\nOrion job on → mandate year (Veteran the year after)\nDrinks, guest list, future entries → calculated for you</string>
-    <string name="benefits_help_app_manual">You enter days, drinks, bar \u0025, guests, extras\nFor one-offs outside the usual grid\nDon't double-count the same real shift if it's already Stellar</string>
+    <string name="benefits_help_app_manual">You enter the duration, the account credit, the discount, accompanying guests, and extras\nFor one-offs outside the usual grid\nDon't double-count the same real shift if it's already Stellar</string>
     <string name="benefits_help_section_profité_title">Profité / non-profité</string>
     <string name="benefits_help_section_profité_body">Default shift only, when “enjoy evening” is on.\nNot about entry: it is whether the shift hours still let the person enjoy the night or not.\nOther Nova types: this toggle is hidden.</string>
     <string name="benefits_help_section_nova_title">Nova perks (shift job)</string>
@@ -2263,6 +2269,7 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="guest_form_settings_title">Artist guest list forms (optional)</string>
     <string name="guest_form_settings_body">Artists submit their guest list on a public page (Firebase Hosting, free). Publish the site once from the Firebase setup guide.</string>
     <string name="guest_form_enable">Enable artist guest list forms</string>
+    <string name="guest_form_billeterie_validate">Let the ticket desk validate forms</string>
     <string name="guest_form_site_url">Site: %1$s</string>
     <string name="guest_form_export">Export the form site</string>
     <string name="guest_form_export_done">Zip saved. Unzip it, then run the commands below.</string>

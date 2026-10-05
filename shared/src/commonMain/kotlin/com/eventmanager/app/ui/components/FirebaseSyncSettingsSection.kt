@@ -143,6 +143,8 @@ fun FirebaseSyncSettingsSection(
     onDriveImportEnabledChange: (Boolean) -> Unit = {},
     guestFormsEnabled: Boolean = false,
     onGuestFormsEnabledChange: (Boolean) -> Unit = {},
+    guestFormsBilleterieValidateEnabled: Boolean = false,
+    onGuestFormsBilleterieValidateEnabledChange: (Boolean) -> Unit = {},
     guestFormSiteOrigin: String = "",
 ) {
     val ready = firebaseConnectionReady(configuredOrgs, projectId, applicationId, apiKey, authEmail)
@@ -317,6 +319,8 @@ fun FirebaseSyncSettingsSection(
                 GuestFormSettingsCard(
                     enabled = guestFormsEnabled,
                     onEnabledChange = onGuestFormsEnabledChange,
+                    billeterieValidateEnabled = guestFormsBilleterieValidateEnabled,
+                    onBilleterieValidateEnabledChange = onGuestFormsBilleterieValidateEnabledChange,
                     siteOrigin = guestFormSiteOrigin,
                     canEdit = isFirebaseOrgAdmin,
                 )

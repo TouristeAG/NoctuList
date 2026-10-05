@@ -240,7 +240,7 @@
     <string name="bar_discount_percent_label">Bar Discount (%)</string>
     <string name="free_entry_label">Free Entry</string>
     <string name="number_of_invites_label">Number of Invites</string>
-    <string name="duration_invites_label">Invites during reward duration</string>
+    <string name="duration_invites_label">Accompanying guests during the duration</string>
     <string name="future_single_use_entries_label">Future event entries (single use)</string>
     <string name="future_entry_invites_label">Invites per future entry (friends)</string>
     <string name="future_entry_invites_helper">Used for the &quot;+n inv.&quot; shown on future single-use entries.</string>
@@ -261,7 +261,7 @@
     <string name="benefits_help_tab_nova">Shift types</string>
     <string name="benefits_help_tab_extras">Bonuses &amp; timing</string>
     <string name="benefits_help_app_stellar">Shift job on â pick a Nova type\nOrion job on â mandate year (Veteran the year after)\nDrinks, guest list, future entries â calculated for you</string>
-    <string name="benefits_help_app_manual">You enter days, drinks, bar \u0025, guests, extras\nFor one-offs outside the usual grid\nDon\'t double-count the same real shift if it\'s already Stellar</string>
+    <string name="benefits_help_app_manual">You enter the duration, the account credit, the discount, accompanying guests, and extras\nFor one-offs outside the usual grid\nDon\'t double-count the same real shift if it\'s already Stellar</string>
     <string name="benefits_help_section_profité_title">ProfitÃ© / non-profité</string>
     <string name="benefits_help_section_profité_body">Default shift only, when “enjoy evening” is on.\nNot about entry: it is whether the shift hours still let the person enjoy the night or not.\nOther Nova types: this toggle is hidden.</string>
     <string name="benefits_help_section_nova_title">Nova perks (shift job)</string>

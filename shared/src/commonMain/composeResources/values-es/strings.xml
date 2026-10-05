@@ -222,6 +222,7 @@
     <string name="days_n">%1$d días</string>
     <string name="free_drinks_n">%1$d bebidas gratis</string>
     <string name="bar_discount_n">%1$d% descuento en bar</string>
+    <string name="manual_discount_n">%1$d% de descuento</string>
     <string name="invites_n">%1$d invitaciones</string>
     <string name="no_rewards_configured">No hay recompensas configuradas</string>
     <!-- Shift Type Dialog -->
@@ -243,10 +244,15 @@
     <string name="requires_shift_time_label">Ajuste requerido: puede/no puede disfrutar la velada</string>
     <string name="duration_days_label">Duración (días)</string>
     <string name="free_drinks_label">Bebidas gratis</string>
+    <string name="manual_account_credit_label">Crédito en la cuenta (CHF)</string>
+    <string name="manual_account_credit_helper">Se abona a la cuenta de quien hace el turno, el día en que se realiza.</string>
+    <string name="manual_account_credit_summary">%1$s CHF en la cuenta</string>
     <string name="bar_discount_percent_label">Descuento en barra (%)</string>
+    <string name="manual_discount_percent_label">Descuento (%)</string>
     <string name="free_entry_label">Entrada gratuita</string>
     <string name="number_of_invites_label">Número de invitaciones</string>
-    <string name="duration_invites_label">Invitaciones durante la duración de la recompensa</string>
+    <string name="duration_invites_label">Acompañantes durante la duración</string>
+    <string name="duration_invites_helper">Personas extra que la persona voluntaria puede hacer entrar, desde el día del turno y durante los días indicados. Visible en la puerta.</string>
     <string name="future_single_use_entries_label">Entradas futuras a un solo uso</string>
     <string name="future_entry_invites_label">Invitaciones por entrada futura (amigos)</string>
     <string name="future_entry_invites_helper">Se usa para el « +n inv. » mostrado en las entradas futuras de un solo uso.</string>
@@ -267,7 +273,7 @@
     <string name="benefits_help_tab_nova">Tipos de turno</string>
     <string name="benefits_help_tab_extras">Extras y fechas</string>
     <string name="benefits_help_app_stellar">Shift job activado → elige tipo Nova\nOrion job activado → año de mandato (Veterano al siguiente)\nBebidas, lista, entradas futuras → calculadas</string>
-    <string name="benefits_help_app_manual">Tú pones días, bebidas, \u0025 bar, invitados, extras\nPara agradecimientos fuera de la tabla\nNo cuentes dos veces el mismo turno si ya va en Stelar</string>
+    <string name="benefits_help_app_manual">Tú indicas la duración, el crédito en la cuenta, el descuento, los acompañantes y extras\nPara casos fuera de la tabla habitual\nNo cuentes dos veces el mismo turno si ya va en Estelar</string>
     <string name="benefits_help_section_profité_title">Profité / non-profité</string>
     <string name="benefits_help_section_profité_body">Solo turno por defecto + ajuste « disfrutar la velada ».\nNo es si pagó entrada: es si el horario del turno le permitió disfrutar de la velada o no.\nOtros Nova: sin este interruptor.</string>
     <string name="benefits_help_section_nova_title">Nova (shift job) - qué toca</string>
@@ -2289,6 +2295,7 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="guest_form_settings_title">Formularios de guestlist de artista (opcional)</string>
     <string name="guest_form_settings_body">Los artistas envían su guestlist en una página pública (Firebase Hosting, gratis). Publicad el sitio una vez desde la guía de instalación de Firebase.</string>
     <string name="guest_form_enable">Activar los formularios de guestlist</string>
+    <string name="guest_form_billeterie_validate">Permitir que taquilla valide los formularios</string>
     <string name="guest_form_site_url">Sitio: %1$s</string>
     <string name="guest_form_export">Exportar el sitio de formularios</string>
     <string name="guest_form_export_done">Zip guardado. Descomprimidlo y ejecutad las órdenes de abajo.</string>

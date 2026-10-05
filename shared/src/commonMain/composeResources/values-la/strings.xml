@@ -224,6 +224,7 @@
     <string name="days_n">%1$d dies</string>
     <string name="free_drinks_n">%1$d boissonususs gratuites</string>
     <string name="bar_discount_n">%1$d% discountio ad bar</string>
+    <string name="manual_discount_n">%1$d% reductio</string>
     <string name="invites_n">%1$d invitations</string>
     <string name="no_rewards_configured">Nulla felis pretium</string>
     <!-- Shift Type Dialog -->
@@ -245,10 +246,15 @@
     <string name="requires_shift_time_label">Requiritur parameter: potest / frui non potest ad vesperam</string>
     <string name="duration_days_label">Duratio (dies)</string>
     <string name="free_drinks_label">Boissonususs gratuites</string>
+    <string name="manual_account_credit_label">Creditum in ratione (CHF)</string>
+    <string name="manual_account_credit_helper">Die muneris creditur rationi eius qui munus facit.</string>
+    <string name="manual_account_credit_summary">%1$s CHF in ratione</string>
     <string name="bar_discount_percent_label">Bar reductionem (%)</string>
+    <string name="manual_discount_percent_label">Reductio (%)</string>
     <string name="free_entry_label">Introitus gratuite</string>
     <string name="number_of_invites_label">Nomenenbrede invitations</string>
-    <string name="duration_invites_label">Invitationes in praemio tempore</string>
+    <string name="duration_invites_label">Hospites comites per durationem</string>
+    <string name="duration_invites_helper">Numerus hominum praeter voluntarium, a die muneris et per dies indicatos. Ad portam videtur.</string>
     <string name="future_single_use_entries_label">Introituss futures ad usage unique</string>
     <string name="future_entry_invites_label">Invitatioes per introitus future (amis)</string>
     <string name="future_entry_invites_helper">Adhibitum ad &quot;+n inv.&quot; in futuris introitibus semel usurpandis ostendendum.</string>
@@ -269,7 +275,7 @@
     <string name="benefits_help_tab_nova">Types shift</string>
     <string name="benefits_help_tab_extras">Praemia &amp; tempora</string>
     <string name="benefits_help_app_stellar">Activate "officium Shift", deinde opportunum elige Novae typum\nActive "officium Orionis" unius mandati (Orionis annus, deinde veteranus status sequentis anni)\nBibit, hospes index et viscus futuri: latae calculi</string>
-    <string name="benefits_help_app_manual">Tu ipse inscribis dies, potiones, bar \u0025, hospitae, extras\nAdhibe pro casibus singularibus extra consuetam tabulam\nCave ne idem munus bis numeres si iam in modo Stellaire captum est</string>
+    <string name="benefits_help_app_manual">Tu ipse inscribis durationem, creditum rationis, reductionem, hospites comites, extras\nAdhibe pro casibus singularibus extra consuetam tabulam\nCave ne idem munus bis numeres si iam in modo Stellaire captum est</string>
     <string name="benefits_help_section_profité_title">Profité / non-profité</string>
     <string name="benefits_help_section_profité_body">Solum munus ex consuetudine, cum "frui vespera" activum est.\nNon de introitu: utrum horae muneris adhuc permittant homini noctem frui necne.\nAlia genera Nova: haec optio latet.</string>
     <string name="benefits_help_section_nova_title">Avantages per typus Nova (shift job)</string>
@@ -2294,6 +2300,7 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="guest_form_settings_title">Formulæ invitatorum (optio)</string>
     <string name="guest_form_settings_body">Artifices album suum in pagina publica mittunt (Firebase Hosting, gratuitum). Situm semel per Firebase institutionis ducem prome.</string>
     <string name="guest_form_enable">Formulas invitatorum accendere</string>
+    <string name="guest_form_billeterie_validate">Billetteriam formulas confirmare sinere</string>
     <string name="guest_form_site_url">Situs: %1$s</string>
     <string name="guest_form_export">Situm formularum exportare</string>
     <string name="guest_form_export_done">Fasciculus servatus. Extrahe, deinde mandata infra exsequere.</string>

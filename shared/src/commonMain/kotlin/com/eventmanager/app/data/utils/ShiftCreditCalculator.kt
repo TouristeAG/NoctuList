@@ -151,7 +151,7 @@ object ShiftCreditCalculator {
         config.accountCreditChf?.let { return maxOf(0.0, it) }
 
         if (config.benefitSystemType == BenefitSystemType.MANUAL) {
-            return maxOf(0.0, config.manualRewards?.accountCreditChf ?: 0.0)
+            return maxOf(0.0, config.manualRewards?.creditedAmountChf() ?: 0.0)
         }
 
         if (!config.isShiftJob) return 0.0

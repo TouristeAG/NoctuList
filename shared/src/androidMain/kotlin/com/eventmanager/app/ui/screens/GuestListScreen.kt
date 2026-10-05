@@ -141,6 +141,8 @@ actual fun GuestListScreen(
     var showGuestFormCreator by remember { mutableStateOf(false) }
     val guestFormsEnabled by viewModel?.guestFormsEnabled?.collectAsState()
         ?: remember { mutableStateOf(false) }
+    val guestFormsBilleterieValidateEnabled by viewModel?.guestFormsBilleterieValidateEnabled?.collectAsState()
+        ?: remember { mutableStateOf(false) }
     
     val isCompact = isCompactScreen()
     val isPhone = !isTablet()
@@ -393,7 +395,7 @@ actual fun GuestListScreen(
                     .fillMaxWidth()
                     .weight(1f)
             ) {
-                if (!readOnly && viewModel != null) {
+                if (viewModel != null && (!readOnly || guestFormsBilleterieValidateEnabled)) {
                     item(key = "guest_form_pending") {
                         GuestFormPendingCard(viewModel = viewModel, isPhone = isPhone)
                     }
@@ -565,7 +567,7 @@ actual fun GuestListScreen(
                     )
                 }
 
-                if (!readOnly && viewModel != null) {
+                if (viewModel != null && (!readOnly || guestFormsBilleterieValidateEnabled)) {
                     item(key = "guest_form_pending") {
                         GuestFormPendingCard(viewModel = viewModel, isPhone = isPhone)
                     }
@@ -727,7 +729,7 @@ actual fun GuestListScreen(
                     )
                 }
 
-                if (!readOnly && viewModel != null) {
+                if (viewModel != null && (!readOnly || guestFormsBilleterieValidateEnabled)) {
                     item(key = "guest_form_pending") {
                         GuestFormPendingCard(viewModel = viewModel, isPhone = isPhone)
                     }

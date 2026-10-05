@@ -110,6 +110,8 @@ actual fun GuestListScreen(
     var showGuestFormCreator by remember { mutableStateOf(false) }
     val guestFormsEnabled by viewModel?.guestFormsEnabled?.collectAsState()
         ?: remember { mutableStateOf(false) }
+    val guestFormsBilleterieValidateEnabled by viewModel?.guestFormsBilleterieValidateEnabled?.collectAsState()
+        ?: remember { mutableStateOf(false) }
 
     val filterPermanentGuests = stringResource(Res.string.filter_permanent_guests)
     val filterTemporaryGuests = stringResource(Res.string.filter_temporary_guests)
@@ -245,7 +247,7 @@ actual fun GuestListScreen(
                     verticalArrangement = Arrangement.spacedBy(itemSpacing),
                     modifier = Modifier.weight(1f),
                 ) {
-                    if (!readOnly && viewModel != null) {
+                    if (viewModel != null && (!readOnly || guestFormsBilleterieValidateEnabled)) {
                         item(key = "guest_form_pending") {
                             GuestFormPendingCard(viewModel = viewModel, isPhone = false)
                         }
@@ -298,7 +300,7 @@ actual fun GuestListScreen(
                         onAddGuest = { showAddDialog = true },
                     )
                 }
-                if (!readOnly && viewModel != null) {
+                if (viewModel != null && (!readOnly || guestFormsBilleterieValidateEnabled)) {
                     item(key = "guest_form_pending") {
                         GuestFormPendingCard(viewModel = viewModel, isPhone = false)
                     }
@@ -343,7 +345,7 @@ actual fun GuestListScreen(
                         onAddGuest = { showAddDialog = true },
                     )
                 }
-                if (!readOnly && viewModel != null) {
+                if (viewModel != null && (!readOnly || guestFormsBilleterieValidateEnabled)) {
                     item(key = "guest_form_pending") {
                         GuestFormPendingCard(viewModel = viewModel, isPhone = false)
                     }

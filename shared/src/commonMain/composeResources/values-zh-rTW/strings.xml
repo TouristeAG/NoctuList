@@ -222,6 +222,7 @@
     <string name="days_n">%1$d 天</string>
     <string name="free_drinks_n">%1$d 杯免費飲料</string>
     <string name="bar_discount_n">%1$d% 酒吧折扣</string>
+    <string name="manual_discount_n">%1$d% 折扣</string>
     <string name="invites_n">%1$d 個邀請</string>
     <string name="no_rewards_configured">未配置獎勵</string>
     <!-- Shift Type Dialog -->
@@ -243,10 +244,15 @@
     <string name="requires_shift_time_label">必填設定：可享受/不可享受當晚活動</string>
     <string name="duration_days_label">有效天數</string>
     <string name="free_drinks_label">免費飲品</string>
+    <string name="manual_account_credit_label">帳戶抵用 (CHF)</string>
+    <string name="manual_account_credit_helper">在班次當天記入完成該班次的志工帳戶。</string>
+    <string name="manual_account_credit_summary">帳戶 %1$s CHF</string>
     <string name="bar_discount_percent_label">酒吧折扣（%）</string>
+    <string name="manual_discount_percent_label">折扣 (%)</string>
     <string name="free_entry_label">免費入場</string>
     <string name="number_of_invites_label">邀請人數</string>
-    <string name="duration_invites_label">獎勵有效期間的邀請人數</string>
+    <string name="duration_invites_label">有效期內的同行賓客</string>
+    <string name="duration_invites_helper">志工可額外帶入的人數，從班次當天起、持續上方填寫的天數。在驗票處可見。</string>
     <string name="future_single_use_entries_label">未來活動入場（一次性）</string>
     <string name="future_entry_invites_label">每次未來入場的邀請人數（朋友）</string>
     <string name="future_entry_invites_helper">此數值會用於未來一次性入場顯示的「+n inv.」。</string>
@@ -267,7 +273,7 @@
     <string name="benefits_help_tab_nova">班次類型</string>
     <string name="benefits_help_tab_extras">加成與時間</string>
     <string name="benefits_help_app_stellar">開啟班次工作 → 選 Nova 類型\n開啟 Orion 工作 → 任期年（下一年 Veteran）\n飲品、名單、未來入場次數 → 自動算</string>
-    <string name="benefits_help_app_manual">自己填天數、飲品、酒吧折扣\u0025、邀請、額外項目\n表格外的感謝用\n已在恆星裡算過的同一班次別重複計</string>
+    <string name="benefits_help_app_manual">自己填寫時長、帳戶抵用、折扣、同行賓客等\n用於常規表之外的情況\n已在恆星模式計過的同一班次不要重複計</string>
     <string name="benefits_help_section_profité_title">Profité / non-profité</string>
     <string name="benefits_help_section_profité_body">僅預設班次 + 開啟「能否享受當晚」。\n與是否付費入場無關：只看排班時間是否仍讓人能享受當晚。\n其他 Nova 類型沒有這項。</string>
     <string name="benefits_help_section_nova_title">Nova（班次工作）- 權益一覽</string>
@@ -2289,6 +2295,7 @@ D) Application ID（appId）
     <string name="guest_form_settings_title">藝人嘉賓名單表單（選用）</string>
     <string name="guest_form_settings_body">藝人在公開頁面提交嘉賓名單（Firebase Hosting，免費）。請透過 Firebase 安裝指南發布一次網站。</string>
     <string name="guest_form_enable">啟用藝人嘉賓名單表單</string>
+    <string name="guest_form_billeterie_validate">允許票務處審核表單</string>
     <string name="guest_form_site_url">網站：%1$s</string>
     <string name="guest_form_export">匯出表單網站</string>
     <string name="guest_form_export_done">壓縮檔已儲存。解壓後執行下方指令。</string>

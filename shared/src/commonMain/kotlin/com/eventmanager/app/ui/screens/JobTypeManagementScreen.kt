@@ -393,8 +393,13 @@ fun JobTypeConfigCard(
                         
                         val rewardsDetails = mutableListOf<String>()
                         if (rewards.durationDays > 0) rewardsDetails.add(stringResource(Res.string.days_n, rewards.durationDays))
-                        if (rewards.freeDrinks > 0) rewardsDetails.add(stringResource(Res.string.free_drinks_n, rewards.freeDrinks))
-                        if (rewards.barDiscountPercentage > 0) rewardsDetails.add(stringResource(Res.string.bar_discount_n, rewards.barDiscountPercentage))
+                        val creditedChf = rewards.creditedAmountChf()
+                        if (creditedChf > 0.0) {
+                            rewardsDetails.add(
+                                stringResource(Res.string.manual_account_credit_summary, formatCreditAmount(creditedChf))
+                            )
+                        }
+                        if (rewards.barDiscountPercentage > 0) rewardsDetails.add(stringResource(Res.string.manual_discount_n, rewards.barDiscountPercentage))
                         if (rewards.freeEntry) rewardsDetails.add(stringResource(Res.string.free_entry))
                         if (rewards.invites > 0) rewardsDetails.add(stringResource(Res.string.invites_n, rewards.invites))
                         if (rewards.futureSingleUseEntries > 0) {
@@ -934,15 +939,24 @@ private fun JobTypeDialogFields(
                     onValueChange = { onManualRewardsChange(manualRewards.copy(durationDays = it ?: 1)) }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                NumberField(
-                    value = manualRewards.freeDrinks,
-                    label = stringResource(Res.string.free_drinks_label),
-                    onValueChange = { onManualRewardsChange(manualRewards.copy(freeDrinks = it ?: 0)) }
+                AmountField(
+                    value = manualRewards.creditedAmountChf(),
+                    label = stringResource(Res.string.manual_account_credit_label),
+                    onValueChange = {
+                        onManualRewardsChange(
+                            manualRewards.copy(accountCreditChf = it, freeDrinks = 0)
+                        )
+                    }
+                )
+                Text(
+                    text = stringResource(Res.string.manual_account_credit_helper),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 NumberField(
                     value = manualRewards.barDiscountPercentage,
-                    label = stringResource(Res.string.bar_discount_percent_label),
+                    label = stringResource(Res.string.manual_discount_percent_label),
                     onValueChange = { onManualRewardsChange(manualRewards.copy(barDiscountPercentage = it ?: 0)) }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -956,6 +970,11 @@ private fun JobTypeDialogFields(
                     value = manualRewards.invites,
                     label = stringResource(Res.string.duration_invites_label),
                     onValueChange = { onManualRewardsChange(manualRewards.copy(invites = it ?: 0)) }
+                )
+                Text(
+                    text = stringResource(Res.string.duration_invites_helper),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 NumberField(
@@ -1049,4 +1068,49 @@ private fun NumberField(value: Int, label: String, onValueChange: (Int?) -> Unit
         modifier = Modifier.fillMaxWidth(),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
     )
+}
+
+@Composable
+private fun AmountField(value: Double, label: String, onValueChange: (Double) -> Unit) {
+    var text by remember { mutableStateOf(formatCreditAmount(value)) }
+    OutlinedTextField(
+        value = text,
+        onValueChange = { raw ->
+            val sanitized = sanitizeCreditAmountInput(raw)
+            text = sanitized
+            onValueChange(sanitized.toDoubleOrNull()?.coerceAtLeast(0.0) ?: 0.0)
+        },
+        label = { Text(label) },
+        modifier = Modifier.fillMaxWidth(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        singleLine = true
+    )
+}
+
+internal fun formatCreditAmount(value: Double): String {
+    if (value <= 0.0) return "0"
+    val cents = kotlin.math.round(value * 100.0).toLong()
+    val major = cents / 100
+    val minor = (cents % 100).toInt()
+    return if (minor == 0) major.toString() else "$major.${minor.toString().padStart(2, '0')}"
+}
+
+private fun sanitizeCreditAmountInput(raw: String): String {
+    val builder = StringBuilder()
+    var dotSeen = false
+    var fractionDigits = 0
+    for (ch in raw.replace(',', '.')) {
+        when {
+            ch.isDigit() && !dotSeen -> builder.append(ch)
+            ch.isDigit() && fractionDigits < 2 -> {
+                builder.append(ch)
+                fractionDigits++
+            }
+            ch == '.' && !dotSeen -> {
+                dotSeen = true
+                builder.append(ch)
+            }
+        }
+    }
+    return builder.toString()
 }

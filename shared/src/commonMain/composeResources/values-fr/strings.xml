@@ -733,6 +733,7 @@
     <string name="days_n">%1$d jours</string>
     <string name="free_drinks_n">%1$d boissons gratuites</string>
     <string name="bar_discount_n">%1$d% de réduction au bar</string>
+    <string name="manual_discount_n">%1$d% de réduction</string>
     <string name="invites_n">%1$d invitations</string>
     <string name="no_rewards_configured">Aucune récompense configurée</string>
     <!-- Shift Type Dialog -->
@@ -754,10 +755,15 @@
     <string name="requires_shift_time_label">Paramètre requis : peut/ne peut pas profiter de la soirée</string>
     <string name="duration_days_label">Durée (jours)</string>
     <string name="free_drinks_label">Boissons gratuites</string>
+    <string name="manual_account_credit_label">Crédit au compte (CHF)</string>
+    <string name="manual_account_credit_helper">Crédité au compte de la personne qui effectue ce shift, le jour où le shift est réalisé.</string>
+    <string name="manual_account_credit_summary">%1$s CHF sur le compte</string>
     <string name="bar_discount_percent_label">Réduction bar (%)</string>
+    <string name="manual_discount_percent_label">Réduction (%)</string>
     <string name="free_entry_label">Entrée gratuite</string>
     <string name="number_of_invites_label">Nombre d'invitations</string>
-    <string name="duration_invites_label">Invitations pendant la durée de la récompense</string>
+    <string name="duration_invites_label">Invités accompagnants pendant la durée</string>
+    <string name="duration_invites_helper">Nombre de personnes en plus que le·la bénévole peut faire entrer, à partir du jour du shift et pendant le nombre de jours indiqué. Visible à la billeterie.</string>
     <string name="future_single_use_entries_label">Entrées futures à un usage unique</string>
     <string name="future_entry_invites_label">Invitations par entrée future (amis)</string>
     <string name="future_entry_invites_helper">Utilisé pour le « +n inv. » affiché sur les entrées futures à usage unique.</string>
@@ -778,7 +784,7 @@
     <string name="benefits_help_tab_nova">Types de shift</string>
     <string name="benefits_help_tab_extras">Bonus et dates</string>
     <string name="benefits_help_app_stellar">Active « Shift job », puis choisis le type Nova qui convient\nActive « Orion job » pour un mandat (année Orion, puis statut Vétéran l'année suivante)\nBoissons, liste d'invités et entrées futures : calcul automatique</string>
-    <string name="benefits_help_app_manual">Tu saisis toi-même la durée, les boissons, la réduction au bar, les invitations, etc.\nÀ utiliser pour des cas particuliers hors grille habituelle\nÉvite de compter deux fois le même engagement s'il est déjà pris en charge en mode Stellaire</string>
+    <string name="benefits_help_app_manual">Tu saisis toi-même la durée, le crédit versé au compte, la réduction, les invités accompagnants, etc.\nÀ utiliser pour des cas particuliers hors grille habituelle\nÉvite de compter deux fois le même engagement s'il est déjà pris en charge en mode Stellaire</string>
     <string name="benefits_help_section_profité_title">Profité / non-profité</string>
     <string name="benefits_help_section_profité_body">Uniquement pour le type Nova « Shift par défaut », avec le réglage « profiter de la soirée » activé.\nCe n'est pas une question d'entrée : on indique simplement si les horaires du shift ont permis à la personne de profiter de la soirée malgré le travail, ou non.\nLes autres types Nova n'utilisent pas ce paramètre.</string>
     <string name="benefits_help_section_nova_title">Avantages par type Nova (shift job)</string>
@@ -2254,6 +2260,7 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="guest_form_settings_title">Formulaires de guestlist artiste (facultatif)</string>
     <string name="guest_form_settings_body">Les artistes envoient leur guestlist sur une page publique (Firebase Hosting, gratuit). Publiez le site une fois via le guide d'installation Firebase.</string>
     <string name="guest_form_enable">Activer les formulaires de guestlist</string>
+    <string name="guest_form_billeterie_validate">Laisser la billetterie valider les formulaires</string>
     <string name="guest_form_site_url">Site : %1$s</string>
     <string name="guest_form_export">Exporter le site des formulaires</string>
     <string name="guest_form_export_done">Zip enregistré. Décompressez-le, puis lancez les commandes ci-dessous.</string>

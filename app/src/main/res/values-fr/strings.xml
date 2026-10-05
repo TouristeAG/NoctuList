@@ -589,7 +589,7 @@
     <string name="bar_discount_percent_label">Réduction bar (%)</string>
     <string name="free_entry_label">Entrée gratuite</string>
     <string name="number_of_invites_label">Nombre d\'invitations</string>
-    <string name="duration_invites_label">Invitations pendant la durée de la récompense</string>
+    <string name="duration_invites_label">Invités accompagnants pendant la durée</string>
     <string name="future_single_use_entries_label">Entrées futures à un usage unique</string>
     <string name="future_entry_invites_label">Invitations par entrée future (amis)</string>
     <string name="future_entry_invites_helper">Utilisé pour le « +n inv. » affiché sur les entrées futures à usage unique.</string>
@@ -610,7 +610,7 @@
     <string name="benefits_help_tab_nova">Types de shift</string>
     <string name="benefits_help_tab_extras">Bonus et dates</string>
     <string name="benefits_help_app_stellar">Active « Shift job », puis choisis le type Nova qui convient\nActive « Orion job » pour un mandat (année Orion, puis statut Vétéran l\'année suivante)\nBoissons, liste d\'invités et entrées futures : calcul automatique</string>
-    <string name="benefits_help_app_manual">Tu saisis toi-même la durée, les boissons, la réduction au bar, les invitations, etc.\nÀ utiliser pour des cas particuliers hors grille habituelle\nÉvite de compter deux fois le même engagement s\'il est déjà pris en charge en mode Stellaire</string>
+    <string name="benefits_help_app_manual">Tu saisis toi-même la durée, le crédit versé au compte, la réduction, les invités accompagnants, etc.\nÀ utiliser pour des cas particuliers hors grille habituelle\nÉvite de compter deux fois le même engagement s\'il est déjà pris en charge en mode Stellaire</string>
     <string name="benefits_help_section_profité_title">Profité / non-profité</string>
     <string name="benefits_help_section_profité_body">Uniquement pour le type Nova « Shift par défaut », avec le réglage « profiter de la soirée » activé.\nCe n\'est pas une question d\'entrée : on indique simplement si les horaires du shift ont permis à la personne de profiter de la soirée malgré le travail, ou non.\nLes autres types Nova n\'utilisent pas ce paramètre.</string>
     <string name="benefits_help_section_nova_title">Avantages par type Nova (shift job)</string>

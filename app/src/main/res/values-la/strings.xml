@@ -240,7 +240,7 @@
     <string name="bar_discount_percent_label">Bar reductionem (%)</string>
     <string name="free_entry_label">Introitus gratuite</string>
     <string name="number_of_invites_label">Nomenenbre d\'invitations</string>
-    <string name="duration_invites_label">Invitationes in praemio tempore</string>
+    <string name="duration_invites_label">Hospites comites per durationem</string>
     <string name="future_single_use_entries_label">Introituss futures ad usage unique</string>
     <string name="future_entry_invites_label">Invitatioes per introitus future (amis)</string>
     <string name="future_entry_invites_helper">Adhibitum ad &quot;+n inv.&quot; in futuris introitibus semel usurpandis ostendendum.</string>
@@ -261,7 +261,7 @@
     <string name="benefits_help_tab_nova">Types shift</string>
     <string name="benefits_help_tab_extras">Praemia &amp; tempora</string>
     <string name="benefits_help_app_stellar">Activate "officium Shift", deinde opportunum elige Novae typum\nActivum "Orion officium" unius mandati (Orionis annus, deinde Veterani status l\'sequenti anno)\nBibit, list\'hospites et futura viscus: automatice calculatione</string>
-    <string name="benefits_help_app_manual">Tu ipse inscribis dies, potiones, bar \u0025, hospitae, extras\nAdhibe pro casibus singularibus extra consuetam tabulam\nCave ne idem munus bis numeres si iam in modo Stellaire captum est</string>
+    <string name="benefits_help_app_manual">Tu ipse inscribis durationem, creditum rationis, reductionem, hospites comites, extras\nAdhibe pro casibus singularibus extra consuetam tabulam\nCave ne idem munus bis numeres si iam in modo Stellaire captum est</string>
     <string name="benefits_help_section_profité_title">Profité / non-profité</string>
     <string name="benefits_help_section_profité_body">Solum munus ex consuetudine, cum "frui vespera" activum est.\nNon de introitu: utrum horae muneris adhuc permittant homini noctem frui necne.\nAlia genera Nova: haec optio latet.</string>
     <string name="benefits_help_section_nova_title">Avantages per typus Nova (shift job)</string>

@@ -243,7 +243,7 @@
     <string name="bar_discount_percent_label">Descuento en barra (%)</string>
     <string name="free_entry_label">Entrada gratuita</string>
     <string name="number_of_invites_label">Número de invitaciones</string>
-    <string name="duration_invites_label">Invitaciones durante la duración de la recompensa</string>
+    <string name="duration_invites_label">Acompañantes durante la duración</string>
     <string name="future_single_use_entries_label">Entradas futuras a un solo uso</string>
     <string name="future_entry_invites_label">Invitaciones por entrada futura (amigos)</string>
     <string name="future_entry_invites_helper">Se usa para el « +n inv. » mostrado en las entradas futuras de un solo uso.</string>
@@ -264,7 +264,7 @@
     <string name="benefits_help_tab_nova">Tipos de turno</string>
     <string name="benefits_help_tab_extras">Extras y fechas</string>
     <string name="benefits_help_app_stellar">Shift job activado → elige tipo Nova\nOrion job activado → año de mandato (Veterano al siguiente)\nBebidas, lista, entradas futuras → calculadas</string>
-    <string name="benefits_help_app_manual">Tú pones días, bebidas, \u0025 bar, invitados, extras\nPara agradecimientos fuera de la tabla\nNo cuentes dos veces el mismo turno si ya va en Stelar</string>
+    <string name="benefits_help_app_manual">Tú indicas la duración, el crédito en la cuenta, el descuento, los acompañantes y extras\nPara casos fuera de la tabla habitual\nNo cuentes dos veces el mismo turno si ya va en Estelar</string>
     <string name="benefits_help_section_profité_title">Profité / non-profité</string>
     <string name="benefits_help_section_profité_body">Solo turno por defecto + ajuste « disfrutar la velada ».\nNo es si pagó entrada: es si el horario del turno le permitió disfrutar de la velada o no.\nOtros Nova: sin este interruptor.</string>
     <string name="benefits_help_section_nova_title">Nova (shift job) - qué toca</string>

@@ -949,6 +949,14 @@ class EventManagerViewModel(
 
     val guestFormsEnabled: StateFlow<Boolean> = _guestFormsEnabled.asStateFlow()
 
+    private val _guestFormsBilleterieValidateEnabled = MutableStateFlow(
+        settingsManagerCached?.isGuestFormsBilleterieValidateEnabled() == true,
+    )
+
+    /** When true, the billeterie guest list may accept or refuse pending public forms. */
+    val guestFormsBilleterieValidateEnabled: StateFlow<Boolean> =
+        _guestFormsBilleterieValidateEnabled.asStateFlow()
+
     private val _institutionLogoPng = MutableStateFlow(
         settingsManagerCached?.getInstitutionLogoPng().orEmpty(),
     )
@@ -963,6 +971,8 @@ class EventManagerViewModel(
 
     private fun publishGuestFormSettings() {
         _guestFormsEnabled.value = isGuestFormFeaturesEnabled()
+        _guestFormsBilleterieValidateEnabled.value =
+            settingsManagerCached?.isGuestFormsBilleterieValidateEnabled() == true
         _institutionLogoPng.value = settingsManagerCached?.getInstitutionLogoPng().orEmpty()
     }
 
@@ -970,6 +980,14 @@ class EventManagerViewModel(
         val settings = settingsManagerCached ?: return
         if (getActiveBackendType() != BackendType.FIREBASE) return
         settings.setGuestFormsEnabled(enabled)
+        publishGuestFormSettings()
+        backupInstitutionSettingsToSheets()
+    }
+
+    fun setGuestFormsBilleterieValidateEnabled(enabled: Boolean) {
+        val settings = settingsManagerCached ?: return
+        if (getActiveBackendType() != BackendType.FIREBASE) return
+        settings.setGuestFormsBilleterieValidateEnabled(enabled)
         publishGuestFormSettings()
         backupInstitutionSettingsToSheets()
     }

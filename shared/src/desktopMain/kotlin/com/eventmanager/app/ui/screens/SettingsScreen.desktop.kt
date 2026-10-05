@@ -258,6 +258,7 @@ actual fun SettingsScreen(
     val profilePhotosEnabled by viewModel.profilePhotosUploadEnabled.collectAsState()
     var driveImportEnabled by remember { mutableStateOf(viewModel.isDriveImportEnabled()) }
     val guestFormsEnabled by viewModel.guestFormsEnabled.collectAsState()
+    val guestFormsBilleterieValidateEnabled by viewModel.guestFormsBilleterieValidateEnabled.collectAsState()
     val billeterieSendEnabled by viewModel.announcementsBilleterieSendEnabled.collectAsState()
 
     val saveLabel = stringResource(Res.string.save)
@@ -490,6 +491,10 @@ actual fun SettingsScreen(
                     },
                     guestFormsEnabled = guestFormsEnabled,
                     onGuestFormsEnabledChange = { viewModel.setGuestFormsEnabled(it) },
+                    guestFormsBilleterieValidateEnabled = guestFormsBilleterieValidateEnabled,
+                    onGuestFormsBilleterieValidateEnabledChange = {
+                        viewModel.setGuestFormsBilleterieValidateEnabled(it)
+                    },
                     guestFormSiteOrigin = viewModel.guestFormSiteOrigin(),
                     projectId = firebaseProjectId,
                     apiKey = firebaseApiKey,

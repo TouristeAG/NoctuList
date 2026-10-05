@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import com.eventmanager.app.resources.Res
+import com.eventmanager.app.resources.guest_form_billeterie_validate
 import com.eventmanager.app.resources.guest_form_copy_link
 import com.eventmanager.app.resources.guest_form_enable
 import com.eventmanager.app.resources.guest_form_link_copied
@@ -31,6 +32,8 @@ import org.jetbrains.compose.resources.stringResource
 fun GuestFormSettingsCard(
     enabled: Boolean,
     onEnabledChange: (Boolean) -> Unit,
+    billeterieValidateEnabled: Boolean,
+    onBilleterieValidateEnabledChange: (Boolean) -> Unit,
     siteOrigin: String,
     canEdit: Boolean,
     modifier: Modifier = Modifier,
@@ -58,6 +61,24 @@ fun GuestFormSettingsCard(
                 onCheckedChange = onEnabledChange,
                 enabled = canEdit,
             )
+        }
+        if (enabled) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    stringResource(Res.string.guest_form_billeterie_validate),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f).padding(end = 8.dp),
+                )
+                Switch(
+                    checked = billeterieValidateEnabled,
+                    onCheckedChange = onBilleterieValidateEnabledChange,
+                    enabled = canEdit,
+                )
+            }
         }
         if (siteOrigin.isNotBlank()) {
             Text(
