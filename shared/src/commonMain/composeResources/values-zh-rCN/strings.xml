@@ -879,9 +879,11 @@
     <string name="email_tab_volunteer">志愿者</string>
     <string name="email_tab_guest">来宾</string>
     <string name="email_shared_settings_title">共享设置</string>
-    <string name="email_shared_settings_description">这些设置适用于志愿者和来宾邮件</string>
+    <string name="email_shared_settings_description">这些设置适用于志愿者、来宾和分组来宾名单邮件</string>
     <string name="email_subject_label">邮件主题</string>
     <string name="email_subject_hint">QR 码邮件的主题行</string>
+    <string name="email_header_label">邮件标题</string>
+    <string name="email_header_hint">显示在邮件顶部的大标题，与主题行不同</string>
     <string name="email_subject_default">您的志愿者资料 QR 码</string>
     <string name="email_content_before_label">QR 码前的消息</string>
     <string name="email_content_before_hint">可选的问候或介绍</string>
@@ -893,10 +895,11 @@
     <string name="email_content_after_default">如果您有任何问题，请随时与我们联系。:)</string>
     <string name="email_signature_label">签名</string>
     <string name="email_signature_hint">您的署名（例如：此致敬礼，团队）</string>
+    <string name="email_signature_description">显示在每封自动邮件的底部。保留协会名称即可用它签名。</string>
     <string name="email_signature_default">Collectif Nocturne</string>
     <string name="email_association_name_label">协会名称</string>
     <string name="email_association_name_hint">Collectif Nocturne</string>
-    <string name="email_association_name_description">用作 Digital Wallet Pass 品牌和发件人名称的默认签名。</string>
+    <string name="email_association_name_description">当签名与协会名称相同时，用于签署自动邮件。也用于 Digital Wallet Pass 品牌。</string>
     <string name="email_include_digital_wallet_pass_label">包含 Digital Wallet Pass</string>
     <string name="email_include_digital_wallet_pass_description">附加已签名的 Digital Wallet Pass（.pkpass），配置 Pass Type ID 证书后可用于 Apple Wallet 和 Google Pay</string>
     <string name="email_wallet_pass_cert_title">Apple Wallet 签名证书</string>

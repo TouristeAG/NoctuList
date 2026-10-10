@@ -128,7 +128,8 @@ class DesktopQrEmailService(private val context: PlatformContext) {
         val subject = resolveSubject(profile, settingsManager, template)
         val contentBefore = resolveContentBefore(profile, settingsManager, template)
         val contentAfter = resolveContentAfter(profile, settingsManager, template)
-        val signature = resolveSignature(profile, settingsManager, template)
+        val signature = settingsManager.resolveAutomaticEmailSignature(template.signatureDefault)
+        val headerText = resolveHeader(profile, settingsManager, template)
         val includeQr = when (profile) {
             QrEmailProfile.Volunteer -> settingsManager.isEmailIncludeQrEnabled()
             QrEmailProfile.Guest -> settingsManager.isGuestEmailIncludeQrEnabled()
@@ -138,11 +139,6 @@ class DesktopQrEmailService(private val context: PlatformContext) {
         // A grouped artist mail carries several people, so a single-holder wallet pass is meaningless.
         val includeDigitalWalletPass = settingsManager.isEmailIncludeDigitalWalletPassEnabled() &&
             profile != QrEmailProfile.TempGuest
-        val headerText = when (profile) {
-            QrEmailProfile.Volunteer -> template.volunteerHeader
-            QrEmailProfile.Guest -> template.guestHeader
-            QrEmailProfile.TempGuest -> template.tempGuestHeader
-        }
         val footerText = when (profile) {
             QrEmailProfile.Volunteer -> template.volunteerFooter
             QrEmailProfile.Guest -> template.guestFooter
@@ -266,6 +262,19 @@ class DesktopQrEmailService(private val context: PlatformContext) {
             settingsManager.getTemporaryGuestEmailSubject().ifEmpty { template.tempGuestSubjectDefault }
     }
 
+    private fun resolveHeader(
+        profile: QrEmailProfile,
+        settingsManager: SettingsManager,
+        template: DesktopQrEmailTemplateStrings,
+    ): String = when (profile) {
+        QrEmailProfile.Volunteer ->
+            settingsManager.getEmailHeader().ifEmpty { template.volunteerHeader }
+        QrEmailProfile.Guest ->
+            settingsManager.getGuestEmailHeader().ifEmpty { template.guestHeader }
+        QrEmailProfile.TempGuest ->
+            settingsManager.getTemporaryGuestEmailHeader().ifEmpty { template.tempGuestHeader }
+    }
+
     private fun resolveContentBefore(
         profile: QrEmailProfile,
         settingsManager: SettingsManager,
@@ -286,16 +295,6 @@ class DesktopQrEmailService(private val context: PlatformContext) {
         QrEmailProfile.Guest -> settingsManager.getGuestEmailContentAfter().ifEmpty { template.guestContentAfterDefault }
         QrEmailProfile.TempGuest ->
             settingsManager.getTemporaryGuestEmailContentAfter().ifEmpty { template.tempGuestContentAfterDefault }
-    }
-
-    private fun resolveSignature(
-        profile: QrEmailProfile,
-        settingsManager: SettingsManager,
-        template: DesktopQrEmailTemplateStrings,
-    ): String = when (profile) {
-        QrEmailProfile.Volunteer -> settingsManager.getEmailSignature().ifEmpty { template.signatureDefault }
-        QrEmailProfile.Guest -> settingsManager.getGuestEmailSignature().ifEmpty { template.signatureDefault }
-        QrEmailProfile.TempGuest -> settingsManager.getGuestEmailSignature().ifEmpty { template.signatureDefault }
     }
 
     private fun loadLogoBytes(logoPath: String): ByteArray? {

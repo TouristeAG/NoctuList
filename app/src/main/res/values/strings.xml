@@ -844,9 +844,11 @@
     <string name="email_tab_volunteer">Volunteers</string>
     <string name="email_tab_guest">Guests</string>
     <string name="email_shared_settings_title">Shared Settings</string>
-    <string name="email_shared_settings_description">These settings apply to both volunteer and guest emails</string>
+    <string name="email_shared_settings_description">These settings apply to volunteer, guest, and grouped guest list emails</string>
     <string name="email_subject_label">Email Subject</string>
     <string name="email_subject_hint">Subject line for the QR code email</string>
+    <string name="email_header_label">Title in the email</string>
+    <string name="email_header_hint">Heading shown at the top of the message, separate from the subject line</string>
     <string name="email_subject_default">Your Volunteer Profile QR Code</string>
     <string name="email_content_before_label">Message Before QR Code</string>
     <string name="email_content_before_hint">Optional greeting or introduction</string>
@@ -858,10 +860,11 @@
     <string name="email_content_after_default">If you have any questions, feel free to reach out to us. :)</string>
     <string name="email_signature_label">Signature</string>
     <string name="email_signature_hint">Your sign-off (e.g., Best regards, The Team)</string>
+    <string name="email_signature_description">Shown at the bottom of every automatic email. Leave the association name to sign with it.</string>
     <string name="email_signature_default">Collectif Nocturne</string>
     <string name="email_association_name_label">Association Name</string>
     <string name="email_association_name_hint">Collectif Nocturne</string>
-    <string name="email_association_name_description">Used as default signature for the Digital Wallet Pass branding and sender name.</string>
+    <string name="email_association_name_description">Signs automatic emails when the signature field matches the association name. Also used for Digital Wallet Pass branding.</string>
     <string name="email_include_digital_wallet_pass_label">Include Digital Wallet Pass</string>
     <string name="email_include_digital_wallet_pass_description">Attach a Digital Wallet Pass (.pkpass) that works with Apple Wallet and compatible Android wallet apps</string>
     <string name="email_include_logo_label">Include Association Logo</string>

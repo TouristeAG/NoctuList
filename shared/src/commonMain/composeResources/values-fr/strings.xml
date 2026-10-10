@@ -1021,9 +1021,11 @@
     <string name="email_tab_volunteer">Bénévoles</string>
     <string name="email_tab_guest">Invité·es</string>
     <string name="email_shared_settings_title">Paramètres partagés</string>
-    <string name="email_shared_settings_description">Ces paramètres s'appliquent aux emails des bénévoles et des invité·es</string>
+    <string name="email_shared_settings_description">Ces paramètres s'appliquent aux emails des bénévoles, des invité·es et de la guestlist groupée</string>
     <string name="email_subject_label">Objet de l'email</string>
     <string name="email_subject_hint">Ligne d'objet pour l'email QR code</string>
+    <string name="email_header_label">Titre du mail</string>
+    <string name="email_header_hint">Grand titre en haut du message, distinct de l'objet</string>
     <string name="email_subject_default">Votre QR Code de Profil Bénévole</string>
     <string name="email_content_before_label">Message Avant le QR Code</string>
     <string name="email_content_before_hint">Salutation ou introduction optionnelle</string>
@@ -1035,10 +1037,11 @@
     <string name="email_content_after_default">Si vous avez des questions, n'hésitez pas à nous contacter. :) </string>
     <string name="email_signature_label">Signature</string>
     <string name="email_signature_hint">Votre formule de politesse (ex: Cordialement, L'Équipe)</string>
+    <string name="email_signature_description">Affichée en bas de chaque email automatique. Laissez le nom de l'association pour signer avec celui-ci.</string>
     <string name="email_signature_default">Collectif Nocturne</string>
     <string name="email_association_name_label">Nom de l'association</string>
     <string name="email_association_name_hint">Collectif Nocturne</string>
-    <string name="email_association_name_description">Utilisé comme signature par défaut pour l'image de marque du Digital Wallet Pass et le nom de l'expéditeur.</string>
+    <string name="email_association_name_description">Signe les emails automatiques quand la signature reprend le nom de l'association. Aussi utilisé pour le Digital Wallet Pass.</string>
     <string name="email_include_digital_wallet_pass_label">Inclure le Digital Wallet Pass</string>
     <string name="email_include_digital_wallet_pass_description">Joindre un Digital Wallet Pass (.pkpass) signé pour Apple Wallet et Google Pay lorsqu'un certificat Pass Type ID est configuré</string>
     <string name="email_wallet_pass_cert_title">Certificat de signature Apple Wallet</string>

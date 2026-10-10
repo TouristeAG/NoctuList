@@ -1017,9 +1017,11 @@
     <string name="email_tab_volunteer">Voluntarii</string>
     <string name="email_tab_guest">Hospess</string>
     <string name="email_shared_settings_title">Shared occasus</string>
-    <string name="email_shared_settings_description">Hae occasus ad offerres et hospites applicant emails</string>
+    <string name="email_shared_settings_description">Hae occasus ad voluntarios, hospites et indicem hospitum congregatum applicant</string>
     <string name="email_subject_label">Objet deemail</string>
     <string name="email_subject_hint">Lignede res proemail Codex QR</string>
+    <string name="email_header_label">Titulus epistulae</string>
+    <string name="email_header_hint">Titulus magnus in summo nuntio, ab obiecto distinctus</string>
     <string name="email_subject_default">Votre QR Code Profil Voluntarius</string>
     <string name="email_content_before_label">Message Avant QR Code</string>
     <string name="email_content_before_hint">Salutation vel introduction optioelle</string>
@@ -1031,10 +1033,11 @@
     <string name="email_content_after_default">Si quas quaestiones habes, quaeso ne nos attingere dubitas. :) </string>
     <string name="email_signature_label">Signature</string>
     <string name="email_signature_hint">Votre formule politesse (ex: Cordialement, L'Turma)</string>
+    <string name="email_signature_description">In imo cuiusque epistulae automaticae apparet. Relinque nomen associationis ut eo subscribatur.</string>
     <string name="email_signature_default">Collectif Nocturne</string>
     <string name="email_association_name_label">Nomenen deassociation</string>
     <string name="email_association_name_hint">Collectif Nocturne</string>
-    <string name="email_association_name_description">Adhibetur ut subscriptio default pro Digital Wallet Transi notans et mittens nomen.</string>
+    <string name="email_association_name_description">Epistulas automaticas subscribit cum subscriptio nomini associationis congruit. Etiam pro nota Digital Wallet Pass.</string>
     <string name="email_include_digital_wallet_pass_label">Inclure Digital Wallet Pass</string>
     <string name="email_include_digital_wallet_pass_description">Affigere signati Wallet Tempus (.pkpass) pro Apple Wallet Google Redde cum Est Type ID libellum configuratur</string>
     <string name="email_wallet_pass_cert_title">Certificat subscriptio Apple Wallet</string>

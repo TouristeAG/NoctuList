@@ -2229,13 +2229,16 @@ private fun DesktopEmailTemplateSettings(
         onSyncedSettingChanged()
     }
     val platformContext = LocalPlatformContext.current
+    val headerDefault = stringResource(Res.string.email_html_header)
     val subjectDefault = stringResource(Res.string.email_subject_default)
     val contentBeforeDefault = stringResource(Res.string.email_content_before_default)
     val contentAfterDefault = stringResource(Res.string.email_content_after_default)
     val signatureDefault = stringResource(Res.string.email_signature_default)
+    val guestHeaderDefault = stringResource(Res.string.guest_email_html_header)
     val guestSubjectDefault = stringResource(Res.string.guest_email_subject_default)
     val guestContentBeforeDefault = stringResource(Res.string.guest_email_content_before_default)
     val guestContentAfterDefault = stringResource(Res.string.guest_email_content_after_default)
+    val tempHeaderDefault = stringResource(Res.string.temp_guest_email_html_header)
     val tempSubjectDefault = stringResource(Res.string.temp_guest_email_subject_default)
     val tempContentBeforeDefault = stringResource(Res.string.temp_guest_email_content_before_default)
     val tempContentAfterDefault = stringResource(Res.string.temp_guest_email_content_after_default)
@@ -2248,41 +2251,52 @@ private fun DesktopEmailTemplateSettings(
         if (temporaryFeaturesEnabled) add(stringResource(Res.string.temp_guest_email_tab))
     }
 
+    var volunteerHeader by remember { mutableStateOf(headerDefault) }
     var volunteerSubject by remember { mutableStateOf(subjectDefault) }
     var volunteerContentBefore by remember { mutableStateOf(contentBeforeDefault) }
     var volunteerContentAfter by remember { mutableStateOf(contentAfterDefault) }
     var volunteerIncludeQr by remember { mutableStateOf(true) }
+    var guestHeader by remember { mutableStateOf(guestHeaderDefault) }
     var guestSubject by remember { mutableStateOf(guestSubjectDefault) }
     var guestContentBefore by remember { mutableStateOf(guestContentBeforeDefault) }
     var guestContentAfter by remember { mutableStateOf(guestContentAfterDefault) }
     var guestIncludeQr by remember { mutableStateOf(true) }
+    var tempHeader by remember { mutableStateOf(tempHeaderDefault) }
     var tempSubject by remember { mutableStateOf(tempSubjectDefault) }
     var tempContentBefore by remember { mutableStateOf(tempContentBeforeDefault) }
     var tempContentAfter by remember { mutableStateOf(tempContentAfterDefault) }
     var tempIncludeQr by remember { mutableStateOf(true) }
     var emailSignature by remember { mutableStateOf(signatureDefault) }
+    var signatureTracksAssociation by remember { mutableStateOf(true) }
     var emailAssociationName by remember { mutableStateOf(associationNameDefault) }
     var emailLogoUri by remember { mutableStateOf("") }
     var includeWalletPass by remember { mutableStateOf(true) }
     var includeLogo by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
+        volunteerHeader = settingsManager.getEmailHeader().ifEmpty { headerDefault }
         volunteerSubject = settingsManager.getEmailSubject().ifEmpty { subjectDefault }
         volunteerContentBefore = settingsManager.getEmailContentBefore().ifEmpty { contentBeforeDefault }
         volunteerContentAfter = settingsManager.getEmailContentAfter().ifEmpty { contentAfterDefault }
         volunteerIncludeQr = settingsManager.isEmailIncludeQrEnabled()
+        guestHeader = settingsManager.getGuestEmailHeader().ifEmpty { guestHeaderDefault }
         guestSubject = settingsManager.getGuestEmailSubject().ifEmpty { guestSubjectDefault }
         guestContentBefore = settingsManager.getGuestEmailContentBefore().ifEmpty { guestContentBeforeDefault }
         guestContentAfter = settingsManager.getGuestEmailContentAfter().ifEmpty { guestContentAfterDefault }
         guestIncludeQr = settingsManager.isGuestEmailIncludeQrEnabled()
+        tempHeader = settingsManager.getTemporaryGuestEmailHeader().ifEmpty { tempHeaderDefault }
         tempSubject = settingsManager.getTemporaryGuestEmailSubject().ifEmpty { tempSubjectDefault }
         tempContentBefore =
             settingsManager.getTemporaryGuestEmailContentBefore().ifEmpty { tempContentBeforeDefault }
         tempContentAfter =
             settingsManager.getTemporaryGuestEmailContentAfter().ifEmpty { tempContentAfterDefault }
         tempIncludeQr = settingsManager.isTemporaryGuestEmailIncludeQrEnabled()
-        emailSignature = settingsManager.getEmailSignature().ifEmpty { signatureDefault }
-        emailAssociationName = settingsManager.getEmailAssociationName().ifEmpty { associationNameDefault }
+        val storedSignature = settingsManager.getEmailSignature()
+        val association = settingsManager.getEmailAssociationName().ifBlank { associationNameDefault }
+        emailAssociationName = association
+        signatureTracksAssociation = com.eventmanager.app.email.AutomaticEmailCopy
+            .signatureTracksAssociation(storedSignature, association)
+        emailSignature = if (signatureTracksAssociation) association else storedSignature
         includeWalletPass = settingsManager.isEmailIncludeDigitalWalletPassEnabled()
         includeLogo = settingsManager.isEmailIncludeLogoEnabled()
         emailLogoUri = settingsManager.getEmailLogoUri()
@@ -2316,6 +2330,18 @@ private fun DesktopEmailTemplateSettings(
     }
 
     if (selectedTab == 0) {
+        OutlinedTextField(
+            value = volunteerHeader,
+            onValueChange = {
+                volunteerHeader = it
+                persistSynced { settingsManager.saveEmailHeader(it) }
+            },
+            label = { Text(stringResource(Res.string.email_header_label)) },
+            placeholder = { Text(stringResource(Res.string.email_header_hint)) },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            enabled = editable,
+        )
         OutlinedTextField(
             value = volunteerSubject,
             onValueChange = {
@@ -2363,6 +2389,18 @@ private fun DesktopEmailTemplateSettings(
         )
     } else if (selectedTab == 2) {
         OutlinedTextField(
+            value = tempHeader,
+            onValueChange = {
+                tempHeader = it
+                persistSynced { settingsManager.saveTemporaryGuestEmailHeader(it) }
+            },
+            label = { Text(stringResource(Res.string.email_header_label)) },
+            placeholder = { Text(stringResource(Res.string.email_header_hint)) },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            enabled = editable,
+        )
+        OutlinedTextField(
             value = tempSubject,
             onValueChange = {
                 tempSubject = it
@@ -2408,6 +2446,18 @@ private fun DesktopEmailTemplateSettings(
             enabled = editable,
         )
     } else {
+        OutlinedTextField(
+            value = guestHeader,
+            onValueChange = {
+                guestHeader = it
+                persistSynced { settingsManager.saveGuestEmailHeader(it) }
+            },
+            label = { Text(stringResource(Res.string.email_header_label)) },
+            placeholder = { Text(stringResource(Res.string.email_header_hint)) },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            enabled = editable,
+        )
         OutlinedTextField(
             value = guestSubject,
             onValueChange = {
@@ -2470,21 +2520,36 @@ private fun DesktopEmailTemplateSettings(
 
     OutlinedTextField(
         value = emailSignature,
-        onValueChange = {
-            emailSignature = it
-            persistSynced { settingsManager.saveEmailSignature(it) }
+        onValueChange = { value ->
+            val association = emailAssociationName.trim()
+            val tracks = value.isBlank() || value.trim() == association
+            signatureTracksAssociation = tracks
+            emailSignature = if (value.isBlank()) association.ifBlank { signatureDefault } else value
+            persistSynced {
+                settingsManager.saveEmailSignature(if (tracks) "" else value)
+            }
         },
         label = { Text(stringResource(Res.string.email_signature_label)) },
         placeholder = { Text(stringResource(Res.string.email_signature_hint)) },
+        supportingText = { Text(stringResource(Res.string.email_signature_description)) },
         modifier = Modifier.fillMaxWidth(),
         minLines = 2,
         enabled = editable,
     )
     OutlinedTextField(
         value = emailAssociationName,
-        onValueChange = {
-            emailAssociationName = it
-            persistSynced { settingsManager.saveEmailAssociationName(it) }
+        onValueChange = { value ->
+            val previous = emailAssociationName
+            emailAssociationName = value
+            val follows = signatureTracksAssociation || emailSignature.trim() == previous.trim()
+            if (follows) {
+                signatureTracksAssociation = true
+                emailSignature = value.ifBlank { associationNameDefault }
+            }
+            persistSynced {
+                settingsManager.saveEmailAssociationName(value)
+                if (follows) settingsManager.saveEmailSignature("")
+            }
         },
         label = { Text(stringResource(Res.string.email_association_name_label)) },
         placeholder = { Text(stringResource(Res.string.email_association_name_hint)) },
@@ -2541,19 +2606,34 @@ private fun DesktopEmailTemplateSettings(
         onClick = {
             if (!editable) return@OutlinedButton
             if (selectedTab == 0) {
+                volunteerHeader = headerDefault
                 volunteerSubject = subjectDefault
                 volunteerContentBefore = contentBeforeDefault
                 volunteerIncludeQr = true
                 volunteerContentAfter = contentAfterDefault
+                settingsManager.saveEmailHeader(volunteerHeader)
                 settingsManager.saveEmailSubject(volunteerSubject)
                 settingsManager.saveEmailContentBefore(volunteerContentBefore)
                 settingsManager.setEmailIncludeQrEnabled(volunteerIncludeQr)
                 persistSynced { settingsManager.saveEmailContentAfter(volunteerContentAfter) }
+            } else if (selectedTab == 2) {
+                tempHeader = tempHeaderDefault
+                tempSubject = tempSubjectDefault
+                tempContentBefore = tempContentBeforeDefault
+                tempIncludeQr = true
+                tempContentAfter = tempContentAfterDefault
+                settingsManager.saveTemporaryGuestEmailHeader(tempHeader)
+                settingsManager.saveTemporaryGuestEmailSubject(tempSubject)
+                settingsManager.saveTemporaryGuestEmailContentBefore(tempContentBefore)
+                settingsManager.setTemporaryGuestEmailIncludeQrEnabled(tempIncludeQr)
+                persistSynced { settingsManager.saveTemporaryGuestEmailContentAfter(tempContentAfter) }
             } else {
+                guestHeader = guestHeaderDefault
                 guestSubject = guestSubjectDefault
                 guestContentBefore = guestContentBeforeDefault
                 guestIncludeQr = true
                 guestContentAfter = guestContentAfterDefault
+                settingsManager.saveGuestEmailHeader(guestHeader)
                 settingsManager.saveGuestEmailSubject(guestSubject)
                 settingsManager.saveGuestEmailContentBefore(guestContentBefore)
                 settingsManager.setGuestEmailIncludeQrEnabled(guestIncludeQr)

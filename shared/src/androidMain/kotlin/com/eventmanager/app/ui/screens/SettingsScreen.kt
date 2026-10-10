@@ -556,6 +556,9 @@ private fun EmailSettingsContent(
     // Cache string resources to avoid repeated lookups
     val strings = remember {
         EmailSettingsStrings(
+            headerLabel = context.getString(R.string.email_header_label),
+            headerHint = context.getString(R.string.email_header_hint),
+            headerDefault = context.getString(R.string.email_html_header),
             subjectDefault = context.getString(R.string.email_subject_default),
             contentBeforeDefault = context.getString(R.string.email_content_before_default),
             contentAfterDefault = context.getString(R.string.email_content_after_default),
@@ -590,6 +593,7 @@ private fun EmailSettingsContent(
     // Guest email defaults
     val guestStrings = remember {
         GuestEmailSettingsStrings(
+            headerDefault = context.getString(R.string.guest_email_html_header),
             subjectDefault = context.getString(R.string.guest_email_subject_default),
             contentBeforeDefault = context.getString(R.string.guest_email_content_before_default),
             contentAfterDefault = context.getString(R.string.guest_email_content_after_default)
@@ -599,6 +603,7 @@ private fun EmailSettingsContent(
     // Temporary guest (artist guest list) defaults
     val tempStrings = remember {
         GuestEmailSettingsStrings(
+            headerDefault = context.getString(R.string.temp_guest_email_html_header),
             subjectDefault = context.getString(R.string.temp_guest_email_subject_default),
             contentBeforeDefault = context.getString(R.string.temp_guest_email_content_before_default),
             contentAfterDefault = context.getString(R.string.temp_guest_email_content_after_default)
@@ -616,18 +621,21 @@ private fun EmailSettingsContent(
     }
     
     // Volunteer email settings
+    var volunteerHeader by remember { mutableStateOf(strings.headerDefault) }
     var volunteerSubject by remember { mutableStateOf(strings.subjectDefault) }
     var volunteerContentBefore by remember { mutableStateOf(strings.contentBeforeDefault) }
     var volunteerIncludeQr by remember { mutableStateOf(true) }
     var volunteerContentAfter by remember { mutableStateOf(strings.contentAfterDefault) }
     
     // Guest email settings
+    var guestHeader by remember { mutableStateOf(guestStrings.headerDefault) }
     var guestSubject by remember { mutableStateOf(guestStrings.subjectDefault) }
     var guestContentBefore by remember { mutableStateOf(guestStrings.contentBeforeDefault) }
     var guestIncludeQr by remember { mutableStateOf(true) }
     var guestContentAfter by remember { mutableStateOf(guestStrings.contentAfterDefault) }
 
-    // Artist guest list email settings
+    // Grouped / temporary guest list email settings
+    var tempHeader by remember { mutableStateOf(tempStrings.headerDefault) }
     var tempSubject by remember { mutableStateOf(tempStrings.subjectDefault) }
     var tempContentBefore by remember { mutableStateOf(tempStrings.contentBeforeDefault) }
     var tempIncludeQr by remember { mutableStateOf(true) }
@@ -635,7 +643,8 @@ private fun EmailSettingsContent(
 
     // Shared settings
     var emailSignature by remember { mutableStateOf(strings.signatureDefault) }
-    var emailAssociationName by remember { mutableStateOf("Collectif Nocturne") }
+    var signatureTracksAssociation by remember { mutableStateOf(true) }
+    var emailAssociationName by remember { mutableStateOf(strings.associationNameHint) }
     var emailIncludeDigitalWalletPass by remember { mutableStateOf(true) }
     var emailIncludeLogo by remember { mutableStateOf(false) }
     var emailLogoUri by remember { mutableStateOf("") }
@@ -643,18 +652,21 @@ private fun EmailSettingsContent(
     // Load settings asynchronously only once
     LaunchedEffect(Unit) {
         // Volunteer settings
+        volunteerHeader = settingsManager.getEmailHeader().ifEmpty { strings.headerDefault }
         volunteerSubject = settingsManager.getEmailSubject().ifEmpty { strings.subjectDefault }
         volunteerContentBefore = settingsManager.getEmailContentBefore().ifEmpty { strings.contentBeforeDefault }
         volunteerIncludeQr = settingsManager.isEmailIncludeQrEnabled()
         volunteerContentAfter = settingsManager.getEmailContentAfter().ifEmpty { strings.contentAfterDefault }
         
         // Guest settings
+        guestHeader = settingsManager.getGuestEmailHeader().ifEmpty { guestStrings.headerDefault }
         guestSubject = settingsManager.getGuestEmailSubject().ifEmpty { guestStrings.subjectDefault }
         guestContentBefore = settingsManager.getGuestEmailContentBefore().ifEmpty { guestStrings.contentBeforeDefault }
         guestIncludeQr = settingsManager.isGuestEmailIncludeQrEnabled()
         guestContentAfter = settingsManager.getGuestEmailContentAfter().ifEmpty { guestStrings.contentAfterDefault }
 
-        // Artist guest list settings
+        // Grouped / temporary guest list settings
+        tempHeader = settingsManager.getTemporaryGuestEmailHeader().ifEmpty { tempStrings.headerDefault }
         tempSubject = settingsManager.getTemporaryGuestEmailSubject().ifEmpty { tempStrings.subjectDefault }
         tempContentBefore =
             settingsManager.getTemporaryGuestEmailContentBefore().ifEmpty { tempStrings.contentBeforeDefault }
@@ -662,9 +674,13 @@ private fun EmailSettingsContent(
         tempContentAfter =
             settingsManager.getTemporaryGuestEmailContentAfter().ifEmpty { tempStrings.contentAfterDefault }
 
-        // Shared settings
-        emailSignature = settingsManager.getEmailSignature().ifEmpty { strings.signatureDefault }
-        emailAssociationName = settingsManager.getEmailAssociationName()
+        // Shared settings. An empty signature follows the association name.
+        val storedSignature = settingsManager.getEmailSignature()
+        val association = settingsManager.getEmailAssociationName().ifBlank { strings.associationNameHint }
+        emailAssociationName = association
+        signatureTracksAssociation = com.eventmanager.app.email.AutomaticEmailCopy
+            .signatureTracksAssociation(storedSignature, association)
+        emailSignature = if (signatureTracksAssociation) association else storedSignature
         emailIncludeDigitalWalletPass = settingsManager.isEmailIncludeDigitalWalletPassEnabled()
         emailIncludeLogo = settingsManager.isEmailIncludeLogoEnabled()
         emailLogoUri = settingsManager.getEmailLogoUri()
@@ -764,6 +780,11 @@ private fun EmailSettingsContent(
         if (selectedTabIndex == 0) {
             // Volunteer Email Settings
             VolunteerEmailFields(
+                header = volunteerHeader,
+                onHeaderChange = {
+                    volunteerHeader = it
+                    debouncedSave { settingsManager.saveEmailHeader(it) }
+                },
                 subject = volunteerSubject,
                 onSubjectChange = { 
                     volunteerSubject = it
@@ -790,8 +811,13 @@ private fun EmailSettingsContent(
                 enabled = editable,
             )
         } else if (selectedTabIndex == 2) {
-            // Artist guest list: one mail carrying every temporary guest's QR code
+            // Grouped guest list: one mail carrying every temporary guest's QR code
             GuestEmailFields(
+                header = tempHeader,
+                onHeaderChange = {
+                    tempHeader = it
+                    debouncedSave { settingsManager.saveTemporaryGuestEmailHeader(it) }
+                },
                 subject = tempSubject,
                 onSubjectChange = {
                     tempSubject = it
@@ -820,6 +846,11 @@ private fun EmailSettingsContent(
         } else {
             // Guest Email Settings
             GuestEmailFields(
+                header = guestHeader,
+                onHeaderChange = {
+                    guestHeader = it
+                    debouncedSave { settingsManager.saveGuestEmailHeader(it) }
+                },
                 subject = guestSubject,
                 onSubjectChange = { 
                     guestSubject = it
@@ -861,15 +892,21 @@ private fun EmailSettingsContent(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         
-        // Signature (shared)
+        // Signature (shared). Left equal to the association name, that name signs the emails.
         OutlinedTextField(
             value = emailSignature,
-            onValueChange = { 
-                emailSignature = it
-                debouncedSave { settingsManager.saveEmailSignature(it) }
+            onValueChange = { value ->
+                val association = emailAssociationName.trim()
+                val tracks = value.isBlank() || value.trim() == association
+                signatureTracksAssociation = tracks
+                emailSignature = if (value.isBlank()) association.ifBlank { strings.signatureDefault } else value
+                debouncedSave {
+                    settingsManager.saveEmailSignature(if (tracks) "" else value)
+                }
             },
             label = { Text(strings.signatureLabel) },
             placeholder = { Text(strings.signatureHint) },
+            supportingText = { Text(context.getString(R.string.email_signature_description)) },
             modifier = Modifier.fillMaxWidth(),
             minLines = 2,
             maxLines = 4,
@@ -879,9 +916,18 @@ private fun EmailSettingsContent(
 
         OutlinedTextField(
             value = emailAssociationName,
-            onValueChange = {
-                emailAssociationName = it
-                debouncedSave { settingsManager.saveEmailAssociationName(it) }
+            onValueChange = { value ->
+                val previous = emailAssociationName
+                emailAssociationName = value
+                val follows = signatureTracksAssociation || emailSignature.trim() == previous.trim()
+                if (follows) {
+                    signatureTracksAssociation = true
+                    emailSignature = value.ifBlank { strings.signatureDefault }
+                }
+                debouncedSave {
+                    settingsManager.saveEmailAssociationName(value)
+                    if (follows) settingsManager.saveEmailSignature("")
+                }
             },
             label = { Text(strings.associationNameLabel) },
             placeholder = { Text(strings.associationNameHint) },
@@ -1074,27 +1120,44 @@ private fun EmailSettingsContent(
             onClick = {
                 if (!editable) return@OutlinedButton
                 if (selectedTabIndex == 0) {
-                    // Reset volunteer settings
+                    volunteerHeader = strings.headerDefault
                     volunteerSubject = strings.subjectDefault
                     volunteerContentBefore = strings.contentBeforeDefault
                     volunteerIncludeQr = true
                     volunteerContentAfter = strings.contentAfterDefault
                     
                     coroutineScope.launch {
+                        settingsManager.saveEmailHeader(volunteerHeader)
                         settingsManager.saveEmailSubject(volunteerSubject)
                         settingsManager.saveEmailContentBefore(volunteerContentBefore)
                         settingsManager.setEmailIncludeQrEnabled(volunteerIncludeQr)
                         settingsManager.saveEmailContentAfter(volunteerContentAfter)
                         onSyncedSettingChanged()
                     }
+                } else if (selectedTabIndex == 2) {
+                    tempHeader = tempStrings.headerDefault
+                    tempSubject = tempStrings.subjectDefault
+                    tempContentBefore = tempStrings.contentBeforeDefault
+                    tempIncludeQr = true
+                    tempContentAfter = tempStrings.contentAfterDefault
+
+                    coroutineScope.launch {
+                        settingsManager.saveTemporaryGuestEmailHeader(tempHeader)
+                        settingsManager.saveTemporaryGuestEmailSubject(tempSubject)
+                        settingsManager.saveTemporaryGuestEmailContentBefore(tempContentBefore)
+                        settingsManager.setTemporaryGuestEmailIncludeQrEnabled(tempIncludeQr)
+                        settingsManager.saveTemporaryGuestEmailContentAfter(tempContentAfter)
+                        onSyncedSettingChanged()
+                    }
                 } else {
-                    // Reset guest settings
+                    guestHeader = guestStrings.headerDefault
                     guestSubject = guestStrings.subjectDefault
                     guestContentBefore = guestStrings.contentBeforeDefault
                     guestIncludeQr = true
                     guestContentAfter = guestStrings.contentAfterDefault
                     
                     coroutineScope.launch {
+                        settingsManager.saveGuestEmailHeader(guestHeader)
                         settingsManager.saveGuestEmailSubject(guestSubject)
                         settingsManager.saveGuestEmailContentBefore(guestContentBefore)
                         settingsManager.setGuestEmailIncludeQrEnabled(guestIncludeQr)
@@ -1118,6 +1181,8 @@ private fun EmailSettingsContent(
  */
 @Composable
 private fun VolunteerEmailFields(
+    header: String,
+    onHeaderChange: (String) -> Unit,
     subject: String,
     onSubjectChange: (String) -> Unit,
     contentBefore: String,
@@ -1132,6 +1197,16 @@ private fun VolunteerEmailFields(
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        OutlinedTextField(
+            value = header,
+            onValueChange = onHeaderChange,
+            label = { Text(strings.headerLabel) },
+            placeholder = { Text(strings.headerHint) },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            enabled = enabled,
+            leadingIcon = { Icon(Icons.Default.Title, contentDescription = null) }
+        )
         // Email Subject
         OutlinedTextField(
             value = subject,
@@ -1201,6 +1276,8 @@ private fun VolunteerEmailFields(
  */
 @Composable
 private fun GuestEmailFields(
+    header: String,
+    onHeaderChange: (String) -> Unit,
     subject: String,
     onSubjectChange: (String) -> Unit,
     contentBefore: String,
@@ -1215,6 +1292,16 @@ private fun GuestEmailFields(
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        OutlinedTextField(
+            value = header,
+            onValueChange = onHeaderChange,
+            label = { Text(strings.headerLabel) },
+            placeholder = { Text(strings.headerHint) },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            enabled = enabled,
+            leadingIcon = { Icon(Icons.Default.Title, contentDescription = null) }
+        )
         // Email Subject
         OutlinedTextField(
             value = subject,
@@ -1283,6 +1370,7 @@ private fun GuestEmailFields(
  * Data class for guest email settings strings
  */
 private data class GuestEmailSettingsStrings(
+    val headerDefault: String,
     val subjectDefault: String,
     val contentBeforeDefault: String,
     val contentAfterDefault: String
@@ -1559,6 +1647,9 @@ private fun GmailAuthSection(
 
 // Data class to cache string resources
 private data class EmailSettingsStrings(
+    val headerLabel: String,
+    val headerHint: String,
+    val headerDefault: String,
     val subjectDefault: String,
     val contentBeforeDefault: String,
     val contentAfterDefault: String,

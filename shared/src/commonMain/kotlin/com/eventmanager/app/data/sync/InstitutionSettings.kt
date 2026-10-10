@@ -9,10 +9,12 @@ object InstitutionSettingsKeys {
     const val DATE_CHANGE_OFFSET_HOURS = "date_change_offset_hours"
     const val PURCHASE_CREDIT_BUFFER = "purchase_credit_buffer"
     const val EMAIL_QR_SUBJECT = "email_qr_subject"
+    const val EMAIL_QR_HEADER = "email_qr_header"
     const val EMAIL_QR_CONTENT_BEFORE = "email_qr_content_before"
     const val EMAIL_QR_CONTENT_AFTER = "email_qr_content_after"
     const val EMAIL_INCLUDE_QR = "email_include_qr"
     const val GUEST_EMAIL_SUBJECT = "guest_email_subject"
+    const val GUEST_EMAIL_HEADER = "guest_email_header"
     const val GUEST_EMAIL_CONTENT_BEFORE = "guest_email_content_before"
     const val GUEST_EMAIL_CONTENT_AFTER = "guest_email_content_after"
     const val GUEST_EMAIL_INCLUDE_QR = "guest_email_include_qr"
@@ -60,8 +62,9 @@ object InstitutionSettingsKeys {
     /** Opt-in credit accounts for temporary guests; off by default (Firebase backend only). */
     const val TEMP_GUEST_CREDITS_ENABLED = "temp_guest_credits_enabled"
 
-    /** Mail template sent to the artist/manager with every QR of their guest list (Firebase only). */
+    /** Mail template sent with every QR of a grouped or temporary guest list (Firebase only). */
     const val TEMP_GUEST_EMAIL_SUBJECT = "temp_guest_email_subject"
+    const val TEMP_GUEST_EMAIL_HEADER = "temp_guest_email_header"
     const val TEMP_GUEST_EMAIL_CONTENT_BEFORE = "temp_guest_email_content_before"
     const val TEMP_GUEST_EMAIL_CONTENT_AFTER = "temp_guest_email_content_after"
     const val TEMP_GUEST_EMAIL_INCLUDE_QR = "temp_guest_email_include_qr"
@@ -97,6 +100,7 @@ object InstitutionSettingsKeys {
         TEMP_GUEST_VENUE_ACCESSES,
         TEMP_GUEST_CREDITS_ENABLED,
         TEMP_GUEST_EMAIL_SUBJECT,
+        TEMP_GUEST_EMAIL_HEADER,
         TEMP_GUEST_EMAIL_CONTENT_BEFORE,
         TEMP_GUEST_EMAIL_CONTENT_AFTER,
         TEMP_GUEST_EMAIL_INCLUDE_QR,
@@ -152,10 +156,12 @@ object InstitutionSettingsKeys {
         DATE_CHANGE_OFFSET_HOURS,
         PURCHASE_CREDIT_BUFFER,
         EMAIL_QR_SUBJECT,
+        EMAIL_QR_HEADER,
         EMAIL_QR_CONTENT_BEFORE,
         EMAIL_QR_CONTENT_AFTER,
         EMAIL_INCLUDE_QR,
         GUEST_EMAIL_SUBJECT,
+        GUEST_EMAIL_HEADER,
         GUEST_EMAIL_CONTENT_BEFORE,
         GUEST_EMAIL_CONTENT_AFTER,
         GUEST_EMAIL_INCLUDE_QR,

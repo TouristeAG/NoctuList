@@ -1017,9 +1017,11 @@
     <string name="email_tab_volunteer">स्वयंसेवक</string>
     <string name="email_tab_guest">मेहमान</string>
     <string name="email_shared_settings_title">साझा सेटिंग्स</string>
-    <string name="email_shared_settings_description">ये सेटिंग्स स्वयंसेवक और अतिथि ईमेल दोनों पर लागू होती हैं</string>
+    <string name="email_shared_settings_description">ये सेटिंग्स स्वयंसेवक, अतिथि और समूहित अतिथि सूची ईमेल पर लागू होती हैं</string>
     <string name="email_subject_label">ईमेल विषय</string>
     <string name="email_subject_hint">क्यूआर कोड ईमेल के लिए विषय पंक्ति</string>
+    <string name="email_header_label">ईमेल शीर्षक</string>
+    <string name="email_header_hint">संदेश के शीर्ष पर दिखाया जाने वाला बड़ा शीर्षक, विषय पंक्ति से अलग</string>
     <string name="email_subject_default">आपका स्वयंसेवक प्रोफ़ाइल क्यूआर कोड</string>
     <string name="email_content_before_label">QR कोड से पहले संदेश</string>
     <string name="email_content_before_hint">वैकल्पिक अभिवादन या परिचय</string>
@@ -1031,10 +1033,11 @@
     <string name="email_content_after_default">यदि आपके कोई प्रश्न हैं, तो बेझिझक हमसे संपर्क करें। :)</string>
     <string name="email_signature_label">हस्ताक्षर</string>
     <string name="email_signature_hint">आपका साइन-ऑफ़ (जैसे, सादर, टीम)</string>
+    <string name="email_signature_description">हर स्वचालित ईमेल के नीचे दिखता है। संघ का नाम छोड़ दें तो उसी से हस्ताक्षर होता है।</string>
     <string name="email_signature_default">कलेक्टिफ़ नॉक्टर्न</string>
     <string name="email_association_name_label">एसोसिएशन का नाम</string>
     <string name="email_association_name_hint">कलेक्टिफ़ नॉक्टर्न</string>
-    <string name="email_association_name_description">डिजिटल वॉलेट पास ब्रांडिंग और प्रेषक के नाम के लिए डिफ़ॉल्ट हस्ताक्षर के रूप में उपयोग किया जाता है।</string>
+    <string name="email_association_name_description">जब हस्ताक्षर संघ के नाम से मेल खाता है, तो स्वचालित ईमेल पर हस्ताक्षर करता है। डिजिटल वॉलेट पास ब्रांडिंग के लिए भी।</string>
     <string name="email_include_digital_wallet_pass_label">डिजिटल वॉलेट पास शामिल करें</string>
     <string name="email_include_digital_wallet_pass_description">पास प्रकार आईडी प्रमाणपत्र कॉन्फ़िगर होने पर Apple वॉलेट और Google Pay के लिए एक हस्ताक्षरित डिजिटल वॉलेट पास (.pkpass) संलग्न करें</string>
     <string name="email_wallet_pass_cert_title">Apple वॉलेट हस्ताक्षर प्रमाणपत्र</string>

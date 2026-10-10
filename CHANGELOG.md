@@ -4,6 +4,25 @@ All notable changes to NoctuList are documented here. Version numbers follow [Se
 
 ---
 
+## 2.1.11 — 2026-10-10
+
+Optional patch: QR email titles are editable, and automatic emails are signed with the association name.
+
+### Features
+
+- **QR emails** — the heading inside volunteer, guest, and grouped guest-list messages is editable in Settings → Email. Current titles stay the defaults, including “Guestlist artiste” for the grouped list.
+- **Grouped guest list** — the single email that carries every QR can be used for an institution. The heading is no longer fixed to an artist title.
+- **Signature** — automatic emails are signed with the association name from settings, instead of a hardcoded “Collectif Nocturne”.
+- **Sync** — titles, subjects, and the association name are shared across devices of the same organization.
+
+### Upgrade notes
+
+- **Version code:** 38 (`2.1.11`). Minimum supported code remains **27** (2.1.0) — optional update for 2.1.0–2.1.10.
+- **Database / Firestore rules / Hosting:** unchanged.
+- **Publishing:** tag `2.1.11`, then copy `version.json` to the AdminList update manifest. Do not raise `minSupportedVersionCode`.
+
+---
+
 ## 2.1.10 — 2026-10-02
 
 Optional patch: manual shifts credit the volunteer account, and the door can validate guest forms.

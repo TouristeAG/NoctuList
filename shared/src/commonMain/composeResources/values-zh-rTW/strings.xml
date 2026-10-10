@@ -879,9 +879,11 @@
     <string name="email_tab_volunteer">志工</string>
     <string name="email_tab_guest">來賓</string>
     <string name="email_shared_settings_title">共用設定</string>
-    <string name="email_shared_settings_description">這些設定適用於志工和來賓郵件</string>
+    <string name="email_shared_settings_description">這些設定適用於志工、來賓和分組來賓名單郵件</string>
     <string name="email_subject_label">郵件主旨</string>
     <string name="email_subject_hint">QR 碼郵件的主旨行</string>
+    <string name="email_header_label">郵件標題</string>
+    <string name="email_header_hint">顯示在郵件頂部的大標題，與主旨行不同</string>
     <string name="email_subject_default">您的志工資料 QR 碼</string>
     <string name="email_content_before_label">QR 碼前的訊息</string>
     <string name="email_content_before_hint">可選的問候或介紹</string>
@@ -893,10 +895,11 @@
     <string name="email_content_after_default">如果您有任何問題，請隨時與我們聯繫。:)</string>
     <string name="email_signature_label">簽名</string>
     <string name="email_signature_hint">您的署名（例如：此致敬禮，團隊）</string>
+    <string name="email_signature_description">顯示在每封自動郵件的底部。保留協會名稱即可用它簽名。</string>
     <string name="email_signature_default">Collectif Nocturne</string>
     <string name="email_association_name_label">協會名稱</string>
     <string name="email_association_name_hint">Collectif Nocturne</string>
-    <string name="email_association_name_description">用作 Digital Wallet Pass 品牌與寄件者名稱的預設簽名。</string>
+    <string name="email_association_name_description">當簽名與協會名稱相同時，用來簽署自動郵件。也用於 Digital Wallet Pass 品牌。</string>
     <string name="email_include_digital_wallet_pass_label">包含 Digital Wallet Pass</string>
     <string name="email_include_digital_wallet_pass_description">附加已簽名的 Digital Wallet Pass（.pkpass），設定 Pass Type ID 憑證後可用於 Apple Wallet 和 Google Pay</string>
     <string name="email_wallet_pass_cert_title">Apple Wallet 簽章憑證</string>

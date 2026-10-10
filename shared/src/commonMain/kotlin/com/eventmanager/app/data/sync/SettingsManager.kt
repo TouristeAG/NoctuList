@@ -156,6 +156,7 @@ class SettingsManager(private val storage: AppStorage) {
 
         // Email Settings Keys
         private const val KEY_EMAIL_SUBJECT = "email_qr_subject"
+        private const val KEY_EMAIL_HEADER = "email_qr_header"
         private const val KEY_EMAIL_CONTENT_BEFORE = "email_qr_content_before"
         private const val KEY_EMAIL_INCLUDE_QR = "email_include_qr"
         private const val KEY_EMAIL_CONTENT_AFTER = "email_qr_content_after"
@@ -175,6 +176,7 @@ class SettingsManager(private val storage: AppStorage) {
         
         // Guest Email Settings Keys
         private const val KEY_GUEST_EMAIL_SUBJECT = "guest_email_subject"
+        private const val KEY_GUEST_EMAIL_HEADER = "guest_email_header"
         private const val KEY_GUEST_EMAIL_CONTENT_BEFORE = "guest_email_content_before"
         private const val KEY_GUEST_EMAIL_INCLUDE_QR = "guest_email_include_qr"
         private const val KEY_GUEST_EMAIL_CONTENT_AFTER = "guest_email_content_after"
@@ -209,6 +211,7 @@ class SettingsManager(private val storage: AppStorage) {
         /** Prefs only holds this marker — the PNG bytes live on disk (Preferences max ~8 KiB). */
         private const val LOGO_ON_DISK_MARKER = "disk"
         private const val KEY_TEMP_GUEST_EMAIL_SUBJECT = "temp_guest_email_subject"
+        private const val KEY_TEMP_GUEST_EMAIL_HEADER = "temp_guest_email_header"
         private const val KEY_TEMP_GUEST_EMAIL_CONTENT_BEFORE = "temp_guest_email_content_before"
         private const val KEY_TEMP_GUEST_EMAIL_CONTENT_AFTER = "temp_guest_email_content_after"
         private const val KEY_TEMP_GUEST_EMAIL_INCLUDE_QR = "temp_guest_email_include_qr"
@@ -509,6 +512,15 @@ class SettingsManager(private val storage: AppStorage) {
     fun saveTemporaryGuestEmailSubject(subject: String) {
         storage.putString(KEY_TEMP_GUEST_EMAIL_SUBJECT, subject)
         touchInstitutionSettingLastModified(InstitutionSettingsKeys.TEMP_GUEST_EMAIL_SUBJECT)
+    }
+
+    /** Heading shown at the top of the grouped / temporary guest list email. Blank keeps the localized default. */
+    fun getTemporaryGuestEmailHeader(): String =
+        storage.getString(KEY_TEMP_GUEST_EMAIL_HEADER, "") ?: ""
+
+    fun saveTemporaryGuestEmailHeader(header: String) {
+        storage.putString(KEY_TEMP_GUEST_EMAIL_HEADER, header)
+        touchInstitutionSettingLastModified(InstitutionSettingsKeys.TEMP_GUEST_EMAIL_HEADER)
     }
 
     fun getTemporaryGuestEmailContentBefore(): String =
@@ -1046,10 +1058,12 @@ class SettingsManager(private val storage: AppStorage) {
             InstitutionSettingsKeys.DATE_CHANGE_OFFSET_HOURS -> getDateChangeOffsetHours().toString()
             InstitutionSettingsKeys.PURCHASE_CREDIT_BUFFER -> getPurchaseCreditBuffer().toString()
             InstitutionSettingsKeys.EMAIL_QR_SUBJECT -> getEmailSubject()
+            InstitutionSettingsKeys.EMAIL_QR_HEADER -> getEmailHeader()
             InstitutionSettingsKeys.EMAIL_QR_CONTENT_BEFORE -> getEmailContentBefore()
             InstitutionSettingsKeys.EMAIL_QR_CONTENT_AFTER -> getEmailContentAfter()
             InstitutionSettingsKeys.EMAIL_INCLUDE_QR -> isEmailIncludeQrEnabled().toString()
             InstitutionSettingsKeys.GUEST_EMAIL_SUBJECT -> getGuestEmailSubject()
+            InstitutionSettingsKeys.GUEST_EMAIL_HEADER -> getGuestEmailHeader()
             InstitutionSettingsKeys.GUEST_EMAIL_CONTENT_BEFORE -> getGuestEmailContentBefore()
             InstitutionSettingsKeys.GUEST_EMAIL_CONTENT_AFTER -> getGuestEmailContentAfter()
             InstitutionSettingsKeys.GUEST_EMAIL_INCLUDE_QR -> isGuestEmailIncludeQrEnabled().toString()
@@ -1089,6 +1103,7 @@ class SettingsManager(private val storage: AppStorage) {
             InstitutionSettingsKeys.GUEST_FORM_BASE_URL -> getGuestFormBaseUrl()
             InstitutionSettingsKeys.INSTITUTION_LOGO_PNG -> getInstitutionLogoPng()
             InstitutionSettingsKeys.TEMP_GUEST_EMAIL_SUBJECT -> getTemporaryGuestEmailSubject()
+            InstitutionSettingsKeys.TEMP_GUEST_EMAIL_HEADER -> getTemporaryGuestEmailHeader()
             InstitutionSettingsKeys.TEMP_GUEST_EMAIL_CONTENT_BEFORE -> getTemporaryGuestEmailContentBefore()
             InstitutionSettingsKeys.TEMP_GUEST_EMAIL_CONTENT_AFTER -> getTemporaryGuestEmailContentAfter()
             InstitutionSettingsKeys.TEMP_GUEST_EMAIL_INCLUDE_QR ->
@@ -1125,6 +1140,8 @@ class SettingsManager(private val storage: AppStorage) {
                 )
             InstitutionSettingsKeys.EMAIL_QR_SUBJECT ->
                 storage.putString(KEY_EMAIL_SUBJECT, value)
+            InstitutionSettingsKeys.EMAIL_QR_HEADER ->
+                storage.putString(KEY_EMAIL_HEADER, value)
             InstitutionSettingsKeys.EMAIL_QR_CONTENT_BEFORE ->
                 storage.putString(KEY_EMAIL_CONTENT_BEFORE, value)
             InstitutionSettingsKeys.EMAIL_QR_CONTENT_AFTER ->
@@ -1133,6 +1150,8 @@ class SettingsManager(private val storage: AppStorage) {
                 storage.putBoolean(KEY_EMAIL_INCLUDE_QR, value.trim().equals("true", ignoreCase = true))
             InstitutionSettingsKeys.GUEST_EMAIL_SUBJECT ->
                 storage.putString(KEY_GUEST_EMAIL_SUBJECT, value)
+            InstitutionSettingsKeys.GUEST_EMAIL_HEADER ->
+                storage.putString(KEY_GUEST_EMAIL_HEADER, value)
             InstitutionSettingsKeys.GUEST_EMAIL_CONTENT_BEFORE ->
                 storage.putString(KEY_GUEST_EMAIL_CONTENT_BEFORE, value)
             InstitutionSettingsKeys.GUEST_EMAIL_CONTENT_AFTER ->
@@ -1254,6 +1273,8 @@ class SettingsManager(private val storage: AppStorage) {
             }
             InstitutionSettingsKeys.TEMP_GUEST_EMAIL_SUBJECT ->
                 storage.putString(KEY_TEMP_GUEST_EMAIL_SUBJECT, value)
+            InstitutionSettingsKeys.TEMP_GUEST_EMAIL_HEADER ->
+                storage.putString(KEY_TEMP_GUEST_EMAIL_HEADER, value)
             InstitutionSettingsKeys.TEMP_GUEST_EMAIL_CONTENT_BEFORE ->
                 storage.putString(KEY_TEMP_GUEST_EMAIL_CONTENT_BEFORE, value)
             InstitutionSettingsKeys.TEMP_GUEST_EMAIL_CONTENT_AFTER ->
@@ -1888,6 +1909,16 @@ class SettingsManager(private val storage: AppStorage) {
         storage.putString(KEY_EMAIL_SUBJECT, subject)
         touchInstitutionSettingLastModified(InstitutionSettingsKeys.EMAIL_QR_SUBJECT)
     }
+
+    /** Heading shown at the top of the volunteer QR email. Blank keeps the localized default. */
+    fun getEmailHeader(): String {
+        return storage.getString(KEY_EMAIL_HEADER, "") ?: ""
+    }
+
+    fun saveEmailHeader(header: String) {
+        storage.putString(KEY_EMAIL_HEADER, header)
+        touchInstitutionSettingLastModified(InstitutionSettingsKeys.EMAIL_QR_HEADER)
+    }
     
     fun getEmailContentBefore(): String {
         return storage.getString(KEY_EMAIL_CONTENT_BEFORE, "") ?: ""
@@ -1924,6 +1955,17 @@ class SettingsManager(private val storage: AppStorage) {
         storage.putString(KEY_EMAIL_SIGNATURE, signature)
         touchInstitutionSettingLastModified(InstitutionSettingsKeys.EMAIL_SIGNATURE)
     }
+
+    /**
+     * Sign-off written at the bottom of every automatic QR email.
+     * A custom signature wins; otherwise the association name from settings is used.
+     */
+    fun resolveAutomaticEmailSignature(localizedFallback: String): String =
+        com.eventmanager.app.email.AutomaticEmailCopy.resolveSignature(
+            customSignature = getEmailSignature(),
+            associationName = getEmailAssociationName(),
+            localizedFallback = localizedFallback,
+        )
     
     fun isEmailIncludeLogoEnabled(): Boolean {
         return storage.getBoolean(KEY_EMAIL_INCLUDE_LOGO, false) // Logo disabled by default
@@ -2040,6 +2082,16 @@ class SettingsManager(private val storage: AppStorage) {
     fun saveGuestEmailSubject(subject: String) {
         storage.putString(KEY_GUEST_EMAIL_SUBJECT, subject)
         touchInstitutionSettingLastModified(InstitutionSettingsKeys.GUEST_EMAIL_SUBJECT)
+    }
+
+    /** Heading shown at the top of the guest QR email. Blank keeps the localized default. */
+    fun getGuestEmailHeader(): String {
+        return storage.getString(KEY_GUEST_EMAIL_HEADER, "") ?: ""
+    }
+
+    fun saveGuestEmailHeader(header: String) {
+        storage.putString(KEY_GUEST_EMAIL_HEADER, header)
+        touchInstitutionSettingLastModified(InstitutionSettingsKeys.GUEST_EMAIL_HEADER)
     }
     
     fun getGuestEmailContentBefore(): String {

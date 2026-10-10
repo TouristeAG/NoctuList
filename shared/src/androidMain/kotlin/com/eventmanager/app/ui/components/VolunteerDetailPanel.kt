@@ -574,9 +574,9 @@ actual fun VolunteerDetailPanel(
                 val contentAfter = settingsManager.getEmailContentAfter().ifEmpty { 
                     emailContext.getString(R.string.email_content_after_default) 
                 }
-                val signature = settingsManager.getEmailSignature().ifEmpty { 
-                    emailContext.getString(R.string.email_signature_default) 
-                }
+                val signature = settingsManager.resolveAutomaticEmailSignature(
+                    emailContext.getString(R.string.email_signature_default)
+                )
                 val includeDigitalWalletPass = settingsManager.isEmailIncludeDigitalWalletPassEnabled()
                 val includeLogo = settingsManager.isEmailIncludeLogoEnabled()
                 val logoUriString = settingsManager.getEmailLogoUri()
@@ -640,7 +640,9 @@ actual fun VolunteerDetailPanel(
                     contentAfter = contentAfter,
                     signature = signature,
                     includeQr = includeQr,
-                    headerText = emailContext.getString(R.string.email_html_header),
+                    headerText = settingsManager.getEmailHeader().ifEmpty {
+                        emailContext.getString(R.string.email_html_header)
+                    },
                     footerText = emailContext.getString(R.string.email_html_footer),
                     qrAttachmentText = emailContext.getString(R.string.email_qr_attachment_text),
                     qrAttachmentNote = emailContext.getString(R.string.email_qr_attachment_note),
@@ -771,9 +773,9 @@ actual fun VolunteerDetailPanel(
                 val contentAfter = settingsManager.getEmailContentAfter().ifEmpty { 
                     emailContext.getString(R.string.email_content_after_default) 
                 }
-                val signature = settingsManager.getEmailSignature().ifEmpty { 
-                    emailContext.getString(R.string.email_signature_default) 
-                }
+                val signature = settingsManager.resolveAutomaticEmailSignature(
+                    emailContext.getString(R.string.email_signature_default)
+                )
                 val includeDigitalWalletPass = settingsManager.isEmailIncludeDigitalWalletPassEnabled()
                 val logoUriString = settingsManager.getEmailLogoUri()
                 val associationName = settingsManager.getEmailAssociationName()
@@ -788,7 +790,9 @@ actual fun VolunteerDetailPanel(
                     contentAfter = contentAfter,
                     signature = signature,
                     includeQr = false, // Don't include QR in HTML for manual send
-                    headerText = emailContext.getString(R.string.email_html_header),
+                    headerText = settingsManager.getEmailHeader().ifEmpty {
+                        emailContext.getString(R.string.email_html_header)
+                    },
                     footerText = emailContext.getString(R.string.email_html_footer),
                     qrAttachmentText = emailContext.getString(R.string.email_qr_attachment_text),
                     qrAttachmentNote = emailContext.getString(R.string.email_qr_attachment_note),

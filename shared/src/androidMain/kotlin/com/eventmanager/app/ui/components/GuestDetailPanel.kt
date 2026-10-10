@@ -628,9 +628,9 @@ actual fun GuestDetailPanel(
                         emailContext.getString(R.string.guest_email_content_after_default)
                     }
                 }
-                val signature = settingsManager.getGuestEmailSignature().ifEmpty { 
-                    emailContext.getString(R.string.email_signature_default) 
-                }
+                val signature = settingsManager.resolveAutomaticEmailSignature(
+                    emailContext.getString(R.string.email_signature_default)
+                )
                 // A grouped artist mail covers several people, so a single-holder pass is meaningless.
                 val includeDigitalWalletPass =
                     settingsManager.isEmailIncludeDigitalWalletPassEnabled() && !temporaryEnabled
@@ -708,7 +708,9 @@ actual fun GuestDetailPanel(
                             contentAfter = contentAfter,
                             signature = signature,
                             includeQr = includeQr,
-                            headerText = emailContext.getString(R.string.temp_guest_email_html_header),
+                            headerText = settingsManager.getTemporaryGuestEmailHeader().ifEmpty {
+                                emailContext.getString(R.string.temp_guest_email_html_header)
+                            },
                             footerText = emailContext.getString(R.string.guest_email_html_footer),
                             qrAttachmentText = emailContext.getString(R.string.email_qr_attachment_text),
                             qrAttachmentNote = emailContext.getString(R.string.email_qr_attachment_note),
@@ -736,7 +738,9 @@ actual fun GuestDetailPanel(
                         contentAfter = contentAfter,
                         signature = signature,
                         includeQr = includeQr,
-                        headerText = emailContext.getString(R.string.guest_email_html_header),
+                        headerText = settingsManager.getGuestEmailHeader().ifEmpty {
+                            emailContext.getString(R.string.guest_email_html_header)
+                        },
                         footerText = emailContext.getString(R.string.guest_email_html_footer),
                         qrAttachmentText = emailContext.getString(R.string.email_qr_attachment_text),
                         qrAttachmentNote = emailContext.getString(R.string.email_qr_attachment_note),
@@ -872,9 +876,9 @@ actual fun GuestDetailPanel(
                 val contentAfter = settingsManager.getGuestEmailContentAfter().ifEmpty { 
                     emailContext.getString(R.string.guest_email_content_after_default) 
                 }
-                val signature = settingsManager.getGuestEmailSignature().ifEmpty { 
-                    emailContext.getString(R.string.email_signature_default) 
-                }
+                val signature = settingsManager.resolveAutomaticEmailSignature(
+                    emailContext.getString(R.string.email_signature_default)
+                )
                 val includeDigitalWalletPass = settingsManager.isEmailIncludeDigitalWalletPassEnabled()
                 val logoUriString = settingsManager.getEmailLogoUri()
                 val associationName = settingsManager.getEmailAssociationName()
@@ -889,7 +893,9 @@ actual fun GuestDetailPanel(
                     contentAfter = contentAfter,
                     signature = signature,
                     includeQr = false, // Don't include QR in HTML for manual send
-                    headerText = emailContext.getString(R.string.guest_email_html_header),
+                    headerText = settingsManager.getGuestEmailHeader().ifEmpty {
+                        emailContext.getString(R.string.guest_email_html_header)
+                    },
                     footerText = emailContext.getString(R.string.guest_email_html_footer),
                     qrAttachmentText = emailContext.getString(R.string.email_qr_attachment_text),
                     qrAttachmentNote = emailContext.getString(R.string.email_qr_attachment_note),
