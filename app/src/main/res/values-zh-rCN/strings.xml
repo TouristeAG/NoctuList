@@ -700,6 +700,8 @@
     <string name="delete_volunteer_button">删除志愿者</string>
     <string name="camera_permission_required">需要相机权限才能扫描 QR 码</string>
     <string name="camera_permission_title">需要相机权限</string>
+    <string name="scanner_flashlight_turn_on">打开手电筒</string>
+    <string name="scanner_flashlight_turn_off">关闭手电筒</string>
     <string name="camera_permission_qr_nfc_body">需要相机权限才能扫描 QR 码。若设备支持，NFC 扫描会同时保持启用。</string>
     <string name="camera_error">相机错误</string>
     <string name="enter_id_manually">手动输入 ID</string>

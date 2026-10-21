@@ -700,6 +700,8 @@
     <string name="delete_volunteer_button">Eliminar voluntario</string>
     <string name="camera_permission_required">Se requiere permiso de cámara para escanear códigos QR</string>
     <string name="camera_permission_title">Permiso de cámara requerido</string>
+    <string name="scanner_flashlight_turn_on">Encender la linterna</string>
+    <string name="scanner_flashlight_turn_off">Apagar la linterna</string>
     <string name="camera_permission_qr_nfc_body">Se requiere permiso de cámara para escanear códigos QR. El escaneo NFC permanece activo al mismo tiempo cuando está disponible.</string>
     <string name="camera_error">Error de cámara</string>
     <string name="enter_id_manually">Ingresar ID manualmente</string>

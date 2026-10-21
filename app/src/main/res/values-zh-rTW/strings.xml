@@ -700,6 +700,8 @@
     <string name="delete_volunteer_button">刪除志工</string>
     <string name="camera_permission_required">需要相機權限才能掃描 QR 碼</string>
     <string name="camera_permission_title">需要相機權限</string>
+    <string name="scanner_flashlight_turn_on">開啟手電筒</string>
+    <string name="scanner_flashlight_turn_off">關閉手電筒</string>
     <string name="camera_permission_qr_nfc_body">需要相機權限才能掃描 QR 碼。若裝置支援，NFC 掃描會同時保持啟用。</string>
     <string name="camera_error">相機錯誤</string>
     <string name="enter_id_manually">手動輸入 ID</string>

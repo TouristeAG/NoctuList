@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.content.pm.PackageManager
 import android.hardware.Camera
+import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.nfc.NfcAdapter
 import android.os.Build
@@ -23,15 +24,19 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FlashlightOff
+import androidx.compose.material.icons.filled.FlashlightOn
+import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Nfc
 import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -40,6 +45,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -190,6 +198,96 @@ fun isCameraAvailable(context: Context): Boolean {
 fun tryAlternativeCameraInitialization(context: Context): Boolean {
     // With modern CameraManager, this is now just a redundant check
     return isCameraAvailable(context)
+}
+
+/**
+ * True when a rear camera reports a flash LED. The scanner uses the back camera, so a
+ * front-facing light would not illuminate the code.
+ */
+internal fun Context.backCameraHasFlash(): Boolean {
+    val manager = getSystemService(Context.CAMERA_SERVICE) as? CameraManager ?: return false
+    return try {
+        manager.cameraIdList.any { cameraId ->
+            try {
+                val characteristics = manager.getCameraCharacteristics(cameraId)
+                val facing = characteristics.get(CameraCharacteristics.LENS_FACING)
+                val hasFlash = characteristics.get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+                hasFlash && facing == CameraCharacteristics.LENS_FACING_BACK
+            } catch (_: Exception) {
+                false
+            }
+        }
+    } catch (_: Exception) {
+        false
+    }
+}
+
+internal fun DecoratedBarcodeView.applyScannerTorch(enabled: Boolean) {
+    if (enabled) setTorchOn() else setTorchOff()
+}
+
+/**
+ * The camera session opens asynchronously after [DecoratedBarcodeView.resume]. An early
+ * [DecoratedBarcodeView.setTorchOn] is ignored, so the requested state is applied immediately
+ * and then a few more times once the session can accept it.
+ */
+@Composable
+internal fun ReapplyScannerTorch(
+    barcodeView: DecoratedBarcodeView?,
+    torchOn: Boolean,
+    cameraReady: Boolean,
+) {
+    LaunchedEffect(barcodeView, torchOn, cameraReady) {
+        val view = barcodeView ?: return@LaunchedEffect
+        if (!cameraReady) return@LaunchedEffect
+        runCatching { view.applyScannerTorch(torchOn) }
+        delay(350)
+        repeat(4) { attempt ->
+            runCatching { view.applyScannerTorch(torchOn) }
+            if (attempt < 3) delay(250)
+        }
+    }
+}
+
+@Composable
+internal fun QrScannerTorchButton(
+    torchOn: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val description = context.getString(
+        if (torchOn) R.string.scanner_flashlight_turn_off else R.string.scanner_flashlight_turn_on
+    )
+    val containerColor = if (torchOn) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        Color.Black.copy(alpha = 0.55f)
+    }
+    val iconTint = if (torchOn) MaterialTheme.colorScheme.onPrimary else Color.White
+    Box(
+        modifier = modifier
+            .size(48.dp)
+            .clip(CircleShape)
+            .background(containerColor)
+            .then(
+                if (torchOn) {
+                    Modifier
+                } else {
+                    Modifier.border(1.dp, Color.White.copy(alpha = 0.35f), CircleShape)
+                }
+            )
+            .clickable(role = Role.Button, onClick = onToggle)
+            .semantics { contentDescription = description },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = if (torchOn) Icons.Filled.FlashlightOn else Icons.Filled.FlashlightOff,
+            contentDescription = null,
+            tint = iconTint,
+            modifier = Modifier.size(24.dp),
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -870,7 +968,15 @@ fun QRScannerView(
     var cameraInitialized by remember { mutableStateOf(false) }
     var lastScanText by remember { mutableStateOf<String?>(null) }
     var lastScanAtMs by remember { mutableStateOf(0L) }
+    var torchOn by remember { mutableStateOf(false) }
+    val hasBackFlash = remember(context) { context.backCameraHasFlash() }
     val overlayColor = Color.Black.copy(alpha = 0.5f)
+
+    ReapplyScannerTorch(
+        barcodeView = barcodeView,
+        torchOn = torchOn,
+        cameraReady = cameraInitialized && barcodeView != null,
+    )
     
     // Add a delay for camera initialization on older devices
     LaunchedEffect(Unit) {
@@ -906,8 +1012,24 @@ fun QRScannerView(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
     ) {
-        val scanBoxSize = minOf(240.dp, maxWidth * 0.75f, maxHeight * 0.75f)
-        val verticalMaskHeight = (maxHeight - scanBoxSize) / 2
+        // A loose max height (dialog) is not the preview size. Sizing the dimming bands from it
+        // covers the whole camera and hides the code. Use the real height when the parent fixes it.
+        val previewHeight = if (constraints.hasFixedHeight) {
+            maxHeight
+        } else {
+            240.dp.coerceAtMost(maxHeight)
+        }
+        val scanBoxSize = if (constraints.hasFixedHeight) {
+            minOf(240.dp, maxWidth * 0.75f, previewHeight * 0.75f)
+        } else {
+            minOf(maxWidth * 0.86f, previewHeight * 0.86f)
+        }
+        val verticalMaskHeight = ((previewHeight - scanBoxSize) / 2).coerceAtLeast(0.dp)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(previewHeight)
+        ) {
         if (cameraInitialized) {
             AndroidView(
             factory = { ctx ->
@@ -1154,6 +1276,17 @@ fun QRScannerView(
                     .background(MaterialTheme.colorScheme.primary)
             )
         }
+
+        if (hasBackFlash && cameraInitialized && cameraError == null) {
+            QrScannerTorchButton(
+                torchOn = torchOn,
+                onToggle = { torchOn = !torchOn },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 10.dp, bottom = 10.dp),
+            )
+        }
+        }
     }
 
     // Show error message if camera failed to initialize
@@ -1200,7 +1333,12 @@ fun QRScannerView(
     // Handle lifecycle events using DisposableEffect
     DisposableEffect(Unit) {
         onDispose {
-            // Ensure camera/autofocus thread is released when dialog closes.
+            // Turn the LED off before releasing the camera so it does not stay lit.
+            try {
+                barcodeView?.setTorchOff()
+            } catch (_: Exception) {
+                // Ignore teardown errors from camera stack.
+            }
             try {
                 barcodeView?.pause()
             } catch (_: Exception) {

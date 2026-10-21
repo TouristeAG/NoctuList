@@ -738,6 +738,8 @@
     <string name="delete_volunteer_button">Delete Volunteer</string>
     <string name="camera_permission_required">Camera permission is required to scan QR codes</string>
     <string name="camera_permission_title">Camera permission required</string>
+    <string name="scanner_flashlight_turn_on">Turn flashlight on</string>
+    <string name="scanner_flashlight_turn_off">Turn flashlight off</string>
     <string name="camera_permission_qr_nfc_body">Camera permission is required for QR scanning. NFC scanning stays active at the same time when available.</string>
     <string name="camera_error">Camera Error</string>
     <string name="enter_id_manually">Enter ID Manually</string>

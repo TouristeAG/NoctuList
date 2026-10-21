@@ -4,6 +4,23 @@ All notable changes to NoctuList are documented here. Version numbers follow [Se
 
 ---
 
+## 2.1.12 — 2026-10-21
+
+Optional patch: a flashlight toggle on the phone and tablet QR scanner.
+
+### Features
+
+- **QR scanner** — a flashlight button on the phone and tablet camera preview turns the rear LED on or off, for scanning in the dark. It sits at the bottom-right of the preview and leaves the scan window clear. Devices without a rear flash do not show the button.
+- **Desktop** — unchanged. There is no flashlight on the desktop scanner.
+
+### Upgrade notes
+
+- **Version code:** 39 (`2.1.12`). Minimum supported code remains **27** (2.1.0) — optional update for 2.1.0–2.1.11.
+- **Database / Firestore rules / Hosting:** unchanged.
+- **Publishing:** tag `2.1.12`, then copy `version.json` to the AdminList update manifest. Do not raise `minSupportedVersionCode`.
+
+---
+
 ## 2.1.11 — 2026-10-10
 
 Optional patch: QR email titles are editable, and automatic emails are signed with the association name.

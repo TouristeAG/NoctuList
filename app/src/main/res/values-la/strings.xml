@@ -738,6 +738,8 @@
     <string name="delete_volunteer_button">Dele lela voluntarius</string>
     <string name="camera_permission_required">L\'Camera licentia requiritur ad scan QR codes</string>
     <string name="camera_permission_title">Camera licentia requiratur</string>
+    <string name="scanner_flashlight_turn_on">Lucernam accendere</string>
+    <string name="scanner_flashlight_turn_off">Lucernam exstinguere</string>
     <string name="camera_permission_qr_nfc_body">L\'Camera licentia requiritur ad scan QR codes. NFC intuens activa in parallelis cum praesto manet.</string>
     <string name="camera_error">Camera error</string>
     <string name="enter_id_manually">Entrer l\'ID manu</string>

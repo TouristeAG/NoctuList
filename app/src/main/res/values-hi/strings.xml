@@ -738,6 +738,8 @@
     <string name="delete_volunteer_button">स्वयंसेवक हटाएँ</string>
     <string name="camera_permission_required">क्यूआर कोड को स्कैन करने के लिए कैमरे की अनुमति आवश्यक है</string>
     <string name="camera_permission_title">कैमरे की अनुमति आवश्यक है</string>
+    <string name="scanner_flashlight_turn_on">फ़्लैशलाइट चालू करें</string>
+    <string name="scanner_flashlight_turn_off">फ़्लैशलाइट बंद करें</string>
     <string name="camera_permission_qr_nfc_body">Camera permission is required for QR scanning. उपलब्ध होने पर एनएफसी स्कैनिंग उसी समय सक्रिय रहती है।</string>
     <string name="camera_error">कैमरा त्रुटि</string>
     <string name="enter_id_manually">आईडी मैन्युअल रूप से दर्ज करें</string>
