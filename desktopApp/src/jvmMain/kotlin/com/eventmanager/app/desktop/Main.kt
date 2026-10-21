@@ -11,7 +11,6 @@ import com.eventmanager.app.data.sync.FileAppLogger
 import com.eventmanager.app.data.sync.SettingsManager
 import com.eventmanager.app.platform.createAppStorage
 import com.eventmanager.app.platform.createPlatformContext
-import com.eventmanager.app.platform.hardware.DesktopWebcamSupport
 import com.eventmanager.app.ui.AppRoot
 import com.eventmanager.app.ui.desktop.DesktopNavigationHooks
 import com.eventmanager.app.ui.desktop.DesktopWindowAppearance
@@ -58,10 +57,10 @@ private fun installCrashLogger() {
 }
 
 fun main() {
+    // Before the crash logger and before any AWT/Skiko/Firestore class init.
+    DesktopWindowAppearance.initBeforeUiToolkit()
     installCrashLogger()
     AppTimeZone.installAsJvmDefault()
-    DesktopWindowAppearance.initBeforeUiToolkit()
-    DesktopWebcamSupport.ensureInitialized()
     application {
         val platformContext = createPlatformContext()
         com.eventmanager.app.data.security.SecureCredentialStoreHolder.init(

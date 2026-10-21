@@ -23,8 +23,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Desktop Firestore: **GitLive first** (real-time listeners like dev mode), **REST fallback**
- * when gRPC hangs in jpackage (probe timeout) or individual calls time out.
+ * Desktop Firestore. macOS and Windows start on GitLive and fall back to REST when gRPC hangs.
+ * Linux starts on REST: GitLive's gRPC channel crashes the process on the first pull.
  */
 internal class DesktopFirestoreGateway(
     private val platformContext: PlatformContext?,
@@ -40,7 +40,16 @@ internal class DesktopFirestoreGateway(
     }
 
     @Volatile
-    private var transport: Transport = Transport.GITLIVE
+    private var transport: Transport = if (
+        desktopFirestorePrefersRest(
+            System.getProperty("os.name").orEmpty(),
+            System.getProperty("noctulist.firestore.transport"),
+        )
+    ) {
+        Transport.REST
+    } else {
+        Transport.GITLIVE
+    }
 
     @Volatile
     private var serverReachable = false
@@ -66,7 +75,12 @@ internal class DesktopFirestoreGateway(
         "guestForms",
     )
 
-    override fun isAvailable(): Boolean = gitlive.isAvailable() || rest?.isReady() == true
+    override fun isAvailable(): Boolean {
+        // Touching GitLive initializes the gRPC channel. On Linux that is the crash we avoid.
+        if (transport == Transport.REST) return rest?.isReady() == true
+        val gitLiveUp = runCatching { gitlive.isAvailable() }.getOrDefault(false)
+        return gitLiveUp || rest?.isReady() == true
+    }
 
     override fun isServerReachable(): Boolean = serverReachable
 
@@ -122,7 +136,9 @@ internal class DesktopFirestoreGateway(
     override fun stopOrgListeners() {
         listenerWatchdog?.cancel()
         listenerWatchdog = null
-        gitlive.stopOrgListeners()
+        if (transport != Transport.REST) {
+            runCatching { gitlive.stopOrgListeners() }
+        }
         changePoller?.stop()
         changePoller = null
         gitLiveListenerConfirmed.set(false)
@@ -149,7 +165,14 @@ internal class DesktopFirestoreGateway(
     }
 
     override suspend fun flushPendingWrites() {
-        gitlive.flushPendingWrites()
+        if (transport == Transport.REST) return
+        try {
+            gitlive.flushPendingWrites()
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            markRestFallback("flush failed: ${e.message}")
+        }
     }
 
     override suspend fun upsertDocument(
@@ -190,8 +213,19 @@ internal class DesktopFirestoreGateway(
                 return@withContext fromRest
             }
         }
-        val fromGitLive = withTimeoutOrNull(READ_TIMEOUT_MS) {
-            gitlive.getDocumentFromServer(orgId, collection, docId)
+        val fromGitLive = if (transport == Transport.REST) {
+            null
+        } else {
+            try {
+                withTimeoutOrNull(READ_TIMEOUT_MS) {
+                    gitlive.getDocumentFromServer(orgId, collection, docId)
+                }
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                markRestFallback("getDocument failed: ${e.message}")
+                null
+            }
         }
         if (fromGitLive != null) {
             noteServerReachable(true)
@@ -228,14 +262,22 @@ internal class DesktopFirestoreGateway(
     }
 
     private suspend fun tryGitLivePull(block: suspend () -> Unit): Boolean {
-        if (transport == Transport.REST || !gitlive.isAvailable()) return false
-        val completed = withTimeoutOrNull(PULL_TIMEOUT_MS) {
-            block()
-            true
+        if (transport == Transport.REST) return false
+        if (!runCatching { gitlive.isAvailable() }.getOrDefault(false)) return false
+        return try {
+            val completed = withTimeoutOrNull(PULL_TIMEOUT_MS) {
+                block()
+                true
+            }
+            if (completed == true) return true
+            markRestFallback("pullAll timed out")
+            false
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            markRestFallback("pullAll failed: ${e.message}")
+            false
         }
-        if (completed == true) return true
-        markRestFallback("pullAll timed out")
-        return false
     }
 
     private suspend fun pullAllViaRest(
@@ -288,14 +330,25 @@ internal class DesktopFirestoreGateway(
         change: FirestoreRemoteChange,
         repository: EventManagerRepository,
     ) {
-        gitlive.applyChangeToRepository(change, repository)
+        FirestoreChangeApplier.apply(change, repository)
     }
 
     override suspend fun readBackendAnnouncement(orgId: String): InstitutionBackendAnnouncement? =
         withContext(Dispatchers.IO) {
             if (orgId.isBlank()) return@withContext null
-            val fromGitLive = withTimeoutOrNull(READ_TIMEOUT_MS) {
-                gitlive.readBackendAnnouncement(orgId)
+            val fromGitLive = if (transport == Transport.REST) {
+                null
+            } else {
+                try {
+                    withTimeoutOrNull(READ_TIMEOUT_MS) {
+                        gitlive.readBackendAnnouncement(orgId)
+                    }
+                } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+                    throw e
+                } catch (e: Throwable) {
+                    markRestFallback("readBackendAnnouncement failed: ${e.message}")
+                    null
+                }
             }
             if (fromGitLive != null) {
                 noteServerReachable(true)
@@ -370,8 +423,19 @@ internal class DesktopFirestoreGateway(
     override suspend fun listMembers(orgId: String): List<FirebaseTeamMemberListing> =
         withContext(Dispatchers.IO) {
             if (orgId.isBlank() || isFirebaseOrgAllSentinel(orgId)) return@withContext emptyList()
-            val fromGitLive = withTimeoutOrNull(READ_TIMEOUT_MS) {
-                gitlive.listMembers(orgId)
+            val fromGitLive = if (transport == Transport.REST) {
+                null
+            } else {
+                try {
+                    withTimeoutOrNull(READ_TIMEOUT_MS) {
+                        gitlive.listMembers(orgId)
+                    }
+                } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+                    throw e
+                } catch (e: Throwable) {
+                    markRestFallback("listMembers failed: ${e.message}")
+                    null
+                }
             }
             if (fromGitLive != null) {
                 noteServerReachable(true)
@@ -439,10 +503,16 @@ internal class DesktopFirestoreGateway(
         writerAccountEmail: String,
         lastModified: Long,
     ) {
-        withTimeoutOrNull(TRANSACTION_TIMEOUT_MS) {
-            gitlive.runPeopleCounterTransaction(
-                orgId, venueName, count, deviceId, writerAccountEmail, lastModified,
-            )
+        try {
+            withTimeoutOrNull(TRANSACTION_TIMEOUT_MS) {
+                gitlive.runPeopleCounterTransaction(
+                    orgId, venueName, count, deviceId, writerAccountEmail, lastModified,
+                )
+            }
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            markRestFallback("people counter failed: ${e.message}")
         }
     }
 
@@ -452,10 +522,16 @@ internal class DesktopFirestoreGateway(
         holderKey: String,
         newBalance: Double,
         buffer: Double,
-    ): LedgerCommitResult =
+    ): LedgerCommitResult = try {
         withTimeoutOrNull(TRANSACTION_TIMEOUT_MS) {
             gitlive.runLedgerTransaction(orgId, transfer, holderKey, newBalance, buffer)
         } ?: LedgerCommitResult.Unknown
+    } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+        throw e
+    } catch (e: Throwable) {
+        markRestFallback("ledger failed: ${e.message}")
+        LedgerCommitResult.Unknown
+    }
 
     override fun guestToMap(guest: Guest) = gitlive.guestToMap(guest)
     override fun volunteerToMap(volunteer: Volunteer) = gitlive.volunteerToMap(volunteer)
@@ -472,9 +548,20 @@ internal class DesktopFirestoreGateway(
         fromServer: Boolean,
     ): String? = withContext(Dispatchers.IO) {
         if (orgId.isBlank() || uid.isBlank()) return@withContext null
-        val fromGitLive = withTimeoutOrNull(READ_TIMEOUT_MS) {
-            if (fromServer) gitlive.readMemberRoleFromServer(orgId, uid)
-            else gitlive.readMemberRole(orgId, uid)
+        val fromGitLive = if (transport == Transport.REST) {
+            null
+        } else {
+            try {
+                withTimeoutOrNull(READ_TIMEOUT_MS) {
+                    if (fromServer) gitlive.readMemberRoleFromServer(orgId, uid)
+                    else gitlive.readMemberRole(orgId, uid)
+                }
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                markRestFallback("readMemberRole failed: ${e.message}")
+                null
+            }
         }
         if (fromGitLive != null) {
             noteServerReachable(true)
@@ -501,7 +588,7 @@ internal class DesktopFirestoreGateway(
             false
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             markRestFallback("gitlive call error: ${e.message}")
             false
         }

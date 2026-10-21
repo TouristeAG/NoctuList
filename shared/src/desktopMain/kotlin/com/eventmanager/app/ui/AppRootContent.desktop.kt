@@ -90,6 +90,7 @@ import com.eventmanager.app.ui.navigation.BilleterieSection
 import com.eventmanager.app.ui.screens.*
 import com.eventmanager.app.ui.transitions.DeferredUntilSpaceEntranceSettled
 import com.eventmanager.app.ui.viewmodel.EventManagerViewModel
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -262,7 +263,9 @@ actual fun AppRootContent(
                     startupStep = StartupSplashStep.Preparing
                     viewModel.warmupWorkspacesAfterGate()
                 }
-            } catch (_: Exception) {
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Throwable) {
                 adminPrecheckSucceeded = false
             }
             val remaining = minSplashMs - (elapsedRealtimeMs() - splashStart)

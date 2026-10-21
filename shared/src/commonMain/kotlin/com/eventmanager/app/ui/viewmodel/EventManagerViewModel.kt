@@ -92,6 +92,7 @@ import com.eventmanager.app.ui.components.PeopleCounterUiHint
 import com.eventmanager.app.ui.components.ScannerMatch
 import com.eventmanager.app.ui.components.shouldShowSyncError
 import java.io.File
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
@@ -99,7 +100,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
-import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import com.eventmanager.app.platform.PlatformContext
@@ -5171,6 +5171,8 @@ class EventManagerViewModel(
                 }
                 result
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             val errorMsg = when {
                 e.message?.contains("429") == true || e.message?.contains("Rate limit") == true ->
@@ -5187,6 +5189,14 @@ class EventManagerViewModel(
                 recalcAndUploadVolunteerGuestList(skipSheetsUpload = true)
             } catch (re: Exception) {
                 println("⚠️ Volunteer guest list recalc after sync exception: ${re.message}")
+            }
+            SyncResult.Error(errorMsg)
+        } catch (e: Throwable) {
+            val errorMsg = "Full sync failed: ${e.message ?: e::class.simpleName}"
+            _syncError.value = errorMsg
+            AppLogger.e("EventManagerViewModel", "Full sync fatal error", e)
+            if (!suppressSyncErrorDialog) {
+                showSyncErrorIfNotSuppressed(errorMsg)
             }
             SyncResult.Error(errorMsg)
         } finally {

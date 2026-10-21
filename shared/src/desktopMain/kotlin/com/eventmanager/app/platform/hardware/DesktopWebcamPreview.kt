@@ -16,6 +16,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import com.eventmanager.app.resources.Res
 import com.eventmanager.app.resources.*
+import com.github.eduramiba.webcamcapture.drivers.WebcamDeviceWithBufferOperations
+import com.github.eduramiba.webcamcapture.drivers.nokhwa.LibNokhwa
+import com.github.eduramiba.webcamcapture.drivers.nokhwa.NokhwaVideoDevice
 import com.github.sarxos.webcam.Webcam
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -33,11 +36,15 @@ import org.jetbrains.skia.ColorAlphaType
 import org.jetbrains.skia.ImageInfo
 import java.awt.Dimension
 import java.awt.image.BufferedImage
+import java.util.concurrent.Executors
+import java.util.concurrent.Future
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import java.awt.image.ComponentSampleModel
 import java.awt.image.DataBufferByte
 import java.awt.image.DataBufferInt
 import java.awt.image.SinglePixelPackedSampleModel
-import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
 @Composable
@@ -60,6 +67,7 @@ fun DesktopWebcamQrScanView(
         status = openingMsg
         var webcam: Webcam? = null
         var avfGrabber: MacAvfFrameGrabber? = null
+        var grabber: WebcamFrameGrabber? = null
         try {
             withContext(Dispatchers.IO) {
                 DesktopWebcamSupport.ensureInitialized()
@@ -83,27 +91,68 @@ fun DesktopWebcamQrScanView(
                     runCatching { cam?.takeIf { it.isOpen }?.close() }
                 }
 
-                val frameSource: () -> BufferedImage? = if (cam != null && nativeOpened) {
+                val readFrame: () -> BufferedImage? = if (cam != null && nativeOpened) {
                     { cam.image }
                 } else if (cameraAccess == MacCameraAccessResult.Authorized) {
-                    val grabber = MacAvfFrameGrabber()
-                    val started = grabber.start(1280, 720)
+                    val avf = MacAvfFrameGrabber()
+                    val started = avf.start(1280, 720)
                     if (!started) {
-                        grabber.close()
+                        avf.close()
                         withContext(Dispatchers.Main.immediate) { onError(noWebcamMsg) }
                         return@withContext
                     }
-                    avfGrabber = grabber
-                    { grabber.grab() }
+                    avfGrabber = avf
+                    { avf.grab() }
                 } else {
                     withContext(Dispatchers.Main.immediate) { onError(noWebcamMsg) }
                     return@withContext
                 }
 
+                val session = WebcamFrameGrabber(readFrame)
+                grabber = session
+                val stall = WebcamStallTracker()
+                var sawFrame = false
+                var recoveries = 0
+                var lastGoodTimestamp = Long.MIN_VALUE
+                val reopenQueued = AtomicBoolean(false)
+
                 withContext(Dispatchers.Main.immediate) { status = pointMsg }
 
                 scanWebcamFrames(
-                    frameSource = frameSource,
+                    frameSource = {
+                        val image = session.grab(GRAB_TIMEOUT_MS)
+                        val activeCam = webcam
+                        val now = System.nanoTime()
+                        if (image == null) {
+                            if (
+                                sawFrame &&
+                                activeCam != null &&
+                                recoveries < MAX_WEBCAM_RECOVERIES &&
+                                scheduleLinuxWebcamRecovery(activeCam, session, reopenQueued)
+                            ) {
+                                recoveries++
+                            }
+                            null
+                        } else {
+                            sawFrame = true
+                            val timestamp = (activeCam?.device as? WebcamDeviceWithBufferOperations)
+                                ?.lastFrameTimestamp
+                                ?: -1L
+                            if (timestamp > 0L && timestamp != lastGoodTimestamp) {
+                                lastGoodTimestamp = timestamp
+                                recoveries = 0
+                            }
+                            if (
+                                activeCam != null &&
+                                recoveries < MAX_WEBCAM_RECOVERIES &&
+                                stall.onFrame(timestamp, now) &&
+                                scheduleLinuxWebcamRecovery(activeCam, session, reopenQueued)
+                            ) {
+                                recoveries++
+                            }
+                            if (activeCam != null && stall.isStuck(timestamp)) null else image
+                        }
+                    },
                     publishPreview = { bitmap ->
                         withContext(Dispatchers.Main.immediate) { preview = bitmap }
                     },
@@ -124,6 +173,8 @@ fun DesktopWebcamQrScanView(
             }
         } finally {
             withContext(NonCancellable + Dispatchers.IO) {
+                webcam?.let { nudgeStuckLinuxCamera(it) }
+                runCatching { grabber?.close() }
                 runCatching { webcam?.takeIf { it.isOpen }?.close() }
                 runCatching { avfGrabber?.close() }
             }
@@ -192,7 +243,10 @@ private fun openWebcamForScan(cam: Webcam) {
         if (!cam.isOpen) cam.open()
     } catch (_: Exception) {
         runCatching { if (cam.isOpen) cam.close() }
-        cam.viewSize = Dimension(640, 480)
+        val advertised = cam.viewSizes?.toList().orEmpty()
+        cam.viewSize = advertised.firstOrNull { it.width == 640 && it.height == 480 }
+            ?: advertised.minByOrNull { it.width.toLong() * it.height }
+            ?: Dimension(640, 480)
         if (!cam.isOpen) cam.open()
     }
 }
@@ -568,3 +622,106 @@ private const val OPAQUE: Byte = 0xFF.toByte()
 private const val PREVIEW_MAX_EDGE_PX = 1280
 private const val PREVIEW_MIN_FRAME_MS = 33L
 private const val NO_FRAME_TIMEOUT_NS = 5_000_000_000L
+private const val GRAB_TIMEOUT_MS = 2_000L
+private const val MAX_WEBCAM_RECOVERIES = 6
+
+/**
+ * Nokhwa reuses one [BufferedImage] and `getImage()` blocks forever once V4L2 stops
+ * delivering buffers. Grab on a dedicated thread, copy the pixels there, and time out
+ * so the scanner can reopen the device or show an error instead of freezing.
+ */
+private class WebcamFrameGrabber(
+    private val read: () -> BufferedImage?,
+) {
+    private val executor = Executors.newSingleThreadExecutor { runnable ->
+        Thread(runnable, "noctulist-webcam").apply { isDaemon = true }
+    }
+    private var inFlight: Future<BufferedImage?>? = null
+
+    fun grab(timeoutMs: Long): BufferedImage? {
+        val pending = inFlight
+        val future = if (pending != null && !pending.isDone) {
+            pending
+        } else {
+            executor.submit<BufferedImage?> {
+                val image = read() ?: return@submit null
+                copyFrameForDecode(image)
+            }.also { inFlight = it }
+        }
+        return try {
+            future.get(timeoutMs, TimeUnit.MILLISECONDS)
+        } catch (_: TimeoutException) {
+            null
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    fun reopenAfterCurrent(block: () -> Unit): Boolean =
+        runCatching {
+            executor.submit(block)
+            true
+        }.getOrDefault(false)
+
+    fun close() {
+        executor.shutdownNow()
+    }
+}
+
+/** True when the native driver keeps returning the same frame long enough to reopen. */
+internal class WebcamStallTracker(
+    private val thresholdNs: Long = 1_500_000_000L,
+    private val maxReopens: Int = 3,
+) {
+    private var lastTimestamp = Long.MIN_VALUE
+    private var staleSinceNs = -1L
+    var reopens: Int = 0
+        private set
+
+    fun onFrame(timestamp: Long, nowNs: Long): Boolean {
+        if (timestamp <= 0L) return false
+        if (timestamp != lastTimestamp) {
+            val recovered = lastTimestamp > 0L
+            lastTimestamp = timestamp
+            staleSinceNs = -1L
+            if (recovered) reopens = 0
+            return false
+        }
+        if (staleSinceNs < 0L) staleSinceNs = nowNs
+        if (nowNs - staleSinceNs < thresholdNs || reopens >= maxReopens) return false
+        reopens++
+        staleSinceNs = nowNs
+        return true
+    }
+
+    /** Same frame after the reopen budget is spent. The scanner should surface an error. */
+    fun isStuck(timestamp: Long): Boolean =
+        timestamp > 0L && timestamp == lastTimestamp && reopens >= maxReopens
+}
+
+private fun scheduleLinuxWebcamRecovery(
+    cam: Webcam,
+    session: WebcamFrameGrabber,
+    reopenQueued: AtomicBoolean,
+): Boolean {
+    if (!reopenQueued.compareAndSet(false, true)) return false
+    nudgeStuckLinuxCamera(cam)
+    val queued = session.reopenAfterCurrent {
+        try {
+            runCatching {
+                if (cam.isOpen) cam.close()
+                openWebcamForScan(cam)
+            }
+        } finally {
+            reopenQueued.set(false)
+        }
+    }
+    if (!queued) reopenQueued.set(false)
+    if (queued) System.err.println("NoctuList: webcam stream stalled, reopening")
+    return queued
+}
+
+private fun nudgeStuckLinuxCamera(cam: Webcam) {
+    val device = cam.device as? NokhwaVideoDevice ?: return
+    runCatching { LibNokhwa.INSTANCE.cnokhwa_stop_capture(device.deviceIndex) }
+}

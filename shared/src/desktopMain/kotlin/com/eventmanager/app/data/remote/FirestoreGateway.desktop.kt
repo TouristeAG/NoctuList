@@ -4,8 +4,9 @@ import com.eventmanager.app.data.sync.SettingsManager
 import com.eventmanager.app.platform.PlatformContext
 
 /**
- * Desktop: GitLive Firestore (full JRE in installers via includeAllModules).
- * REST helpers remain for Auth / Storage; Firestore sync matches ./gradlew :desktopApp:run.
+ * macOS and Windows keep the GitLive channel (realtime listeners).
+ * Linux uses the HTTP gateway: GitLive's gRPC transport crashes the process on the
+ * first pull there. `-Dnoctulist.firestore.transport=gitlive` or `rest` overrides this.
  */
 actual fun createFirestoreGateway(
     platformContext: PlatformContext?,
@@ -17,5 +18,13 @@ actual fun createFirestoreGateway(
             FirebaseOptionsReader.fromSettings(settingsManager),
         )
     }
-    return GitLiveFirestoreGateway(platformContext, settingsManager)
+    val useRest = desktopFirestorePrefersRest(
+        System.getProperty("os.name").orEmpty(),
+        System.getProperty("noctulist.firestore.transport"),
+    )
+    return if (useRest) {
+        DesktopFirestoreGateway(platformContext, settingsManager)
+    } else {
+        GitLiveFirestoreGateway(platformContext, settingsManager)
+    }
 }

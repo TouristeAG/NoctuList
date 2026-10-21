@@ -17,6 +17,7 @@ import com.eventmanager.app.data.sync.SettingsManager
 import com.eventmanager.app.data.sync.SyncResult
 import com.eventmanager.app.data.security.crypto.SensitiveFieldCodec
 import com.eventmanager.app.platform.PlatformContext
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job as CoroutineJob
@@ -565,7 +566,11 @@ class FirebaseRemoteBackend(
                 recordRemoteActivity()
                 notifyRemoteRepositoryChangedIfListenersInactive()
                 SyncResult.Success("Firebase pull completed")
-            } catch (e: Exception) {
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                // LinkageError / ExceptionInInitializerError from the desktop gRPC stack are
+                // Errors, not Exceptions. Letting them escape closes the whole window.
                 SyncResult.Error(e.message ?: "Firebase pull failed")
             }
         }

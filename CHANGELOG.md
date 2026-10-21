@@ -4,6 +4,25 @@ All notable changes to NoctuList are documented here. Version numbers follow [Se
 
 ---
 
+## 2.1.13 — 2026-10-21
+
+Optional patch: Linux desktop first launch, webcam, and first sync.
+
+### Fixes
+
+- **Linux UI scale** — the first launch reads the GNOME or KDE scale before the window opens, so a HiDPI Ubuntu desktop is no longer drawn tiny until the next start.
+- **Linux webcam** — the scanner stays on an advertised mode at or below 720p, and reopens the camera if the stream stalls after a few seconds.
+- **Linux sync** — the first synchronization uses HTTPS instead of the gRPC channel that closed the app. A fatal sync error is shown in the wizard instead of quitting the process.
+- **macOS, Windows, Android** — same Firestore channel and scanner resolution as before.
+
+### Upgrade notes
+
+- **Version code:** 40 (`2.1.13`). Minimum supported code remains **27** (2.1.0) — optional update for 2.1.0–2.1.12.
+- **Database / Firestore rules / Hosting:** unchanged.
+- **Publishing:** tag `2.1.13`, then copy `version.json` to the AdminList update manifest. Do not raise `minSupportedVersionCode`.
+
+---
+
 ## 2.1.12 — 2026-10-21
 
 Optional patch: a flashlight toggle on the phone and tablet QR scanner.

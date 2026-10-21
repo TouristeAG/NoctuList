@@ -55,6 +55,7 @@ import com.eventmanager.app.ui.platform.applyLocaleOrThemeChange
 import com.eventmanager.app.ui.platform.applyThemeAppearanceChange
 import com.eventmanager.app.ui.platform.supportsResolutionScaleStep
 import com.eventmanager.app.ui.theme.ThemeMode
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -452,7 +453,9 @@ fun SetupWizardScreen(
                             syncManager.repairSheetStructureThenFullDownload()
                         }
                     }
-                } catch (e: Exception) {
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Throwable) {
                     SyncResult.Error(e.message ?: "Sync failed")
                 }
             }

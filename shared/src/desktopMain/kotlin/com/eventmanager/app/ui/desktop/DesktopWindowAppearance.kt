@@ -1,5 +1,6 @@
 package com.eventmanager.app.ui.desktop
 
+import com.eventmanager.app.platform.LinuxDesktopRuntime
 import com.sun.jna.Native
 import com.sun.jna.Pointer
 import com.sun.jna.win32.StdCallLibrary
@@ -29,6 +30,8 @@ object DesktopWindowAppearance {
      * Force an exact scale with `-Dsun.java2d.uiScale=1.25` (skips snapping).
      */
     fun initBeforeUiToolkit() {
+        // Linux scale and Netty guards must win before Skiko or Firestore class init.
+        LinuxDesktopRuntime.install()
         if (isWindows()) {
             enableWindowsPerMonitorDpi()
             snapFractionalUiScaleForSharpness()
