@@ -1,6 +1,6 @@
 # NoctuList
 
-**Guest lists, volunteers, door check-in, and internal POS** for live music venues — a Kotlin Multiplatform app for Android tablets/phones and desktop (macOS, Windows, Linux).
+**Guest lists, volunteers, door check-in, and internal POS** for live music venues - a Kotlin Multiplatform app for Android tablets/phones and desktop (macOS, Windows, Linux).
 
 Data lives locally in **Room (SQLite)** and syncs across devices through either **Firebase / Firestore** (realtime, recommended for new organizations) or **Google Sheets** (service account). You can migrate between the two.
 
