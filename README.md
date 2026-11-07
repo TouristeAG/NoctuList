@@ -1,13 +1,52 @@
-# NoctuList
+<p align="center">
+  <img src="docs/icon.png" width="96" alt="NoctuList icon">
+</p>
 
-**Guest lists, volunteers, door check-in, and internal POS** for live music venues - a Kotlin Multiplatform app for Android tablets/phones and desktop (macOS, Windows, Linux).
+<h1 align="center">NoctuList</h1>
+
+<p align="center">
+  Guest list, door check-in and bar app for live music venues.<br>
+  Android, macOS, Windows and Linux.
+</p>
+
+<p align="center">
+  <a href="https://github.com/TouristeAG/NoctuList/releases/latest"><img src="https://img.shields.io/github/v/release/TouristeAG/NoctuList?label=download&color=a3301c" alt="Latest release"></a>
+  <img src="https://img.shields.io/badge/platforms-Android%20%7C%20macOS%20%7C%20Windows%20%7C%20Linux-3a78a6" alt="Platforms">
+  <img src="https://img.shields.io/badge/Kotlin-Multiplatform-7F52FF?logo=kotlin&logoColor=white" alt="Kotlin Multiplatform">
+</p>
+
+<p align="center">
+  <a href="https://touristeag.github.io/NoctuList/">Website</a> ·
+  <a href="https://github.com/TouristeAG/NoctuList/releases/latest">Download</a> ·
+  <a href="CHANGELOG.md">Changelog</a> ·
+  <a href="FIREBASE_SETUP.md">Setup guide</a>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/welcome-dark.webp" width="840" alt="NoctuList welcome screen on desktop">
+</p>
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/dashboard-light.webp" alt="Admin dashboard"><br><sub>Admin dashboard</sub></td>
+    <td width="50%"><img src="docs/screenshots/guests-dark.webp" alt="Guest list (names blurred)"><br><sub>Guest list, dark theme (names and venues blurred)</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/ticketing-light.webp" alt="Ticketing"><br><sub>Ticketing</sub></td>
+    <td width="50%"><img src="docs/screenshots/pos-dark.webp" alt="Internal POS"><br><sub>Bar POS</sub></td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src="docs/screenshots/phone-welcome-light.webp" width="180" alt="Welcome on a phone">
+  <img src="docs/screenshots/phone-ticketing-dark.webp" width="180" alt="Ticketing on a phone">
+  <img src="docs/screenshots/phone-entry.webp" width="180" alt="Entry approved after a scan">
+  <img src="docs/screenshots/phone-pos-light.webp" width="180" alt="POS on a phone">
+</p>
 
 Data lives locally in **Room (SQLite)** and syncs across devices through either **Firebase / Firestore** (realtime, recommended for new organizations) or **Google Sheets** (service account). You can migrate between the two.
-
-[![Version](https://img.shields.io/badge/version-2.1.9-blue)](https://github.com/TouristeAG/NoctuList/releases)
-[![Platforms](https://img.shields.io/badge/platforms-Android%20%7C%20macOS%20%7C%20Windows%20%7C%20Linux-brightgreen)](https://github.com/TouristeAG/NoctuList/releases)
-[![Kotlin](https://img.shields.io/badge/Kotlin-Multiplatform-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org/docs/multiplatform.html)
-[![Compose](https://img.shields.io/badge/UI-Compose%20Multiplatform-4285F4)](https://www.jetbrains.com/compose-multiplatform/)
 
 ---
 
@@ -16,7 +55,7 @@ Data lives locally in **Room (SQLite)** and syncs across devices through either 
 - **Guest lists** — permanent guests, one-off event guests, invitations, notes, venue assignment, optional NFC cards
 - **Volunteer roster & shifts** — profiles, job history, configurable job types; Firebase Desktop can import shifts from a Google Doc or Sheet (see [GOOGLE_DRIVE_IMPORT_SETUP.md](GOOGLE_DRIVE_IMPORT_SETUP.md))
 - **Benefit system** — ranks and perks (Nova, Galaxie, Orion, Veteran, manual rewards) driven by job-type configuration
-- **Billeterie** — door / ticketing: guest views for the night, QR/barcode and NFC check-in, optional POS
+- **Ticketing (Billetterie)** — door: guest views for the night, QR/barcode and NFC check-in, optional POS
 - **Internal POS** — merch / bar / entry against guest or volunteer account credit, cash remainder, purchase credit buffer, bar discounts by rank
 - **Account ledger** — credit top-ups, POS sales, and transfers synced across devices
 - **POS accounting reports** — evening or date-range PDFs (sales, cash/card, internal credit)
@@ -36,7 +75,7 @@ Every launch starts on a welcome screen with three entry points:
 | Mode | Who it's for | Access |
 |------|----------------|--------|
 | **Admin** | Full back-office (dashboard, guests, volunteers, shifts, benefits, settings) | Auth via NFC, QR, or enrolled biometrics |
-| **Billeterie** | Door / ticketing tablets | No full admin session — check-in focused; POS available from this mode |
+| **Ticketing** | Door tablets and phones | No full admin session — check-in focused; POS available from this mode |
 | **Internal POS** | Bar / merch selling | Opens from welcome; does not require admin |
 
 Admin sessions end after 10 minutes without input, when the screen turns off, or when the device/OS session is locked, so shared tablets and unattended desktops don't stay logged in. If the institution has no administrator yet, Admin auth can create one (NFC/QR enrollment).
@@ -70,7 +109,7 @@ In-app updates check `version.json` against the published release manifest.
 | **Create with Firebase** | New institution, recommended. Org ID → Firebase/Cloud project (in-app tutorial) → Google Sign-In. First admin can then invite other devices. |
 | **Create with Google Sheets** | Spreadsheet-based sync. Cloud project → service account JSON → spreadsheet ID → share the sheet as **Editor** with the service account. |
 
-4. Choose **Admin**, **Billeterie**, or **POS** from the welcome screen.
+4. Choose **Ticketing**, **Internal POS** or **Admin** from the welcome screen.
 
 Detailed Firebase walkthrough: [FIREBASE_SETUP.md](FIREBASE_SETUP.md). Sheet tabs: [Google Sheets sync](#google-sheets-sync) below.
 
@@ -292,8 +331,6 @@ Product wording for perk amounts and benefit copy is owned by **in-app strings**
 
 ---
 
-## License & credits
-
-Built for venue operations (notably Groove / Le Terreau) by **Collectif Nocturne**.
+## Releases
 
 See [Releases](https://github.com/TouristeAG/NoctuList/releases) for binaries and [CHANGELOG.md](CHANGELOG.md) for release notes.

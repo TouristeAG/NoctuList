@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NoctuList</title>
+<meta name="description" content="Guest list, door check-in and bar app for live music venues. Android, macOS, Windows and Linux.">
+<link rel="icon" href="icon.png">
+<style>
+  :root { --bg: #fbfaf8; --ink: #1c1d20; --soft: #63666d; --line: #e4e1dc; --link: #b23a22; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #111418; --ink: #e6e7e9; --soft: #9ea3ab; --line: #2a2f36; --link: #f0927c; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 48px 20px 80px; }
+  a { color: var(--link); }
+  header { display: flex; align-items: center; gap: 16px; }
+  header img { width: 64px; height: 64px; border-radius: 14px; }
+  h1 { font-size: 30px; margin: 0; }
+  header p { margin: 2px 0 0; color: var(--soft); }
+  h2 { font-size: 21px; margin: 56px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+  p { margin: 0 0 14px; }
+  .intro { margin-top: 32px; }
+  figure { margin: 28px 0; }
+  figure img { display: block; width: 100%; border-radius: 8px; border: 1px solid var(--line); }
+  figcaption { color: var(--soft); font-size: 14px; margin-top: 8px; }
+  .phones { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .phones img { border-radius: 10px; }
+  ul { padding-left: 22px; }
+  li { margin: 6px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 16px; }
+  td, th { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--soft); font-weight: 600; }
+  code { font-size: 15px; }
+  footer { margin-top: 56px; color: var(--soft); font-size: 14px; }
+  img.only-dark { display: none; }
+  @media (prefers-color-scheme: dark) { img.only-light { display: none; } img.only-dark { display: block; } }
+  @media (max-width: 640px) { .phones { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="icon.png" alt="">
+    <div>
+      <h1>NoctuList</h1>
+      <p>Guest list, door and bar app for live music venues</p>
+    </div>
+  </header>
+
+  <div class="intro">
+    <p>NoctuList is made for concert nights. The door staff check guests and volunteers in, the bar charges drinks to their credit, and the team manages lists, shifts and perks from the admin side. Every device shares the same data.</p>
+    <p>It runs on Android (tablets and phones), macOS, Windows and Linux. <a href="https://github.com/TouristeAG/NoctuList/releases/latest">Download the latest release</a> or read the <a href="https://github.com/TouristeAG/NoctuList">source on GitHub</a>.</p>
+  </div>
+
+  <figure>
+    <img class="only-light" src="screenshots/welcome-light.webp" alt="Welcome screen on desktop">
+    <img class="only-dark" src="screenshots/welcome-dark.webp" alt="Welcome screen on desktop">
+    <figcaption>The welcome screen. Ticketing and POS open directly; Admin needs a login.</figcaption>
+  </figure>
+
+  <h2>What it does</h2>
+  <ul>
+    <li><b>Guest list.</b> Permanent and one-night guests, invitations, notes, and which venue they're on the list for.</li>
+    <li><b>Volunteers.</b> Profiles, shifts and job history. Shifts can be imported from a Google Doc or Sheet.</li>
+    <li><b>Perks.</b> Volunteers earn ranks and benefits from the shifts they do.</li>
+    <li><b>Door check-in.</b> QR codes from the camera or a webcam, NFC cards (built-in or USB/Bluetooth readers), and a headcount per venue.</li>
+    <li><b>Bar POS.</b> Sales charged to a guest's or volunteer's credit, the rest in cash, with PDF reports per evening or date range.</li>
+    <li><b>Emails.</b> QR codes sent through Gmail, with optional Apple Wallet and Google Pay passes.</li>
+    <li><b>Sync.</b> Firebase (realtime) or a Google Sheet. Data is stored on the device first, so it keeps working without a connection.</li>
+  </ul>
+
+  <h2>Screenshots</h2>
+  <figure>
+    <img src="screenshots/dashboard-light.webp" alt="Admin dashboard" loading="lazy">
+    <figcaption>Admin dashboard.</figcaption>
+  </figure>
+  <figure>
+    <img src="screenshots/guests-dark.webp" alt="Guest list in the dark theme" loading="lazy">
+    <figcaption>Guest list in the dark theme. Names and venues are blurred.</figcaption>
+  </figure>
+  <figure>
+    <img src="screenshots/ticketing-light.webp" alt="Ticketing screen" loading="lazy">
+    <figcaption>Ticketing: tonight's numbers and the people counter.</figcaption>
+  </figure>
+  <figure>
+    <img src="screenshots/pos-dark.webp" alt="Bar POS" loading="lazy">
+    <figcaption>The bar POS.</figcaption>
+  </figure>
+  <figure>
+    <div class="phones">
+      <img src="screenshots/phone-welcome-light.webp" alt="Welcome screen on a phone" loading="lazy">
+      <img src="screenshots/phone-ticketing-dark.webp" alt="Ticketing on a phone" loading="lazy">
+      <img src="screenshots/phone-entry.webp" alt="Entry approved after a scan" loading="lazy">
+      <img src="screenshots/phone-pos-light.webp" alt="POS on a phone" loading="lazy">
+    </div>
+    <figcaption>On a phone: welcome, ticketing, a successful scan, and the POS.</figcaption>
+  </figure>
+
+  <h2>Download</h2>
+  <p>Installers are attached to each <a href="https://github.com/TouristeAG/NoctuList/releases/latest">GitHub release</a>. The app tells you when a new version is out.</p>
+  <table>
+    <tr><th>Platform</th><th>File</th></tr>
+    <tr><td>Android</td><td><code>.apk</code></td></tr>
+    <tr><td>macOS (Apple silicon or Intel)</td><td><code>.dmg</code></td></tr>
+    <tr><td>Windows</td><td><code>.msi</code> or <code>.exe</code></td></tr>
+    <tr><td>Linux</td><td><code>.deb</code> or <code>.AppImage</code></td></tr>
+  </table>
+  <p style="margin-top:16px">Setting up a new organisation: see the <a href="https://github.com/TouristeAG/NoctuList/blob/main/FIREBASE_SETUP.md">Firebase guide</a>. The interface is in English, French, Spanish, Hindi, Latin and Chinese.</p>
+
+  <footer>
+    <a href="https://github.com/TouristeAG/NoctuList">GitHub</a> · <a href="https://github.com/TouristeAG/NoctuList/blob/main/CHANGELOG.md">Changelog</a>
+  </footer>
+</main>
+</body>
+</html>
