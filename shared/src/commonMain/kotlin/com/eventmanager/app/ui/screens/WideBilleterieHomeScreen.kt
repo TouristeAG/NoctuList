@@ -119,6 +119,11 @@ fun WideBilleterieHomeScreen(
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
     hoverEnabled: Boolean = false,
+    /**
+     * Tablet portrait: stack the Guest list / POS buttons side by side above a full-width
+     * people counter instead of the landscape two-column row (counter text needs width).
+     */
+    stackCounterBelowActions: Boolean = false,
 ) {
     val platformContext = LocalPlatformContext.current
     val settingsManager = remember(platformContext) { settingsManagerFor(platformContext) }
@@ -195,18 +200,12 @@ fun WideBilleterieHomeScreen(
                         hoverEnabled = hoverEnabled,
                     )
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(IntrinsicSize.Max),
-                        horizontalArrangement = Arrangement.spacedBy(20.dp),
-                    ) {
-                        Column(
+                    if (stackCounterBelowActions) {
+                        Row(
                             modifier = Modifier
-                                .weight(0.34f)
-                                .fillMaxHeight()
-                                .widthIn(min = 300.dp, max = 420.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                                .fillMaxWidth()
+                                .height(IntrinsicSize.Max),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
                         ) {
                             WideBilleterieSecondaryAction(
                                 title = stringResource(Res.string.billeterie_button_guest_list),
@@ -215,7 +214,9 @@ fun WideBilleterieHomeScreen(
                                 onClick = onOpenGuestList,
                                 prominent = true,
                                 hoverEnabled = hoverEnabled,
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight(),
                             )
                             WideBilleterieSecondaryAction(
                                 title = stringResource(Res.string.pos_welcome_button),
@@ -224,17 +225,59 @@ fun WideBilleterieHomeScreen(
                                 onClick = onOpenPos,
                                 prominent = true,
                                 hoverEnabled = hoverEnabled,
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight(),
                             )
                         }
                         PeopleCounter(
                             isPhone = false,
                             useDesktopLayout = true,
                             viewModel = viewModel,
-                            modifier = Modifier
-                                .weight(0.66f)
-                                .fillMaxHeight(),
+                            modifier = Modifier.fillMaxWidth(),
                         )
+                    } else {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(IntrinsicSize.Max),
+                            horizontalArrangement = Arrangement.spacedBy(20.dp),
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .weight(0.34f)
+                                    .fillMaxHeight()
+                                    .widthIn(min = 300.dp, max = 420.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp),
+                            ) {
+                                WideBilleterieSecondaryAction(
+                                    title = stringResource(Res.string.billeterie_button_guest_list),
+                                    subtitle = stringResource(Res.string.billeterie_desktop_guest_list_hint),
+                                    icon = Icons.Default.List,
+                                    onClick = onOpenGuestList,
+                                    prominent = true,
+                                    hoverEnabled = hoverEnabled,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                WideBilleterieSecondaryAction(
+                                    title = stringResource(Res.string.pos_welcome_button),
+                                    subtitle = stringResource(Res.string.welcome_pos_hint),
+                                    icon = Icons.Default.PointOfSale,
+                                    onClick = onOpenPos,
+                                    prominent = true,
+                                    hoverEnabled = hoverEnabled,
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                            PeopleCounter(
+                                isPhone = false,
+                                useDesktopLayout = true,
+                                viewModel = viewModel,
+                                modifier = Modifier
+                                    .weight(0.66f)
+                                    .fillMaxHeight(),
+                            )
+                        }
                     }
                 } else {
                     WideBilleterieHeaderBanner(
@@ -343,6 +386,9 @@ private fun WideBilleterieTopBar(
                     Icon(
                         Icons.Default.Settings,
                         contentDescription = stringResource(Res.string.settings_title),
+                        // Match the phone TopAppBar action colour; the translucent surface copy
+                        // above does not resolve a content colour, which left this icon black.
+                        tint = colorScheme.onSurface,
                     )
                 }
             }

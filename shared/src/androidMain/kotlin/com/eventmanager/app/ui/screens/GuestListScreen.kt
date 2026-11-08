@@ -1,6 +1,7 @@
 package com.eventmanager.app.ui.screens
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import com.eventmanager.app.ui.components.DialogWindowFollowsScreenSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -848,6 +849,7 @@ actual fun GuestListScreen(
             onDismissRequest = { showVolunteerBenefits = null },
             properties = fullScreenDialogProperties(),
         ) {
+            DialogWindowFollowsScreenSize()
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -855,8 +857,9 @@ actual fun GuestListScreen(
                         showVolunteerBenefits = null
                     }
                     .then(
-                        if (benefitsTablet) Modifier.padding(getTabletDialogScreenEdgeInset())
-                        else Modifier
+                        // The read-only phone frame already insets itself.
+                        if (compactReadOnlyVolunteerProfile) Modifier
+                        else Modifier.padding(getProfileDialogScreenEdgeInset())
                     )
             ) {
                 ReadOnlyPhoneProfileFrame(enabled = compactReadOnlyVolunteerProfile) {
@@ -901,6 +904,7 @@ actual fun GuestListScreen(
             onDismissRequest = { showGuestDetailPanel = null },
             properties = fullScreenDialogProperties(),
         ) {
+            DialogWindowFollowsScreenSize()
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -908,8 +912,9 @@ actual fun GuestListScreen(
                         showGuestDetailPanel = null
                     }
                     .then(
-                        if (guestDetailTablet) Modifier.padding(getTabletDialogScreenEdgeInset())
-                        else Modifier
+                        // The read-only phone frame already insets itself.
+                        if (compactReadOnlyGuestProfile) Modifier
+                        else Modifier.padding(getProfileDialogScreenEdgeInset())
                     )
             ) {
                 ReadOnlyPhoneProfileFrame(enabled = compactReadOnlyGuestProfile) {
@@ -1563,6 +1568,7 @@ private fun TemporaryGuestsTimelineDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
+        DialogWindowFollowsScreenSize()
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -2091,6 +2097,7 @@ fun AddGuestDialog(
             usePlatformDefaultWidth = !isTabletDevice
         )
     ) {
+        DialogWindowFollowsScreenSize()
         Box(
             modifier = Modifier
                 .then(
@@ -2480,6 +2487,7 @@ fun EditGuestDialog(
             usePlatformDefaultWidth = !isTabletDevice
         )
     ) {
+        DialogWindowFollowsScreenSize()
         Box(
             modifier = Modifier
                 .then(

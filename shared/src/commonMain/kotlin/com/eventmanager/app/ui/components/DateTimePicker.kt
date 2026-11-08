@@ -4,6 +4,8 @@ import com.eventmanager.app.resources.*
 import org.jetbrains.compose.resources.stringResource
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Schedule
@@ -183,15 +185,21 @@ internal fun EventDatePickerDialog(
         onDismissRequest = onDismissRequest,
         title = { Text(stringResource(Res.string.select_date)) },
         text = {
+            DialogWindowFollowsScreenSize()
+            // The calendar has a fixed height (~460dp): on phones in landscape it ran off the
+            // bottom of the window with no way to reach the bottom rows or the buttons.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
             ) {
                 content()
             }
         },
         confirmButton = confirmButton,
         dismissButton = dismissButton,
+        // Without the platform width the dialog would otherwise touch the screen edges.
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
         properties = DialogProperties(usePlatformDefaultWidth = false),
     )
 }

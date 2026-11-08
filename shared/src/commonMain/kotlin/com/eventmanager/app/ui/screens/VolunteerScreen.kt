@@ -1,6 +1,7 @@
 package com.eventmanager.app.ui.screens
 
 import com.eventmanager.app.platform.LocalPlatformContext
+import com.eventmanager.app.ui.components.DialogWindowFollowsScreenSize
 import com.eventmanager.app.resources.Res
 import com.eventmanager.app.resources.*
 import org.jetbrains.compose.resources.stringResource
@@ -311,18 +312,15 @@ fun VolunteerScreen(
         val filteredJobsForVolunteer = remember(showDetailPanel?.id, volunteerJobs) {
             volunteerJobs.filter { it.volunteerId == showDetailPanel?.id }
         }
-        val volunteerDetailTablet = isTablet()
         Dialog(
             onDismissRequest = { showDetailPanel = null },
             properties = fullScreenDialogProperties(),
         ) {
+            DialogWindowFollowsScreenSize()
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .then(
-                        if (volunteerDetailTablet) Modifier.padding(getTabletDialogScreenEdgeInset())
-                        else Modifier
-                    )
+                    .padding(getProfileDialogScreenEdgeInset())
             ) {
                 VolunteerDetailPanel(
                     modifier = Modifier.fillMaxSize(),
@@ -510,6 +508,7 @@ fun AddVolunteerDialog(
             usePlatformDefaultWidth = !isTabletDevice
         )
     ) {
+        DialogWindowFollowsScreenSize()
         Box(
             modifier = Modifier
                 .then(
@@ -715,6 +714,7 @@ fun EditVolunteerDialog(
             usePlatformDefaultWidth = !isTabletDevice
         )
     ) {
+        DialogWindowFollowsScreenSize()
         Box(
             modifier = Modifier
                 .then(

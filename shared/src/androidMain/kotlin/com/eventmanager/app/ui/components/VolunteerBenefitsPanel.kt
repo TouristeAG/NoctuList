@@ -843,6 +843,7 @@ actual fun VolunteerBenefitsPanel(
             onDismissRequest = { showQrDialog = false },
             properties = phoneFractionDialogProperties(),
         ) {
+            DialogWindowFollowsScreenSize()
             DialogFractionSizer(profile = FractionalDialogProfile.Card) { maxDialogWidth, maxDialogHeight ->
             Card(
                 modifier = Modifier

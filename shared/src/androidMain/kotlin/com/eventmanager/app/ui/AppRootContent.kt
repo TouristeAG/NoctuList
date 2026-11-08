@@ -1,6 +1,7 @@
 package com.eventmanager.app.ui
 
 import com.eventmanager.app.platform.PlatformContext
+import com.eventmanager.app.ui.components.DialogWindowFollowsScreenSize
 import com.eventmanager.app.platform.createAppStorage
 import com.eventmanager.app.platform.createDatabase
 import android.app.Activity
@@ -751,6 +752,7 @@ actual fun AppRootContent(
                                 onOpenPos = { billeterieSection = "pos" },
                                 onOpenSettings = { showBilleterieSettings = true },
                                 hoverEnabled = false,
+                                stackCounterBelowActions = getScreenHeightDp() > getScreenWidthDp(),
                             )
                         } else {
                             BilleterieHomeScreen(
@@ -1575,18 +1577,15 @@ if (pageAnimationsEnabled) {
                 jobs.filter { it.volunteerId == volunteer.id }
             }
 
-            val scanFlowTablet = isTablet()
             androidx.compose.ui.window.Dialog(
                 onDismissRequest = { showVolunteerBenefits = null },
                 properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
             ) {
+                DialogWindowFollowsScreenSize()
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .then(
-                            if (scanFlowTablet) Modifier.padding(getTabletDialogScreenEdgeInset())
-                            else Modifier
-                        )
+                        .padding(getProfileDialogScreenEdgeInset())
                 ) {
                     VolunteerBenefitsPanel(
                         modifier = Modifier.fillMaxSize(),
@@ -1613,18 +1612,15 @@ if (pageAnimationsEnabled) {
         }
 
         showScannedGuestDetail?.let { guest ->
-            val scanFlowTablet = isTablet()
             androidx.compose.ui.window.Dialog(
                 onDismissRequest = { showScannedGuestDetail = null },
                 properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
             ) {
+                DialogWindowFollowsScreenSize()
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .then(
-                            if (scanFlowTablet) Modifier.padding(getTabletDialogScreenEdgeInset())
-                            else Modifier
-                        )
+                        .padding(getProfileDialogScreenEdgeInset())
                 ) {
                     GuestDetailPanel(
                         modifier = Modifier.fillMaxSize(),

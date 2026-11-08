@@ -285,6 +285,19 @@ fun getTabletDialogScreenEdgeInset(): Dp {
 }
 
 /**
+ * Inset between a full-screen guest/volunteer profile window and the physical screen edge.
+ * Tablets keep [getTabletDialogScreenEdgeInset]; phones get a small margin so the profile card
+ * reads as a window (the panel still fills the remaining space, so nothing can overflow).
+ */
+@Composable
+fun getProfileDialogScreenEdgeInset(): Dp {
+    return when (getScreenSize()) {
+        ScreenSize.COMPACT -> 12.dp
+        else -> getTabletDialogScreenEdgeInset()
+    }
+}
+
+/**
  * Maximum width for tablet dialogs that size themselves with [Modifier.widthIn] (e.g. QR sheets,
  * alert-style cards). Equals the screen width minus twice [getTabletDialogScreenEdgeInset].
  * On phones, returns a large value (effectively no constraint for those call sites).

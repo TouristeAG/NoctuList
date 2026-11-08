@@ -67,6 +67,7 @@ fun DialogFractionSizer(
     desktopMaxWidth: Dp = 440.dp,
     content: @Composable BoxScope.(maxDialogWidth: Dp, maxDialogHeight: Dp) -> Unit,
 ) {
+    DialogWindowFollowsScreenSize()
     val isDesktopPlatform = LocalPlatformContext.current.isDesktop
     val isTabletDevice = isTablet()
     val screenWidth = getScreenWidthDp()

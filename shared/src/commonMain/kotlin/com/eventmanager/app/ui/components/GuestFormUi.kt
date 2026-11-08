@@ -17,6 +17,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -785,6 +786,33 @@ private fun GuestFormOfferedAccessQuotaEditor(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
         ),
     ) {
+        // On narrow dialogs (phone portrait) chip + 168dp quota field do not fit on one line and
+        // pushed the field past the dialog's right edge: move the field under its access there.
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val narrow = maxWidth < 380.dp
+        val maxRequestsField: @Composable (VenueAccess, Modifier) -> Unit = { access, fieldModifier ->
+                OutlinedTextField(
+                    value = accessMaxRequests[access.id].orEmpty(),
+                    onValueChange = { raw ->
+                        val digits = raw.filter(Char::isDigit).take(3)
+                        val n = digits.toIntOrNull()
+                        onMaxRequestsChange(
+                            access.id,
+                            if (n != null && n > maxGuests) maxGuests.toString() else digits,
+                        )
+                    },
+                    label = {
+                        Text(
+                            stringResource(Res.string.guest_form_access_max_requests),
+                            maxLines = 1,
+                            overflow = TextOverflow.Clip,
+                            softWrap = false,
+                        )
+                    },
+                    modifier = fieldModifier,
+                    singleLine = true,
+                )
+        }
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -836,31 +864,12 @@ private fun GuestFormOfferedAccessQuotaEditor(
                             },
                         )
                     }
-                    if (offered) {
-                        OutlinedTextField(
-                            value = accessMaxRequests[access.id].orEmpty(),
-                            onValueChange = { raw ->
-                                val digits = raw.filter(Char::isDigit).take(3)
-                                val n = digits.toIntOrNull()
-                                onMaxRequestsChange(
-                                    access.id,
-                                    if (n != null && n > maxGuests) maxGuests.toString() else digits,
-                                )
-                            },
-                            label = {
-                                Text(
-                                    stringResource(Res.string.guest_form_access_max_requests),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Clip,
-                                    softWrap = false,
-                                )
-                            },
-                            modifier = Modifier
-                                .widthIn(min = 168.dp)
-                                .weight(1f),
-                            singleLine = true,
-                        )
+                    if (offered && !narrow) {
+                        maxRequestsField(access, Modifier.widthIn(min = 168.dp).weight(1f))
                     }
+                }
+                if (offered && narrow) {
+                    maxRequestsField(access, Modifier.fillMaxWidth())
                 }
             }
             Text(
@@ -868,6 +877,7 @@ private fun GuestFormOfferedAccessQuotaEditor(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
         }
     }
 }

@@ -205,7 +205,7 @@ class MainActivity : FragmentActivity(), AdminSessionHost {
         if (base == null) return null
         val settingsManager = SettingsManager(createAppStorage(createPlatformContext(base)))
         val scale = settingsManager.getResolutionScale()
-        val config = Configuration(base.resources.configuration)
+        val config = overrideOnlyConfiguration()
         val metrics = base.resources.displayMetrics
         metrics.density = metrics.density / scale
         metrics.scaledDensity = metrics.scaledDensity / scale
@@ -218,9 +218,20 @@ class MainActivity : FragmentActivity(), AdminSessionHost {
         val language = settingsManager.getLanguage()
         bootstrapAppLocale(language)
         val locale = createLocaleFromLanguageCode(language)
-        val config = Configuration(base.resources.configuration)
+        val config = overrideOnlyConfiguration()
         config.setLocale(locale)
         return base.createConfigurationContext(config)
+    }
+
+    /**
+     * Empty override for [createConfigurationContext]: only the fields set on it replace the
+     * system values. Copying the whole current configuration instead froze orientation and screen
+     * size for the activity's lifetime (it handles rotation itself via configChanges), so Compose
+     * dialogs kept the size of the orientation the app was started in and overflowed after a rotation.
+     */
+    private fun overrideOnlyConfiguration(): Configuration = Configuration().apply {
+        // Configuration() defaults fontScale to 1; 0 means "undefined" so the user's font size is kept.
+        fontScale = 0f
     }
     
     private fun applyAppIconSettings() {

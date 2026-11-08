@@ -329,6 +329,7 @@ actual fun GuestDetailPanel(
             onDismissRequest = { showQrDialog = false },
             properties = phoneFractionDialogProperties(),
         ) {
+            DialogWindowFollowsScreenSize()
             DialogFractionSizer(profile = FractionalDialogProfile.Card) { maxDialogWidth, maxDialogHeight ->
             Card(
                 modifier = Modifier

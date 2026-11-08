@@ -4,6 +4,27 @@ All notable changes to NoctuList are documented here. Version numbers follow [Se
 
 ---
 
+## 2.1.15 — 2026-11-08
+
+Optional patch: Android layout fixes for guest-list windows, profiles and the tablet Billetterie screen.
+
+### Fixes
+
+- **Windows after a rotation (Android)** — guest-list windows, profiles and other full-width dialogs no longer run off the right or bottom edge after turning the device. The app pinned the screen size it started with, so dialogs kept the size of the other orientation; it now only overrides language and density, and open dialogs resize when the device turns.
+- **Guest form on phones** — the per-access “max requests” field moves under its access when there is not enough width, instead of being cut off on the right.
+- **Date picker** — the calendar scrolls when the screen is short (phones in landscape) and keeps a margin from the screen edges.
+- **Profiles on phones** — guest and volunteer profiles keep a small margin from the screen edge, like on tablets.
+- **Billetterie on tablet, portrait** — the Guest list and POS buttons sit side by side above the people counter, which now uses the full width. Landscape is unchanged.
+- **Billetterie settings icon** — on tablet and desktop, the settings icon follows the theme colour instead of staying black.
+
+### Upgrade notes
+
+- **Version code:** 42 (`2.1.15`). Minimum supported code remains **27** (2.1.0) — optional update for 2.1.0–2.1.14.
+- **Database, Firestore and Storage rules, hosting:** unchanged.
+- **Publishing:** tag `2.1.15`, then copy `version.json` to the AdminList update manifest. Do not raise `minSupportedVersionCode`.
+
+---
+
 ## 2.1.14 — 2026-11-08
 
 Optional update: ask a guest or volunteer for their profile photo with a link, and the public pages animate again on phones.
