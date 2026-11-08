@@ -13,6 +13,33 @@ service firebase.storage {
       return isSignedIn() && firestore.exists(memberPath(orgId));
     }
 
+    function photoRequestPath(orgId, requestId) {
+      return /databases/(default)/documents/orgs/$(orgId)/photoRequests/$(requestId);
+    }
+
+    // Same digit-string tolerance as firestore.rules: desktop writes may store millis as text.
+    function asMillis(value) {
+      return value is number ? value :
+        (value is string && value.matches('^[0-9]+([.][0-9]+)?$') ? float(value) : 0);
+    }
+
+    function photoRequestIsOpen(orgId, requestId) {
+      return firestore.exists(photoRequestPath(orgId, requestId))
+        && firestore.get(photoRequestPath(orgId, requestId)).data.status == 'OPEN'
+        && request.time.toMillis()
+             < asMillis(firestore.get(photoRequestPath(orgId, requestId)).data.expiresAtMillis);
+    }
+
+    // Public profile-photo upload: no account, one JPEG per open request. The app copies it into
+    // profilePhotos/ and then deletes it, so members may read and delete.
+    match /orgs/{orgId}/photoRequests/{fileName} {
+      allow read, delete: if isMember(orgId);
+      allow create, update: if fileName.matches('^[A-Za-z0-9_-]{10,64}[.]jpg$')
+        && photoRequestIsOpen(orgId, fileName.split('[.]')[0])
+        && request.resource.size < 3 * 1024 * 1024
+        && request.resource.contentType.matches('image/jpeg');
+    }
+
     match /orgs/{orgId}/profilePhotos/{kind}/{fileName} {
       allow read: if isMember(orgId)
         && kind in ['guests', 'volunteers'];

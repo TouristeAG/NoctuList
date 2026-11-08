@@ -207,6 +207,7 @@ class SettingsManager(private val storage: AppStorage) {
         private const val KEY_GUEST_FORMS_BILLETERIE_VALIDATE_ENABLED =
             "guest_forms_billeterie_validate_enabled"
         private const val KEY_GUEST_FORM_BASE_URL = "guest_form_base_url"
+        private const val KEY_PENDING_PHOTO_REQUESTS = "pending_profile_photo_requests"
         private const val KEY_INSTITUTION_LOGO_PNG = "institution_logo_png"
         /** Prefs only holds this marker — the PNG bytes live on disk (Preferences max ~8 KiB). */
         private const val LOGO_ON_DISK_MARKER = "disk"
@@ -454,6 +455,21 @@ class SettingsManager(private val storage: AppStorage) {
         val base = resolveGuestFormBaseUrl()
         if (base.isBlank() || orgId.isBlank() || formId.isBlank()) return ""
         return "$base/g/${orgId.trim()}/${formId.trim()}"
+    }
+
+    /** Public profile-photo upload page for one request. Empty when the site origin is unknown. */
+    fun profilePhotoRequestUrl(orgId: String, requestId: String): String {
+        val base = resolveGuestFormBaseUrl()
+        if (base.isBlank() || orgId.isBlank() || requestId.isBlank()) return ""
+        return "$base/p/${orgId.trim()}/${requestId.trim()}"
+    }
+
+    /** Device-local: photo requests this device created and has not finished yet (JSON list). */
+    fun getPendingPhotoRequestsJson(): String =
+        storage.getString(KEY_PENDING_PHOTO_REQUESTS, "") ?: ""
+
+    fun savePendingPhotoRequestsJson(json: String) {
+        storage.putString(KEY_PENDING_PHOTO_REQUESTS, json)
     }
 
     /** Base64 PNG shared by every device and by the public forms; empty when unset. */

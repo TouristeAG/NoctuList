@@ -20,6 +20,9 @@ object GuestFormSiteBundle {
         "app.js",
         "i18n.js",
         "topo.js",
+        "photo.html",
+        "photo.js",
+        "photo-i18n.js",
         "firebase.json",
     )
 

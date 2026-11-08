@@ -270,6 +270,7 @@ actual fun GuestDetailPanel(
                                 canManagePhoto = rememberProfilePhotosUploadEnabled(viewModel) && !guest.isTemporaryGuest,
                                 onUploadPhoto = { bytes -> viewModel?.uploadProfilePhotoForGuest(guest, bytes) },
                                 onRemovePhoto = { viewModel?.removeProfilePhotoForGuest(guest) },
+                                onRequestPhoto = rememberGuestPhotoRequestLauncher(viewModel, guest),
                             )
                         }
                     }
@@ -1660,6 +1661,7 @@ private fun ActionButtonsSection(
     canManagePhoto: Boolean = false,
     onUploadPhoto: (ByteArray) -> Unit = {},
     onRemovePhoto: () -> Unit = {},
+    onRequestPhoto: (() -> Unit)? = null,
 ) {
     val responsivePadding = if (isPhone) getPhonePortraitCardPadding() else getResponsiveCardPadding()
     val responsiveSpacing = if (isPhone) getPhonePortraitSpacing() else getResponsiveSpacing()
@@ -1727,6 +1729,7 @@ private fun ActionButtonsSection(
                             enabled = canManagePhoto,
                             onAddOrChange = pickPhoto,
                             onRemove = onRemovePhoto,
+                            onRequestFromPerson = onRequestPhoto,
                         )
                     }
                     
@@ -1786,6 +1789,7 @@ private fun ActionButtonsSection(
                             onAddOrChange = pickPhoto,
                             onRemove = onRemovePhoto,
                             sideBySide = true,
+                            onRequestFromPerson = onRequestPhoto,
                         )
                     }
 

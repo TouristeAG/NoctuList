@@ -234,3 +234,36 @@ label.comments { margin-top: 20px; }
     height: 1px;
   }
 }
+
+/* Profile photo request page (/p/{org}/{request}) */
+.photo-intro { margin: 4px 0 0; }
+.photo-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 168px;
+  height: 168px;
+  margin: 24px auto 4px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px dashed var(--line);
+  background-color: rgba(255, 255, 255, 0.03);
+  background-size: cover;
+  background-position: center;
+  color: var(--primary);
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.photo-preview:hover { border-color: var(--primary); }
+.photo-preview:active { transform: scale(0.98); }
+.photo-preview.has-photo { border-style: solid; border-color: var(--primary); }
+.photo-preview.has-photo .photo-placeholder { display: none; }
+.photo-preview.done {
+  width: 112px;
+  height: 112px;
+  margin: 0 auto 16px;
+  cursor: default;
+}
+.photo-preview.done:not(.has-photo) { display: none; }
+.photo-status { margin: 14px 0 0; }
+.primary:disabled, .ghost:disabled { opacity: 0.45; cursor: not-allowed; }

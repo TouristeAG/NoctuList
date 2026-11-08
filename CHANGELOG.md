@@ -4,6 +4,32 @@ All notable changes to NoctuList are documented here. Version numbers follow [Se
 
 ---
 
+## 2.1.14 — 2026-11-08
+
+Optional update: ask a guest or volunteer for their profile photo with a link, and the public pages animate again on phones.
+
+### Features
+
+- **Photo requests** — a profile has an “Ask the person” button next to Add / Remove photo, on desktop and Android. It shows a QR code and a link to copy, valid for 7 days. Opening it again for the same person shows the same link.
+- **Public upload page** — the link opens `/p/{org}/{request}` on the guest-form site, in the same style. The person picks a photo, sees a round preview, and taps Upload. The photo is resized to 1024 px JPEG in the browser before it is sent. The page then thanks them and closes itself where the browser allows it.
+- **Automatic profile update** — the device that created the request stores the photo on the matching profile through the usual photo pipeline, then deletes the request and the temporary file. The dialog closes by itself when the photo arrives. If it was closed earlier, the device still finishes the request in the background while NoctuList is open.
+- **Languages** — the app strings exist in every app language; the public page speaks FR, EN, ES, DE and IT.
+
+### Fixes
+
+- **Public pages on phones** — the topographic background no longer collapses into a flat colour. Phones ran the shader at 16-bit precision, which overflowed the noise; it now uses high precision when the GPU supports it, and falls back to the themed gradient if the shader cannot compile. Lines keep the same size on phones and desktop.
+
+### Upgrade notes
+
+- **Version code:** 41 (`2.1.14`). Minimum supported code remains **27** (2.1.0) — optional update for 2.1.0–2.1.13.
+- **Database:** unchanged. Open photo requests are kept in local settings on the device that created them.
+- **Firestore rules:** version 11 — republish `firebase/firestore.rules` (new `photoRequests` collection: public targeted get and a single `OPEN → UPLOADED` update while open and unexpired).
+- **Storage rules:** republish `firebase/storage.rules` (anonymous JPEG upload under 3 MB to `orgs/{org}/photoRequests/{request}.jpg`, only while the request is open).
+- **Hosting:** redeploy the guest-form site (`webform/`): new `photo.html`, `photo.js`, `photo-i18n.js`, the `/p/**` rewrite in `firebase.json`, and the fixed `topo.js`.
+- **Publishing:** tag `2.1.14`, then copy `version.json` to the AdminList update manifest. Do not raise `minSupportedVersionCode`.
+
+---
+
 ## 2.1.13 — 2026-10-21
 
 Optional patch: Linux desktop first launch, webcam, and first sync.

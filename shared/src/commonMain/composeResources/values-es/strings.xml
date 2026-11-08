@@ -2411,4 +2411,13 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="drive_import_noctulist_profile">Voluntario NoctuList</string>
     <string name="drive_import_maps_to">corresponde a</string>
     <string name="drive_import_people_count">%1$d personas encontradas</string>
+    <string name="profile_photo_request_button">Pedírsela a la persona</string>
+    <string name="profile_photo_request_title">Solicitud de foto de perfil</string>
+    <string name="profile_photo_request_body">Envía este enlace a %1$s o deja que escanee el código QR. La foto se añade al perfil automáticamente.</string>
+    <string name="profile_photo_request_creating">Creando el enlace…</string>
+    <string name="profile_photo_request_waiting">Esperando la foto…</string>
+    <string name="profile_photo_request_received">Foto recibida y añadida al perfil.</string>
+    <string name="profile_photo_request_expired">Este enlace ha caducado. Cierra y crea uno nuevo.</string>
+    <string name="profile_photo_request_failed">No se pudo crear el enlace. Comprueba la conexión y que las últimas reglas de Firestore y Storage estén publicadas.</string>
+    <string name="profile_photo_request_hint">Puedes cerrar esta ventana: la foto se añadirá igualmente cuando llegue, mientras NoctuList esté abierto en este dispositivo.</string>
 </resources>

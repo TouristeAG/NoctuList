@@ -312,6 +312,7 @@ actual fun GuestDetailPanel(
                                 onAddOrChange = pickPhoto,
                                 onRemove = { viewModel?.removeProfilePhotoForGuest(guest) },
                                 sideBySide = true,
+                                onRequestFromPerson = rememberGuestPhotoRequestLauncher(viewModel, guest),
                             )
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {

@@ -189,6 +189,7 @@ actual fun VolunteerBenefitsPanel(
                     onAddOrChange = pickPhoto,
                     onRemove = { viewModel?.removeProfilePhotoForVolunteer(volunteer) },
                     sideBySide = true,
+                    onRequestFromPerson = rememberVolunteerPhotoRequestLauncher(viewModel, volunteer),
                 )
                 NfcUidInfoRow(uid = volunteer.nfcCardUid, isPhone = false)
             }

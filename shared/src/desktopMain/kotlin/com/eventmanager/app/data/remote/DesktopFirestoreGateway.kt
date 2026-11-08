@@ -185,7 +185,7 @@ internal class DesktopFirestoreGateway(
         // Public pages read the server. GitLive set() can succeed on the local cache only, and
         // GitLive sometimes stores millis as strings — REST writes typed numbers and waits for HTTP 200.
         val restClient = rest
-        if (collection == "guestForms" && restClient?.isReady() == true) {
+        if (collection in PUBLIC_PAGE_COLLECTIONS && restClient?.isReady() == true) {
             restClient.upsertDocument(orgId, collection, docId, data)
             noteServerReachable(true)
             return@withContext
@@ -206,7 +206,7 @@ internal class DesktopFirestoreGateway(
     ): Map<String, Any?>? = withContext(Dispatchers.IO) {
         if (orgId.isBlank() || collection.isBlank() || docId.isBlank()) return@withContext null
         val restClient = rest
-        if (collection == "guestForms" && restClient?.isReady() == true) {
+        if (collection in PUBLIC_PAGE_COLLECTIONS && restClient?.isReady() == true) {
             val fromRest = runCatching { restClient.getDocument(orgId, collection, docId) }.getOrNull()
             if (fromRest != null) {
                 noteServerReachable(true)
@@ -606,6 +606,8 @@ internal class DesktopFirestoreGateway(
     }
 
     companion object {
+        /** Read by anonymous public pages: always write and read them on the server via REST. */
+        private val PUBLIC_PAGE_COLLECTIONS = setOf("guestForms", "photoRequests")
         private const val GITLIVE_LISTENER_PROBE_MS = 45_000L
         private const val PULL_TIMEOUT_MS = 120_000L
         private const val READ_TIMEOUT_MS = 30_000L

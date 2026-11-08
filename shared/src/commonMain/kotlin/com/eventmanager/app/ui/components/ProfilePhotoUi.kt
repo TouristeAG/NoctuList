@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -62,6 +63,7 @@ import com.eventmanager.app.resources.download_profile_photo
 import com.eventmanager.app.resources.profile_photo_cd
 import com.eventmanager.app.resources.profile_photo_preview_hint
 import com.eventmanager.app.resources.profile_photo_preview_label
+import com.eventmanager.app.resources.profile_photo_request_button
 import com.eventmanager.app.resources.remove_profile_photo
 import com.eventmanager.app.resources.remove_profile_photo_confirm
 import com.eventmanager.app.resources.share_profile_photo
@@ -446,9 +448,23 @@ fun ProfilePhotoActionButtons(
     modifier: Modifier = Modifier,
     fillWidth: Boolean = true,
     sideBySide: Boolean = false,
+    /** "Ask the person": sends them a public upload link. Hidden when null. */
+    onRequestFromPerson: (() -> Unit)? = null,
 ) {
     if (!enabled) return
     var confirmDelete by remember { mutableStateOf(false) }
+    val requestButton: @Composable () -> Unit = {
+        if (onRequestFromPerson != null) {
+            OutlinedButton(
+                onClick = onRequestFromPerson,
+                modifier = if (fillWidth || sideBySide) Modifier.fillMaxWidth() else Modifier,
+            ) {
+                Icon(Icons.Default.Link, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(4.dp))
+                Text(stringResource(Res.string.profile_photo_request_button))
+            }
+        }
+    }
     val addLabel = if (hasPhoto) {
         stringResource(Res.string.change_profile_photo)
     } else {
@@ -465,19 +481,22 @@ fun ProfilePhotoActionButtons(
         Text(stringResource(Res.string.remove_profile_photo))
     }
     if (sideBySide) {
-        Row(
-            modifier = modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            OutlinedButton(onClick = onAddOrChange, modifier = Modifier.weight(1f), content = { addContent() })
-            if (hasPhoto) {
-                OutlinedButton(
-                    onClick = { confirmDelete = true },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                    content = { removeContent() },
-                )
+        Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedButton(onClick = onAddOrChange, modifier = Modifier.weight(1f), content = { addContent() })
+                if (hasPhoto) {
+                    OutlinedButton(
+                        onClick = { confirmDelete = true },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        content = { removeContent() },
+                    )
+                }
             }
+            requestButton()
         }
     } else {
         Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -494,6 +513,7 @@ fun ProfilePhotoActionButtons(
                     content = { removeContent() },
                 )
             }
+            requestButton()
         }
     }
     if (confirmDelete) {

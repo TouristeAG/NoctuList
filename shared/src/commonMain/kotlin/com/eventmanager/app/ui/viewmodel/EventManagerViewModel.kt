@@ -52,6 +52,8 @@ import com.eventmanager.app.data.remote.FirebaseLedgerService
 import com.eventmanager.app.data.remote.FirebaseLedgerResult
 import com.eventmanager.app.data.remote.PendingRemoteWriteQueue
 import com.eventmanager.app.data.remote.createFirestoreGateway
+import com.eventmanager.app.data.remote.FirestoreGateway
+import com.eventmanager.app.data.remote.downloadProfilePhotoBytes
 import com.eventmanager.app.data.remote.createFirebaseAuthService
 import com.eventmanager.app.data.remote.GitLiveProfilePhotoStorageGateway
 import com.eventmanager.app.data.remote.FirestoreApplyPolicy
@@ -121,6 +123,9 @@ class EventManagerViewModel(
     private val guestFormSweepMutex = Mutex()
     private companion object {
         const val VM_LOG_TAG = "EventManagerVM"
+        const val PHOTO_REQUEST_BACKGROUND_POLL_MS = 20_000L
+        /** Reuse an open link only if it stays valid for at least this long. */
+        const val PHOTO_REQUEST_REUSE_MARGIN_MS = 24L * 60 * 60 * 1000
     }
     
     // Deletion tracker for handling deletions properly
@@ -1575,6 +1580,10 @@ class EventManagerViewModel(
             delay(1200)
             evaluatePendingShiftCreditsIfNeeded()
         }
+        viewModelScope.launch {
+            delay(2500)
+            ensurePhotoRequestLoop()
+        }
         platformContext?.let { ctx ->
             val sm = SettingsManager(ctx)
             val savedVenue = sm.getPeopleCounterSelectedVenueId()
@@ -2380,6 +2389,204 @@ class EventManagerViewModel(
             .distinct()
             .forEach { ProfilePhotoImageCache.evict(platformContext, it) }
     }
+
+    // region Profile photo requests (public upload link)
+
+    private val photoRequestMutex = Mutex()
+    private var photoRequestGatewayCached: FirestoreGateway? = null
+    private var photoRequestLoopJob: kotlinx.coroutines.Job? = null
+    /** Requests finished in this session, so an open dialog still learns its photo arrived. */
+    private val appliedPhotoRequestIds = mutableSetOf<String>()
+
+    private fun photoRequestGateway(): FirestoreGateway? {
+        photoRequestGatewayCached?.let { return it }
+        val ctx = platformContext ?: return null
+        val settings = settingsManagerCached ?: return null
+        return createFirestoreGateway(ctx, settings).also { photoRequestGatewayCached = it }
+    }
+
+    private fun pendingPhotoRequests(): List<ProfilePhotoRequest> =
+        ProfilePhotoRequest.decodeList(settingsManagerCached?.getPendingPhotoRequestsJson().orEmpty())
+
+    private fun savePendingPhotoRequests(requests: List<ProfilePhotoRequest>) {
+        settingsManagerCached?.savePendingPhotoRequestsJson(ProfilePhotoRequest.encodeList(requests))
+    }
+
+    private fun forgetPhotoRequest(requestId: String) {
+        savePendingPhotoRequests(pendingPhotoRequests().filterNot { it.requestId == requestId })
+    }
+
+    /** Photos on, Firebase backend, and a public site origin to build the link from. */
+    fun isProfilePhotoRequestAvailable(): Boolean =
+        isProfilePhotoUploadEnabled() && guestFormSiteOrigin().isNotBlank()
+
+    fun profilePhotoRequestUrl(request: ProfilePhotoRequest): String =
+        settingsManagerCached?.profilePhotoRequestUrl(request.orgId, request.requestId).orEmpty()
+
+    suspend fun createProfilePhotoRequestForGuest(guest: Guest): ProfilePhotoRequest? {
+        val tagged = tagGuestWithActiveOrg(guest)
+        return createProfilePhotoRequest(
+            orgId = tagged.firebaseOrgId,
+            kind = ProfilePhotoKind.GUEST,
+            entityId = tagged.nanoId,
+            displayName = tagged.name,
+        )
+    }
+
+    suspend fun createProfilePhotoRequestForVolunteer(volunteer: Volunteer): ProfilePhotoRequest? {
+        val tagged = tagVolunteerWithActiveOrg(volunteer)
+        return createProfilePhotoRequest(
+            orgId = tagged.firebaseOrgId,
+            kind = ProfilePhotoKind.VOLUNTEER,
+            entityId = tagged.id,
+            displayName = listOf(tagged.name, tagged.lastNameAbbreviation)
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+                .joinToString(" "),
+        )
+    }
+
+    private suspend fun createProfilePhotoRequest(
+        orgId: String,
+        kind: ProfilePhotoKind,
+        entityId: String,
+        displayName: String,
+    ): ProfilePhotoRequest? {
+        if (!isProfilePhotoRequestAvailable()) {
+            _syncError.value = "Photo requests need Firebase, profile photos turned on and the public form site."
+            return null
+        }
+        val org = orgId.ifBlank { resolveActiveFirebaseOrgIdForWrites() }.trim()
+        if (org.isBlank() || entityId.isBlank()) {
+            _syncError.value = "Photo request could not be created (missing organization or id)."
+            return null
+        }
+        val gateway = photoRequestGateway() ?: return null
+        return photoRequestMutex.withLock {
+            val now = System.currentTimeMillis()
+            // Re-opening the dialog for the same person shows the same link and QR code.
+            pendingPhotoRequests().firstOrNull {
+                it.orgId == org && it.kind == kind.storageFolder && it.entityId == entityId &&
+                    !it.isExpiredAt(now + PHOTO_REQUEST_REUSE_MARGIN_MS)
+            }?.let { return@withLock it }
+            val request = ProfilePhotoRequest(
+                requestId = NanoIdGenerator.generateGuestFormId(),
+                orgId = org,
+                kind = kind.storageFolder,
+                entityId = entityId,
+                displayName = displayName.trim().take(80),
+                createdAt = now,
+                expiresAtMillis = now + ProfilePhotoRequest.VALIDITY_MILLIS,
+            )
+            try {
+                gateway.upsertDocument(org, ProfilePhotoRequest.COLLECTION, request.requestId, request.toFirestoreMap())
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                println("Photo request create failed: ${e.message}")
+                _syncError.value = "Photo request could not be created. Check the connection and Firestore rules."
+                return@withLock null
+            }
+            savePendingPhotoRequests(pendingPhotoRequests() + request)
+            request
+        }.also { if (it != null) ensurePhotoRequestLoop() }
+    }
+
+    /**
+     * Looks the request up on the server; once the person has uploaded, stores the photo on the
+     * profile (same pipeline as a photo picked in the app) and cleans the request up.
+     */
+    suspend fun checkProfilePhotoRequest(request: ProfilePhotoRequest): ProfilePhotoRequestState =
+        photoRequestMutex.withLock { checkProfilePhotoRequestLocked(request) }
+
+    private suspend fun checkProfilePhotoRequestLocked(request: ProfilePhotoRequest): ProfilePhotoRequestState {
+        if (request.requestId in appliedPhotoRequestIds) return ProfilePhotoRequestState.Applied
+        if (pendingPhotoRequests().none { it.requestId == request.requestId }) {
+            return ProfilePhotoRequestState.Expired
+        }
+        val gateway = photoRequestGateway() ?: return ProfilePhotoRequestState.Waiting
+        val now = System.currentTimeMillis()
+        val doc = try {
+            gateway.getDocumentFromServer(request.orgId, ProfilePhotoRequest.COLLECTION, request.requestId)
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            println("Photo request read failed: ${e.message}")
+            return ProfilePhotoRequestState.Waiting
+        }
+        val status = doc?.get("status")?.toString()?.trim().orEmpty()
+        if (status != ProfilePhotoRequest.STATUS_UPLOADED) {
+            if (request.isExpiredAt(now)) {
+                runCatching {
+                    gateway.deleteDocument(request.orgId, ProfilePhotoRequest.COLLECTION, request.requestId)
+                }
+                forgetPhotoRequest(request.requestId)
+                return ProfilePhotoRequestState.Expired
+            }
+            return ProfilePhotoRequestState.Waiting
+        }
+        // Only ever trust the path this request owns, whatever the document says.
+        val path = request.uploadStoragePath
+        val bytes = downloadProfilePhotoBytes(platformContext, url = "", storagePath = path)
+            ?: return ProfilePhotoRequestState.Failed("The uploaded photo could not be downloaded yet.")
+        if (!applyPhotoRequestBytes(request, bytes)) {
+            return ProfilePhotoRequestState.Failed("The photo was received but could not be saved on the profile.")
+        }
+        runCatching { profilePhotoStorage.delete(path) }
+        runCatching { gateway.deleteDocument(request.orgId, ProfilePhotoRequest.COLLECTION, request.requestId) }
+        forgetPhotoRequest(request.requestId)
+        appliedPhotoRequestIds += request.requestId
+        return ProfilePhotoRequestState.Applied
+    }
+
+    private suspend fun applyPhotoRequestBytes(request: ProfilePhotoRequest, bytes: ByteArray): Boolean {
+        return when (request.photoKind) {
+            ProfilePhotoKind.GUEST -> {
+                val guest = repository.getGuestByNanoIdAndOrg(request.entityId, request.orgId)
+                    ?: repository.getGuestByNanoId(request.entityId)
+                    ?: return false
+                val tagged = tagGuestWithActiveOrg(guest)
+                val updated = persistGuestPhotoAfterSave(tagged, bytes)
+                if (updated == tagged) return false
+                syncCoordinator?.afterGuestSaved(updated)
+                    ?: twoWaySyncService?.backupGuestsToSheets()
+                true
+            }
+            ProfilePhotoKind.VOLUNTEER -> {
+                val volunteer = repository.getVolunteerById(request.entityId) ?: return false
+                val tagged = tagVolunteerWithActiveOrg(volunteer)
+                val updated = persistVolunteerPhotoAfterSave(tagged, bytes)
+                if (updated == tagged) return false
+                syncCoordinator?.afterVolunteerSaved(updated)
+                    ?: twoWaySyncService?.backupVolunteersToSheets()
+                true
+            }
+        }
+    }
+
+    /** Finishes requests in the background, so the dialog does not have to stay open. */
+    private fun ensurePhotoRequestLoop() {
+        if (photoRequestLoopJob?.isActive == true) return
+        if (pendingPhotoRequests().isEmpty()) return
+        photoRequestLoopJob = viewModelScope.launch {
+            while (isActive) {
+                val pending = pendingPhotoRequests()
+                if (pending.isEmpty()) break
+                for (request in pending) {
+                    try {
+                        checkProfilePhotoRequest(request)
+                    } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        println("Photo request check failed: ${e.message}")
+                    }
+                }
+                delay(PHOTO_REQUEST_BACKGROUND_POLL_MS)
+            }
+        }
+    }
+
+    // endregion
 
     fun deleteVolunteer(volunteer: Volunteer, deleteShifts: Boolean = false) {
         viewModelScope.launch {

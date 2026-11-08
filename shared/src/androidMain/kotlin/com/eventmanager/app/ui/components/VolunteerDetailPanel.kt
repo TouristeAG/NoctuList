@@ -374,6 +374,7 @@ actual fun VolunteerDetailPanel(
                             canManagePhoto = rememberProfilePhotosUploadEnabled(viewModel),
                             onUploadPhoto = { bytes -> viewModel?.uploadProfilePhotoForVolunteer(volunteer, bytes) },
                             onRemovePhoto = { viewModel?.removeProfilePhotoForVolunteer(volunteer) },
+                            onRequestPhoto = rememberVolunteerPhotoRequestLauncher(viewModel, volunteer),
                         )
                     }
                 }
@@ -1452,6 +1453,7 @@ private fun ActionButtonsSection(
     canManagePhoto: Boolean = false,
     onUploadPhoto: (ByteArray) -> Unit = {},
     onRemovePhoto: () -> Unit = {},
+    onRequestPhoto: (() -> Unit)? = null,
 ) {
     val responsivePadding = if (isPhone) getPhonePortraitCardPadding() else getResponsiveCardPadding()
     val responsiveSpacing = if (isPhone) getPhonePortraitSpacing() else getResponsiveSpacing()
@@ -1516,6 +1518,7 @@ private fun ActionButtonsSection(
                     enabled = canManagePhoto,
                     onAddOrChange = pickPhoto,
                     onRemove = onRemovePhoto,
+                    onRequestFromPerson = onRequestPhoto,
                 )
 
                 OutlinedButton(

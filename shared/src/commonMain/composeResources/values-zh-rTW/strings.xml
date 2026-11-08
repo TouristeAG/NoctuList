@@ -2411,4 +2411,13 @@ D) Application ID（appId）
     <string name="drive_import_noctulist_profile">NoctuList 志工</string>
     <string name="drive_import_maps_to">對應</string>
     <string name="drive_import_people_count">找到 %1$d 人</string>
+    <string name="profile_photo_request_button">向本人索取</string>
+    <string name="profile_photo_request_title">大頭照請求</string>
+    <string name="profile_photo_request_body">將此連結傳送給 %1$s，或讓對方掃描 QR 碼。照片會自動加入個人資料。</string>
+    <string name="profile_photo_request_creating">正在建立連結…</string>
+    <string name="profile_photo_request_waiting">正在等待照片…</string>
+    <string name="profile_photo_request_received">已收到照片並加入個人資料。</string>
+    <string name="profile_photo_request_expired">此連結已過期。請關閉並重新建立。</string>
+    <string name="profile_photo_request_failed">無法建立連結。請檢查網路連線，並確認已發布最新的 Firestore 和 Storage 規則。</string>
+    <string name="profile_photo_request_hint">可以關閉此視窗：只要此裝置上的 NoctuList 保持開啟，照片送達後仍會自動加入。</string>
 </resources>

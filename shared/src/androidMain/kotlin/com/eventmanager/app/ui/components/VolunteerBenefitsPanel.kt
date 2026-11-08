@@ -603,6 +603,7 @@ actual fun VolunteerBenefitsPanel(
                                 onAddOrChange = pickPhoto,
                                 onRemove = { viewModel?.removeProfilePhotoForVolunteer(volunteer) },
                                 sideBySide = !isPhone,
+                                onRequestFromPerson = rememberVolunteerPhotoRequestLauncher(viewModel, volunteer),
                             )
                         }
 

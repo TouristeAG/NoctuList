@@ -1,5 +1,5 @@
 rules_version = '2';
-// NoctuList Firestore rules — NOCTULIST_RULES_VERSION = 10
+// NoctuList Firestore rules — NOCTULIST_RULES_VERSION = 11
 // Republish this exact file in Firebase Console → Firestore → Rules after every app update,
 // otherwise members that already exist cannot re-join their organization.
 service cloud.firestore {
@@ -291,6 +291,28 @@ service cloud.firestore {
              !('sourceDeviceId' in request.resource.data)
              || request.resource.data.sourceDeviceId == ''
            );
+    }
+
+    function photoRequestIsOpen(data) {
+      return data.status == 'OPEN'
+        && request.time.toMillis() < asMillis(data.expiresAtMillis);
+    }
+
+    // Profile photo requests. A guest or volunteer opens /p/{orgId}/{requestId} without an
+    // account, uploads one JPEG to Storage, then flips the request to UPLOADED. The app picks the
+    // photo up, stores it on the profile and deletes the request.
+    match /orgs/{orgId}/photoRequests/{requestId} {
+      allow read, write: if isMember(orgId);
+
+      // Targeted get only (never list), and only while the request is open and unexpired.
+      allow get: if photoRequestIsOpen(resource.data);
+
+      allow update: if photoRequestIsOpen(resource.data)
+        && request.resource.data.status == 'UPLOADED'
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['status', 'photoPath', 'uploadedAt', 'lastModified'])
+        && request.resource.data.photoPath
+             == 'orgs/' + orgId + '/photoRequests/' + requestId + '.jpg';
     }
 
     match /orgs/{orgId}/{document=**} {

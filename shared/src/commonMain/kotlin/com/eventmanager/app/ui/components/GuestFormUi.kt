@@ -1145,7 +1145,7 @@ fun GuestFormLinkDialog(
 }
 
 @Composable
-private fun CopyableUrlBox(
+internal fun CopyableUrlBox(
     url: String,
     modifier: Modifier = Modifier,
 ) {

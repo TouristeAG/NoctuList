@@ -216,6 +216,7 @@ actual fun VolunteerDetailPanel(
                         enabled = rememberProfilePhotosUploadEnabled(viewModel),
                         onAddOrChange = pickPhoto,
                         onRemove = { viewModel?.removeProfilePhotoForVolunteer(volunteer) },
+                        onRequestFromPerson = rememberVolunteerPhotoRequestLauncher(viewModel, volunteer),
                     )
                     OutlinedButton(onClick = { onEdit(volunteer) }, modifier = Modifier.fillMaxWidth()) {
                         Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))

@@ -2416,4 +2416,13 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="drive_import_noctulist_profile">NoctuList स्वयंसेवक</string>
     <string name="drive_import_maps_to">मेल खाता है</string>
     <string name="drive_import_people_count">%1$d लोग मिले</string>
+    <string name="profile_photo_request_button">व्यक्ति से माँगें</string>
+    <string name="profile_photo_request_title">प्रोफ़ाइल फ़ोटो अनुरोध</string>
+    <string name="profile_photo_request_body">यह लिंक %1$s को भेजें या QR कोड स्कैन कराएँ। फ़ोटो अपने आप प्रोफ़ाइल में जुड़ जाएगी।</string>
+    <string name="profile_photo_request_creating">लिंक बनाया जा रहा है…</string>
+    <string name="profile_photo_request_waiting">फ़ोटो की प्रतीक्षा…</string>
+    <string name="profile_photo_request_received">फ़ोटो मिल गई और प्रोफ़ाइल में जोड़ दी गई।</string>
+    <string name="profile_photo_request_expired">यह लिंक समाप्त हो गया है। बंद करें और नया बनाएँ।</string>
+    <string name="profile_photo_request_failed">लिंक नहीं बन सका। कनेक्शन जाँचें और नवीनतम Firestore और Storage नियम प्रकाशित करें।</string>
+    <string name="profile_photo_request_hint">आप यह विंडो बंद कर सकते हैं: जब तक इस डिवाइस पर NoctuList खुला है, फ़ोटो आने पर जुड़ जाएगी।</string>
 </resources>

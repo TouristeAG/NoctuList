@@ -1,7 +1,9 @@
 const canvas = document.getElementById("topo");
 if (!canvas) throw new Error("missing topo canvas");
 
-const gl = canvas.getContext("webgl");
+const gl =
+  canvas.getContext("webgl") ||
+  canvas.getContext("experimental-webgl");
 if (!gl) {
   canvas.style.display = "none";
 } else {
@@ -9,8 +11,15 @@ if (!gl) {
     attribute vec2 aPos;
     void main() { gl_Position = vec4(aPos, 0.0, 1.0); }
   `;
+  // Phones run `mediump` as 16-bit floats (max ~65504). The simplex noise below permutes values
+  // up to ~289² × 34, which overflows fp16 and collapses every pixel to one flat band — the
+  // "solid colour instead of the animation" bug on mobile. Ask for highp whenever the GPU has it.
   const fs = `
+    #ifdef GL_FRAGMENT_PRECISION_HIGH
+    precision highp float;
+    #else
     precision mediump float;
+    #endif
     uniform float iTime;
     uniform float uZoom;
     uniform float uBands;
@@ -92,12 +101,21 @@ if (!gl) {
     const shader = gl.createShader(type);
     gl.shaderSource(shader, src);
     gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      console.warn("topo shader compile failed", gl.getShaderInfoLog(shader));
+    }
     return shader;
   }
   const program = gl.createProgram();
   gl.attachShader(program, compile(gl.VERTEX_SHADER, vs));
   gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fs));
   gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    // Keep the themed CSS gradient instead of a blank or garbage canvas.
+    console.warn("topo program link failed", gl.getProgramInfoLog(program));
+    canvas.style.display = "none";
+    throw new Error("topo shader unavailable");
+  }
   gl.useProgram(program);
   const buf = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, buf);
@@ -106,7 +124,6 @@ if (!gl) {
   gl.enableVertexAttribArray(loc);
   gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
   const u = (name) => gl.getUniformLocation(program, name);
-  gl.uniform1f(u("uZoom"), 0.0028);
   gl.uniform1f(u("uBands"), 9.0);
   gl.uniform1f(u("uEdgeThreshold"), 0.16);
   gl.uniform1f(u("uTimeScale"), 0.009);
@@ -121,6 +138,9 @@ if (!gl) {
   const coarsePointer = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
   const isMobile = coarsePointer || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const renderScale = isMobile ? 0.5 : 0.75;
+  // Noise is sampled per buffer pixel, so scale the zoom with the buffer: the topographic lines
+  // keep the same size on screen whatever the render scale (desktop stays at 0.0028).
+  gl.uniform1f(u("uZoom"), 0.0021 / renderScale);
   const reduceMotion = window.matchMedia &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const iTimeLoc = u("iTime");

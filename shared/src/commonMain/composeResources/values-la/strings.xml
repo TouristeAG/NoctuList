@@ -2416,4 +2416,13 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="drive_import_noctulist_profile">Voluntarius NoctuList</string>
     <string name="drive_import_maps_to">respondet</string>
     <string name="drive_import_people_count">%1$d personae inventae</string>
+    <string name="profile_photo_request_button">A persona petere</string>
+    <string name="profile_photo_request_title">Petitio photographematis</string>
+    <string name="profile_photo_request_body">Hunc nexum ad %1$s mitte aut codicem QR legendum praebe. Photographema sponte profilo additur.</string>
+    <string name="profile_photo_request_creating">Nexus creatur…</string>
+    <string name="profile_photo_request_waiting">Photographema exspectatur…</string>
+    <string name="profile_photo_request_received">Photographema acceptum et profilo additum.</string>
+    <string name="profile_photo_request_expired">Hic nexus exspiravit. Claude et novum crea.</string>
+    <string name="profile_photo_request_failed">Nexus creari non potuit. Conexionem et regulas Firestore Storageque recentissimas inspice.</string>
+    <string name="profile_photo_request_hint">Hanc fenestram claudere potes: photographema tamen addetur cum advenerit, dum NoctuList in hoc instrumento apertum est.</string>
 </resources>
