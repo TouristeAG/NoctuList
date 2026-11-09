@@ -4,6 +4,22 @@ All notable changes to NoctuList are documented here. Version numbers follow [Se
 
 ---
 
+## 2.1.16 — 2026-11-09
+
+Optional patch: the people counter is visible again on tablets in portrait.
+
+### Fixes
+
+- **People counter on tablet, portrait** — since 2.1.15 only the venue chips and the priority switch were shown; the count itself had no height. The counter now gets the same height as in landscape.
+
+### Upgrade notes
+
+- **Version code:** 43 (`2.1.16`). Minimum supported code remains **27** (2.1.0) — optional update for 2.1.0–2.1.15.
+- **Database, Firestore and Storage rules, hosting:** unchanged.
+- **Publishing:** tag `2.1.16`, then copy `version.json` to the AdminList update manifest. Do not raise `minSupportedVersionCode`.
+
+---
+
 ## 2.1.15 — 2026-11-08
 
 Optional patch: Android layout fixes for guest-list windows, profiles and the tablet Billetterie screen.

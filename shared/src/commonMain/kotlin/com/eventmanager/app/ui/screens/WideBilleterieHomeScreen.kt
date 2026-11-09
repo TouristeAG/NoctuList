@@ -234,7 +234,12 @@ fun WideBilleterieHomeScreen(
                             isPhone = false,
                             useDesktopLayout = true,
                             viewModel = viewModel,
-                            modifier = Modifier.fillMaxWidth(),
+                            // The desktop counter fills its height (its count area uses weight),
+                            // so inside this scrolling column it needs a bounded height: use the
+                            // landscape height (two action cards + spacing) or the count collapses.
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(WideBilleterieActionCardHeight * 2 + 16.dp),
                         )
                     } else {
                         Row(
