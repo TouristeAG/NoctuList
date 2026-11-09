@@ -114,6 +114,12 @@
     <string name="factory_reset_confirm_message">這會永久刪除此裝置上的賓客、志工、班次、POS 資料、同步設定與已上傳金鑰。不會刪除 Google Sheets 中的資料。您需要重新設定應用程式。</string>
     <string name="factory_reset_confirm_button">全部清除</string>
     <string name="factory_reset_in_progress">正在重設…</string>
+    <string name="uninstall_data_title">移除所有應用程式資料</string>
+    <string name="uninstall_data_description">永久刪除所有檔案、設定、權杖與憑證，然後結束應用程式。請在解除安裝 NoctuList 之前執行。</string>
+    <string name="uninstall_data_confirm_title">要移除所有應用程式資料嗎？</string>
+    <string name="uninstall_data_confirm_message">這會永久刪除 NoctuList 在此裝置上寫入的所有檔案（資料庫、設定、驗證權杖與憑證），然後結束應用程式。應用程式本身不會被解除安裝。此操作無法復原。</string>
+    <string name="uninstall_data_confirm_button">全部刪除並結束</string>
+    <string name="uninstall_data_in_progress">正在移除資料…</string>
     <string name="check_for_updates">檢查更新</string>
     <string name="update_available_title">有可用更新：%1$s</string>
     <string name="update_required_message">需要更新版本的應用程式才能繼續。請更新至最新版本。</string>
@@ -534,6 +540,13 @@
     <string name="start_admin">開始管理</string>
     <string name="admin_mode">管理員</string>
     <string name="ticket_check_mode">票務</string>
+    <string name="startup_splash_opening">正在開啟 NoctuList…</string>
+    <string name="startup_splash_syncing">正在同步活動資料…</string>
+    <string name="startup_splash_preparing">正在準備售票、POS 與管理…</string>
+    <string name="welcome_desktop_tagline">選擇一個工作區開始</string>
+    <string name="welcome_ticketing_hint">掃描門票並管理入場</string>
+    <string name="welcome_pos_hint">在櫃檯收款</string>
+    <string name="welcome_admin_sync_ready">管理員存取已就緒</string>
     <string name="welcome_background_sync_content_description">正在與 Google 試算表同步以驗證管理員權限</string>
 
     <!-- Admin Auth Screen -->
@@ -550,6 +563,8 @@
     <string name="admin_precheck_sync_failed_title">無法完成管理員存取準備</string>
     <string name="admin_precheck_sync_failed_message">無法修復或同步試算表。請檢查連線與試算表設定後再試一次。</string>
     <string name="admin_precheck_sync_retry">重試</string>
+    <string name="admin_auth_incomplete_roster_title">成員名單仍在載入</string>
+    <string name="admin_auth_incomplete_roster_message">已找到成員，但尚未看到任何管理員。這通常表示同步尚未完成。建立新管理員之前，請重新同步。</string>
     <string name="admin_auth_ready">將您的 NFC 識別證靠近裝置或掃描 QR 碼</string>
     <string name="admin_auth_scan_qr">掃描 QR 碼</string>
     <string name="admin_auth_granted">歡迎，%1$s！管理員存取已授權</string>
@@ -565,6 +580,11 @@
     <string name="billeterie_stat_temporary_guests_today">臨時賓客</string>
     <string name="billeterie_stat_volunteers_on_list">名單上的志工</string>
     <string name="billeterie_stat_total_without_invites">名單人數（不含+1）</string>
+    <string name="billeterie_desktop_back">首頁</string>
+    <string name="billeterie_desktop_actions_label">快速操作</string>
+    <string name="billeterie_desktop_overview_label">今晚概況</string>
+    <string name="billeterie_desktop_guest_list_hint">瀏覽、搜尋及管理入場名單</string>
+    <string name="billeterie_desktop_scanner_hint">在入口驗證門票與福利</string>
     <string name="billeterie_button_guest_list">賓客名單</string>
     <string name="billeterie_button_scanner">掃描</string>
 
@@ -1305,8 +1325,12 @@
     <string name="setup_firebase_auth_hint">首次同步前請先登入。</string>
     <string name="firebase_org_id_label">組織 ID</string>
     <string name="firebase_org_id_hint">機構的共用名稱（例如：noctulist-club）。每台裝置使用相同 ID。</string>
+    <string name="firebase_org_id_invalid">4 至 64 個字元，只能使用字母、數字、- 和 _。不可有空格或重音符號：請寫「collectif-nocturne」，而不是「Collectif Nocturne」。</string>
     <string name="firebase_configured_orgs_title">組織</string>
     <string name="firebase_configured_orgs_body">新增此 Firebase 專案上託管的每個組織 ID。每個組織的資料位於 orgs/{orgId} 下。</string>
+    <string name="firebase_configured_org_migration_title">目標組織</string>
+    <string name="firebase_configured_org_migration_body">Sheets 資料將遷移到這個單一組織。之後可在 管理 → Firebase 同步 中新增更多組織。</string>
+    <string name="firebase_org_id_migration_hint">此次遷移只使用一個組織（例如：collectif-nocturne）。之後可在管理中新增更多組織。</string>
     <string name="firebase_configured_org_add">新增組織</string>
     <string name="firebase_configured_org_remove_cd">移除組織</string>
     <string name="firebase_configured_org_color_cd">組織顏色</string>
@@ -1348,6 +1372,8 @@
     <string name="firebase_checklist_org">已填寫組織 ID</string>
     <string name="firebase_checklist_project">已填寫 Project ID、Application ID 和 API key</string>
     <string name="firebase_checklist_auth">已登入 Google 帳號</string>
+    <string name="firebase_checklist_oauth">已收到 Google 登入憑證</string>
+    <string name="firebase_checklist_invite">已收到邀請碼</string>
     <string name="firebase_advanced_project">顯示專案詳情</string>
     <string name="firebase_hide_project">隱藏專案詳情</string>
     <string name="firebase_reveal_secrets">顯示專案密鑰</string>
@@ -1358,6 +1384,8 @@
     <string name="firebase_join_qr_title">邀請其他裝置（QR 碼）</string>
     <string name="firebase_join_qr_body">僅與團隊分享此 QR 碼。包含專案設定、Google 登入憑證與邀請碼 — 掃描一次即可。</string>
     <string name="firebase_join_error_oauth_missing">此邀請碼缺少 Google 登入憑證。請向管理員索取新 QR 碼（設定 → Firebase 同步）。</string>
+    <string name="firebase_join_error_invite_missing">此加入碼缺少邀請碼。請向管理員索取新的完整 QR 碼，或在下方輸入 8 個字元的邀請碼。</string>
+    <string name="firebase_join_error_invalid">這不是 NoctuList 加入碼。請從管理員裝置（設定 → Firebase 同步）掃描加入 QR 碼。</string>
     <string name="firebase_join_qr_need_config">請先填寫組織 ID 和專案選項以產生加入 QR 碼。</string>
     <string name="firebase_join_copy_code">複製設定碼</string>
     <string name="firebase_join_code_copied">設定碼已複製</string>
@@ -1376,6 +1404,9 @@
     <string name="firebase_join_invite_copy">複製邀請碼</string>
     <string name="firebase_join_invite_copied">邀請碼已複製</string>
     <string name="firebase_join_invite_admin_body">也已包含在上方 QR 與設定碼中。此處顯示便於核對或單獨分享。</string>
+    <string name="firebase_join_invite_missing_body">此裝置上沒有邀請碼。建立一個以啟用加入 QR 碼（其他裝置同步時需要）。</string>
+    <string name="firebase_join_invite_create">建立邀請碼</string>
+    <string name="firebase_join_invite_rotate">更換邀請碼</string>
     <string name="firebase_join_or_enter_codes">或貼上設定碼</string>
     <string name="firebase_create_new_option">設定新 Firebase（管理員）</string>
     <string name="firebase_project_configured_hidden">Firebase 專案已設定（詳情已隱藏）</string>
@@ -1563,6 +1594,7 @@ D) Application ID（appId）
     <string name="migration_wizard_step_run_body">保持此畫面開啟直至完成。其他裝置將顯示重新連線提示。</string>
     <string name="migration_wizard_start">開始遷移</string>
     <string name="migration_wizard_cancel">取消</string>
+    <string name="migration_wizard_done">遷移完成 — 關閉</string>
     <string name="migration_wizard_cancel_inflight">停止遷移</string>
     <string name="migration_wizard_cancel_inflight_hint">已請求取消 — 若仍可能，將在切換後端前停止。</string>
     <string name="migration_spreadsheet_id_label">試算表 ID</string>
@@ -1578,6 +1610,9 @@ D) Application ID（appId）
     <string name="follow_connect">連線到新資料庫</string>
     <string name="follow_need_sign_in">請先使用 Google 登入，然後點擊連線。</string>
     <string name="follow_later">稍後</string>
+    <string name="follow_factory_reset">重設此裝置</string>
+    <string name="follow_factory_reset_body">清除此裝置上的所有資料與設定，並重新啟動設定精靈。僅在無法連線到新資料庫時使用。已傳送到機構資料庫的資料不受影響。</string>
+    <string name="follow_factory_reset_confirm">清除並重新設定</string>
     <string name="backend_mismatch_title">偵測到資料庫遷移</string>
     <string name="backend_mismatch_billeterie_message">機構已完成遷移。管理員須在此裝置上開啟 Admin 以重新設定同步。</string>
     <string name="backend_mismatch_welcome_title">機構資料庫已變更</string>

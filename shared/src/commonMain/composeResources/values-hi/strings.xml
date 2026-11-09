@@ -115,6 +115,12 @@
     <string name="factory_reset_confirm_message">यह इस डिवाइस पर अतिथि, स्वयंसेवक, शिफ्ट, POS डेटा, सिंक सेटिंग्स और अपलोड की गई कुंजियाँ स्थायी रूप से हटा देता है। Google Sheets डेटा नहीं हटाया जाता। आपको ऐप फिर से कॉन्फ़िगर करना होगा।</string>
     <string name="factory_reset_confirm_button">सब मिटाएँ</string>
     <string name="factory_reset_in_progress">रीसेट हो रहा है…</string>
+    <string name="uninstall_data_title">ऐप का सारा डेटा हटाएँ</string>
+    <string name="uninstall_data_description">सभी फ़ाइलें, सेटिंग्स, टोकन और क्रेडेंशियल स्थायी रूप से हटाता है, फिर ऐप बंद करता है। NoctuList अनइंस्टॉल करने से पहले इसे चलाएँ।</string>
+    <string name="uninstall_data_confirm_title">ऐप का सारा डेटा हटाएँ?</string>
+    <string name="uninstall_data_confirm_message">यह NoctuList द्वारा इस डिवाइस पर लिखी गई हर फ़ाइल (डेटाबेस, सेटिंग्स, प्रमाणीकरण टोकन और क्रेडेंशियल) को स्थायी रूप से हटा देता है, फिर ऐप बंद कर देता है। ऐप स्वयं अनइंस्टॉल नहीं होता। इसे पूर्ववत नहीं किया जा सकता।</string>
+    <string name="uninstall_data_confirm_button">सब कुछ हटाएँ और बंद करें</string>
+    <string name="uninstall_data_in_progress">डेटा हटाया जा रहा है…</string>
     <string name="check_for_updates">अपडेट के लिए जांचें</string>
     <string name="update_available_title">अद्यतन उपलब्ध: %1$s</string>
     <string name="update_required_message">जारी रखने के लिए इस ऐप का एक नया संस्करण आवश्यक है। कृपया नवीनतम संस्करण में अद्यतन करें.</string>
@@ -643,6 +649,13 @@
     <string name="start_admin">व्यवस्थापक प्रारंभ करें</string>
     <string name="admin_mode">व्यवस्थापक</string>
     <string name="ticket_check_mode">टिकटिंग</string>
+    <string name="startup_splash_opening">NoctuList खुल रहा है…</string>
+    <string name="startup_splash_syncing">आपके इवेंट डेटा का सिंक हो रहा है…</string>
+    <string name="startup_splash_preparing">टिकटिंग, POS और Admin तैयार हो रहे हैं…</string>
+    <string name="welcome_desktop_tagline">शुरू करने के लिए एक कार्यक्षेत्र चुनें</string>
+    <string name="welcome_ticketing_hint">टिकट स्कैन करें और प्रवेश प्रबंधित करें</string>
+    <string name="welcome_pos_hint">काउंटर पर बिक्री लें</string>
+    <string name="welcome_admin_sync_ready">व्यवस्थापक पहुँच तैयार</string>
     <string name="welcome_background_sync_content_description">व्यवस्थापक पहुंच सत्यापित करने के लिए Google शीट के साथ समन्वयित किया जा रहा है</string>
 
     <!-- Admin Auth Screen -->
@@ -660,6 +673,8 @@
     <string name="admin_precheck_sync_failed_title">व्यवस्थापक पहुंच तैयार नहीं की जा सकी</string>
     <string name="admin_precheck_sync_failed_message">शीट की मरम्मत या समन्वयन नहीं किया जा सका. अपना कनेक्शन और स्प्रेडशीट सेटिंग जांचें, फिर पुनः प्रयास करें।</string>
     <string name="admin_precheck_sync_retry">पुनः प्रयास करें</string>
+    <string name="admin_auth_incomplete_roster_title">सदस्य सूची अभी लोड हो रही है</string>
+    <string name="admin_auth_incomplete_roster_message">सदस्य मिले हैं, लेकिन अभी कोई व्यवस्थापक दिखाई नहीं दे रहा। आमतौर पर इसका मतलब है कि सिंक अधूरा है। नया व्यवस्थापक बनाने से पहले फिर से सिंक करें।</string>
     <string name="admin_auth_ready">अपने एनएफसी बैज को डिवाइस के पास रखें या अपना क्यूआर कोड स्कैन करें</string>
     <string name="admin_auth_scan_qr">QR कोड स्कैन करें</string>
     <string name="admin_auth_granted">स्वागत है, %1$s! व्यवस्थापक पहुंच प्रदान की गई</string>
@@ -703,6 +718,11 @@
     <string name="billeterie_stat_temporary_guests_today">अस्थायी मेहमान</string>
     <string name="billeterie_stat_volunteers_on_list">सूची में स्वयंसेवक</string>
     <string name="billeterie_stat_total_without_invites">सूची में (+1 को छोड़कर)</string>
+    <string name="billeterie_desktop_back">होम</string>
+    <string name="billeterie_desktop_actions_label">त्वरित क्रियाएँ</string>
+    <string name="billeterie_desktop_overview_label">आज रात का सारांश</string>
+    <string name="billeterie_desktop_guest_list_hint">प्रविष्टियाँ देखें, खोजें और प्रबंधित करें</string>
+    <string name="billeterie_desktop_scanner_hint">दरवाज़े पर टिकट और लाभ सत्यापित करें</string>
     <string name="billeterie_button_guest_list">अतिथि सूची</string>
     <string name="billeterie_button_scanner">स्कैनर</string>
 
@@ -1443,8 +1463,12 @@
     <string name="setup_firebase_auth_hint">पहले सिंक से पहले साइन इन करें।</string>
     <string name="firebase_org_id_label">संगठन ID</string>
     <string name="firebase_org_id_hint">आपकी संस्था का साझा नाम (उदाहरण: noctulist-club)। हर उपकरण पर वही ID।</string>
+    <string name="firebase_org_id_invalid">4 से 64 अक्षर, केवल अक्षर, अंक, - और _। कोई स्पेस या एक्सेंट नहीं: “collectif-nocturne” लिखें, “Collectif Nocturne” नहीं।</string>
     <string name="firebase_configured_orgs_title">संगठन</string>
     <string name="firebase_configured_orgs_body">इस प्रोजेक्ट पर होस्ट किए गए प्रत्येक Firebase org ID को जोड़ें। प्रत्येक org का डेटा orgs/{orgId} के तहत है।</string>
+    <string name="firebase_configured_org_migration_title">गंतव्य संगठन</string>
+    <string name="firebase_configured_org_migration_body">Sheets का डेटा इसी एक संगठन में माइग्रेट किया जाता है। बाद में Admin → Firebase सिंक में और संगठन जोड़ सकते हैं।</string>
+    <string name="firebase_org_id_migration_hint">इस माइग्रेशन के लिए केवल एक संगठन (उदाहरण: collectif-nocturne)। बाद में Admin में और संगठन जोड़ें।</string>
     <string name="firebase_configured_org_add">संगठन जोड़ें</string>
     <string name="firebase_configured_org_remove_cd">संगठन हटाएँ</string>
     <string name="firebase_configured_org_color_cd">संगठन का रंग</string>
@@ -1486,6 +1510,8 @@
     <string name="firebase_checklist_org">संगठन ID भरा</string>
     <string name="firebase_checklist_project">Project ID, Application ID और API key भरे</string>
     <string name="firebase_checklist_auth">Google खाता साइन इन</string>
+    <string name="firebase_checklist_oauth">Google साइन-इन क्रेडेंशियल प्राप्त हुए</string>
+    <string name="firebase_checklist_invite">आमंत्रण कोड प्राप्त हुआ</string>
     <string name="firebase_advanced_project">प्रोजेक्ट विवरण दिखाएँ</string>
     <string name="firebase_hide_project">प्रोजेक्ट विवरण छिपाएँ</string>
     <string name="firebase_reveal_secrets">प्रोजेक्ट रहस्य दिखाएँ</string>
@@ -1496,6 +1522,8 @@
     <string name="firebase_join_qr_title">अन्य उपकरण आमंत्रित करें (QR)</string>
     <string name="firebase_join_qr_body">इस QR को केवल अपनी टीम के साथ साझा करें। इसमें प्रोजेक्ट कॉन्फ़िग, Google Sign-In और आमंत्रण कोड हैं — एक स्कैन पर्याप्त है।</string>
     <string name="firebase_join_error_oauth_missing">इस जॉइन कोड में Google Sign-In क्रेडेंशियल नहीं हैं। अपने एडमिन से नया QR माँगें (Settings → Firebase sync)।</string>
+    <string name="firebase_join_error_invite_missing">इस जॉइन कोड में आमंत्रण कोड नहीं है। अपने व्यवस्थापक से नया पूरा QR माँगें, या नीचे 8 अक्षरों का आमंत्रण कोड दर्ज करें।</string>
+    <string name="firebase_join_error_invalid">यह NoctuList जॉइन कोड नहीं है। किसी व्यवस्थापक डिवाइस से जॉइन QR स्कैन करें (सेटिंग्स → Firebase सिंक)।</string>
     <string name="firebase_join_qr_need_config">जॉइन QR बनाने के लिए पहले org ID और प्रोजेक्ट विकल्प भरें।</string>
     <string name="firebase_join_copy_code">कॉन्फ़िग कोड कॉपी करें</string>
     <string name="firebase_join_code_copied">कॉन्फ़िग कोड कॉपी हुआ</string>
@@ -1514,6 +1542,9 @@
     <string name="firebase_join_invite_copy">आमंत्रण कोड कॉपी करें</string>
     <string name="firebase_join_invite_copied">आमंत्रण कोड कॉपी हुआ</string>
     <string name="firebase_join_invite_admin_body">QR और कॉन्फ़िग कोड में भी शामिल। यहाँ सत्यापन या अलग साझा करने के लिए दिखाया गया है।</string>
+    <string name="firebase_join_invite_missing_body">इस डिवाइस पर कोई आमंत्रण कोड नहीं है। जॉइन QR चालू करने के लिए एक बनाएँ (दूसरे डिवाइस के सिंक के लिए ज़रूरी)।</string>
+    <string name="firebase_join_invite_create">आमंत्रण कोड बनाएँ</string>
+    <string name="firebase_join_invite_rotate">आमंत्रण कोड बदलें</string>
     <string name="firebase_join_or_enter_codes">या कॉन्फ़िग कोड पेस्ट करें</string>
     <string name="firebase_create_new_option">नया Firebase सेटअप करें (एडमिन)</string>
     <string name="firebase_project_configured_hidden">Firebase प्रोजेक्ट कॉन्फ़िगर (विवरण छिपे)</string>
@@ -1701,6 +1732,7 @@ Google से साइन इन (पहला एडमिन org admin बन
     <string name="migration_wizard_step_run_body">समाप्त होने तक यह स्क्रीन खुली रखें। अन्य उपकरणों पर पुनः कनेक्ट संकेत दिखेगा।</string>
     <string name="migration_wizard_start">माइग्रेशन शुरू करें</string>
     <string name="migration_wizard_cancel">रद्द करें</string>
+    <string name="migration_wizard_done">माइग्रेशन पूरा — बंद करें</string>
     <string name="migration_wizard_cancel_inflight">माइग्रेशन रोकें</string>
     <string name="migration_wizard_cancel_inflight_hint">रद्दीकरण अनुरोध — यदि संभव हो बैकएंड स्विच से पहले रुकता है।</string>
     <string name="migration_spreadsheet_id_label">स्प्रेडशीट ID</string>
@@ -1716,6 +1748,9 @@ Google से साइन इन (पहला एडमिन org admin बन
     <string name="follow_connect">नए डेटाबेस से कनेक्ट करें</string>
     <string name="follow_need_sign_in">पहले Google से साइन इन करें, फिर Connect दबाएँ।</string>
     <string name="follow_later">बाद में</string>
+    <string name="follow_factory_reset">इस डिवाइस को रीसेट करें</string>
+    <string name="follow_factory_reset_body">इस डिवाइस का सारा डेटा और सेटिंग्स मिटाकर सेटअप विज़ार्ड फिर से शुरू करता है। इसका उपयोग तभी करें जब आप नए डेटाबेस से कनेक्ट न कर पा रहे हों। संस्था के डेटाबेस में पहले से भेजा गया डेटा प्रभावित नहीं होता।</string>
+    <string name="follow_factory_reset_confirm">मिटाएँ और सेटअप फिर से शुरू करें</string>
     <string name="backend_mismatch_title">डेटाबेस माइग्रेशन पता चला</string>
     <string name="backend_mismatch_billeterie_message">संस्था माइग्रेशन हुई। किसी एडमिन को इस उपकरण पर Admin खोलकर सिंक पुनः कॉन्फ़िगर करना होगा।</string>
     <string name="backend_mismatch_welcome_title">संस्था डेटाबेस बदला</string>

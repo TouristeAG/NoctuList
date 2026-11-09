@@ -275,6 +275,12 @@
     <string name="factory_reset_confirm_message">Cela efface définitivement sur cet appareil les invités, bénévoles, shifts, données POS, paramètres de sync et clés importées. Les données Google Sheets ne sont pas supprimées. Vous devrez reconfigurer l'application.</string>
     <string name="factory_reset_confirm_button">Tout effacer</string>
     <string name="factory_reset_in_progress">Réinitialisation…</string>
+    <string name="uninstall_data_title">Supprimer toutes les données de l’app</string>
+    <string name="uninstall_data_description">Supprime définitivement tous les fichiers, réglages, jetons et identifiants, puis quitte l’app. À lancer avant de désinstaller NoctuList.</string>
+    <string name="uninstall_data_confirm_title">Supprimer toutes les données de l’app ?</string>
+    <string name="uninstall_data_confirm_message">Supprime définitivement tous les fichiers que NoctuList a écrits sur cet appareil (base de données, réglages, jetons d’authentification et identifiants), puis quitte l’app. L’application elle-même n’est pas désinstallée. Action irréversible.</string>
+    <string name="uninstall_data_confirm_button">Tout supprimer et quitter</string>
+    <string name="uninstall_data_in_progress">Suppression des données…</string>
     <string name="check_for_updates">Rechercher des mises à jour</string>
     <string name="update_available_title">Mise à jour disponible : %1$s</string>
     <string name="update_required_message">Une version plus récente de l'application est requise pour continuer. Veuillez mettre à jour vers la dernière version.</string>

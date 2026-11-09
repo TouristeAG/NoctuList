@@ -114,6 +114,12 @@
     <string name="factory_reset_confirm_message">Esto elimina de forma permanente en este dispositivo invitados, voluntarios, turnos, datos POS, ajustes de sincronización y claves importadas. Los datos de Google Sheets no se eliminan. Tendrá que configurar la aplicación de nuevo.</string>
     <string name="factory_reset_confirm_button">Borrar todo</string>
     <string name="factory_reset_in_progress">Restableciendo…</string>
+    <string name="uninstall_data_title">Borrar todos los datos de la app</string>
+    <string name="uninstall_data_description">Borra para siempre todos los archivos, ajustes, tokens y credenciales, y cierra la app. Hazlo antes de desinstalar NoctuList.</string>
+    <string name="uninstall_data_confirm_title">¿Borrar todos los datos de la app?</string>
+    <string name="uninstall_data_confirm_message">Esto borra para siempre todos los archivos que NoctuList ha escrito en este dispositivo (base de datos, ajustes, tokens de autenticación y credenciales) y cierra la app. La aplicación en sí no se desinstala. No se puede deshacer.</string>
+    <string name="uninstall_data_confirm_button">Borrar todo y salir</string>
+    <string name="uninstall_data_in_progress">Borrando datos…</string>
     <string name="check_for_updates">Buscar actualizaciones</string>
     <string name="update_available_title">Actualización disponible: %1$s</string>
     <string name="update_required_message">Se requiere una versión más reciente de esta aplicación para continuar. Por favor, actualiza a la última versión.</string>
@@ -534,6 +540,13 @@
     <string name="start_admin">Iniciar Admin</string>
     <string name="admin_mode">Admin</string>
     <string name="ticket_check_mode">Taquilla</string>
+    <string name="startup_splash_opening">Abriendo NoctuList…</string>
+    <string name="startup_splash_syncing">Sincronizando los datos del evento…</string>
+    <string name="startup_splash_preparing">Preparando Taquilla, TPV y Admin…</string>
+    <string name="welcome_desktop_tagline">Elige un espacio para empezar</string>
+    <string name="welcome_ticketing_hint">Escanear entradas y gestionar el acceso</string>
+    <string name="welcome_pos_hint">Cobrar las ventas en la barra</string>
+    <string name="welcome_admin_sync_ready">Acceso de administrador listo</string>
     <string name="welcome_background_sync_content_description">Sincronizando con Google Sheets para comprobar el acceso de administrador</string>
 
     <!-- Admin Auth Screen -->
@@ -550,6 +563,8 @@
     <string name="admin_precheck_sync_failed_title">No se pudo preparar el acceso de administrador</string>
     <string name="admin_precheck_sync_failed_message">No se pudo reparar ni sincronizar la hoja. Compruebe la conexión y la configuración de la hoja de cálculo e inténtelo de nuevo.</string>
     <string name="admin_precheck_sync_retry">Reintentar</string>
+    <string name="admin_auth_incomplete_roster_title">Lista de miembros todavía cargando</string>
+    <string name="admin_auth_incomplete_roster_message">Hay miembros, pero todavía no se ve ningún administrador. Normalmente la sincronización está incompleta. Vuelve a sincronizar antes de crear un administrador nuevo.</string>
     <string name="admin_auth_ready">Acerca tu credencial NFC o escanea tu código QR</string>
     <string name="admin_auth_scan_qr">Escanear código QR</string>
     <string name="admin_auth_granted">¡Bienvenido, %1$s! Acceso de admin concedido</string>
@@ -565,6 +580,11 @@
     <string name="billeterie_stat_temporary_guests_today">Invitados temporales</string>
     <string name="billeterie_stat_volunteers_on_list">Voluntarios en la lista</string>
     <string name="billeterie_stat_total_without_invites">En la lista (sin +1)</string>
+    <string name="billeterie_desktop_back">Inicio</string>
+    <string name="billeterie_desktop_actions_label">Acciones rápidas</string>
+    <string name="billeterie_desktop_overview_label">Resumen de esta noche</string>
+    <string name="billeterie_desktop_guest_list_hint">Explorar, buscar y gestionar entradas</string>
+    <string name="billeterie_desktop_scanner_hint">Validar entradas y beneficios en la puerta</string>
     <string name="billeterie_button_guest_list">Lista de invitados</string>
     <string name="billeterie_button_scanner">Escáner</string>
 
@@ -1305,8 +1325,12 @@
     <string name="setup_firebase_auth_hint">Inicie sesión antes de la primera sincronización.</string>
     <string name="firebase_org_id_label">ID de organización</string>
     <string name="firebase_org_id_hint">Nombre compartido de su institución (ejemplo: noctulist-club). Mismo ID en cada dispositivo.</string>
+    <string name="firebase_org_id_invalid">De 4 a 64 caracteres: solo letras, números, - y _. Sin espacios ni acentos: escribe «collectif-nocturne», no «Collectif Nocturne».</string>
     <string name="firebase_configured_orgs_title">Organizaciones</string>
     <string name="firebase_configured_orgs_body">Añada cada ID de organización Firebase alojado en este proyecto. Cada org tiene su propia base en orgs/{orgId}.</string>
+    <string name="firebase_configured_org_migration_title">Organización de destino</string>
+    <string name="firebase_configured_org_migration_body">Los datos de Sheets se migran a esta única organización. Puedes añadir más organizaciones después en Admin → Sincronización Firebase.</string>
+    <string name="firebase_org_id_migration_hint">Una sola organización para esta migración (ejemplo: collectif-nocturne). Añade más organizaciones después en Admin.</string>
     <string name="firebase_configured_org_add">Añadir organización</string>
     <string name="firebase_configured_org_remove_cd">Eliminar organización</string>
     <string name="firebase_configured_org_color_cd">Color de la organización</string>
@@ -1348,6 +1372,8 @@
     <string name="firebase_checklist_org">ID de organización completado</string>
     <string name="firebase_checklist_project">Project ID, Application ID y clave API completados</string>
     <string name="firebase_checklist_auth">Cuenta de Google con sesión iniciada</string>
+    <string name="firebase_checklist_oauth">Credenciales de Google Sign-In recibidas</string>
+    <string name="firebase_checklist_invite">Código de invitación recibido</string>
     <string name="firebase_advanced_project">Mostrar detalles del proyecto</string>
     <string name="firebase_hide_project">Ocultar detalles del proyecto</string>
     <string name="firebase_reveal_secrets">Mostrar secretos del proyecto</string>
@@ -1358,6 +1384,8 @@
     <string name="firebase_join_qr_title">Invitar otros dispositivos (QR)</string>
     <string name="firebase_join_qr_body">Comparta este QR solo con su equipo. Incluye config del proyecto, credenciales Google Sign-In y el código de invitación: un escaneo basta.</string>
     <string name="firebase_join_error_oauth_missing">Este código no incluye credenciales Google Sign-In. Pida un QR nuevo a su admin (Ajustes → Sync Firebase).</string>
+    <string name="firebase_join_error_invite_missing">A este código de unión le falta el código de invitación. Pide a tu administrador un QR completo nuevo o introduce abajo el código de invitación de 8 caracteres.</string>
+    <string name="firebase_join_error_invalid">Esto no es un código de unión de NoctuList. Escanea el QR de unión desde un dispositivo administrador (Ajustes → Sincronización Firebase).</string>
     <string name="firebase_join_qr_need_config">Complete el ID de org y las opciones del proyecto para generar el QR de unión.</string>
     <string name="firebase_join_copy_code">Copiar código de configuración</string>
     <string name="firebase_join_code_copied">Código de configuración copiado</string>
@@ -1376,6 +1404,9 @@
     <string name="firebase_join_invite_copy">Copiar código de invitación</string>
     <string name="firebase_join_invite_copied">Código de invitación copiado</string>
     <string name="firebase_join_invite_admin_body">También está en el QR y el código de configuración. Se muestra aquí para verificar o compartir por separado si hace falta.</string>
+    <string name="firebase_join_invite_missing_body">No hay código de invitación en este dispositivo. Crea uno para activar el QR de unión (necesario para que otros dispositivos se sincronicen).</string>
+    <string name="firebase_join_invite_create">Crear código de invitación</string>
+    <string name="firebase_join_invite_rotate">Renovar código de invitación</string>
     <string name="firebase_join_or_enter_codes">O pegue el código de configuración</string>
     <string name="firebase_create_new_option">Configurar Firebase nuevo (administrador)</string>
     <string name="firebase_project_configured_hidden">Proyecto Firebase configurado (detalles ocultos)</string>
@@ -1563,6 +1594,7 @@ Inicie sesión con Google (el primer administrador se convierte en admin de la o
     <string name="migration_wizard_step_run_body">Mantenga esta pantalla abierta hasta que termine. Otros dispositivos mostrarán un aviso de reconexión.</string>
     <string name="migration_wizard_start">Iniciar migración</string>
     <string name="migration_wizard_cancel">Cancelar</string>
+    <string name="migration_wizard_done">Migración terminada — cerrar</string>
     <string name="migration_wizard_cancel_inflight">Detener migración</string>
     <string name="migration_wizard_cancel_inflight_hint">Cancelación solicitada — se detiene antes del cambio de backend si aún es posible.</string>
     <string name="migration_spreadsheet_id_label">ID de hoja de cálculo</string>
@@ -1578,6 +1610,9 @@ Inicie sesión con Google (el primer administrador se convierte en admin de la o
     <string name="follow_connect">Conectar a la nueva base de datos</string>
     <string name="follow_need_sign_in">Inicie sesión con Google primero, luego pulse Conectar.</string>
     <string name="follow_later">Más tarde</string>
+    <string name="follow_factory_reset">Restablecer este dispositivo</string>
+    <string name="follow_factory_reset_body">Borra todos los datos y ajustes de este dispositivo y vuelve a abrir el asistente de configuración. Úsalo solo si no puedes conectarte a la nueva base de datos. Los datos ya enviados a la base de datos de la institución no se ven afectados.</string>
+    <string name="follow_factory_reset_confirm">Borrar y volver a configurar</string>
     <string name="backend_mismatch_title">Migración de base de datos detectada</string>
     <string name="backend_mismatch_billeterie_message">Se realizó una migración de la institución. Un administrador debe abrir Admin en este dispositivo para reconfigurar la sincronización.</string>
     <string name="backend_mismatch_welcome_title">Base de datos de la institución cambiada</string>

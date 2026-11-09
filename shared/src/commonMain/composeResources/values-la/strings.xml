@@ -115,6 +115,12 @@
     <string name="factory_reset_confirm_message">Hoc permanente delet hospites, voluntarios, munera, POS data, sync status et claves in hoc instrumento. Data Google Sheets non delentur. Applicationem denuo configurare debebis.</string>
     <string name="factory_reset_confirm_button">Omnia delere</string>
     <string name="factory_reset_in_progress">Reponitur…</string>
+    <string name="uninstall_data_title">Omnia data applicationis remove</string>
+    <string name="uninstall_data_description">Omnia documenta, optiones, signa et credentialia in perpetuum delet, deinde applicationem claudit. Hoc fac antequam NoctuList removeas.</string>
+    <string name="uninstall_data_confirm_title">Omnia data applicationis removere?</string>
+    <string name="uninstall_data_confirm_message">Hoc in perpetuum delet omnia documenta quae NoctuList in hoc instrumento scripsit (basim datorum, optiones, signa authenticationis, credentialia), deinde applicationem claudit. Applicatio ipsa non removetur. Hoc revocari non potest.</string>
+    <string name="uninstall_data_confirm_button">Omnia dele &amp; exi</string>
+    <string name="uninstall_data_in_progress">Data removentur…</string>
     <string name="check_for_updates">Quaere ex mises ad dies</string>
     <string name="update_available_title">Mise ad dies praesto: %1$s</string>
     <string name="update_required_message">Recentior versio app pergere requiritur. Quaeso renovatio ad recentissimam versionem.</string>
@@ -643,6 +649,13 @@
     <string name="start_admin">Initium Admin</string>
     <string name="admin_mode">Administrator</string>
     <string name="ticket_check_mode">Billetterie</string>
+    <string name="startup_splash_opening">NoctuList aperitur…</string>
+    <string name="startup_splash_syncing">Data eventus synchronizantur…</string>
+    <string name="startup_splash_preparing">Billetterie, POS et Admin parantur…</string>
+    <string name="welcome_desktop_tagline">Elige spatium operis ut incipias</string>
+    <string name="welcome_ticketing_hint">Tesseras lege et introitum administra</string>
+    <string name="welcome_pos_hint">Venditiones ad mensam accipe</string>
+    <string name="welcome_admin_sync_ready">Aditus administratoris paratus</string>
     <string name="welcome_background_sync_content_description">Sync cum Google schedae ut quin admin accessum</string>
 
     <!-- Admin Auth Screen -->
@@ -660,6 +673,8 @@
     <string name="admin_precheck_sync_failed_title">Admin possit parare accessum</string>
     <string name="admin_precheck_sync_failed_message">Linteamen reparari non potuit vel synchronised. Compesce nexum et occasus workbook, deinde iterum conare.</string>
     <string name="admin_precheck_sync_retry">Iterum conare</string>
+    <string name="admin_auth_incomplete_roster_title">Index sodalium adhuc oneratur</string>
+    <string name="admin_auth_incomplete_roster_message">Sodales inventi sunt, sed nullus administrator adhuc apparet. Hoc plerumque significat synchronizationem nondum perfectam esse. Synchronizationem iterum incipe antequam novum administratorem crees.</string>
     <string name="admin_auth_ready">Ostende tibi NFC signum vel scan vestri QR code</string>
     <string name="admin_auth_scan_qr">Scanner codex QR</string>
     <string name="admin_auth_granted">salve, %1$s ! Fusce ut obvius dedit</string>
@@ -703,6 +718,11 @@
     <string name="billeterie_stat_temporary_guests_today">Hospess temporaires</string>
     <string name="billeterie_stat_volunteers_on_list">Voluntarii in index</string>
     <string name="billeterie_stat_total_without_invites">Sur index (sans +1)</string>
+    <string name="billeterie_desktop_back">Domus</string>
+    <string name="billeterie_desktop_actions_label">Actiones celeres</string>
+    <string name="billeterie_desktop_overview_label">Conspectus huius noctis</string>
+    <string name="billeterie_desktop_guest_list_hint">Percurre, quaere, et inscriptiones administra</string>
+    <string name="billeterie_desktop_scanner_hint">Tesseras et beneficia ad ianuam proba</string>
     <string name="billeterie_button_guest_list">Index hospitum</string>
     <string name="billeterie_button_scanner">Scanner</string>
 
@@ -1443,8 +1463,12 @@
     <string name="setup_firebase_auth_hint">Sign in ante primam sync.</string>
     <string name="firebase_org_id_label">ID organisationis</string>
     <string name="firebase_org_id_hint">Nomen commune institutionis tuae (exemplum: noctulist-club). Idem ID in omni instrumento.</string>
+    <string name="firebase_org_id_invalid">Inter 4 et 64 characteres: litterae, numeri, - et _ tantum. Nulla spatia nec accentus: scribe «collectif-nocturne», non «Collectif Nocturne».</string>
     <string name="firebase_configured_orgs_title">Organizationes</string>
     <string name="firebase_configured_orgs_body">Adde omnem Firebase org ID in hoc projectu hospitatam. Quaelibet org habet propriam basem sub orgs/{orgId}.</string>
+    <string name="firebase_configured_org_migration_title">Ordinatio destinata</string>
+    <string name="firebase_configured_org_migration_body">Data Sheets in hanc unam ordinationem transferuntur. Plures ordinationes postea addere potes in Admin → Synchronizatio Firebase.</string>
+    <string name="firebase_org_id_migration_hint">Una tantum ordinatio huic translationi (exemplum: collectif-nocturne). Plures ordinationes postea in Admin adde.</string>
     <string name="firebase_configured_org_add">Adde organizationem</string>
     <string name="firebase_configured_org_remove_cd">Remove organizationem</string>
     <string name="firebase_configured_org_color_cd">Color organizationis</string>
@@ -1486,6 +1510,8 @@
     <string name="firebase_checklist_org">ID organisationis impletum</string>
     <string name="firebase_checklist_project">Project ID, Application ID et API key impleta</string>
     <string name="firebase_checklist_auth">Ratio Google sign in</string>
+    <string name="firebase_checklist_oauth">Credentialia Google Sign-In accepta</string>
+    <string name="firebase_checklist_invite">Codex invitationis acceptus</string>
     <string name="firebase_advanced_project">Monstra project details</string>
     <string name="firebase_hide_project">Celare project details</string>
     <string name="firebase_reveal_secrets">Monstra secreta projecti</string>
@@ -1496,6 +1522,8 @@
     <string name="firebase_join_qr_title">Invita alia instrumenta (QR)</string>
     <string name="firebase_join_qr_body">Communica hoc QR tantum cum turma. Continentur config projecti, credentialia Google Sign-In et codex invitationis — una scan sufficit.</string>
     <string name="firebase_join_error_oauth_missing">Hic codex invitationis caret credentialibus Google Sign-In. Rogo novum QR ab admin (Settings → Firebase sync).</string>
+    <string name="firebase_join_error_invite_missing">Huic codici adiunctionis deest codex invitationis. Pete ab administratore novum QR integrum, aut codicem invitationis octo characterum infra inscribe.</string>
+    <string name="firebase_join_error_invalid">Hic non est codex adiunctionis NoctuList. QR adiunctionis ex instrumento administratoris lege (Optiones → Synchronizatio Firebase).</string>
     <string name="firebase_join_qr_need_config">Imple primum org ID et optiones projecti ut generes QR join.</string>
     <string name="firebase_join_copy_code">Copia codicem configurationis</string>
     <string name="firebase_join_code_copied">Codex configurationis copiatus</string>
@@ -1514,6 +1542,9 @@
     <string name="firebase_join_invite_copy">Copia codicem invitationis</string>
     <string name="firebase_join_invite_copied">Codex invitationis copiatus</string>
     <string name="firebase_join_invite_admin_body">Etiam in QR et codice configurationis. Hic monstratur ad verificandum vel seorsum communicandum.</string>
+    <string name="firebase_join_invite_missing_body">Nullus codex invitationis in hoc instrumento. Unum crea ut QR adiunctionis activetur (necessarium ut alia instrumenta synchronizent).</string>
+    <string name="firebase_join_invite_create">Codicem invitationis crea</string>
+    <string name="firebase_join_invite_rotate">Codicem invitationis renova</string>
     <string name="firebase_join_or_enter_codes">Vel confice codicem configurationis</string>
     <string name="firebase_create_new_option">Configura Firebase novum (admin)</string>
     <string name="firebase_project_configured_hidden">Projectum Firebase configuratum (details celati)</string>
@@ -1701,6 +1732,7 @@ Sign in cum Google (primus admin fit org admin). Solum post Sign-In felicem inci
     <string name="migration_wizard_step_run_body">Serva hanc screen apertam donec finiat. Alia instrumenta monstrabunt prompt reconnect.</string>
     <string name="migration_wizard_start">Incipe migrationem</string>
     <string name="migration_wizard_cancel">Abrogare</string>
+    <string name="migration_wizard_done">Translatio perfecta — claude</string>
     <string name="migration_wizard_cancel_inflight">Stop migratio</string>
     <string name="migration_wizard_cancel_inflight_hint">Cancel petitum — stop ante backend switch si adhuc possibile.</string>
     <string name="migration_spreadsheet_id_label">ID schedae computensis</string>
@@ -1716,6 +1748,9 @@ Sign in cum Google (primus admin fit org admin). Solum post Sign-In felicem inci
     <string name="follow_connect">Connecte ad novum database</string>
     <string name="follow_need_sign_in">Sign in primum cum Google, deinde tange Connect.</string>
     <string name="follow_later">Postea</string>
+    <string name="follow_factory_reset">Hoc instrumentum restitue</string>
+    <string name="follow_factory_reset_body">Omnia data et optiones huius instrumenti delet et magum configurationis iterum incipit. Hoc tantum adhibe si ad novam basim datorum conectere non potes. Data iam ad basim institutionis missa non tanguntur.</string>
+    <string name="follow_factory_reset_confirm">Dele et configurationem iterum incipe</string>
     <string name="backend_mismatch_title">Migratio database detecta</string>
     <string name="backend_mismatch_billeterie_message">Migratio institutionis facta est. Administrator debet aperire Admin in hoc instrumento ut reconfigurat sync.</string>
     <string name="backend_mismatch_welcome_title">Database institutionis mutatum</string>
