@@ -10,12 +10,16 @@ New, optional: a personal web space for volunteers, and a refreshed look for eve
 
 ### Features
 
-- **Volunteer portal (Firebase only, off by default).** Settings, Firebase, "Volunteer portal". Each volunteer signs in on the form site (`/v/{orgId}`) and sees their profile, rank and status, shifts (past and upcoming), current benefits, unique entries left, wallet balance and their 5 latest transfers. They can change their first name, last name, phone number and password, ask for their QR code by e-mail and download their data. Works on phones, tablets and computers (1, 2 or 3 columns).
+- **Volunteer portal (Firebase only, off by default).** Settings, Firebase, "Volunteer portal". Each volunteer signs in on the form site (`/v/{orgId}`) and sees their profile, status, shifts (past and upcoming), current benefits, unique entries left, wallet balance and their 5 latest transfers. They can change their first name, last name, phone number and password, ask for their QR code by e-mail and download their data. Works on phones, tablets and computers (1, 2 or 3 columns).
 - **Registration links.** "Add volunteer" offers "Send a registration form": a single-use link and QR code valid 7 days. The volunteer picks an e-mail and password, fills in their details and an optional photo; the profile appears in NoctuList on its own.
 - **Portal access for existing volunteers.** New "Volunteer portal" card on each profile: create access (a password shown once plus a "choose your password" e-mail), send a password reset link, or remove access. "Add volunteer" can open the access at the same time.
-- **QR code by e-mail from the portal**, sent by any NoctuList device with Gmail set up, only to the address on the profile, at most every 10 minutes, never for admin volunteers.
+- **QR code by e-mail from the portal**, sent by the server when automatic processing is on (or by any NoctuList device with Gmail set up), only to the address on the profile, at most every 10 minutes, never for admin volunteers.
 - **Volunteer space on the home screen.** The portal can be added from the browser menu ("Add to Home Screen" / "Install app"); it then opens full screen with its own icon and stays signed in by default.
 - **Sunset Mist theme on the public pages**, light and dark (follows the device, with a toggle), on the guest list form, the photo page, registration and the portal. Nunito is now served by the site itself instead of Google Fonts.
+- **Automatic processing (Cloud Functions, optional).** Deploy the functions shipped with the form site and signups, profile edits, account links and QR e-mails are handled within seconds, without a NoctuList device online. Without a server, devices take over after 2 minutes as before. The server's QR e-mail has no Wallet passes. Settings, Firebase shows "Automatic processing is on". Setup is in the Firebase guide and FIREBASE_SETUP.md.
+- **Upcoming shifts** now show what the volunteer will earn for each one.
+- **Today's benefits** are shown in the volunteer space even when no NoctuList device is online.
+- **Rank removed from the volunteer space.** Volunteers no longer see their rank.
 
 ### Security
 
@@ -28,6 +32,7 @@ New, optional: a personal web space for volunteers, and a refreshed look for eve
 - **Database:** Room 51 to 52 (volunteer `portalEnabled`, `portalUid`).
 - **Firestore and Storage rules:** republish both (`NOCTULIST_RULES_VERSION = 12`).
 - **Hosting:** export the form site again from the app and redeploy it.
+- **Automatic processing (optional):** Blaze plan, Gmail app password, then `firebase deploy --only hosting,functions` from the exported folder (see FIREBASE_SETUP.md).
 - **Firebase Console, before turning the portal on:** Authentication, Sign-in method, enable **Email/Password**. Recommended: keep **Email enumeration protection** on.
 
 ---

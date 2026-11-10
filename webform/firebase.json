@@ -87,5 +87,18 @@
         ]
       }
     ]
-  }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "noctulist",
+      "runtime": "nodejs22",
+      "ignore": [
+        "node_modules",
+        "src",
+        "test",
+        ".secret.local"
+      ]
+    }
+  ]
 }

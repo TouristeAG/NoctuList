@@ -2343,6 +2343,8 @@ D) Application ID（appId）
     <string name="firebase_tutorial_forms_optional_body">在本 Firebase 项目上发布一次表单站点（免费 Hosting）。之后 NoctuList 里每个表单只是一个唯一链接，无需再开终端。</string>
     <string name="firebase_tutorial_portal_optional_title">可选：志愿者门户</string>
     <string name="firebase_tutorial_portal_optional_body">如果志愿者不需要自己的网页空间，可跳过此部分。它需要上方的表单网站。\n\n1. Firebase 控制台 → Build → Authentication → Sign-in method → Add new provider → Email/Password → Enable。保持「Email link」关闭，然后保存。\n2. Authentication → Settings → User actions：保持「Email enumeration protection」开启。\n3. 发布最新的 Firestore 规则（第 3 步）；如使用照片，也发布 Storage 规则。\n4. 重新导出表单网站并部署（见上方）。这会添加注册页面和志愿者空间。\n5. 在 NoctuList 设置 → Firebase 中开启「启用志愿者门户」。登录地址会显示在那里。\n\n如需「发送我的二维码」，请保持至少一台已配置 Gmail 的 NoctuList 设备运行。</string>
+    <string name="firebase_tutorial_server_optional_title">可选：自动处理（Cloud Functions）</string>
+    <string name="firebase_tutorial_server_optional_body">如果希望即使没有 NoctuList 设备在线，申请和二维码邮件也能在几秒内处理完，请进行此部分；否则可跳过。它需要表单网站和志愿者门户。\n\n1. 将 Firebase 项目升级到 Blaze 方案，并创建预算提醒（例如 5 €）。协会通常不会超出免费额度。\n2. 在协会的 Gmail 账号上开启两步验证，并创建应用专用密码。\n3. 在导出的网站文件夹中运行：cd functions，然后 npm install，然后 cd ..\n4. 运行：firebase deploy --only hosting,functions。第一次时，终端会询问 Gmail 地址、区域和应用专用密码。区域请与 Firestore 数据库相同（eur3 → europe-west1，Zurich → europe-west6）。\n5. 运行：firebase functions:artifacts:setpolicy，自动清理旧的构建。\n\n部署完成后，设置 → Firebase 会显示「Automatic processing is on」。</string>
     <string name="guest_form_step1">1. 在设置 → Firebase → 可选功能中，开启艺人嘉宾名单表单或志愿者门户。</string>
     <string name="guest_form_step2">2. 在电脑上点“导出表单站点”，保存并解压。文件夹中须有 index.html 和 firebase.json。</string>
     <string name="guest_form_step3">3. 从 https://nodejs.org 安装 Node.js LTS 22 或 24（绿色 LTS 按钮，不要 Current）。安装后重新打开终端。</string>

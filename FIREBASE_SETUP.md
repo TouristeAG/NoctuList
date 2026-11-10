@@ -103,8 +103,9 @@ site (see the guest form hosting guide in the app). Storage is only needed for p
    and `/v/` (volunteer space) and sends strict security headers.
 4. In NoctuList **Settings, Firebase**, an org admin turns on **Volunteer portal**. The sign-in
    address `https://<site>/v/<orgId>` is shown there.
-5. Optional, for "Send me my QR code": at least one NoctuList device with Gmail set up (Email
-   settings) should be running. Requests wait until one is online.
+5. Optional, for "Send me my QR code": either deploy the automatic processing below, or keep at
+   least one NoctuList device with Gmail set up (Email settings) running. Without the server,
+   requests wait until a device is online.
 
 How it stays safe:
 
@@ -119,6 +120,42 @@ How it stays safe:
 Admins never see passwords. For a volunteer created in the app, NoctuList generates a first password
 (shown once) and sends a "choose your password" e-mail; later, use **Send a password reset link** on
 the volunteer profile.
+
+### Optional: automatic processing (Cloud Functions)
+
+**Skip this section unless requests and QR e-mails should be handled within seconds, even when no
+NoctuList device is online.** Needs the form site and the volunteer portal above.
+
+1. **Billing:** upgrade the Firebase project to the **Blaze** plan and create a **budget alert**
+   (for example 5 EUR). An association usually stays within the free quotas.
+2. **Gmail:** on the association's Gmail account, turn on 2-step verification and create an
+   **app password**.
+3. In the exported site folder:
+   ```
+   cd functions
+   npm install
+   cd ..
+   ```
+4. Deploy:
+   ```
+   firebase deploy --only hosting,functions
+   ```
+   The first time, the terminal asks for the Gmail address, the region and the app password.
+   Use the same region as the Firestore database: `eur3` is `europe-west1`, Zurich is
+   `europe-west6`.
+5. Clean old builds automatically:
+   ```
+   firebase functions:artifacts:setpolicy
+   ```
+
+Once deployed, **Settings, Firebase** shows "Automatic processing is on".
+
+What runs where:
+
+- The server handles volunteer signups, profile edits, account links and QR e-mails.
+- NoctuList devices keep publishing the volunteer pages and the other data.
+- When no server is deployed, devices take over after 2 minutes, as before.
+- Limitation: the server's QR e-mail has no Wallet passes. E-mails sent from a device keep them.
 
 ### Optional — import shifts from Google Docs/Sheets (Desktop)
 

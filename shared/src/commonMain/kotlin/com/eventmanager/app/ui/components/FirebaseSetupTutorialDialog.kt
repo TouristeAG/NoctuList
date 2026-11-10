@@ -54,6 +54,8 @@ import com.eventmanager.app.resources.firebase_tutorial_forms_optional_body
 import com.eventmanager.app.resources.firebase_tutorial_forms_optional_title
 import com.eventmanager.app.resources.firebase_tutorial_portal_optional_body
 import com.eventmanager.app.resources.firebase_tutorial_portal_optional_title
+import com.eventmanager.app.resources.firebase_tutorial_server_optional_body
+import com.eventmanager.app.resources.firebase_tutorial_server_optional_title
 import com.eventmanager.app.resources.firebase_tutorial_cloud_step1_body
 import com.eventmanager.app.resources.firebase_tutorial_cloud_step1_title
 import com.eventmanager.app.resources.firebase_tutorial_cloud_step2_body
@@ -353,6 +355,19 @@ fun FirebaseSetupTutorialDialog(
                     )
                     Text(
                         stringResource(Res.string.firebase_tutorial_portal_optional_body),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        stringResource(Res.string.firebase_tutorial_server_optional_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        stringResource(Res.string.firebase_tutorial_server_optional_body),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

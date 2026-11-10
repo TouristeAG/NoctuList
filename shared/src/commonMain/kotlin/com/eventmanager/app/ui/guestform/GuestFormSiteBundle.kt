@@ -46,6 +46,10 @@ object GuestFormSiteBundle {
         "portal-i18n.js",
         "portal-common.js",
         "manifest.webmanifest",
+        // Cloud Functions (portal server): sources are prebuilt into lib/index.js.
+        "functions/package.json",
+        "functions/package-lock.json",
+        "functions/lib/index.js",
     )
 
     @OptIn(ExperimentalResourceApi::class)
