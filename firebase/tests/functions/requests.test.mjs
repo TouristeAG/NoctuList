@@ -448,15 +448,21 @@ describe("onPortalRequestWritten: protocol", () => {
     assert.deepEqual(await volunteer(org, existing.id), existing);
   });
 
-  test("staleProcessingIsTakenOver", async () => {
+  test("staleProcessingIsLeftToDevices", async () => {
     const org = await newOrg();
     const uid = newUid("stale");
     const existing = await addVolunteer(org, { portalUid: uid });
+    const processingAt = Date.now() - 6 * 60 * 1000;
     const ref = await sendRequest(org, uid, "PROFILE", {
       firstName: "Max", lastName: "Roe", phone: "0791112233",
-      status: "PROCESSING", processingAt: Date.now() - 6 * 60 * 1000, processingDevice: "gone-device",
+      status: "PROCESSING", processingAt, processingDevice: "gone-device",
     });
-    assertResult(await waitResult(ref), "DONE", "");
-    assert.equal((await volunteer(org, existing.id)).name, "Max");
+    await barrier();
+    const doc = (await ref.get()).data();
+    assert.equal(doc.status, "PROCESSING");
+    assert.equal(doc.processingDevice, "gone-device");
+    assert.equal(doc.processingAt, processingAt);
+    assert.equal("reason" in doc, false);
+    assert.deepEqual(await volunteer(org, existing.id), existing);
   });
 });

@@ -12,7 +12,6 @@ import * as logger2 from "firebase-functions/logger";
 import { createHash } from "node:crypto";
 var SERVER_VERSION = "1.0.0";
 var STATUS_PROCESSING = "PROCESSING";
-var PROCESSING_STALE_MILLIS = 5 * 60 * 1e3;
 var PROJECTION_SCHEMA = 2;
 var MAX_LABEL = 80;
 var sha256 = (text) => createHash("sha256").update(text, "utf8").digest("hex");
@@ -43,11 +42,6 @@ function millisOf(value) {
   const toMillis = value.toMillis;
   if (typeof toMillis === "function") return toMillis.call(value);
   return null;
-}
-function isStale(d, now = Date.now()) {
-  if (d.status !== STATUS_PROCESSING) return false;
-  const at = millisOf(d.processingAt);
-  return at === null || now - at > PROCESSING_STALE_MILLIS;
 }
 async function claim(ref, isClaimable3) {
   return ref.firestore.runTransaction(async (tx) => {
@@ -319,7 +313,7 @@ var STATUS_PENDING = "PENDING";
 var MAX_LABEL2 = 80;
 var DONE = { status: "DONE", reason: "" };
 var rejected = (reason) => ({ status: "REJECTED", reason });
-var isClaimable = (d) => d.status === STATUS_PENDING || isStale(d);
+var isClaimable = (d) => d.status === STATUS_PENDING;
 var stringOf = (v) => v === null || v === void 0 ? "" : typeof v === "string" ? v : String(v);
 function boolOf(v) {
   if (typeof v === "boolean") return v;
@@ -472,7 +466,7 @@ function volunteerId() {
 // src/signup.ts
 var STATUS_SUBMITTED = "SUBMITTED";
 var MAX_PHOTO_BYTES = 3 * 1024 * 1024;
-var isClaimable2 = (d) => d.status === STATUS_SUBMITTED || isStale(d);
+var isClaimable2 = (d) => d.status === STATUS_SUBMITTED;
 var isBlank2 = (v) => typeof v !== "string" || v.trim() === "";
 var errorCode2 = (e) => {
   const code = e?.code;

@@ -344,16 +344,19 @@ describe("onSignupWritten", () => {
     assert.equal(await fileExists(photoPath), false, "photo of a dropped answer removed");
   });
 
-  test("staleProcessingIsTakenOver", async () => {
+  test("staleProcessingIsLeftToDevices", async () => {
     const org = await newOrg();
-    const uid = "staleUid0001";
-    const ref = await submit(org, newFormId(), submission(uid, {
-      status: "PROCESSING", processingAt: Date.now() - 6 * 60 * 1000, processingDevice: "gone-device",
+    const processingAt = Date.now() - 6 * 60 * 1000;
+    const ref = await submit(org, newFormId(), submission("staleUid0001", {
+      status: "PROCESSING", processingAt, processingDevice: "gone-device",
     }));
-    await waitProcessed(ref);
-    const all = await volunteers(org);
-    assert.equal(all.length, 1);
-    assert.equal(all[0].portalUid, uid);
+    await barrier();
+
+    const doc = (await ref.get()).data();
+    assert.equal(doc.status, "PROCESSING");
+    assert.equal(doc.processingDevice, "gone-device");
+    assert.equal(doc.processingAt, processingAt);
+    assert.equal((await volunteers(org)).length, 0);
   });
 
   test("portalDisabledDoesNothing", async () => {

@@ -4,8 +4,6 @@ import type { DocumentReference, Firestore } from "firebase-admin/firestore";
 
 export const SERVER_VERSION = "1.0.0";
 export const STATUS_PROCESSING = "PROCESSING";
-/** PortalRequest.PROCESSING_STALE_MILLIS: a claim older than this was abandoned. */
-export const PROCESSING_STALE_MILLIS = 5 * 60 * 1000;
 export const PROJECTION_SCHEMA = 2;
 const MAX_LABEL = 80;
 
@@ -47,13 +45,6 @@ export function millisOf(value: unknown): number | null {
   const toMillis = (value as { toMillis?: unknown }).toMillis;
   if (typeof toMillis === "function") return (toMillis as () => number).call(value);
   return null;
-}
-
-/** A PROCESSING claim older than 5 minutes, or without a readable time, may be taken over. */
-export function isStale(d: Data, now = Date.now()): boolean {
-  if (d.status !== STATUS_PROCESSING) return false;
-  const at = millisOf(d.processingAt);
-  return at === null || now - at > PROCESSING_STALE_MILLIS;
 }
 
 /**

@@ -4,7 +4,7 @@
 // after their 2 minute grace period, or when a claim of ours is older than 5 minutes.
 import * as logger from "firebase-functions/logger";
 import type { DocumentReference, Firestore } from "firebase-admin/firestore";
-import { associationName, claim, isStale, millisOf, portalEnabled, sha256, touchStatus } from "./common";
+import { associationName, claim, millisOf, portalEnabled, sha256, touchStatus } from "./common";
 import { buildQrMail, parseMailTemplate, safeRecipient, sendMail, type MailTransport } from "./mail";
 import { kotlinTrim, parseRequest, type PortalRequest } from "./validate";
 
@@ -32,7 +32,11 @@ const MAX_LABEL = 80;
 const DONE: RequestResult = { status: "DONE", reason: "" };
 const rejected = (reason: Exclude<RequestReason, "">): RequestResult => ({ status: "REJECTED", reason });
 
-const isClaimable = (d: Data): boolean => d.status === STATUS_PENDING || isStale(d);
+/**
+ * Only pending requests. A PROCESSING claim, however old, is left to devices (their own clock
+ * judges its age); the volunteer can also send the request again once it is 5 minutes old.
+ */
+const isClaimable = (d: Data): boolean => d.status === STATUS_PENDING;
 
 /** stringOf (FirestoreChangeApplier): null is "", other values are their text. */
 const stringOf = (v: unknown): string => (v === null || v === undefined ? "" : typeof v === "string" ? v : String(v));
@@ -58,8 +62,8 @@ const errorCode = (e: unknown): string => {
 
 /**
  * Handles one write of `orgs/{orgId}/portalRequests/{requestId}`. The trigger also fires on our
- * own claim and result, on device claims and on deletes: anything but a pending request or an
- * abandoned claim is ignored before reading or writing anything.
+ * own claim and result, on device claims and on deletes: anything but a pending request is
+ * ignored before reading or writing anything.
  */
 export async function onRequestDocument(
   db: Firestore,

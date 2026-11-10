@@ -8,7 +8,6 @@ import {
   associationName,
   claim,
   institutionSetting,
-  isStale,
   minimalProjection,
   portalEnabled,
   sha256,
@@ -26,7 +25,11 @@ const STATUS_SUBMITTED = "SUBMITTED";
 /** Same cap as the Storage rules for the signup upload. */
 const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
 
-const isClaimable = (d: Data): boolean => d.status === STATUS_SUBMITTED || isStale(d);
+/**
+ * Only fresh answers. A PROCESSING claim, however old, is left to devices: they judge its age
+ * with their own clock, which a server clock ahead of theirs must not overrule.
+ */
+const isClaimable = (d: Data): boolean => d.status === STATUS_SUBMITTED;
 const isBlank = (v: unknown): boolean => typeof v !== "string" || v.trim() === "";
 const errorCode = (e: unknown): string => {
   const code = (e as { code?: unknown })?.code;
@@ -41,8 +44,8 @@ export const portalPhotoPath = (orgId: string, uid: string): string => `orgs/${o
 
 /**
  * Handles one write of `orgs/{orgId}/volunteerSignupForms/{formId}`. The trigger also fires on
- * our own claim and delete, and on device claims: anything but a fresh answer or an abandoned
- * claim is ignored before reading or writing anything.
+ * our own claim and delete, and on device claims: anything but a fresh answer is ignored before
+ * reading or writing anything.
  */
 export async function onSignupDocument(
   db: Firestore,
