@@ -3,10 +3,10 @@ import { getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
-import { defineString } from "firebase-functions/params";
+import { defineSecret, defineString } from "firebase-functions/params";
 
-// src/signup.ts
-import * as logger from "firebase-functions/logger";
+// src/requests.ts
+import * as logger2 from "firebase-functions/logger";
 
 // src/common.ts
 import { createHash } from "node:crypto";
@@ -26,6 +26,12 @@ async function institutionSetting(db, orgId, key) {
   const value = snap.exists ? snap.get("value") : void 0;
   return typeof value === "string" ? value : value === true ? "true" : "";
 }
+async function associationName(db, orgId) {
+  const branding = await db.doc(`orgs/${orgId}/portalBranding/default`).get();
+  const name = branding.exists ? branding.get("associationName") : void 0;
+  if (typeof name === "string" && name.trim() !== "") return name;
+  return institutionSetting(db, orgId, "email_association_name");
+}
 function millisOf(value) {
   if (value === null || value === void 0) return null;
   if (typeof value === "number") return Number.isFinite(value) ? Math.trunc(value) : null;
@@ -43,12 +49,12 @@ function isStale(d, now = Date.now()) {
   const at = millisOf(d.processingAt);
   return at === null || now - at > PROCESSING_STALE_MILLIS;
 }
-async function claim(ref, isClaimable2) {
+async function claim(ref, isClaimable3) {
   return ref.firestore.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists) return null;
     const data = snap.data();
-    if (!isClaimable2(data)) return null;
+    if (!isClaimable3(data)) return null;
     tx.set(ref, { status: STATUS_PROCESSING, processingAt: Date.now(), processingDevice: "server" }, { merge: true });
     return data;
   });
@@ -79,15 +85,10 @@ function minimalProjection(v, now = Date.now()) {
   return { schema: PROJECTION_SCHEMA, payload, contentHash: sha256(payload), updatedAt: now };
 }
 
-// src/nanoid.ts
-import { randomInt } from "node:crypto";
-var ALPHABET = "_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-var SIZE = 21;
-function volunteerId() {
-  let id = "";
-  for (let i = 0; i < SIZE; i++) id += ALPHABET[randomInt(ALPHABET.length)];
-  return id;
-}
+// src/mail.ts
+import * as logger from "firebase-functions/logger";
+import nodemailer from "nodemailer";
+import QRCode from "qrcode";
 
 // src/validate.ts
 var NAME = /^[^<>{}\\]{1,60}$/u;
@@ -171,46 +172,331 @@ function parseRequest(requestId, data) {
   return { requestId, uid, type, status, email, firstName: "", lastName: "", phone: "" };
 }
 
+// src/mail.ts
+var PORTAL_FIRST_NAME_TOKEN = "%%NOCTULIST_FIRST_NAME%%";
+var MAIL_TEMPLATE_SCHEMA = 1;
+var QR_WIDTH = 600;
+var QR_FILE = "qr_code.png";
+var MAX_LOGO_BYTES = 512 * 1024;
+var MAX_SUBJECT = 200;
+function fallbackTemplate(withName) {
+  const greeting = withName ? `Hello ${PORTAL_FIRST_NAME_TOKEN},` : "Hello,";
+  return {
+    subject: "Your volunteer QR code",
+    html: `<!DOCTYPE html><html><body style="font-family: Arial, sans-serif; color: #222;"><p>${greeting}</p><p>Here is your volunteer QR code.</p><p><img src="cid:qrcode" alt="QR code" width="300" height="300"></p><p>It is also attached to this e-mail.</p></body></html>`,
+    text: `${greeting}
+
+Here is your volunteer QR code. It is attached to this e-mail.
+`,
+    logoBase64: ""
+  };
+}
+var CONTROL = /[\u0000-\u001F\u007F]+/g;
+var escapeHtml = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+var fill = (template, value) => template.split(PORTAL_FIRST_NAME_TOKEN).join(value);
+function parseMailTemplate(data) {
+  if (data === void 0 || data.schema !== MAIL_TEMPLATE_SCHEMA) return null;
+  const { subject, html, text, logoBase64 } = data;
+  if (typeof subject !== "string" || subject.trim() === "") return null;
+  if (typeof html !== "string" || html.trim() === "") return null;
+  if (typeof text !== "string") return null;
+  return { subject, html, text, logoBase64: typeof logoBase64 === "string" ? logoBase64 : "" };
+}
+function logoBytes(logoBase64) {
+  const raw = logoBase64.trim();
+  if (raw === "") return null;
+  const bytes = Buffer.from(raw, "base64");
+  const isPng = bytes.length > 8 && bytes[0] === 137 && bytes[1] === 80 && bytes[2] === 78 && bytes[3] === 71;
+  return isPng && bytes.length <= MAX_LOGO_BYTES ? bytes : null;
+}
+async function buildQrMail(template, firstName, qrPayload) {
+  const name = firstName.replace(CONTROL, " ").trim();
+  const t = template ?? fallbackTemplate(name !== "");
+  const qr = await QRCode.toBuffer(qrPayload, { type: "png", width: QR_WIDTH, errorCorrectionLevel: "M" });
+  const attachments = [
+    { filename: QR_FILE, content: qr, contentType: "image/png", contentDisposition: "inline", cid: "qrcode" },
+    { filename: QR_FILE, content: qr, contentType: "image/png", contentDisposition: "attachment" }
+  ];
+  const logo = logoBytes(t.logoBase64);
+  if (logo !== null) {
+    attachments.push({ filename: "logo.png", content: logo, contentType: "image/png", contentDisposition: "inline", cid: "logo" });
+  }
+  return {
+    subject: fill(t.subject, name).replace(CONTROL, " ").trim().slice(0, MAX_SUBJECT),
+    // QrEmailHtmlBuilder puts the holder name in raw: escape it here.
+    html: fill(t.html, escapeHtml(name)),
+    text: fill(t.text, name),
+    attachments
+  };
+}
+var ADDRESS_FORBIDDEN = /[\s,;<>"()[\]\\:]/u;
+function safeRecipient(raw) {
+  const address = raw.trim();
+  if (ADDRESS_FORBIDDEN.test(address) || cleanEmail(address) === null) return null;
+  return address;
+}
+var isCapture = () => (
+  // Capture is test plumbing: it is ignored outside the emulator, so a stray setting never stores mail.
+  process.env.FUNCTIONS_EMULATOR === "true" && process.env.PORTAL_MAIL_TRANSPORT === "capture"
+);
+var cached = null;
+function gmail(user, password) {
+  const key = `${user}
+${password}`;
+  if (cached === null || cached.key !== key) {
+    cached = { key, transporter: nodemailer.createTransport({ service: "gmail", auth: { user, pass: password } }) };
+  }
+  return cached.transporter;
+}
+async function sendMail(msg, transport) {
+  try {
+    const to = safeRecipient(msg.to);
+    const user = transport.user().trim();
+    if (to === null || safeRecipient(user) === null) {
+      logger.error("mail not sent", { reason: "BAD_ADDRESS" });
+      return false;
+    }
+    const fromName = msg.fromName.replace(CONTROL, " ").trim();
+    if (isCapture()) {
+      await transport.db.collection("_testMail").add({
+        to,
+        from: { name: fromName, address: user },
+        subject: msg.subject,
+        html: msg.html,
+        text: msg.text,
+        attachments: msg.attachments.map((a) => ({
+          filename: a.filename,
+          contentType: a.contentType,
+          disposition: a.contentDisposition,
+          cid: a.cid ?? "",
+          size: a.content.length
+        })),
+        capturedAt: Date.now()
+      });
+      return true;
+    }
+    const password = transport.password().replace(/\s+/g, "");
+    if (password === "") {
+      logger.error("mail not sent", { reason: "NO_PASSWORD" });
+      return false;
+    }
+    await gmail(user, password).sendMail({
+      from: fromName === "" ? user : { name: fromName, address: user },
+      to: { name: "", address: to },
+      // Pinned envelope: the message goes to this one address whatever the headers say.
+      envelope: { from: user, to: [to] },
+      subject: msg.subject,
+      html: msg.html,
+      text: msg.text,
+      attachments: msg.attachments
+    });
+    return true;
+  } catch (e) {
+    const err = e;
+    logger.error("mail not sent", {
+      reason: "SEND_FAILED",
+      code: err?.code === void 0 ? "" : String(err.code),
+      responseCode: typeof err?.responseCode === "number" ? err.responseCode : 0
+    });
+    return false;
+  }
+}
+
+// src/requests.ts
+var STATUS_PENDING = "PENDING";
+var MAX_LABEL2 = 80;
+var DONE = { status: "DONE", reason: "" };
+var rejected = (reason) => ({ status: "REJECTED", reason });
+var isClaimable = (d) => d.status === STATUS_PENDING || isStale(d);
+var stringOf = (v) => v === null || v === void 0 ? "" : typeof v === "string" ? v : String(v);
+function boolOf(v) {
+  if (typeof v === "boolean") return v;
+  if (typeof v === "string") return v.toLowerCase() === "true";
+  if (typeof v === "number") return Number.isFinite(v) && Math.trunc(v) !== 0;
+  return false;
+}
+var isBlank = (v) => kotlinTrim(stringOf(v)) === "";
+var isOwner = (d, uid) => boolOf(d.get("portalEnabled")) && stringOf(d.get("portalUid")) === uid;
+var errorCode = (e) => {
+  const code = e?.code;
+  return code === void 0 ? "" : String(code);
+};
+async function onRequestDocument(db, mail, orgId, requestId, current) {
+  if (current === void 0 || !isClaimable(current)) return;
+  let result;
+  try {
+    if (!await portalEnabled(db, orgId)) {
+      logger2.info("request skipped", { orgId, requestId, reason: "PORTAL_OFF" });
+      return;
+    }
+    const ref = db.doc(`orgs/${orgId}/portalRequests/${requestId}`);
+    const claimed = await claim(ref, isClaimable);
+    if (claimed === null) return;
+    result = await processClaimed(db, mail, orgId, requestId, claimed);
+    await complete(ref, result);
+  } catch (e) {
+    logger2.error("request failed", { orgId, requestId, reason: "FAILED", code: errorCode(e) });
+    return;
+  }
+  try {
+    await touchStatus(db, orgId);
+  } catch (e) {
+    logger2.error("server status not written", { orgId, requestId, code: errorCode(e) });
+  }
+  logger2.info("request processed", { orgId, requestId, status: result.status, reason: result.reason });
+}
+async function processClaimed(db, mail, orgId, requestId, claimed) {
+  const request = parseRequest(requestId, claimed);
+  if (request === null) return rejected("INVALID");
+  switch (request.type) {
+    case "PROFILE":
+      return updateProfile(db, orgId, requestId, request);
+    case "CLAIM":
+      return handleClaim(db, orgId, requestId, request);
+    case "QR_EMAIL":
+      return sendQr(db, mail, orgId, request);
+  }
+}
+async function complete(ref, result) {
+  await ref.set({ status: result.status, reason: result.reason, processedAt: Date.now() }, { merge: true });
+}
+var volunteers = (db, orgId) => db.collection(`orgs/${orgId}/volunteers`);
+async function updateProfile(db, orgId, requestId, request) {
+  const projectionRef = db.doc(`orgs/${orgId}/volunteerPortal/${request.uid}`);
+  try {
+    return await db.runTransaction(async (tx) => {
+      const linked = await tx.get(volunteers(db, orgId).where("portalUid", "==", request.uid));
+      const owner = linked.docs.find((d) => isOwner(d, request.uid));
+      if (owner === void 0) return rejected("NO_ACCESS");
+      const projection = await tx.get(projectionRef);
+      const now = Date.now();
+      const lastName = request.lastName.toUpperCase();
+      tx.update(owner.ref, {
+        name: request.firstName,
+        lastNameAbbreviation: lastName,
+        phone: request.phone,
+        lastModified: Math.max(now, (millisOf(owner.get("lastModified")) ?? 0) + 1)
+      });
+      const patch = patchedProjection(projection.data(), request.firstName, lastName, request.phone, now);
+      if (patch !== null) tx.update(projectionRef, patch);
+      return DONE;
+    });
+  } catch (e) {
+    logger2.error("profile not saved", { orgId, requestId, code: errorCode(e) });
+    return rejected("SAVE_FAILED");
+  }
+}
+function patchedProjection(data, firstName, lastName, phone, now) {
+  if (data === void 0 || typeof data.payload !== "string") return null;
+  let payload;
+  try {
+    payload = JSON.parse(data.payload);
+  } catch {
+    return null;
+  }
+  if (payload === null || typeof payload !== "object" || Array.isArray(payload)) return null;
+  const text = JSON.stringify({ ...payload, firstName, lastName, phone });
+  return { payload: text, contentHash: sha256(text), updatedAt: now };
+}
+async function handleClaim(db, orgId, requestId, request) {
+  const all = await volunteers(db, orgId).select("email", "portalEnabled", "portalUid").get();
+  if (all.docs.some((d) => isOwner(d, request.uid))) return DONE;
+  const sameEmail = (d) => boolOf(d.get("portalEnabled")) && kotlinTrim(stringOf(d.get("email"))).toLowerCase() === request.email;
+  const candidates = all.docs.filter(sameEmail);
+  const free = candidates.filter((d) => isBlank(d.get("portalUid")));
+  if (candidates.length === 0) return rejected("NO_ACCESS");
+  if (free.length !== 1) return rejected("LINKED_ELSEWHERE");
+  const ref = free[0].ref;
+  try {
+    return await db.runTransaction(async (tx) => {
+      const linked = await tx.get(volunteers(db, orgId).where("portalUid", "==", request.uid));
+      if (linked.docs.some((d) => isOwner(d, request.uid))) return DONE;
+      const snap = await tx.get(ref);
+      if (!snap.exists || !sameEmail(snap) || !isBlank(snap.get("portalUid"))) {
+        return rejected("SAVE_FAILED");
+      }
+      tx.update(ref, {
+        portalUid: request.uid,
+        lastModified: Math.max(Date.now(), (millisOf(snap.get("lastModified")) ?? 0) + 1)
+      });
+      return DONE;
+    });
+  } catch (e) {
+    logger2.error("claim not saved", { orgId, requestId, code: errorCode(e) });
+    return rejected("SAVE_FAILED");
+  }
+}
+async function sendQr(db, mail, orgId, request) {
+  const linked = await volunteers(db, orgId).where("portalUid", "==", request.uid).get();
+  const owner = linked.docs.find((d) => isOwner(d, request.uid));
+  if (owner === void 0) return rejected("NO_ACCESS");
+  if (boolOf(owner.get("isAdmin"))) return rejected("NOT_ALLOWED");
+  const email = kotlinTrim(stringOf(owner.get("email")));
+  if (email === "") return rejected("NO_EMAIL");
+  const to = safeRecipient(email);
+  if (to === null) return rejected("NO_EMAIL");
+  const [template, association] = await Promise.all([
+    db.doc(`orgs/${orgId}/portalMail/default`).get(),
+    associationName(db, orgId)
+  ]);
+  const message = await buildQrMail(parseMailTemplate(template.data()), stringOf(owner.get("name")), owner.id);
+  const sent = await sendMail({ ...message, to, fromName: association.trim().slice(0, MAX_LABEL2) }, mail);
+  return sent ? DONE : rejected("SEND_FAILED");
+}
+
+// src/signup.ts
+import * as logger3 from "firebase-functions/logger";
+
+// src/nanoid.ts
+import { randomInt } from "node:crypto";
+var ALPHABET = "_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+var SIZE = 21;
+function volunteerId() {
+  let id = "";
+  for (let i = 0; i < SIZE; i++) id += ALPHABET[randomInt(ALPHABET.length)];
+  return id;
+}
+
 // src/signup.ts
 var STATUS_SUBMITTED = "SUBMITTED";
 var MAX_PHOTO_BYTES = 3 * 1024 * 1024;
-var isClaimable = (d) => d.status === STATUS_SUBMITTED || isStale(d);
-var isBlank = (v) => typeof v !== "string" || v.trim() === "";
+var isClaimable2 = (d) => d.status === STATUS_SUBMITTED || isStale(d);
+var isBlank2 = (v) => typeof v !== "string" || v.trim() === "";
 var signupPhotoPath = (orgId, formId) => `orgs/${orgId.trim()}/portalSignupPhotos/${formId.trim()}.jpg`;
 var volunteerPhotoPath = (orgId, id) => `orgs/${orgId.trim()}/profilePhotos/volunteers/${id.trim()}.jpg`;
 var portalPhotoPath = (orgId, uid) => `orgs/${orgId}/portalPhotos/${uid}.jpg`;
 async function onSignupDocument(db, bucket, orgId, formId, current) {
-  if (current === void 0 || !isClaimable(current)) return;
+  if (current === void 0 || !isClaimable2(current)) return;
   if (!await portalEnabled(db, orgId)) {
-    logger.info("signup skipped", { orgId, formId, reason: "PORTAL_OFF" });
+    logger3.info("signup skipped", { orgId, formId, reason: "PORTAL_OFF" });
     return;
   }
   const ref = db.doc(`orgs/${orgId}/volunteerSignupForms/${formId}`);
-  const claimed = await claim(ref, isClaimable);
+  const claimed = await claim(ref, isClaimable2);
   if (claimed === null) return;
   try {
-    const outcome = await processClaimed(db, bucket, orgId, formId, ref, claimed);
+    const outcome = await processClaimed2(db, bucket, orgId, formId, ref, claimed);
     await touchStatus(db, orgId);
-    logger.info("signup processed", { orgId, formId, reason: outcome });
+    logger3.info("signup processed", { orgId, formId, reason: outcome });
   } catch (e) {
     const code = e?.code;
-    logger.error("signup failed", { orgId, formId, reason: "FAILED", code: code === void 0 ? "" : String(code) });
+    logger3.error("signup failed", { orgId, formId, reason: "FAILED", code: code === void 0 ? "" : String(code) });
   }
 }
-async function processClaimed(db, bucket, orgId, formId, ref, claimed) {
+async function processClaimed2(db, bucket, orgId, formId, ref, claimed) {
   const submission = parseSignup(formId, { ...claimed, status: STATUS_SUBMITTED }, orgId);
   if (submission === null) {
     await finish(bucket, ref, orgId, formId);
     return "INVALID";
   }
   const photo = await readSignupPhoto(db, bucket, orgId, submission.photoPath);
-  const volunteers = await db.collection(`orgs/${orgId}/volunteers`).select("email", "portalUid", "profilePhotoPath", "profilePhotoUrl").get();
+  const volunteers2 = await db.collection(`orgs/${orgId}/volunteers`).select("email", "portalUid", "profilePhotoPath", "profilePhotoUrl").get();
   let outcome;
-  if (volunteers.docs.some((d) => d.get("portalUid") === submission.uid)) {
+  if (volunteers2.docs.some((d) => d.get("portalUid") === submission.uid)) {
     outcome = "ALREADY_LINKED";
   } else {
-    const sameEmail = volunteers.docs.find(
-      (d) => typeof d.get("email") === "string" && d.get("email").trim().toLowerCase() === submission.email && isBlank(d.get("portalUid"))
+    const sameEmail = volunteers2.docs.find(
+      (d) => typeof d.get("email") === "string" && d.get("email").trim().toLowerCase() === submission.email && isBlank2(d.get("portalUid"))
     );
     if (sameEmail !== void 0) {
       await link(db, bucket, orgId, sameEmail.ref, submission, photo);
@@ -241,17 +527,17 @@ async function saveJpeg(bucket, path, bytes) {
 async function link(db, bucket, orgId, ref, submission, photo) {
   const linked = await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
-    if (!snap.exists || !isBlank(snap.get("portalUid"))) return null;
+    if (!snap.exists || !isBlank2(snap.get("portalUid"))) return null;
     tx.update(ref, { portalEnabled: true, portalUid: submission.uid, lastModified: Date.now() });
     return snap.data();
   });
   if (linked === null) throw Object.assign(new Error("link conflict"), { code: "LINK_CONFLICT" });
-  if (photo === null || !isBlank(linked.profilePhotoPath) || !isBlank(linked.profilePhotoUrl)) return;
+  if (photo === null || !isBlank2(linked.profilePhotoPath) || !isBlank2(linked.profilePhotoUrl)) return;
   const path = volunteerPhotoPath(orgId, ref.id);
   await saveJpeg(bucket, path, photo);
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
-    if (!snap.exists || !isBlank(snap.get("profilePhotoPath")) || !isBlank(snap.get("profilePhotoUrl"))) return;
+    if (!snap.exists || !isBlank2(snap.get("profilePhotoPath")) || !isBlank2(snap.get("profilePhotoUrl"))) return;
     tx.update(ref, { profilePhotoPath: path, lastModified: Date.now() });
   });
 }
@@ -304,12 +590,6 @@ async function create(db, bucket, orgId, submission, photo) {
   batch.set(db.doc(`orgs/${orgId}/volunteerPortal/${submission.uid}`), projection);
   await batch.commit();
 }
-async function associationName(db, orgId) {
-  const branding = await db.doc(`orgs/${orgId}/portalBranding/default`).get();
-  const name = branding.exists ? branding.get("associationName") : void 0;
-  if (typeof name === "string" && name.trim() !== "") return name;
-  return institutionSetting(db, orgId, "email_association_name");
-}
 async function finish(bucket, ref, orgId, formId) {
   await bucket.file(signupPhotoPath(orgId, formId)).delete({ ignoreNotFound: true }).catch(() => void 0);
   await ref.delete();
@@ -317,6 +597,8 @@ async function finish(bucket, ref, orgId, formId) {
 
 // src/index.ts
 var REGION = defineString("REGION", { default: "europe-west1" });
+var GMAIL_USER = defineString("GMAIL_USER");
+var GMAIL_APP_PASSWORD = defineSecret("GMAIL_APP_PASSWORD");
 function admin() {
   if (!getApps().some((app) => app.name === "[DEFAULT]")) initializeApp();
   return { db: getFirestore(), bucket: getStorage().bucket() };
@@ -330,11 +612,30 @@ var onSignupWritten = onDocumentWritten(
     await onSignupDocument(db, bucket, event.params.orgId, event.params.formId, after.data());
   }
 );
+var onPortalRequestWritten = onDocumentWritten(
+  {
+    document: "orgs/{orgId}/portalRequests/{requestId}",
+    region: REGION,
+    retry: false,
+    secrets: [GMAIL_APP_PASSWORD]
+  },
+  async (event) => {
+    const after = event.data?.after;
+    if (!after?.exists) return;
+    const { db } = admin();
+    const mail = { db, user: () => GMAIL_USER.value(), password: () => GMAIL_APP_PASSWORD.value() };
+    await onRequestDocument(db, mail, event.params.orgId, event.params.requestId, after.data());
+  }
+);
 export {
+  buildQrMail,
   cleanEmail,
   cleanName,
   cleanPhone,
+  onPortalRequestWritten,
   onSignupWritten,
+  parseMailTemplate,
   parseRequest,
-  parseSignup
+  parseSignup,
+  safeRecipient
 };

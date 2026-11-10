@@ -4,7 +4,16 @@
 import * as logger from "firebase-functions/logger";
 import type { DocumentReference, Firestore } from "firebase-admin/firestore";
 import type { Storage } from "firebase-admin/storage";
-import { claim, institutionSetting, isStale, minimalProjection, portalEnabled, sha256, touchStatus } from "./common";
+import {
+  associationName,
+  claim,
+  institutionSetting,
+  isStale,
+  minimalProjection,
+  portalEnabled,
+  sha256,
+  touchStatus,
+} from "./common";
 import { volunteerId } from "./nanoid";
 import { parseSignup, type SignupSubmission } from "./validate";
 
@@ -208,14 +217,6 @@ async function create(
   batch.create(db.doc(`orgs/${orgId}/volunteers/${id}`), volunteer);
   batch.set(db.doc(`orgs/${orgId}/volunteerPortal/${submission.uid}`), projection);
   await batch.commit();
-}
-
-/** What devices publish as the portal title: the branding, else the e-mail association name. */
-async function associationName(db: Firestore, orgId: string): Promise<string> {
-  const branding = await db.doc(`orgs/${orgId}/portalBranding/default`).get();
-  const name = branding.exists ? branding.get("associationName") : undefined;
-  if (typeof name === "string" && name.trim() !== "") return name;
-  return institutionSetting(db, orgId, "email_association_name");
 }
 
 /** Removes the form's own upload, if any, then the answer itself. */

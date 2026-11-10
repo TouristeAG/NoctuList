@@ -27,6 +27,14 @@ export async function institutionSetting(db: Firestore, orgId: string, key: stri
   return typeof value === "string" ? value : value === true ? "true" : "";
 }
 
+/** What devices publish as the portal title: the branding, else the e-mail association name. */
+export async function associationName(db: Firestore, orgId: string): Promise<string> {
+  const branding = await db.doc(`orgs/${orgId}/portalBranding/default`).get();
+  const name = branding.exists ? branding.get("associationName") : undefined;
+  if (typeof name === "string" && name.trim() !== "") return name;
+  return institutionSetting(db, orgId, "email_association_name");
+}
+
 /** firestoreMillisOf (Kotlin): numbers, numeric strings, Dates and Timestamps; null otherwise. */
 export function millisOf(value: unknown): number | null {
   if (value === null || value === undefined) return null;

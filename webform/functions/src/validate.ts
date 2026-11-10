@@ -43,7 +43,8 @@ const TRIM = new RegExp(`^[${WS}]+|[${WS}]+$`, "gu");
 // Java \s (no UNICODE_CHARACTER_CLASS) is ASCII only.
 const ASCII_RUN = /[ \t\n\x0B\f\r]+/g;
 
-const kotlinTrim = (s: string): string => s.replace(TRIM, "");
+/** Kotlin String.trim(): strips Char.isWhitespace at both ends. */
+export const kotlinTrim = (s: string): string => s.replace(TRIM, "");
 
 export function cleanName(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
