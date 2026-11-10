@@ -46,10 +46,29 @@ export interface OutgoingMail extends QrMail {
   fromName: string;
 }
 
+/** The part of a nodemailer transporter that sendMail uses. */
+export type SmtpClient = Pick<Transporter, "sendMail">;
+
 export interface MailTransport {
   db: Firestore;
   user: () => string;
   password: () => string;
+  /** SMTP client for these credentials; the Gmail one when absent (tests pass a fake). */
+  smtp?: (user: string, password: string) => SmtpClient;
+}
+
+/**
+ * Gmail SMTP with bounded waits: a stalled connection fails within seconds, well inside the
+ * function timeout, so the request is answered SEND_FAILED instead of staying in PROCESSING.
+ */
+export function smtpOptions(user: string, password: string) {
+  return {
+    service: "gmail",
+    auth: { user, pass: password },
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
+  };
 }
 
 /** Neutral English mail used until a device has published `portalMail/default`. */
@@ -70,6 +89,8 @@ function fallbackTemplate(withName: boolean): MailTemplate {
 }
 
 const CONTROL = /[\u0000-\u001F\u007F]+/g;
+/** The `<img>` element that shows the `cid:logo` part, over one or several lines. */
+const LOGO_IMG = /<img\b[^>]*\bsrc\s*=\s*["']?cid:logo["']?[^>]*>/gi;
 
 export const escapeHtml = (s: string): string =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
@@ -109,10 +130,12 @@ export async function buildQrMail(template: MailTemplate | null, firstName: stri
   if (logo !== null) {
     attachments.push({ filename: "logo.png", content: logo, contentType: "image/png", contentDisposition: "inline", cid: "logo" });
   }
+  // Without the logo part, its image would show as a broken picture.
+  const html = logo === null ? t.html.replace(LOGO_IMG, "") : t.html;
   return {
     subject: fill(t.subject, name).replace(CONTROL, " ").trim().slice(0, MAX_SUBJECT),
     // QrEmailHtmlBuilder puts the holder name in raw: escape it here.
-    html: fill(t.html, escapeHtml(name)),
+    html: fill(html, escapeHtml(name)),
     text: fill(t.text, name),
     attachments,
   };
@@ -137,7 +160,7 @@ let cached: { key: string; transporter: Transporter } | null = null;
 function gmail(user: string, password: string): Transporter {
   const key = `${user}\n${password}`;
   if (cached === null || cached.key !== key) {
-    cached = { key, transporter: nodemailer.createTransport({ service: "gmail", auth: { user, pass: password } }) };
+    cached = { key, transporter: nodemailer.createTransport(smtpOptions(user, password)) };
   }
   return cached.transporter;
 }
@@ -179,7 +202,8 @@ export async function sendMail(msg: OutgoingMail, transport: MailTransport): Pro
       logger.error("mail not sent", { reason: "NO_PASSWORD" });
       return false;
     }
-    await gmail(user, password).sendMail({
+    const smtp = transport.smtp ?? gmail;
+    await smtp(user, password).sendMail({
       from: fromName === "" ? user : { name: fromName, address: user },
       to: { name: "", address: to },
       // Pinned envelope: the message goes to this one address whatever the headers say.

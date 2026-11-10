@@ -179,6 +179,15 @@ var QR_WIDTH = 600;
 var QR_FILE = "qr_code.png";
 var MAX_LOGO_BYTES = 512 * 1024;
 var MAX_SUBJECT = 200;
+function smtpOptions(user, password) {
+  return {
+    service: "gmail",
+    auth: { user, pass: password },
+    connectionTimeout: 1e4,
+    greetingTimeout: 1e4,
+    socketTimeout: 2e4
+  };
+}
 function fallbackTemplate(withName) {
   const greeting = withName ? `Hello ${PORTAL_FIRST_NAME_TOKEN},` : "Hello,";
   return {
@@ -192,6 +201,7 @@ Here is your volunteer QR code. It is attached to this e-mail.
   };
 }
 var CONTROL = /[\u0000-\u001F\u007F]+/g;
+var LOGO_IMG = /<img\b[^>]*\bsrc\s*=\s*["']?cid:logo["']?[^>]*>/gi;
 var escapeHtml = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 var fill = (template, value) => template.split(PORTAL_FIRST_NAME_TOKEN).join(value);
 function parseMailTemplate(data) {
@@ -221,10 +231,11 @@ async function buildQrMail(template, firstName, qrPayload) {
   if (logo !== null) {
     attachments.push({ filename: "logo.png", content: logo, contentType: "image/png", contentDisposition: "inline", cid: "logo" });
   }
+  const html = logo === null ? t.html.replace(LOGO_IMG, "") : t.html;
   return {
     subject: fill(t.subject, name).replace(CONTROL, " ").trim().slice(0, MAX_SUBJECT),
     // QrEmailHtmlBuilder puts the holder name in raw: escape it here.
-    html: fill(t.html, escapeHtml(name)),
+    html: fill(html, escapeHtml(name)),
     text: fill(t.text, name),
     attachments
   };
@@ -244,7 +255,7 @@ function gmail(user, password) {
   const key = `${user}
 ${password}`;
   if (cached === null || cached.key !== key) {
-    cached = { key, transporter: nodemailer.createTransport({ service: "gmail", auth: { user, pass: password } }) };
+    cached = { key, transporter: nodemailer.createTransport(smtpOptions(user, password)) };
   }
   return cached.transporter;
 }
@@ -280,7 +291,8 @@ async function sendMail(msg, transport) {
       logger.error("mail not sent", { reason: "NO_PASSWORD" });
       return false;
     }
-    await gmail(user, password).sendMail({
+    const smtp = transport.smtp ?? gmail;
+    await smtp(user, password).sendMail({
       from: fromName === "" ? user : { name: fromName, address: user },
       to: { name: "", address: to },
       // Pinned envelope: the message goes to this one address whatever the headers say.
@@ -462,6 +474,10 @@ var STATUS_SUBMITTED = "SUBMITTED";
 var MAX_PHOTO_BYTES = 3 * 1024 * 1024;
 var isClaimable2 = (d) => d.status === STATUS_SUBMITTED || isStale(d);
 var isBlank2 = (v) => typeof v !== "string" || v.trim() === "";
+var errorCode2 = (e) => {
+  const code = e?.code;
+  return code === void 0 ? "" : String(code);
+};
 var signupPhotoPath = (orgId, formId) => `orgs/${orgId.trim()}/portalSignupPhotos/${formId.trim()}.jpg`;
 var volunteerPhotoPath = (orgId, id) => `orgs/${orgId.trim()}/profilePhotos/volunteers/${id.trim()}.jpg`;
 var portalPhotoPath = (orgId, uid) => `orgs/${orgId}/portalPhotos/${uid}.jpg`;
@@ -474,14 +490,19 @@ async function onSignupDocument(db, bucket, orgId, formId, current) {
   const ref = db.doc(`orgs/${orgId}/volunteerSignupForms/${formId}`);
   const claimed = await claim(ref, isClaimable2);
   if (claimed === null) return;
+  let outcome;
   try {
-    const outcome = await processClaimed2(db, bucket, orgId, formId, ref, claimed);
-    await touchStatus(db, orgId);
-    logger3.info("signup processed", { orgId, formId, reason: outcome });
+    outcome = await processClaimed2(db, bucket, orgId, formId, ref, claimed);
   } catch (e) {
-    const code = e?.code;
-    logger3.error("signup failed", { orgId, formId, reason: "FAILED", code: code === void 0 ? "" : String(code) });
+    logger3.error("signup failed", { orgId, formId, reason: "FAILED", code: errorCode2(e) });
+    return;
   }
+  try {
+    await touchStatus(db, orgId);
+  } catch (e) {
+    logger3.error("server status not written", { orgId, formId, code: errorCode2(e) });
+  }
+  logger3.info("signup processed", { orgId, formId, reason: outcome });
 }
 async function processClaimed2(db, bucket, orgId, formId, ref, claimed) {
   const submission = parseSignup(formId, { ...claimed, status: STATUS_SUBMITTED }, orgId);
@@ -617,6 +638,8 @@ var onPortalRequestWritten = onDocumentWritten(
     document: "orgs/{orgId}/portalRequests/{requestId}",
     region: REGION,
     retry: false,
+    // Room for the SMTP timeouts (mail.ts) and the Firestore work around them.
+    timeoutSeconds: 120,
     secrets: [GMAIL_APP_PASSWORD]
   },
   async (event) => {
@@ -637,5 +660,7 @@ export {
   parseMailTemplate,
   parseRequest,
   parseSignup,
-  safeRecipient
+  safeRecipient,
+  sendMail,
+  smtpOptions
 };

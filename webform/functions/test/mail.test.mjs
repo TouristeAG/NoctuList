@@ -83,3 +83,54 @@ test("safeRecipient keeps one plain mailbox only", () => {
     assert.equal(lib.safeRecipient(bad), null, bad);
   }
 });
+
+const outgoing = (overrides = {}) => ({
+  subject: "QR", html: "<p>QR</p>", text: "QR", attachments: [],
+  to: "lea@mail.example", fromName: "Asso", ...overrides,
+});
+
+test("smtp options bound every wait so a stall fails within the function timeout", () => {
+  const options = lib.smtpOptions("asso@mail.example", "secret");
+  assert.equal(options.service, "gmail");
+  assert.deepEqual(options.auth, { user: "asso@mail.example", pass: "secret" });
+  assert.equal(options.connectionTimeout, 10_000);
+  assert.equal(options.greetingTimeout, 10_000);
+  assert.equal(options.socketTimeout, 20_000);
+});
+
+test("sendMail answers false when the SMTP transport throws (SEND_FAILED)", async () => {
+  const calls = [];
+  const transport = {
+    db: null,
+    user: () => "asso@mail.example",
+    password: () => "abcd efgh ijkl mnop",
+    smtp: (user, password) => ({
+      sendMail: async (message) => {
+        calls.push({ user, password, message });
+        throw Object.assign(new Error("Greeting never received"), { code: "ETIMEDOUT" });
+      },
+    }),
+  };
+  assert.equal(await lib.sendMail(outgoing(), transport), false);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].password, "abcdefghijklmnop");
+  assert.deepEqual(calls[0].message.envelope, { from: "asso@mail.example", to: ["lea@mail.example"] });
+});
+
+test("sendMail answers true once the SMTP transport accepted the message", async () => {
+  const transport = {
+    db: null,
+    user: () => "asso@mail.example",
+    password: () => "secret",
+    smtp: () => ({ sendMail: async () => ({ accepted: ["lea@mail.example"] }) }),
+  };
+  assert.equal(await lib.sendMail(outgoing(), transport), true);
+});
+
+test("logo image removed from the html when no logo is attached", async () => {
+  const html = `<p>${TOKEN}</p><td><img src="cid:logo" \n     alt="Logo" \n     style="max-width: 120px;"></td><img src="cid:qrcode">`;
+  const none = await lib.buildQrMail(template({ html }), "Léa", "id");
+  assert.equal(none.html, "<p>Léa</p><td></td><img src=\"cid:qrcode\">");
+  const withLogo = await lib.buildQrMail(template({ html, logoBase64: PNG }), "Léa", "id");
+  assert.ok(withLogo.html.includes("src=\"cid:logo\""));
+});

@@ -9,8 +9,8 @@ import { onSignupDocument } from "./signup";
 
 export { cleanName, cleanPhone, cleanEmail, parseSignup, parseRequest } from "./validate";
 export type { SignupSubmission, PortalRequest, PortalRequestType } from "./validate";
-export { buildQrMail, parseMailTemplate, safeRecipient } from "./mail";
-export type { MailTemplate, QrMail } from "./mail";
+export { buildQrMail, parseMailTemplate, safeRecipient, sendMail, smtpOptions } from "./mail";
+export type { MailTemplate, MailTransport, OutgoingMail, QrMail, SmtpClient } from "./mail";
 
 const REGION = defineString("REGION", { default: "europe-west1" });
 /** The association's Gmail address that sends the QR e-mails. */
@@ -40,6 +40,8 @@ export const onPortalRequestWritten = onDocumentWritten(
     document: "orgs/{orgId}/portalRequests/{requestId}",
     region: REGION,
     retry: false,
+    // Room for the SMTP timeouts (mail.ts) and the Firestore work around them.
+    timeoutSeconds: 120,
     secrets: [GMAIL_APP_PASSWORD],
   },
   async (event) => {

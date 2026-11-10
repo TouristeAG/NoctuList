@@ -28,6 +28,10 @@ const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
 
 const isClaimable = (d: Data): boolean => d.status === STATUS_SUBMITTED || isStale(d);
 const isBlank = (v: unknown): boolean => typeof v !== "string" || v.trim() === "";
+const errorCode = (e: unknown): string => {
+  const code = (e as { code?: unknown })?.code;
+  return code === undefined ? "" : String(code);
+};
 
 export const signupPhotoPath = (orgId: string, formId: string): string =>
   `orgs/${orgId.trim()}/portalSignupPhotos/${formId.trim()}.jpg`;
@@ -55,16 +59,22 @@ export async function onSignupDocument(
   const ref = db.doc(`orgs/${orgId}/volunteerSignupForms/${formId}`);
   const claimed = await claim(ref, isClaimable);
   if (claimed === null) return;
+  let outcome: Outcome;
   try {
-    const outcome = await processClaimed(db, bucket, orgId, formId, ref, claimed);
-    await touchStatus(db, orgId);
-    logger.info("signup processed", { orgId, formId, reason: outcome });
+    outcome = await processClaimed(db, bucket, orgId, formId, ref, claimed);
   } catch (e) {
     // Left in PROCESSING: a device takes it over once the claim is 5 minutes old.
     // Only the error code is logged; messages can quote document content.
-    const code = (e as { code?: unknown })?.code;
-    logger.error("signup failed", { orgId, formId, reason: "FAILED", code: code === undefined ? "" : String(code) });
+    logger.error("signup failed", { orgId, formId, reason: "FAILED", code: errorCode(e) });
+    return;
   }
+  // The answer is processed: a failure here must not count it as failed.
+  try {
+    await touchStatus(db, orgId);
+  } catch (e) {
+    logger.error("server status not written", { orgId, formId, code: errorCode(e) });
+  }
+  logger.info("signup processed", { orgId, formId, reason: outcome });
 }
 
 async function processClaimed(
