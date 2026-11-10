@@ -1,0 +1,1032 @@
+[
+ {
+  "fn": "cleanName",
+  "input": "Anna",
+  "expect": "Anna"
+ },
+ {
+  "fn": "cleanName",
+  "input": "  Anna   Maria \t Rossi ",
+  "expect": "Anna Maria Rossi"
+ },
+ {
+  "fn": "cleanName",
+  "input": "<b>x</b>",
+  "expect": null
+ },
+ {
+  "fn": "cleanName",
+  "input": "a{b}",
+  "expect": null
+ },
+ {
+  "fn": "cleanName",
+  "input": "back\\slash",
+  "expect": null
+ },
+ {
+  "fn": "cleanName",
+  "input": "",
+  "expect": null
+ },
+ {
+  "fn": "cleanName",
+  "input": "   ",
+  "expect": null
+ },
+ {
+  "fn": "cleanName",
+  "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "expect": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+ },
+ {
+  "fn": "cleanName",
+  "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "expect": null
+ },
+ {
+  "fn": "cleanName",
+  "input": "  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  ",
+  "expect": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+ },
+ {
+  "fn": "cleanName",
+  "input": "Zoë Müller-Çelik",
+  "expect": "Zoë Müller-Çelik"
+ },
+ {
+  "fn": "cleanName",
+  "input": 42,
+  "expect": null
+ },
+ {
+  "fn": "cleanName",
+  "input": null,
+  "expect": null
+ },
+ {
+  "fn": "cleanPhone",
+  "input": "+41 79 123 45 67",
+  "expect": "+41 79 123 45 67"
+ },
+ {
+  "fn": "cleanPhone",
+  "input": "  (021) 123.45-67 ",
+  "expect": "(021) 123.45-67"
+ },
+ {
+  "fn": "cleanPhone",
+  "input": "123",
+  "expect": null
+ },
+ {
+  "fn": "cleanPhone",
+  "input": "1234",
+  "expect": "1234"
+ },
+ {
+  "fn": "cleanPhone",
+  "input": "00000000000000000000000000000000",
+  "expect": "00000000000000000000000000000000"
+ },
+ {
+  "fn": "cleanPhone",
+  "input": "000000000000000000000000000000000",
+  "expect": null
+ },
+ {
+  "fn": "cleanPhone",
+  "input": "079 abc 123",
+  "expect": null
+ },
+ {
+  "fn": "cleanPhone",
+  "input": "",
+  "expect": null
+ },
+ {
+  "fn": "cleanPhone",
+  "input": 79123456,
+  "expect": null
+ },
+ {
+  "fn": "cleanEmail",
+  "input": "  Anna@Example.COM ",
+  "expect": "anna@example.com"
+ },
+ {
+  "fn": "cleanEmail",
+  "input": "a@b.c",
+  "expect": null
+ },
+ {
+  "fn": "cleanEmail",
+  "input": "a@b.co",
+  "expect": "a@b.co"
+ },
+ {
+  "fn": "cleanEmail",
+  "input": "a b@example.com",
+  "expect": null
+ },
+ {
+  "fn": "cleanEmail",
+  "input": "a@@example.com",
+  "expect": null
+ },
+ {
+  "fn": "cleanEmail",
+  "input": "no-at-sign.example.com",
+  "expect": null
+ },
+ {
+  "fn": "cleanEmail",
+  "input": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx@example.com",
+  "expect": null
+ },
+ {
+  "fn": "cleanEmail",
+  "input": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx@example.com",
+  "expect": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx@example.com"
+ },
+ {
+  "fn": "cleanEmail",
+  "input": "a@ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd.com",
+  "expect": null
+ },
+ {
+  "fn": "cleanEmail",
+  "input": null,
+  "expect": null
+ },
+ {
+  "fn": "parseSignup",
+  "input": {
+   "formId": "form1",
+   "orgId": "org1",
+   "data": {
+    "status": "SUBMITTED",
+    "submittedUid": "Abc123XyZ9",
+    "email": "Anna@Example.com",
+    "firstName": " Anna ",
+    "lastName": "Rossi",
+    "phone": "+41 79 123 45 67",
+    "dateOfBirth": "1999-05-17",
+    "gender": "FEMALE",
+    "consent": true,
+    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
+    "lang": "de"
+   }
+  },
+  "expect": {
+   "formId": "form1",
+   "uid": "Abc123XyZ9",
+   "email": "anna@example.com",
+   "firstName": "Anna",
+   "lastName": "Rossi",
+   "phone": "+41 79 123 45 67",
+   "dateOfBirth": "1999-05-17",
+   "gender": "FEMALE",
+   "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
+   "lang": "de"
+  }
+ },
+ {
+  "fn": "parseSignup",
+  "input": {
+   "formId": "form1",
+   "orgId": "org1",
+   "data": {
+    "status": "OPEN",
+    "submittedUid": "Abc123XyZ9",
+    "email": "Anna@Example.com",
+    "firstName": " Anna ",
+    "lastName": "Rossi",
+    "phone": "+41 79 123 45 67",
+    "dateOfBirth": "1999-05-17",
+    "gender": "FEMALE",
+    "consent": true,
+    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
+    "lang": "de"
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseSignup",
+  "input": {
+   "formId": "form1",
+   "orgId": "org1",
+   "data": {
+    "status": "SUBMITTED",
+    "submittedUid": "Abc123XyZ9",
+    "email": "Anna@Example.com",
+    "firstName": " Anna ",
+    "lastName": "Rossi",
+    "phone": "+41 79 123 45 67",
+    "dateOfBirth": "1899-01-01",
+    "gender": "FEMALE",
+    "consent": true,
+    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
+    "lang": "de"
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseSignup",
+  "input": {
+   "formId": "form1",
+   "orgId": "org1",
+   "data": {
+    "status": "SUBMITTED",
+    "submittedUid": "Abc123XyZ9",
+    "email": "Anna@Example.com",
+    "firstName": " Anna ",
+    "lastName": "Rossi",
+    "phone": "+41 79 123 45 67",
+    "dateOfBirth": "1900-01-01",
+    "gender": "FEMALE",
+    "consent": true,
+    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
+    "lang": "de"
+   }
+  },
+  "expect": {
+   "formId": "form1",
+   "uid": "Abc123XyZ9",
+   "email": "anna@example.com",
+   "firstName": "Anna",
+   "lastName": "Rossi",
+   "phone": "+41 79 123 45 67",
+   "dateOfBirth": "1900-01-01",
+   "gender": "FEMALE",
+   "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
+   "lang": "de"
+  }
+ },
+ {
+  "fn": "parseSignup",
+  "input": {
+   "formId": "form1",
+   "orgId": "org1",
+   "data": {
+    "status": "SUBMITTED",
+    "submittedUid": "Abc123XyZ9",
+    "email": "Anna@Example.com",
+    "firstName": " Anna ",
+    "lastName": "Rossi",
+    "phone": "+41 79 123 45 67",
+    "dateOfBirth": "2099-12-31",
+    "gender": "FEMALE",
+    "consent": true,
+    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
+    "lang": "de"
+   }
+  },
+  "expect": {
+   "formId": "form1",
+   "uid": "Abc123XyZ9",
+   "email": "anna@example.com",
+   "firstName": "Anna",
+   "lastName": "Rossi",
+   "phone": "+41 79 123 45 67",
+   "dateOfBirth": "2099-12-31",
+   "gender": "FEMALE",
+   "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
+   "lang": "de"
+  }
+ },
+ {
+  "fn": "parseSignup",
+  "input": {
+   "formId": "form1",
+   "orgId": "org1",
+   "data": {
+    "status": "SUBMITTED",
+    "submittedUid": "Abc123XyZ9",
+    "email": "Anna@Example.com",
+    "firstName": " Anna ",
+    "lastName": "Rossi",
+    "phone": "+41 79 123 45 67",
+    "dateOfBirth": "2100-01-01",
+    "gender": "FEMALE",
+    "consent": true,
+    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
+    "lang": "de"
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseSignup",
+  "input": {
+   "formId": "form1",
+   "orgId": "org1",
+   "data": {
+    "status": "SUBMITTED",
+    "submittedUid": "Abc123XyZ9",
+    "email": "Anna@Example.com",
+    "firstName": " Anna ",
+    "lastName": "Rossi",
+    "phone": "+41 79 123 45 67",
+    "dateOfBirth": "1999-13-01",
+    "gender": "FEMALE",
+    "consent": true,
+    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
+    "lang": "de"
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseSignup",
+  "input": {
+   "formId": "form1",
+   "orgId": "org1",
+   "data": {
+    "status": "SUBMITTED",
+    "submittedUid": "Abc123XyZ9",
+    "email": "Anna@Example.com",
+    "firstName": " Anna ",
+    "lastName": "Rossi",
+    "phone": "+41 79 123 45 67",
+    "dateOfBirth": "1999-02-32",
+    "gender": "FEMALE",
+    "consent": true,
+    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
+    "lang": "de"
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseSignup",
+  "input": {
+   "formId": "form1",
+   "orgId": "org1",
+   "data": {
+    "status": "SUBMITTED",
+    "submittedUid": "abc-123-xyz",
+    "email": "Anna@Example.com",
+    "firstName": " Anna ",
+    "lastName": "Rossi",
+    "phone": "+41 79 123 45 67",
+    "dateOfBirth": "1999-05-17",
+    "gender": "FEMALE",
+    "consent": true,
+    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
+    "lang": "de"
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseSignup",
+  "input": {
+   "formId": "form1",
+   "orgId": "org1",
+   "data": {
+    "status": "SUBMITTED",
+    "submittedUid": "abc12",
+    "email": "Anna@Example.com",
+    "firstName": " Anna ",
+    "lastName": "Rossi",
+    "phone": "+41 79 123 45 67",
+    "dateOfBirth": "1999-05-17",
+    "gender": "FEMALE",
+    "consent": true,
+    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
+    "lang": "de"
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseSignup",
+  "input": {
+   "formId": "form1",
+   "orgId": "org1",
+   "data": {
+    "status": "SUBMITTED",
+    "submittedUid": "Abc123XyZ9",
+    "email": "Anna@Example.com",
+    "firstName": " Anna ",
+    "lastName": "Rossi",
+    "phone": "+41 79 123 45 67",
+    "dateOfBirth": "1999-05-17",
+    "gender": "FEMALE",
+    "consent": true,
+    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
+    "lang": "xx"
+   }
+  },
+  "expect": {
+   "formId": "form1",
+   "uid": "Abc123XyZ9",
+   "email": "anna@example.com",
+   "firstName": "Anna",
+   "lastName": "Rossi",
+   "phone": "+41 79 123 45 67",
+   "dateOfBirth": "1999-05-17",
+   "gender": "FEMALE",
+   "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
+   "lang": "fr"
+  }
+ },
+ {
+  "fn": "parseSignup",
+  "input": {
+   "formId": "form1",
+   "orgId": "org1",
+   "data": {
+    "status": "SUBMITTED",
+    "submittedUid": "Abc123XyZ9",
+    "email": "Anna@Example.com",
+    "firstName": " Anna ",
+    "lastName": "Rossi",
+    "phone": "+41 79 123 45 67",
+    "dateOfBirth": "1999-05-17",
+    "gender": "FEMALE",
+    "consent": true,
+    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
+    "lang": "IT"
+   }
+  },
+  "expect": {
+   "formId": "form1",
+   "uid": "Abc123XyZ9",
+   "email": "anna@example.com",
+   "firstName": "Anna",
+   "lastName": "Rossi",
+   "phone": "+41 79 123 45 67",
+   "dateOfBirth": "1999-05-17",
+   "gender": "FEMALE",
+   "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
+   "lang": "fr"
+  }
+ },
+ {
+  "fn": "parseSignup",
+  "input": {
+   "formId": "form1",
+   "orgId": "org1",
+   "data": {
+    "status": "SUBMITTED",
+    "submittedUid": "Abc123XyZ9",
+    "email": "Anna@Example.com",
+    "firstName": " Anna ",
+    "lastName": "Rossi",
+    "phone": "+41 79 123 45 67",
+    "dateOfBirth": "1999-05-17",
+    "gender": "FEMALE",
+    "consent": true,
+    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
+    "lang": "it"
+   }
+  },
+  "expect": {
+   "formId": "form1",
+   "uid": "Abc123XyZ9",
+   "email": "anna@example.com",
+   "firstName": "Anna",
+   "lastName": "Rossi",
+   "phone": "+41 79 123 45 67",
+   "dateOfBirth": "1999-05-17",
+   "gender": "FEMALE",
+   "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
+   "lang": "it"
+  }
+ },
+ {
+  "fn": "parseSignup",
+  "input": {
+   "formId": "form1",
+   "orgId": "org1",
+   "data": {
+    "status": "SUBMITTED",
+    "submittedUid": "Abc123XyZ9",
+    "email": "Anna@Example.com",
+    "firstName": " Anna ",
+    "lastName": "Rossi",
+    "phone": "+41 79 123 45 67",
+    "dateOfBirth": "1999-05-17",
+    "gender": "FEMALE",
+    "consent": true,
+    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg"
+   }
+  },
+  "expect": {
+   "formId": "form1",
+   "uid": "Abc123XyZ9",
+   "email": "anna@example.com",
+   "firstName": "Anna",
+   "lastName": "Rossi",
+   "phone": "+41 79 123 45 67",
+   "dateOfBirth": "1999-05-17",
+   "gender": "FEMALE",
+   "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
+   "lang": "fr"
+  }
+ },
+ {
+  "fn": "parseSignup",
+  "input": {
+   "formId": "form1",
+   "orgId": "org1",
+   "data": {
+    "status": "SUBMITTED",
+    "submittedUid": "Abc123XyZ9",
+    "email": "Anna@Example.com",
+    "firstName": " Anna ",
+    "lastName": "Rossi",
+    "phone": "+41 79 123 45 67",
+    "dateOfBirth": "1999-05-17",
+    "gender": "ROBOT",
+    "consent": true,
+    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
+    "lang": "de"
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseSignup",
+  "input": {
+   "formId": "form1",
+   "orgId": "org1",
+   "data": {
+    "status": "SUBMITTED",
+    "submittedUid": "Abc123XyZ9",
+    "email": "Anna@Example.com",
+    "firstName": " Anna ",
+    "lastName": "Rossi",
+    "phone": "+41 79 123 45 67",
+    "dateOfBirth": "1999-05-17",
+    "gender": "NON_BINARY",
+    "consent": true,
+    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
+    "lang": "de"
+   }
+  },
+  "expect": {
+   "formId": "form1",
+   "uid": "Abc123XyZ9",
+   "email": "anna@example.com",
+   "firstName": "Anna",
+   "lastName": "Rossi",
+   "phone": "+41 79 123 45 67",
+   "dateOfBirth": "1999-05-17",
+   "gender": "NON_BINARY",
+   "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
+   "lang": "de"
+  }
+ },
+ {
+  "fn": "parseSignup",
+  "input": {
+   "formId": "form1",
+   "orgId": "org1",
+   "data": {
+    "status": "SUBMITTED",
+    "submittedUid": "Abc123XyZ9",
+    "email": "Anna@Example.com",
+    "firstName": " Anna ",
+    "lastName": "Rossi",
+    "phone": "+41 79 123 45 67",
+    "dateOfBirth": "1999-05-17",
+    "gender": "PREFER_NOT_TO_DISCLOSE",
+    "consent": true,
+    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
+    "lang": "de"
+   }
+  },
+  "expect": {
+   "formId": "form1",
+   "uid": "Abc123XyZ9",
+   "email": "anna@example.com",
+   "firstName": "Anna",
+   "lastName": "Rossi",
+   "phone": "+41 79 123 45 67",
+   "dateOfBirth": "1999-05-17",
+   "gender": "PREFER_NOT_TO_DISCLOSE",
+   "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
+   "lang": "de"
+  }
+ },
+ {
+  "fn": "parseSignup",
+  "input": {
+   "formId": "form1",
+   "orgId": "org1",
+   "data": {
+    "status": "SUBMITTED",
+    "submittedUid": "Abc123XyZ9",
+    "email": "Anna@Example.com",
+    "firstName": " Anna ",
+    "lastName": "Rossi",
+    "phone": "+41 79 123 45 67",
+    "dateOfBirth": "1999-05-17",
+    "gender": "FEMALE",
+    "consent": false,
+    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
+    "lang": "de"
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseSignup",
+  "input": {
+   "formId": "form1",
+   "orgId": "org1",
+   "data": {
+    "status": "SUBMITTED",
+    "submittedUid": "Abc123XyZ9",
+    "email": "Anna@Example.com",
+    "firstName": " Anna ",
+    "lastName": "Rossi",
+    "phone": "+41 79 123 45 67",
+    "dateOfBirth": "1999-05-17",
+    "gender": "FEMALE",
+    "consent": "true",
+    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
+    "lang": "de"
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseSignup",
+  "input": {
+   "formId": "form1",
+   "orgId": "org1",
+   "data": {
+    "status": "SUBMITTED",
+    "submittedUid": "Abc123XyZ9",
+    "email": "Anna@Example.com",
+    "firstName": " Anna ",
+    "lastName": "Rossi",
+    "phone": "+41 79 123 45 67",
+    "dateOfBirth": "1999-05-17",
+    "gender": "FEMALE",
+    "consent": true,
+    "photoPath": "orgs/org1/portalSignupPhotos/other.jpg",
+    "lang": "de"
+   }
+  },
+  "expect": {
+   "formId": "form1",
+   "uid": "Abc123XyZ9",
+   "email": "anna@example.com",
+   "firstName": "Anna",
+   "lastName": "Rossi",
+   "phone": "+41 79 123 45 67",
+   "dateOfBirth": "1999-05-17",
+   "gender": "FEMALE",
+   "photoPath": "",
+   "lang": "de"
+  }
+ },
+ {
+  "fn": "parseSignup",
+  "input": {
+   "formId": "form1",
+   "orgId": "org1",
+   "data": {
+    "status": "SUBMITTED",
+    "submittedUid": "Abc123XyZ9",
+    "email": "Anna@Example.com",
+    "firstName": " Anna ",
+    "lastName": "Rossi",
+    "phone": "+41 79 123 45 67",
+    "dateOfBirth": "1999-05-17",
+    "gender": "FEMALE",
+    "consent": true,
+    "lang": "de"
+   }
+  },
+  "expect": {
+   "formId": "form1",
+   "uid": "Abc123XyZ9",
+   "email": "anna@example.com",
+   "firstName": "Anna",
+   "lastName": "Rossi",
+   "phone": "+41 79 123 45 67",
+   "dateOfBirth": "1999-05-17",
+   "gender": "FEMALE",
+   "photoPath": "",
+   "lang": "de"
+  }
+ },
+ {
+  "fn": "parseSignup",
+  "input": {
+   "formId": "form1",
+   "orgId": "org1",
+   "data": {
+    "status": "SUBMITTED",
+    "submittedUid": "Abc123XyZ9",
+    "email": "bad",
+    "firstName": " Anna ",
+    "lastName": "Rossi",
+    "phone": "+41 79 123 45 67",
+    "dateOfBirth": "1999-05-17",
+    "gender": "FEMALE",
+    "consent": true,
+    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
+    "lang": "de"
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseSignup",
+  "input": {
+   "formId": "form1",
+   "orgId": "org1",
+   "data": {
+    "status": "SUBMITTED",
+    "submittedUid": "Abc123XyZ9",
+    "email": "Anna@Example.com",
+    "firstName": "<b>x</b>",
+    "lastName": "Rossi",
+    "phone": "+41 79 123 45 67",
+    "dateOfBirth": "1999-05-17",
+    "gender": "FEMALE",
+    "consent": true,
+    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
+    "lang": "de"
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseSignup",
+  "input": {
+   "formId": "form1",
+   "orgId": "org1",
+   "data": {
+    "status": "SUBMITTED",
+    "submittedUid": "Abc123XyZ9",
+    "email": "Anna@Example.com",
+    "firstName": " Anna ",
+    "lastName": "   ",
+    "phone": "+41 79 123 45 67",
+    "dateOfBirth": "1999-05-17",
+    "gender": "FEMALE",
+    "consent": true,
+    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
+    "lang": "de"
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseSignup",
+  "input": {
+   "formId": "form1",
+   "orgId": "org1",
+   "data": {
+    "status": "SUBMITTED",
+    "submittedUid": "Abc123XyZ9",
+    "email": "Anna@Example.com",
+    "firstName": " Anna ",
+    "lastName": "Rossi",
+    "phone": "12",
+    "dateOfBirth": "1999-05-17",
+    "gender": "FEMALE",
+    "consent": true,
+    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
+    "lang": "de"
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseRequest",
+  "input": {
+   "requestId": "Abc123XyZ9_PROFILE",
+   "data": {
+    "uid": "Abc123XyZ9",
+    "type": "PROFILE",
+    "status": "PENDING",
+    "email": "Anna@Example.com",
+    "firstName": " Anna  M ",
+    "lastName": "Rossi",
+    "phone": "079 123 45 67"
+   }
+  },
+  "expect": {
+   "requestId": "Abc123XyZ9_PROFILE",
+   "uid": "Abc123XyZ9",
+   "type": "PROFILE",
+   "status": "PENDING",
+   "email": "anna@example.com",
+   "firstName": "Anna M",
+   "lastName": "Rossi",
+   "phone": "079 123 45 67"
+  }
+ },
+ {
+  "fn": "parseRequest",
+  "input": {
+   "requestId": "Abc123XyZ9_PROFILE",
+   "data": {
+    "uid": "Abc123XyZ9",
+    "type": "PROFILE",
+    "status": "PENDING",
+    "email": "Anna@Example.com",
+    "firstName": "{x}",
+    "lastName": "Rossi",
+    "phone": "079 123 45 67"
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseRequest",
+  "input": {
+   "requestId": "Abc123XyZ9_PROFILE",
+   "data": {
+    "uid": "Abc123XyZ9",
+    "type": "PROFILE",
+    "status": "PENDING",
+    "email": "Anna@Example.com",
+    "firstName": " Anna  M ",
+    "lastName": "Rossi",
+    "phone": "x"
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseRequest",
+  "input": {
+   "requestId": "Abc123XyZ9_PROFILE",
+   "data": {
+    "uid": "Abc123XyZ9",
+    "type": "PROFILE",
+    "status": "PENDING",
+    "email": "Anna@Example.com",
+    "firstName": " Anna  M ",
+    "lastName": "Rossi"
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseRequest",
+  "input": {
+   "requestId": "Abc123XyZ9_QR_EMAIL",
+   "data": {
+    "uid": "Abc123XyZ9",
+    "type": "QR_EMAIL",
+    "status": "PENDING",
+    "email": "Anna@Example.com",
+    "firstName": "{x}",
+    "lastName": "Rossi",
+    "phone": "x"
+   }
+  },
+  "expect": {
+   "requestId": "Abc123XyZ9_QR_EMAIL",
+   "uid": "Abc123XyZ9",
+   "type": "QR_EMAIL",
+   "status": "PENDING",
+   "email": "anna@example.com",
+   "firstName": "",
+   "lastName": "",
+   "phone": ""
+  }
+ },
+ {
+  "fn": "parseRequest",
+  "input": {
+   "requestId": "Abc123XyZ9_CLAIM",
+   "data": {
+    "uid": "Abc123XyZ9",
+    "type": "CLAIM",
+    "status": "DONE",
+    "email": "Anna@Example.com",
+    "firstName": " Anna  M ",
+    "lastName": "Rossi",
+    "phone": "079 123 45 67"
+   }
+  },
+  "expect": {
+   "requestId": "Abc123XyZ9_CLAIM",
+   "uid": "Abc123XyZ9",
+   "type": "CLAIM",
+   "status": "DONE",
+   "email": "anna@example.com",
+   "firstName": "",
+   "lastName": "",
+   "phone": ""
+  }
+ },
+ {
+  "fn": "parseRequest",
+  "input": {
+   "requestId": "Abc123XyZ9_CLAIM",
+   "data": {
+    "uid": "Abc123XyZ9",
+    "type": "CLAIM",
+    "email": "Anna@Example.com",
+    "firstName": " Anna  M ",
+    "lastName": "Rossi",
+    "phone": "079 123 45 67"
+   }
+  },
+  "expect": {
+   "requestId": "Abc123XyZ9_CLAIM",
+   "uid": "Abc123XyZ9",
+   "type": "CLAIM",
+   "status": "",
+   "email": "anna@example.com",
+   "firstName": "",
+   "lastName": "",
+   "phone": ""
+  }
+ },
+ {
+  "fn": "parseRequest",
+  "input": {
+   "requestId": "Abc123XyZ9_CLAIM",
+   "data": {
+    "uid": "Abc123XyZ9",
+    "type": "PROFILE",
+    "status": "PENDING",
+    "email": "Anna@Example.com",
+    "firstName": " Anna  M ",
+    "lastName": "Rossi",
+    "phone": "079 123 45 67"
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseRequest",
+  "input": {
+   "requestId": "Other12345_PROFILE",
+   "data": {
+    "uid": "Abc123XyZ9",
+    "type": "PROFILE",
+    "status": "PENDING",
+    "email": "Anna@Example.com",
+    "firstName": " Anna  M ",
+    "lastName": "Rossi",
+    "phone": "079 123 45 67"
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseRequest",
+  "input": {
+   "requestId": "Abc123XyZ9_PROFILE",
+   "data": {
+    "uid": "abc-123-xyz",
+    "type": "PROFILE",
+    "status": "PENDING",
+    "email": "Anna@Example.com",
+    "firstName": " Anna  M ",
+    "lastName": "Rossi",
+    "phone": "079 123 45 67"
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseRequest",
+  "input": {
+   "requestId": "Abc123XyZ9_BOGUS",
+   "data": {
+    "uid": "Abc123XyZ9",
+    "type": "BOGUS",
+    "status": "PENDING",
+    "email": "Anna@Example.com",
+    "firstName": " Anna  M ",
+    "lastName": "Rossi",
+    "phone": "079 123 45 67"
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseRequest",
+  "input": {
+   "requestId": "Abc123XyZ9_PROFILE",
+   "data": {
+    "uid": "Abc123XyZ9",
+    "type": "PROFILE",
+    "status": "PENDING",
+    "email": "nope",
+    "firstName": " Anna  M ",
+    "lastName": "Rossi",
+    "phone": "079 123 45 67"
+   }
+  },
+  "expect": null
+ }
+]

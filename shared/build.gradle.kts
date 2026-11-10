@@ -339,7 +339,15 @@ compose.resources {
 }
 
 val syncWebFormResources = tasks.register<Copy>("syncWebFormResources") {
-    from(rootProject.file("webform"))
+    from(rootProject.file("webform")) {
+        exclude(
+            "functions/node_modules/**",
+            "functions/src/**",
+            "functions/test/**",
+            "functions/.env.local",
+            "functions/.secret.local",
+        )
+    }
     into(layout.projectDirectory.dir("src/commonMain/composeResources/files/webform"))
 }
 
