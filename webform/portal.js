@@ -490,16 +490,18 @@ function portalView(payload, now) {
     const { past, upcoming } = splitShifts(payload.shifts, now);
     const benefits = (step?.benefits || []).filter((b) => stillValid(b, now));
     const summary = step?.summary && stillValid(step.summary, now) ? step.summary : null;
+    // Past shifts left out of the list by the 60 cap still count in the total.
+    const older = Math.max(0, Number(payload.olderShifts) || 0);
     return {
       active: Boolean(step?.active),
-      totalShifts: past.length,
+      totalShifts: past.length + older,
       lastShiftAt: lastShiftAt(payload, now),
       entries: Number(step?.uniqueEntriesRemaining) || 0,
       summary,
       benefits,
       upcoming: upcoming.slice().sort((x, y) => Number(x.date) - Number(y.date)),
       past: past.slice().sort((x, y) => Number(y.date) - Number(x.date)),
-      moreShifts: 0,
+      moreShifts: older,
     };
   }
   const list = Array.isArray(payload.benefits) ? payload.benefits : [];

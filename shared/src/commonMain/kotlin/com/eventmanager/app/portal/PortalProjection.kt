@@ -95,6 +95,8 @@ object PortalProjectionBuilder {
             put("shifts", buildJsonArray {
                 shifts.forEach { add(shiftJson(it, configsByName, (if (it.jobNanoId in upcomingIds) gainsByJob[it.jobNanoId]?.gains else null).orEmpty())) }
             })
+            // Past shifts left out by the cap, so the page can still show the real total.
+            put("olderShifts", (pastJobs.size - MAX_PAST_SHIFTS).coerceAtLeast(0))
             put("lastShiftFloor", volunteer.lastShiftDate ?: 0L)
             // The first step holds from the beginning of time: its computed start is just today's
             // day start, which would change the hash every day even when nothing else did.

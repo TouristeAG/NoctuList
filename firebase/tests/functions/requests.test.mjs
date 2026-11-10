@@ -173,7 +173,7 @@ describe("onPortalRequestWritten: PROFILE", () => {
     const payload = JSON.stringify({
       firstName: "Léa", lastName: "MARTIN", email: "lea@mail.example", phone: "079 000 00 00",
       dateOfBirth: "1998-04-12", gender: "FEMALE", hasPhoto: true, photoVersion: "abcdef0123456789",
-      shifts: [{ date: 1, venue: "Main" }], lastShiftFloor: 0,
+      shifts: [{ date: 1, venue: "Main" }], olderShifts: 0, lastShiftFloor: 0,
       timeline: [{ from: 0, active: true, summary: "x", benefits: [], uniqueEntriesRemaining: null }],
       wallet: { balance: 12.5, currency: "CHF", transfers: [] },
       qrEmailAllowed: true, mustSetPassword: false, association: "Asso Test",

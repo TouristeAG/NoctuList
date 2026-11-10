@@ -19,7 +19,8 @@ const VOLUNTEER_KEYS = [
 ];
 const PAYLOAD_KEYS = [
   "firstName", "lastName", "email", "phone", "dateOfBirth", "gender", "hasPhoto", "photoVersion",
-  "shifts", "lastShiftFloor", "timeline", "wallet", "qrEmailAllowed", "mustSetPassword", "association",
+  "shifts", "olderShifts", "lastShiftFloor", "timeline", "wallet", "qrEmailAllowed", "mustSetPassword",
+  "association",
 ];
 
 if (!process.env.FIRESTORE_EMULATOR_HOST || !process.env.FIREBASE_STORAGE_EMULATOR_HOST) {
@@ -190,6 +191,7 @@ describe("onSignupWritten", () => {
       hasPhoto: false,
       photoVersion: "",
       shifts: [],
+      olderShifts: 0,
       lastShiftFloor: 0,
       timeline: [{ from: 0, active: false, summary: null, benefits: [], uniqueEntriesRemaining: null }],
       wallet: { balance: 0, currency: "CHF", transfers: [] },

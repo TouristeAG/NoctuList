@@ -106,6 +106,7 @@ export function minimalProjection(v: MinimalProjectionInput, now = Date.now()): 
     hasPhoto,
     photoVersion: hasPhoto ? v.photoVersion : "",
     shifts: [],
+    olderShifts: 0,
     lastShiftFloor: 0,
     timeline: [{ from: 0, active: false, summary: null, benefits: [], uniqueEntriesRemaining: null }],
     wallet: { balance: 0, currency: v.currency.trim() || "CHF", transfers: [] },

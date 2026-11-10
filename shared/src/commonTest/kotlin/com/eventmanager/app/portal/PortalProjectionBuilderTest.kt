@@ -118,12 +118,15 @@ class PortalProjectionBuilderTest {
         assertEquals("FEMALE", json["gender"]!!.jsonPrimitive.content)
         assertEquals(3, json["shifts"]!!.jsonArray.size)
         assertEquals(0L, json["lastShiftFloor"]!!.jsonPrimitive.long)
+        assertEquals(0L, json["olderShifts"]!!.jsonPrimitive.long)
+        // Same order as minimalProjection (webform/functions/src/common.ts): it feeds the hash.
         assertEquals(
-            setOf(
+            listOf(
                 "firstName", "lastName", "email", "phone", "dateOfBirth", "gender", "hasPhoto", "photoVersion",
-                "shifts", "lastShiftFloor", "timeline", "wallet", "qrEmailAllowed", "mustSetPassword", "association",
+                "shifts", "olderShifts", "lastShiftFloor", "timeline", "wallet", "qrEmailAllowed", "mustSetPassword",
+                "association",
             ),
-            json.keys,
+            json.keys.toList(),
         )
         val step = json["timeline"]!!.jsonArray[0].jsonObject
         assertEquals(setOf("from", "active", "summary", "benefits", "uniqueEntriesRemaining"), step.keys)
@@ -194,6 +197,32 @@ class PortalProjectionBuilderTest {
         // Earliest 10 upcoming kept.
         assertTrue(dates.any { it == now + 11 * day })
         assertTrue(dates.none { it == now + 12 * day })
+    }
+
+    @Test
+    fun olderShiftsCountsPastShiftsLeftOutByTheCap() {
+        val jobs = (1..65).map { job(-it.toLong()) } + (1..3).map { job(it.toLong()) }
+        val json = Json.parseToJsonElement(PortalProjectionBuilder.build(input(jobs = jobs)).payload).jsonObject
+        val dates = json["shifts"]!!.jsonArray.map { it.jsonObject["date"]!!.jsonPrimitive.long }
+        assertEquals(60, dates.count { it < now })
+        assertEquals(3, dates.count { it > now })
+        assertEquals(5L, json["olderShifts"]!!.jsonPrimitive.long)
+    }
+
+    @Test
+    fun earlierTodayIsNotAnOlderShift() {
+        // Day-aligned like the split: a shift earlier today is upcoming, so 60 strictly past days fit.
+        val jobs = (1..60).map { job(-it.toLong()) } + Job(
+            volunteerId = secretId,
+            jobType = JobType.BAR,
+            jobTypeName = "Bar",
+            venueName = "Le Terreau",
+            date = now - 60_000L,
+            shiftTime = ShiftTime.BEFORE_MIDNIGHT,
+        )
+        val json = Json.parseToJsonElement(PortalProjectionBuilder.build(input(jobs = jobs)).payload).jsonObject
+        assertEquals(61, json["shifts"]!!.jsonArray.size)
+        assertEquals(0L, json["olderShifts"]!!.jsonPrimitive.long)
     }
 
     @Test
