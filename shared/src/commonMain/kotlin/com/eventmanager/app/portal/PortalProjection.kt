@@ -4,15 +4,12 @@ import com.eventmanager.app.data.models.AccountHolderType
 import com.eventmanager.app.data.models.AccountTransfer
 import com.eventmanager.app.data.models.AccountTransferType
 import com.eventmanager.app.data.models.Benefit
-import com.eventmanager.app.data.models.BenefitCalculator
 import com.eventmanager.app.data.models.Job
 import com.eventmanager.app.data.models.JobTypeConfig
 import com.eventmanager.app.data.models.NovaJobType
 import com.eventmanager.app.data.models.Volunteer
-import com.eventmanager.app.data.models.VolunteerRank
 import com.eventmanager.app.data.models.affectsAccountLedger
-import com.eventmanager.app.data.models.isNovaMeetingOnlyStylePerk
-import com.eventmanager.app.data.utils.VolunteerActivityManager
+import com.eventmanager.app.data.utils.DateTimeUtils
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -59,7 +56,7 @@ data class PortalProjection(
     )
 
     companion object {
-        const val SCHEMA = 1
+        const val SCHEMA = 2
         const val COLLECTION = "volunteerPortal"
     }
 }
@@ -73,19 +70,16 @@ object PortalProjectionBuilder {
     fun build(input: PortalProjectionInput): PortalProjection {
         val volunteer = input.volunteer
         val jobs = input.jobs.filter { it.volunteerId == volunteer.id }
-        val status = BenefitCalculator.calculateVolunteerBenefitStatusFromVolunteerJobs(
-            volunteer,
-            jobs,
-            input.jobTypeConfigs,
-            input.now,
-            input.offsetHours,
-        )
         val configsByName = input.jobTypeConfigs.associateBy { it.name }
-        val past = jobs.filter { it.date <= input.now }.sortedByDescending { it.date }
-        val upcoming = jobs.filter { it.date > input.now }.sortedBy { it.date }
-        val benefits = status.activeBenefits
-            .filter { it.isActive || (it.futureEventEntriesRemaining ?: 0) > 0 }
-            .filterNot { status.rank == VolunteerRank.ORION && it.isNovaMeetingOnlyStylePerk() }
+        val timeline = PortalTimelineBuilder.build(volunteer, jobs, input.jobTypeConfigs, input.now, input.offsetHours)
+        val gainsByJob = timeline.gains.associateBy { it.jobNanoId }
+        // Day-aligned like the timeline, never the raw `now`: the hash stays stable within a local day.
+        val today = DateTimeUtils.getStartOfDayWithOffset(input.now, input.offsetHours)
+        val (upcomingJobs, pastJobs) = jobs.partition {
+            DateTimeUtils.getStartOfDayWithOffset(it.date, input.offsetHours) >= today
+        }
+        val shifts = upcomingJobs.sortedBy { it.date }.take(MAX_UPCOMING_SHIFTS) +
+            pastJobs.sortedByDescending { it.date }.take(MAX_PAST_SHIFTS)
 
         val payload = buildJsonObject {
             put("firstName", volunteer.name.trim())
@@ -96,19 +90,15 @@ object PortalProjectionBuilder {
             put("gender", volunteer.gender?.name ?: "")
             put("hasPhoto", input.hasPhoto)
             put("photoVersion", if (input.hasPhoto) input.photoVersion else "")
-            put("rank", status.rank?.name ?: "")
-            put("active", VolunteerActivityManager.isVolunteerActive(volunteer, jobs))
-            put("totalShifts", jobs.size)
-            put("lastShiftAt", VolunteerActivityManager.effectiveLastShiftDate(volunteer, jobs) ?: 0L)
-            put("shiftsTotal", past.size)
-            put("shifts", buildJsonArray { past.take(MAX_PAST_SHIFTS).forEach { add(shiftJson(it, configsByName)) } })
-            put("upcomingShifts", buildJsonArray {
-                upcoming.take(MAX_UPCOMING_SHIFTS).forEach { add(shiftJson(it, configsByName)) }
+            put("shifts", buildJsonArray {
+                shifts.forEach { add(shiftJson(it, configsByName, gainsByJob[it.jobNanoId]?.gains.orEmpty())) }
             })
-            put("benefits", buildJsonArray { benefits.forEach { add(benefitJson(it)) } })
-            // What applies right now, combined across ranks exactly as the door and bar see it.
-            if (benefits.isNotEmpty()) put("summary", benefitJson(status.benefits))
-            put("uniqueEntriesRemaining", status.benefits.futureEventEntriesRemaining?.let { JsonPrimitive(it) } ?: JsonNull)
+            put("lastShiftFloor", volunteer.lastShiftDate ?: 0L)
+            // The first step holds from the beginning of time: its computed start is just today's
+            // day start, which would change the hash every day even when nothing else did.
+            put("timeline", buildJsonArray {
+                timeline.steps.forEachIndexed { i, step -> add(stepJson(step, if (i == 0) 0L else step.from)) }
+            })
             put("wallet", walletJson(input))
             // The wallet QR doubles as an admin key for admin volunteers: never mail it from the web.
             put("qrEmailAllowed", !volunteer.isAdmin && volunteer.email.isNotBlank())
@@ -118,7 +108,7 @@ object PortalProjectionBuilder {
         return PortalProjection(payload = payload, contentHash = sha256(payload))
     }
 
-    private fun shiftJson(job: Job, configsByName: Map<String, JobTypeConfig>): JsonObject {
+    private fun shiftJson(job: Job, configsByName: Map<String, JobTypeConfig>, gains: List<Benefit>): JsonObject {
         val config = configsByName[job.jobTypeName]
         val tracksShiftTime = config == null ||
             (config.isShiftJob && config.requiresShiftTime && config.novaJobType == NovaJobType.DEFAULT_SHIFT)
@@ -127,11 +117,19 @@ object PortalProjectionBuilder {
             put("jobTypeName", job.jobTypeName.take(MAX_LABEL))
             put("venueName", job.venueName.take(MAX_LABEL))
             put("shiftTime", if (tracksShiftTime) job.shiftTime.name else "")
+            if (gains.isNotEmpty()) put("gains", buildJsonArray { gains.forEach { add(benefitJson(it)) } })
         }
     }
 
+    private fun stepJson(step: PortalTimelineStep, from: Long): JsonObject = buildJsonObject {
+        put("from", from)
+        put("active", step.active)
+        put("summary", step.summary?.let { benefitJson(it) } ?: JsonNull)
+        put("benefits", buildJsonArray { step.benefits.forEach { add(benefitJson(it)) } })
+        put("uniqueEntriesRemaining", step.uniqueEntriesRemaining?.let { JsonPrimitive(it) } ?: JsonNull)
+    }
+
     private fun benefitJson(benefit: Benefit): JsonObject = buildJsonObject {
-        put("rank", benefit.rank?.name ?: "")
         put("description", benefit.description.take(160))
         put("freeEntry", benefit.freeEntry)
         put("friendInvitation", benefit.friendInvitation)
