@@ -266,18 +266,6 @@ body.portal .auth-page { max-width: 460px; margin: 0 auto; }
 .status-dot.on { color: var(--success); }
 .status-dot.on::before { background: var(--success); box-shadow: 0 0 0 4px var(--success-container); }
 
-.rank-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
-  border-radius: var(--radius-pill);
-  background: var(--primary-container);
-  color: var(--on-primary-container);
-  font-weight: 800;
-  font-size: 0.85rem;
-}
-
 .stat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
 .stat {
   padding: 14px;
@@ -360,6 +348,8 @@ body.portal .auth-page { max-width: 460px; margin: 0 auto; }
 .btn-row > button { flex: 1 1 180px; }
 
 .upcoming-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.gains-label { margin-top: 6px; font-size: 0.78rem; font-weight: 800; color: var(--primary); }
+.gains-line { font-size: 0.8rem; font-weight: 600; color: var(--muted); }
 .upcoming-card {
   display: flex;
   align-items: center;
@@ -451,8 +441,8 @@ body.portal .auth-page { max-width: 460px; margin: 0 auto; }
 .perk-tile .ico { color: var(--primary); }
 .perk-value { font-size: 1.15rem; font-weight: 800; line-height: 1.15; }
 .perk-label { font-size: 0.78rem; font-weight: 700; color: var(--muted); }
-.rank-list li { gap: 10px; }
-.rank-list .meta-line { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.benefit-list li { gap: 10px; }
+.benefit-list .meta-line { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* "My account" window */
 dialog.sheet {

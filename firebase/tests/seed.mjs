@@ -1,5 +1,6 @@
 // Seeds the running emulators with demo data so every public page can be previewed locally:
 //   node seed.mjs            (emulators started with `npm run preview`)
+//   node seed.mjs --schema1  (old document shape, for the compatibility check)
 // Only ever talks to the demo project on 127.0.0.1 — never to a real Firebase project.
 import { initializeTestEnvironment } from "@firebase/rules-unit-testing";
 import { doc, setDoc } from "firebase/firestore";
@@ -111,7 +112,7 @@ export async function seed() {
       venueName,
       shiftTime,
     });
-    const payload = {
+    const base = {
       firstName: "Léa",
       lastName: "MARTIN",
       email: "lea.demo@example.org",
@@ -120,62 +121,87 @@ export async function seed() {
       gender: "FEMALE",
       hasPhoto: false,
       photoVersion: "",
-      rank: "GALAXIE",
-      active: true,
-      totalShifts: 27,
-      lastShiftAt: now - 4 * DAY,
-      shiftsTotal: 25,
-      shifts: [
-        shift(4, "Bar", "Le Terreau", "BEFORE_MIDNIGHT"),
-        shift(9, "Entrée", "Groove", "AFTER_MIDNIGHT"),
-        shift(16, "Bar", "Le Terreau", "AFTER_MIDNIGHT"),
-        shift(23, "Montage", "Groove", ""),
-        shift(31, "Vestiaire", "Le Terreau", "BEFORE_MIDNIGHT"),
-        shift(45, "Bar", "Groove", "AFTER_MIDNIGHT"),
-        shift(60, "Réunion", "", ""),
-        shift(74, "Bar", "Le Terreau", "BEFORE_MIDNIGHT"),
-        shift(88, "Lumière", "Groove", ""),
-        shift(102, "Bar", "Le Terreau", "AFTER_MIDNIGHT"),
-      ],
-      upcomingShifts: [
-        { date: now + 2 * DAY, jobTypeName: "Bar", venueName: "Le Terreau", shiftTime: "BEFORE_MIDNIGHT" },
-        { date: now + 9 * DAY, jobTypeName: "Entrée", venueName: "Groove", shiftTime: "AFTER_MIDNIGHT" },
-      ],
-      benefits: [
-        {
-          rank: "GALAXIE", description: "Galaxie, 3 shifts ce mois", freeEntry: true, friendInvitation: true,
-          inviteCount: 1, drinkTokens: 2, barDiscount: 20, guestListAccess: true, validUntil: now + 21 * DAY,
-          futureEntriesRemaining: null, futureEntryInvites: null,
-        },
-        {
-          rank: "NOVA", description: "Nova, shift du mois", freeEntry: true, friendInvitation: false,
-          inviteCount: 0, drinkTokens: 1, barDiscount: 0, guestListAccess: true, validUntil: now + 10 * DAY,
-          futureEntriesRemaining: 2, futureEntryInvites: 1,
-        },
-      ],
-      summary: {
-        rank: "GALAXIE", description: "", freeEntry: true, friendInvitation: true, inviteCount: 1,
-        drinkTokens: 2, barDiscount: 20, guestListAccess: true, validUntil: now + 21 * DAY,
-        futureEntriesRemaining: 2, futureEntryInvites: 1,
-      },
-      uniqueEntriesRemaining: 2,
-      wallet: {
-        balance: 34.5,
-        currency: "CHF",
-        transfers: [
-          { at: now - 1 * DAY, type: "POS_SALE", amount: -6.5, label: "2x Bière", venue: "Le Terreau" },
-          { at: now - 4 * DAY, type: "SHIFT_CREDIT", amount: 15, label: "Bar", venue: "" },
-          { at: now - 9 * DAY, type: "SHIFT_CREDIT", amount: 15, label: "Entrée", venue: "" },
-          { at: now - 12 * DAY, type: "POS_SALE", amount: -4, label: "1x T-shirt", venue: "Groove" },
-          { at: now - 16 * DAY, type: "MANUAL_ADJUSTMENT", amount: 10, label: "Bonus montage", venue: "" },
-        ],
-      },
-      qrEmailAllowed: true,
-      mustSetPassword: false,
-      association: "Association Démo",
     };
+    const wallet = {
+      balance: 34.5,
+      currency: "CHF",
+      transfers: [
+        { at: now - 1 * DAY, type: "POS_SALE", amount: -6.5, label: "2x Bière", venue: "Le Terreau" },
+        { at: now - 4 * DAY, type: "SHIFT_CREDIT", amount: 15, label: "Bar", venue: "" },
+        { at: now - 9 * DAY, type: "SHIFT_CREDIT", amount: 15, label: "Entrée", venue: "" },
+        { at: now - 12 * DAY, type: "POS_SALE", amount: -4, label: "1x T-shirt", venue: "Groove" },
+        { at: now - 16 * DAY, type: "MANUAL_ADJUSTMENT", amount: 10, label: "Bonus montage", venue: "" },
+      ],
+    };
+    const tail = { wallet, qrEmailAllowed: true, mustSetPassword: false, association: "Association Démo" };
+    const benefit = (description, fields) => ({
+      description, freeEntry: false, friendInvitation: false, inviteCount: 0, drinkTokens: 0, barDiscount: 0,
+      guestListAccess: false, validUntil: null, futureEntriesRemaining: null, futureEntryInvites: null, ...fields,
+    });
+    const past = [
+      shift(4, "Bar", "Le Terreau", "BEFORE_MIDNIGHT"),
+      shift(9, "Entrée", "Groove", "AFTER_MIDNIGHT"),
+      shift(16, "Bar", "Le Terreau", "AFTER_MIDNIGHT"),
+      shift(23, "Montage", "Groove", ""),
+      shift(31, "Vestiaire", "Le Terreau", "BEFORE_MIDNIGHT"),
+      shift(45, "Bar", "Groove", "AFTER_MIDNIGHT"),
+    ];
+    let payload;
+    if (process.argv.includes("--schema1")) {
+      // Old shape (rank, split lists), to check that unrepublished documents still render.
+      payload = {
+        ...base,
+        rank: "GALAXIE",
+        active: true,
+        totalShifts: 27,
+        lastShiftAt: now - 4 * DAY,
+        shiftsTotal: 25,
+        shifts: past,
+        upcomingShifts: [
+          { date: now + 2 * DAY, jobTypeName: "Bar", venueName: "Le Terreau", shiftTime: "BEFORE_MIDNIGHT" },
+        ],
+        benefits: [
+          { rank: "GALAXIE", ...benefit("Galaxie, 3 shifts ce mois", {
+            freeEntry: true, friendInvitation: true, inviteCount: 1, drinkTokens: 2, barDiscount: 20,
+            guestListAccess: true, validUntil: now + 21 * DAY }) },
+        ],
+        summary: { rank: "GALAXIE", ...benefit("", {
+          freeEntry: true, friendInvitation: true, inviteCount: 1, drinkTokens: 2, barDiscount: 20,
+          guestListAccess: true, validUntil: now + 21 * DAY }) },
+        uniqueEntriesRemaining: 2,
+        ...tail,
+      };
+    } else {
+      const monthly = benefit("3 shifts ce mois", {
+        freeEntry: true, friendInvitation: true, inviteCount: 1, drinkTokens: 2, barDiscount: 20,
+        guestListAccess: true, validUntil: now + 21 * DAY });
+      const expiring = benefit("Shift du mois, 1 jeton offert", { drinkTokens: 1, validUntil: now + 1 * DAY });
+      payload = {
+        ...base,
+        shifts: [
+          {
+            date: now + 1 * DAY, jobTypeName: "Bar", venueName: "Le Terreau", shiftTime: "BEFORE_MIDNIGHT",
+            gains: [benefit("", { freeEntry: true, drinkTokens: 2 })],
+          },
+          ...past,
+        ],
+        lastShiftFloor: now - 4 * DAY,
+        timeline: [
+          { from: 0, active: false, summary: null, benefits: [], uniqueEntriesRemaining: null },
+          {
+            from: now - 20 * DAY, active: true, summary: { ...monthly, drinkTokens: 3 },
+            benefits: [monthly, expiring], uniqueEntriesRemaining: 2,
+          },
+          // A later step, to show the page keeps the current one until it starts.
+          {
+            from: now + 40 * DAY, active: false, summary: null, benefits: [], uniqueEntriesRemaining: null,
+          },
+        ],
+        ...tail,
+      };
+    }
     await setDoc(org(`volunteerPortal/${portalUid}`), {
-      schema: 1,
+      schema: payload.timeline ? 2 : 1,
       payload: JSON.stringify(payload),
       contentHash: "demo",
       updatedAt: now - 3 * 60 * 1000,

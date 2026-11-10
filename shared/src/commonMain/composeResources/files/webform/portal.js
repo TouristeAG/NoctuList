@@ -120,10 +120,6 @@ function ago(millis) {
   return t("daysAgo", { n: Math.floor(h / 24) });
 }
 
-function rankLabel(rank) {
-  return rank ? t(`rank${rank}`) : t("noRank");
-}
-
 function millisOf(value) {
   if (!value) return 0;
   if (typeof value === "number") return value;
@@ -446,22 +442,86 @@ async function onQrClick(event) {
   }
 }
 
-function infoTile() {
-  const p = projection;
+// ---------- Portal data (schema 2 timeline, schema 1 fallback) ----------
+
+/** Last timeline step whose start has passed; the first step starts at 0, so there is one unless the list is empty. */
+function currentStep(payload, now) {
+  const steps = Array.isArray(payload?.timeline) ? payload.timeline : [];
+  if (!steps.length) return null;
+  let current = steps[0];
+  steps.forEach((step) => {
+    if (Number(step.from) <= now) current = step;
+  });
+  return current;
+}
+
+/** Shifts that already started (past) and the rest (upcoming), by comparing the shift date with now. */
+function splitShifts(shifts, now) {
+  const list = Array.isArray(shifts) ? shifts : [];
+  return {
+    past: list.filter((s) => Number(s.date) < now),
+    upcoming: list.filter((s) => Number(s.date) >= now),
+  };
+}
+
+/** Latest of the past shift dates and the published floor; 0 means no shift yet. */
+function lastShiftAt(payload, now) {
+  const { past } = splitShifts(payload?.shifts, now);
+  return Math.max(0, Number(payload?.lastShiftFloor) || 0, ...past.map((s) => Number(s.date) || 0));
+}
+
+function stillValid(benefit, now) {
+  return !(benefit?.validUntil != null && Number(benefit.validUntil) < now);
+}
+
+/** One shape for both payload versions, as of `now`. */
+function portalView(payload, now) {
+  if (Array.isArray(payload.timeline)) {
+    const step = currentStep(payload, now);
+    const { past, upcoming } = splitShifts(payload.shifts, now);
+    const benefits = (step?.benefits || []).filter((b) => stillValid(b, now));
+    const summary = step?.summary && stillValid(step.summary, now) ? step.summary : null;
+    return {
+      active: Boolean(step?.active),
+      totalShifts: past.length,
+      lastShiftAt: lastShiftAt(payload, now),
+      entries: Number(step?.uniqueEntriesRemaining) || 0,
+      summary,
+      benefits,
+      upcoming: upcoming.slice().sort((x, y) => Number(x.date) - Number(y.date)),
+      past: past.slice().sort((x, y) => Number(y.date) - Number(x.date)),
+      moreShifts: 0,
+    };
+  }
+  const list = Array.isArray(payload.benefits) ? payload.benefits : [];
+  return {
+    active: Boolean(payload.active),
+    totalShifts: Number(payload.totalShifts) || 0,
+    lastShiftAt: Number(payload.lastShiftAt) || 0,
+    entries: Number(payload.uniqueEntriesRemaining) || 0,
+    summary: benefitSummary(list, payload),
+    benefits: list,
+    upcoming: Array.isArray(payload.upcomingShifts) ? payload.upcomingShifts : [],
+    past: Array.isArray(payload.shifts) ? payload.shifts : [],
+    moreShifts: Math.max(0, (Number(payload.shiftsTotal) || 0) - (Array.isArray(payload.shifts) ? payload.shifts.length : 0)),
+  };
+}
+
+function infoTile(view) {
   const card = tile("info", t("volunteerInfo"), "star", { alt: true });
-  const status = el("span", { class: `status-dot${p.active ? " on" : ""}`, text: p.active ? t("active") : t("inactive") });
+  const status = el("span", { class: `status-dot${view.active ? " on" : ""}`, text: view.active ? t("active") : t("inactive") });
   card.append(kv([
-    [t("rank"), el("span", { class: "rank-badge", text: rankLabel(p.rank) })],
     [t("status"), status],
-    [t("totalShifts"), String(p.totalShifts ?? 0)],
-    [t("lastShift"), p.lastShiftAt ? fmtDate(p.lastShiftAt) : "-"],
+    [t("totalShifts"), String(view.totalShifts)],
+    [t("lastShift"), view.lastShiftAt ? fmtDate(view.lastShiftAt) : "-"],
   ]));
   return card;
 }
 
-/** Combined benefits as the door and bar apply them; falls back to merging the per-rank list. */
-function benefitSummary(list) {
-  if (projection.summary && typeof projection.summary === "object") return projection.summary;
+/** Schema 1: the combined benefits as the door and bar apply them, or a merge of the list. */
+function benefitSummary(list, payload) {
+  if (payload.summary && typeof payload.summary === "object") return payload.summary;
+  if (!list.length) return null;
   return list.reduce((acc, b) => ({
     freeEntry: acc.freeEntry || Boolean(b.freeEntry),
     friendInvitation: acc.friendInvitation || Boolean(b.friendInvitation),
@@ -480,11 +540,10 @@ function perkTile(iconName, value, label) {
     el("div", { class: "perk-label", text: label }));
 }
 
-function benefitsTile() {
-  const p = projection;
+function benefitsTile(view) {
   const card = tile("benefits", t("benefits"), "gift");
-  const list = Array.isArray(p.benefits) ? p.benefits : [];
-  const entries = Number(p.uniqueEntriesRemaining) || 0;
+  const list = view.benefits;
+  const entries = view.entries;
   if (entries > 0) {
     card.append(el("div", { class: "entries-banner" },
       el("div", { class: "entries-count", text: String(entries) }),
@@ -496,14 +555,16 @@ function benefitsTile() {
     if (!entries) card.append(el("p", { class: "empty", text: t("noBenefits") }));
     return card;
   }
-  const s = benefitSummary(list);
+  const s = view.summary;
   const perks = [];
-  if (s.freeEntry) perks.push(perkTile("ticket", t("included"), t("perkFreeEntry")));
-  const invites = Number(s.inviteCount) || (s.friendInvitation ? 1 : 0);
-  if (invites > 0) perks.push(perkTile("user", `+${invites}`, t("perkInvites")));
-  if (Number(s.drinkTokens) > 0) perks.push(perkTile("drink", String(s.drinkTokens), t("perkDrinks")));
-  if (Number(s.barDiscount) > 0) perks.push(perkTile("percent", `${s.barDiscount} %`, t("perkBarDiscount")));
-  if (s.guestListAccess) perks.push(perkTile("list", t("included"), t("perkGuestList")));
+  if (s) {
+    if (s.freeEntry) perks.push(perkTile("ticket", t("included"), t("perkFreeEntry")));
+    const invites = Number(s.inviteCount) || (s.friendInvitation ? 1 : 0);
+    if (invites > 0) perks.push(perkTile("user", `+${invites}`, t("perkInvites")));
+    if (Number(s.drinkTokens) > 0) perks.push(perkTile("drink", String(s.drinkTokens), t("perkDrinks")));
+    if (Number(s.barDiscount) > 0) perks.push(perkTile("percent", `${s.barDiscount} %`, t("perkBarDiscount")));
+    if (s.guestListAccess) perks.push(perkTile("list", t("included"), t("perkGuestList")));
+  }
   if (perks.length) {
     const until = Number(s.validUntil) || Math.max(0, ...list.map((b) => Number(b.validUntil) || 0));
     card.append(el("div", { class: "section-row" },
@@ -511,16 +572,26 @@ function benefitsTile() {
       until ? el("span", { class: "until", text: t("untilShort", { date: fmtDate(until) }) }) : null));
     card.append(el("div", { class: "perk-grid" }, perks));
   }
-  card.append(el("h3", { class: "list-title spaced", text: t("fromRanks") }));
-  const ul = el("ul", { class: "list rank-list" });
+  const ul = el("ul", { class: "list benefit-list" });
   list.forEach((b) => {
     ul.append(el("li", {},
-      el("span", { class: "rank-badge", text: rankLabel(b.rank) }),
-      el("span", { class: "grow meta-line", text: b.description || "" }),
+      el("span", { class: "grow meta-line", text: b.description || gainsText(b) }),
       b.validUntil ? el("span", { class: "until", text: t("untilShort", { date: fmtDate(b.validUntil) }) }) : null));
   });
   card.append(ul);
   return card;
+}
+
+/** Compact one-line wording of a benefit, using the same labels as the perk tiles. */
+function gainsText(b) {
+  const parts = [];
+  if (b.freeEntry) parts.push(t("perkFreeEntry"));
+  const invites = Number(b.inviteCount) || (b.friendInvitation ? 1 : 0);
+  if (invites > 0) parts.push(`+${invites} ${t("perkInvites")}`);
+  if (Number(b.drinkTokens) > 0) parts.push(`${b.drinkTokens} ${t("perkDrinks")}`);
+  if (Number(b.barDiscount) > 0) parts.push(`${b.barDiscount} % ${t("perkBarDiscount")}`);
+  if (b.guestListAccess) parts.push(t("perkGuestList"));
+  return parts.join(" · ");
 }
 
 function walletTile() {
@@ -568,8 +639,17 @@ function shiftMeta(s) {
   ].filter(Boolean).join(" · ");
 }
 
-function upcomingTile() {
-  const list = Array.isArray(projection.upcomingShifts) ? projection.upcomingShifts : [];
+function gainLines(shift) {
+  const lines = (Array.isArray(shift.gains) ? shift.gains : []).map(gainsText).filter(Boolean);
+  if (!lines.length) return [];
+  return [
+    el("div", { class: "gains-label", text: t("shiftGains") }),
+    ...lines.map((text) => el("div", { class: "gains-line", text })),
+  ];
+}
+
+function upcomingTile(view) {
+  const list = view.upcoming;
   if (!list.length) return null;
   const card = tile("upcoming", t("upcoming"), "calendar");
   const grid = el("div", { class: "upcoming-grid" });
@@ -578,14 +658,15 @@ function upcomingTile() {
       dateBadge(s.date, true),
       el("div", { class: "grow" },
         el("div", { class: "title", text: s.jobTypeName }),
-        el("div", { class: "meta-line", text: shiftMeta(s) }))));
+        el("div", { class: "meta-line", text: shiftMeta(s) }),
+        ...gainLines(s))));
   });
   card.append(grid);
   return card;
 }
 
-function historyTile() {
-  const list = Array.isArray(projection.shifts) ? projection.shifts : [];
+function historyTile(view) {
+  const list = view.past;
   const card = tile("history", t("history"), "clock", { alt: true });
   if (!list.length) {
     card.append(el("p", { class: "empty", text: t("noShifts") }));
@@ -600,7 +681,7 @@ function historyTile() {
         el("div", { class: "meta-line", text: shiftMeta(s) }))));
   });
   card.append(ul);
-  const more = Number(projection.shiftsTotal || 0) - list.length;
+  const more = view.moreShifts;
   if (more > 0) card.append(el("p", { class: "small-note", text: t("moreShifts", { n: more }) }));
   return card;
 }
@@ -735,6 +816,7 @@ function exportData() {
 
 function renderDashboard() {
   if (!projection || !user) return;
+  const view = portalView(projection, Date.now());
   $("dash-hello").textContent = t("hello", { name: projection.firstName || "" });
   const sub = [projection.association, projectionUpdatedAt ? t("updatedAgo", { ago: ago(projectionUpdatedAt) }) : ""]
     .filter(Boolean).join(" · ");
@@ -743,11 +825,11 @@ function renderDashboard() {
   clear(dash);
   const tiles = {
     profile: profileTile(),
-    info: infoTile(),
-    benefits: benefitsTile(),
+    info: infoTile(view),
+    benefits: benefitsTile(view),
     wallet: walletTile(),
-    upcoming: upcomingTile(),
-    history: historyTile(),
+    upcoming: upcomingTile(view),
+    history: historyTile(view),
   };
   const columns = layoutColumns();
   dash.className = `dash cols-${columns}`;
