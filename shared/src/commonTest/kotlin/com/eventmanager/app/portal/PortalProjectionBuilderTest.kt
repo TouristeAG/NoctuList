@@ -7,6 +7,8 @@ import com.eventmanager.app.data.models.AccountTransferType
 import com.eventmanager.app.data.models.Gender
 import com.eventmanager.app.data.models.Job
 import com.eventmanager.app.data.models.JobType
+import com.eventmanager.app.data.models.JobTypeConfig
+import com.eventmanager.app.data.models.NovaJobType
 import com.eventmanager.app.data.models.ShiftTime
 import com.eventmanager.app.data.models.Volunteer
 import com.eventmanager.app.data.models.VolunteerRank
@@ -80,11 +82,12 @@ class PortalProjectionBuilderTest {
         jobs: List<Job> = listOf(job(-3), job(-10, "Entrée"), job(5)),
         transfers: List<AccountTransfer> = emptyList(),
         at: Long = now,
+        configs: List<JobTypeConfig> = emptyList(),
     ) = PortalProjectionInput(
         volunteer = v,
         jobs = jobs,
         transfers = transfers,
-        jobTypeConfigs = emptyList(),
+        jobTypeConfigs = configs,
         currencyCode = "CHF",
         associationName = "Asso",
         hasPhoto = true,
@@ -146,15 +149,35 @@ class PortalProjectionBuilderTest {
         shifts.forEach { assertTrue(it.keys.all { k -> k in setOf("date", "jobTypeName", "venueName", "shiftTime", "gains") }) }
     }
 
+    private val barConfig = JobTypeConfig(
+        name = "Bar", isShiftJob = true, novaJobType = NovaJobType.DEFAULT_SHIFT, requiresShiftTime = true,
+    )
+
     @Test
-    fun upcomingShiftsCarryGainsWhenTheyAddBenefits() {
-        val jobs = (1..3).map { job(it.toLong() * 2) } + job(-5)
-        val json = Json.parseToJsonElement(PortalProjectionBuilder.build(input(jobs = jobs)).payload).jsonObject
-        val shifts = json["shifts"]!!.jsonArray.map { it.jsonObject }
-        shifts.filter { "gains" in it }.forEach {
-            assertTrue(it["gains"]!!.jsonArray.isNotEmpty(), "empty gains must be omitted")
-            assertFalse(it["gains"]!!.toString().contains("\"rank\""))
-        }
+    fun gainsOnlyOnUpcomingShiftsThatBringSomethingNew() {
+        // "Plain" has no config, so it brings no benefit; the Bar shift brings same-night free entry.
+        val past = job(-5)
+        val upcomingBar = job(2)
+        val upcomingPlain = job(4, "Plain")
+        val json = Json.parseToJsonElement(
+            PortalProjectionBuilder.build(input(jobs = listOf(past, upcomingBar, upcomingPlain), configs = listOf(barConfig))).payload,
+        ).jsonObject
+        val byDate = json["shifts"]!!.jsonArray.map { it.jsonObject }.associateBy { it["date"]!!.jsonPrimitive.long }
+        val bar = byDate.getValue(upcomingBar.date)
+        val gains = bar["gains"]!!.jsonArray
+        assertTrue(gains.isNotEmpty())
+        assertTrue(gains.any { it.jsonObject["freeEntry"]!!.jsonPrimitive.boolean }, "free entry gain expected")
+        assertFalse(gains.toString().contains("\"rank\""))
+        assertFalse("gains" in byDate.getValue(upcomingPlain.date), "nothing new, no gains key")
+        assertFalse("gains" in byDate.getValue(past.date), "past shifts never carry gains")
+    }
+
+    @Test
+    fun lastShiftFloorFollowsVolunteerLastShiftDate() {
+        val json = Json.parseToJsonElement(
+            PortalProjectionBuilder.build(input(v = volunteer.copy(lastShiftDate = 12345L))).payload,
+        ).jsonObject
+        assertEquals(12345L, json["lastShiftFloor"]!!.jsonPrimitive.long)
     }
 
     @Test
@@ -188,6 +211,11 @@ class PortalProjectionBuilderTest {
         val a = PortalProjectionBuilder.build(input(jobs = jobs, at = morning))
         val b = PortalProjectionBuilder.build(input(jobs = jobs, at = evening))
         assertEquals(a.contentHash, b.contentHash)
+        // Same with benefits in play (a past shift with a validUntil, a later shift today).
+        val withBar = PortalProjectionBuilder.build(input(jobs = jobs, at = morning, configs = listOf(barConfig)))
+        val withBarLater = PortalProjectionBuilder.build(input(jobs = jobs, at = evening, configs = listOf(barConfig)))
+        assertTrue(withBar.payload.contains("\"freeEntry\":true"), "benefits must be present in this case")
+        assertEquals(withBar.contentHash, withBarLater.contentHash)
     }
 
     @Test

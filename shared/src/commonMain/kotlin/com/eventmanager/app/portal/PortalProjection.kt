@@ -78,8 +78,10 @@ object PortalProjectionBuilder {
         val (upcomingJobs, pastJobs) = jobs.partition {
             DateTimeUtils.getStartOfDayWithOffset(it.date, input.offsetHours) >= today
         }
+        // Order: upcoming ascending, then past descending.
         val shifts = upcomingJobs.sortedBy { it.date }.take(MAX_UPCOMING_SHIFTS) +
             pastJobs.sortedByDescending { it.date }.take(MAX_PAST_SHIFTS)
+        val upcomingIds = upcomingJobs.mapTo(HashSet()) { it.jobNanoId }
 
         val payload = buildJsonObject {
             put("firstName", volunteer.name.trim())
@@ -91,7 +93,7 @@ object PortalProjectionBuilder {
             put("hasPhoto", input.hasPhoto)
             put("photoVersion", if (input.hasPhoto) input.photoVersion else "")
             put("shifts", buildJsonArray {
-                shifts.forEach { add(shiftJson(it, configsByName, gainsByJob[it.jobNanoId]?.gains.orEmpty())) }
+                shifts.forEach { add(shiftJson(it, configsByName, (if (it.jobNanoId in upcomingIds) gainsByJob[it.jobNanoId]?.gains else null).orEmpty())) }
             })
             put("lastShiftFloor", volunteer.lastShiftDate ?: 0L)
             // The first step holds from the beginning of time: its computed start is just today's
