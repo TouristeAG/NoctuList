@@ -97,6 +97,7 @@
         "node_modules",
         "src",
         "test",
+        ".env.local",
         ".secret.local"
       ]
     }
