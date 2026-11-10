@@ -2667,6 +2667,9 @@ class EventManagerViewModel(
         }
         if (volunteerPortalService != null && volunteerPortalServiceOrg == org) return
         volunteerPortalService?.stop()
+        // The previous organization's server status does not apply here, even if no service starts.
+        portalServerStatusJob?.cancel()
+        _portalServerStatus.value = null
         val gateway = photoRequestGateway() ?: return
         if (!gateway.isAvailable()) return
         val service = VolunteerPortalService(
