@@ -317,6 +317,34 @@ describe("portalRequests", () => {
     await assertFails(setDoc(doc(db, path("portalRequests/vol1_PROFILE")), profile()));
   });
 
+  test("a PROCESSING claim older than 5 minutes can be sent again by its owner only", async () => {
+    const db = portal("vol1").firestore();
+    const claimed = (processingAt) => seed((sdb) => setDoc(doc(sdb, path("portalRequests/vol1_PROFILE")), {
+      uid: "vol1", type: "PROFILE", status: "PROCESSING", email: "vol1@mail.example",
+      firstName: "Léa", lastName: "Martin", phone: "+41 79 000 00 00",
+      requestedAt: Timestamp.fromMillis(Date.now() - 60 * 60 * 1000),
+      processingAt, processingDevice: "gone-device",
+    }));
+
+    await claimed(Date.now() - 60 * 1000);
+    await assertFails(setDoc(doc(db, path("portalRequests/vol1_PROFILE")), profile()));
+
+    await claimed(Date.now() - 6 * 60 * 1000);
+    await assertFails(setDoc(doc(portal("vol2").firestore(), path("portalRequests/vol1_PROFILE")), profile()));
+    await assertFails(setDoc(doc(portal("vol2").firestore(), path("portalRequests/vol1_PROFILE")), profile("vol2")));
+    await assertSucceeds(setDoc(doc(db, path("portalRequests/vol1_PROFILE")), profile()));
+  });
+
+  test("a stale claim is still throttled by its request time", async () => {
+    const db = portal("vol1").firestore();
+    await seed((sdb) => setDoc(doc(sdb, path("portalRequests/vol1_QR_EMAIL")), {
+      uid: "vol1", type: "QR_EMAIL", status: "PROCESSING", email: "vol1@mail.example",
+      requestedAt: Timestamp.fromMillis(Date.now() - 6 * 60 * 1000),
+      processingAt: Date.now() - 6 * 60 * 1000, processingDevice: "gone-device",
+    }));
+    await assertFails(setDoc(doc(db, path("portalRequests/vol1_QR_EMAIL")), request("vol1", "QR_EMAIL")));
+  });
+
   test("portal accounts cannot delete requests; staff can process them", async () => {
     const db = portal("vol1").firestore();
     await assertSucceeds(setDoc(doc(db, path("portalRequests/vol1_CLAIM")), request("vol1", "CLAIM")));

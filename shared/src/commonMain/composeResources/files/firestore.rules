@@ -436,7 +436,9 @@ service cloud.firestore {
       allow update: if portalOn(orgId)
         && isPortalUser()
         && resource.data.uid == request.auth.uid
-        && resource.data.status != 'PROCESSING'
+        // A claim older than 5 minutes was abandoned: the volunteer may send the request again.
+        && (resource.data.status != 'PROCESSING'
+             || request.time.toMillis() > resource.data.processingAt + 300000)
         && validPortalRequest(requestId)
         && request.time > resource.data.requestedAt
              + duration.value(portalRequestDelayMinutes(request.resource.data.type), 'm');

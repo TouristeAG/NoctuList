@@ -51,6 +51,8 @@ const REMEMBER_KEY = "nl-portal-remember";
 const LAST_ORG_KEY = "nl-portal-org";
 const IDLE_LIMIT_MS = 30 * 60 * 1000;
 const DELAYS_MIN = { PROFILE: 1, QR_EMAIL: 10, CLAIM: 1 };
+/** Same as the rules: a PROCESSING claim this old was abandoned and the request can be sent again. */
+const PROCESSING_STALE_MS = 5 * 60_000;
 
 let path = null;
 let auth = null;
@@ -294,8 +296,7 @@ async function showPending() {
   renderPending();
   // Ask the team's devices to link this verified address to a volunteer profile.
   const claim = requests.CLAIM;
-  const canAsk = !claim || (claim.status !== "PENDING" && claim.status !== "PROCESSING" &&
-    Date.now() - millisOf(claim.requestedAt) > 60_000);
+  const canAsk = !claim || (!isWaiting(claim) && Date.now() - millisOf(claim.requestedAt) > 60_000);
   if (canAsk && Date.now() - claimSentAt > 60_000) {
     claimSentAt = Date.now();
     await sendRequest("CLAIM").catch((error) => console.warn("claim failed", error?.code));
@@ -324,6 +325,14 @@ async function sendRequest(type, extra = {}) {
     email: user.email,
     ...extra,
   });
+}
+
+/** The request waits for an answer: pending, or claimed less than 5 minutes ago. */
+function isWaiting(r) {
+  if (r?.status === "PENDING") return true;
+  if (r?.status !== "PROCESSING") return false;
+  const at = millisOf(r.processingAt);
+  return !at || Date.now() - at <= PROCESSING_STALE_MS;
 }
 
 function requestCooldownMinutes(type) {
@@ -396,7 +405,7 @@ function profileTile() {
     [t("gender"), p.gender ? t(`gender${p.gender}`) : "-"],
   ]));
   const status = requests.PROFILE;
-  if (status?.status === "PENDING" || status?.status === "PROCESSING") {
+  if (isWaiting(status)) {
     card.append(el("p", { class: "notice", text: t("profilePending") }));
   } else if (status?.status === "REJECTED" && millisOf(status.requestedAt) > Date.now() - 86_400_000) {
     card.append(el("p", { class: "error", text: t("profileRejected") }));
@@ -412,7 +421,7 @@ function profileTile() {
     const r = requests.QR_EMAIL;
     const cooldown = requestCooldownMinutes("QR_EMAIL");
     const btn = el("button", { type: "button", class: "tonal", onclick: onQrClick }, icon("mail", 16), t("qrButton"));
-    const waiting = r?.status === "PENDING" || r?.status === "PROCESSING";
+    const waiting = isWaiting(r);
     if (waiting) {
       qr.append(el("p", { class: "notice", text: t("qrPending") }));
       btn.disabled = true;
@@ -720,8 +729,7 @@ function profileForm(onDone) {
     if (!firstName) return fail("errName", first);
     if (!lastName) return fail("errName", last);
     if (!phoneValue) return fail("errPhone", phone);
-    const pending = requests.PROFILE?.status === "PENDING" || requests.PROFILE?.status === "PROCESSING";
-    if (pending || requestCooldownMinutes("PROFILE") > 0) return fail("profileWait", first);
+    if (isWaiting(requests.PROFILE) || requestCooldownMinutes("PROFILE") > 0) return fail("profileWait", first);
     save.disabled = true;
     try {
       await sendRequest("PROFILE", { firstName, lastName, phone: phoneValue });
