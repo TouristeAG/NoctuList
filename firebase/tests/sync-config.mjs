@@ -1,6 +1,8 @@
 // Regenerates firebase.json for the local emulators from the production Hosting config
 // (webform/firebase.json): same rewrites and headers, with the CSP widened to the emulator
 // ports on localhost and without upgrade-insecure-requests (emulators speak plain HTTP).
+// Also writes the emulator-only parameters of the portal functions (.env.local, .secret.local),
+// both gitignored and never deployed.
 import { existsSync, lstatSync, readFileSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
@@ -16,6 +18,8 @@ function link(target, name) {
   symlinkSync(target, path);
 }
 link("../../webform", "site");
+// Not "functions": that folder holds the function tests.
+link("../../webform/functions", "functions-src");
 link("../firestore.rules", "firestore.rules");
 link("../storage.rules", "storage.rules");
 hosting.public = "site";
@@ -40,14 +44,22 @@ const config = {
   firestore: { rules: "firestore.rules" },
   storage: { rules: "storage.rules" },
   hosting,
+  functions: [{ source: "functions-src", codebase: "noctulist" }],
   emulators: {
     auth: { port: 9099, host: "127.0.0.1" },
     firestore: { port: 8080, host: "127.0.0.1" },
     storage: { port: 9199, host: "127.0.0.1" },
     hosting: { port: 5002, host: "127.0.0.1" },
+    functions: { port: 5001, host: "127.0.0.1" },
     ui: { enabled: false },
     singleProjectMode: true,
   },
 };
 writeFileSync(here("firebase.json"), JSON.stringify(config, null, 2) + "\n");
+// Mail is captured to Firestore in the emulator; the password is a placeholder.
+writeFileSync(
+  here("../../webform/functions/.env.local"),
+  "PORTAL_MAIL_TRANSPORT=capture\nGMAIL_USER=test@example.org\nREGION=europe-west1\n",
+);
+writeFileSync(here("../../webform/functions/.secret.local"), "GMAIL_APP_PASSWORD=test\n");
 console.log("firebase.json regenerated for the emulators");

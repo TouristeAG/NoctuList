@@ -2,14 +2,17 @@
   "name": "noctulist-firebase-tests",
   "private": true,
   "type": "module",
-  "description": "Security-rules tests and local preview for the NoctuList public pages (Firebase emulators only).",
+  "description": "Security-rules tests, portal function tests and local preview for the NoctuList public pages (Firebase emulators only).",
   "scripts": {
-    "test": "./emulators.sh emulators:exec --only auth,firestore,storage \"node --test --test-concurrency=1 rules/*.test.mjs\"",
+    "test": "npm run test:rules && npm run test:functions",
+    "test:rules": "./emulators.sh emulators:exec --only auth,firestore,storage \"node --test --test-concurrency=1 rules/*.test.mjs\"",
+    "test:functions": "npm --prefix ../../webform/functions run build && ./emulators.sh emulators:exec --only auth,firestore,storage,functions \"node --test --test-concurrency=1 functions/*.test.mjs\"",
     "preview": "./emulators.sh emulators:start --only auth,firestore,storage,hosting",
     "seed": "node seed.mjs"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^6.0.0",
-    "firebase": "^13.0.0"
+    "firebase": "^13.0.0",
+    "firebase-admin": "^13.10.0"
   }
 }
