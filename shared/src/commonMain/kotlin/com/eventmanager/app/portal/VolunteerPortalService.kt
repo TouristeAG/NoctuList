@@ -46,6 +46,8 @@ interface VolunteerPortalHost {
     /** JPEG bytes of the volunteer's current profile photo, or null. */
     suspend fun volunteerPhotoBytes(volunteer: Volunteer): ByteArray?
 
+    /** The "my QR code" mail for the server to send, or null when it cannot be rendered. Holds no volunteer data. */
+    suspend fun portalMailTemplate(): PortalMailTemplate?
     fun canSendQrEmail(): Boolean
     suspend fun sendQrEmail(volunteer: Volunteer): Boolean
 
@@ -188,6 +190,7 @@ class VolunteerPortalService(
             val status = data["status"]?.toString().orEmpty()
             val retryable = status == VolunteerSignupForm.STATUS_SUBMITTED || isStaleProcessing(data)
             if (!retryable) continue
+            if (isFreshForServer(data["submittedAt"])) continue
             mutex.withLock { runCatchingLogged("signup $formId") { processSignup(formId) } }
         }
     }
@@ -273,11 +276,18 @@ class VolunteerPortalService(
         for ((requestId, data) in docs) {
             val status = data["status"]?.toString().orEmpty()
             if (status != PortalRequest.STATUS_PENDING && !isStaleProcessing(data)) continue
+            if (isFreshForServer(data["requestedAt"])) continue
             val type = data["type"]?.toString()
             // Only a device that can actually send mail takes a QR request; others leave it waiting.
             if (type == PortalRequestType.QR_EMAIL.name && !host.canSendQrEmail()) continue
             mutex.withLock { runCatchingLogged("request $requestId") { processRequest(requestId) } }
         }
+    }
+
+    /** The server handles new work within seconds; devices only step in after [DEVICE_GRACE_MS]. Unknown age counts as old. */
+    private fun isFreshForServer(timestamp: Any?): Boolean {
+        val at = firestoreMillisOf(timestamp) ?: return false
+        return clock() - at < DEVICE_GRACE_MS
     }
 
     private suspend fun processRequest(requestId: String) {
@@ -401,7 +411,10 @@ class VolunteerPortalService(
             .map { it.removePrefix("$orgId/") }
             .forEach { uid -> runCatching { unpublish(uid) } }
         runCatching { gateway.deleteDocument(orgId, BRANDING_COLLECTION, BRANDING_DOC) }
-        host.savePublishedHashes(host.loadPublishedHashes().filterKeys { !it.startsWith("$orgId/") && it != brandingKey })
+        runCatching { gateway.deleteDocument(orgId, MAIL_COLLECTION, MAIL_DOC) }
+        host.savePublishedHashes(
+            host.loadPublishedHashes().filterKeys { !it.startsWith("$orgId/") && it != brandingKey && it != mailKey },
+        )
     }
 
     // endregion
@@ -419,6 +432,7 @@ class VolunteerPortalService(
         val now = clock()
         val hashes = host.loadPublishedHashes().toMutableMap()
         publishBranding(hashes)
+        publishMailTemplate(hashes)
         val linked = snapshot.volunteers.filter {
             it.portalEnabled && it.portalUid.isNotBlank() &&
                 (it.firebaseOrgId.isBlank() || it.firebaseOrgId == orgId)
@@ -502,6 +516,30 @@ class VolunteerPortalService(
         }
     }
 
+    private val mailKey get() = "$orgId#mail"
+
+    private suspend fun publishMailTemplate(hashes: MutableMap<String, String>) {
+        val template = try {
+            host.portalMailTemplate()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            println("Portal: mail template failed: ${e.message}")
+            null
+        } ?: return
+        val data = template.toFirestoreMap()
+        val hash = PortalProjectionBuilder.sha256(data.toString())
+        if (hashes[mailKey] == hash) return
+        try {
+            gateway.setPlainDocument(orgId, MAIL_COLLECTION, MAIL_DOC, template.toFirestoreMap(clock()), merge = false)
+            hashes[mailKey] = hash
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            println("Portal: mail template publish failed: ${e.message}")
+        }
+    }
+
     private fun photoVersionOf(volunteer: Volunteer): String {
         if (!host.profilePhotosEnabled()) return ""
         val ref = volunteer.profilePhotoUrl.ifBlank { volunteer.profilePhotoPath }.trim()
@@ -561,6 +599,10 @@ class VolunteerPortalService(
         private const val STATUS_PROCESSING = "PROCESSING"
         const val BRANDING_COLLECTION = "portalBranding"
         const val BRANDING_DOC = "default"
+        const val MAIL_COLLECTION = "portalMail"
+        const val MAIL_DOC = "default"
+        /** Age under which a signup or request is left to the Cloud Functions. */
+        const val DEVICE_GRACE_MS = 120_000L
         private const val PUBLISH_DEBOUNCE_MS = 4_000L
         private const val RETRY_INTERVAL_MS = 2 * 60_000L
 

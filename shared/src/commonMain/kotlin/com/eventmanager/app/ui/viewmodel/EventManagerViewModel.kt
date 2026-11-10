@@ -55,6 +55,7 @@ import com.eventmanager.app.data.remote.createFirestoreGateway
 import com.eventmanager.app.data.remote.FirestoreGateway
 import com.eventmanager.app.data.remote.downloadProfilePhotoBytes
 import com.eventmanager.app.portal.PortalGrantResult
+import com.eventmanager.app.portal.PortalMailTemplate
 import com.eventmanager.app.portal.PortalQrMailer
 import com.eventmanager.app.portal.SignupFormState
 import com.eventmanager.app.portal.VolunteerPortalHost
@@ -2785,6 +2786,11 @@ class EventManagerViewModel(
 
         override fun canSendQrEmail(): Boolean =
             platformContext?.let { PortalQrMailer.canSend(it) } ?: false
+
+        override suspend fun portalMailTemplate(): PortalMailTemplate? {
+            val settings = settingsManagerCached ?: return null
+            return PortalMailTemplate.fromSettings(settings, settings.getInstitutionLogoPng())
+        }
 
         override suspend fun sendQrEmail(volunteer: Volunteer): Boolean {
             val ctx = platformContext ?: return false

@@ -83,6 +83,8 @@ private class FakeHost(initial: List<Volunteer>) : VolunteerPortalHost {
     val mailed = mutableListOf<Volunteer>()
     val storage = mutableMapOf<String, ByteArray>()
     var canMail = true
+    var mailSubject = "Your QR code"
+    var mailTemplateEnabled = true
     private var pending = emptyList<VolunteerSignupForm>()
     private var hashes = emptyMap<String, String>()
 
@@ -115,6 +117,8 @@ private class FakeHost(initial: List<Volunteer>) : VolunteerPortalHost {
         storage.remove(path)
     }
     override suspend fun volunteerPhotoBytes(volunteer: Volunteer): ByteArray? = null
+    override suspend fun portalMailTemplate(): PortalMailTemplate? =
+        if (mailTemplateEnabled) PortalMailTemplate(mailSubject, "<p>Hello $PORTAL_FIRST_NAME_TOKEN</p>", "Hello $PORTAL_FIRST_NAME_TOKEN", "") else null
     override fun canSendQrEmail() = canMail
     override suspend fun sendQrEmail(volunteer: Volunteer): Boolean {
         mailed += volunteer
@@ -180,6 +184,92 @@ class VolunteerPortalServiceTest {
         "consent" to true,
         "lang" to "fr",
     )
+
+    @Test
+    fun freshRequestIsLeftToServer() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true, uid = UID)))
+        startedService(gateway, host)
+        val key = "portalRequests/${UID}_PROFILE"
+        gateway.docs[key] = mapOf(
+            "uid" to UID, "type" to "PROFILE", "status" to "PENDING", "email" to "lea@example.org",
+            "firstName" to "Neo", "lastName" to "X", "phone" to "+41 79 999 99 99",
+            "requestedAt" to System.currentTimeMillis() - 30_000,
+        )
+        gateway.push("portalRequests")
+        assertEquals("PENDING", gateway.docs[key]!!["status"])
+        assertEquals("Léa", host.volunteers.single().name)
+    }
+
+    @Test
+    fun oldRequestIsProcessedByDevice() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true, uid = UID)))
+        startedService(gateway, host)
+        val key = "portalRequests/${UID}_PROFILE"
+        gateway.docs[key] = mapOf(
+            "uid" to UID, "type" to "PROFILE", "status" to "PENDING", "email" to "lea@example.org",
+            "firstName" to "Neo", "lastName" to "X", "phone" to "+41 79 999 99 99",
+            "requestedAt" to System.currentTimeMillis() - 150_000,
+        )
+        gateway.push("portalRequests")
+        assertEquals("DONE", gateway.docs[key]!!["status"])
+    }
+
+    @Test
+    fun freshSignupIsLeftToServer() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(emptyList())
+        startedService(gateway, host)
+        gateway.docs["volunteerSignupForms/form00000004"] =
+            submittedForm() + ("submittedAt" to System.currentTimeMillis() - 30_000)
+        gateway.push("volunteerSignupForms")
+        assertTrue(host.created.isEmpty())
+        assertEquals("SUBMITTED", gateway.docs["volunteerSignupForms/form00000004"]!!["status"])
+    }
+
+    @Test
+    fun oldSignupIsProcessed() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(emptyList())
+        startedService(gateway, host)
+        gateway.docs["volunteerSignupForms/form00000005"] =
+            submittedForm() + ("submittedAt" to System.currentTimeMillis() - 150_000)
+        gateway.push("volunteerSignupForms")
+        assertEquals(1, host.created.size)
+    }
+
+    @Test
+    fun mailTemplatePublishedOnceAndOnChange() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(emptyList())
+        val volunteers = MutableStateFlow(host.volunteers.toList())
+        service(gateway, host).start(volunteers, MutableStateFlow(emptyList()), MutableStateFlow(emptyList()), MutableStateFlow(emptyList()))
+        withTimeout(5_000) { while (gateway.docs["portalMail/default"] == null) delay(20) }
+        val first = gateway.docs["portalMail/default"]!!
+        assertEquals("Your QR code", first["subject"])
+        assertEquals(1, first["schema"])
+
+        gateway.docs.remove("portalMail/default")
+        volunteers.value = listOf(volunteer("V9", "z@example.org"))
+        delay(300)
+        assertNull(gateway.docs["portalMail/default"], "unchanged template is not rewritten")
+
+        host.mailSubject = "Another subject"
+        volunteers.value = listOf(volunteer("V8", "y@example.org"))
+        withTimeout(5_000) { while (gateway.docs["portalMail/default"] == null) delay(20) }
+        assertEquals("Another subject", gateway.docs["portalMail/default"]!!["subject"])
+    }
+
+    @Test
+    fun mailTemplateNeverContainsVolunteerId() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(volunteer("SECRETID123", "lea@example.org", enabled = true, uid = UID)))
+        service(gateway, host).start(MutableStateFlow(host.volunteers.toList()), MutableStateFlow(emptyList()),
+            MutableStateFlow(emptyList()), MutableStateFlow(emptyList()))
+        withTimeout(5_000) { while (gateway.docs["portalMail/default"] == null) delay(20) }
+        assertFalse(gateway.docs["portalMail/default"]!!.values.joinToString().contains("SECRETID123"))
+    }
 
     @Test
     fun registrationCreatesALinkedVolunteerAndCleansUp() = runBlocking {
