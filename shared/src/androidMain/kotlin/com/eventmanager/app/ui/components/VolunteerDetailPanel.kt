@@ -315,6 +315,10 @@ actual fun VolunteerDetailPanel(
                         )
                     }
 
+                    item {
+                        VolunteerPortalAccessCard(viewModel = viewModel, volunteer = volunteer)
+                    }
+
                     if (onManualAccountAdjust != null && viewModel != null) {
                         item {
                             AccountInfoSection(

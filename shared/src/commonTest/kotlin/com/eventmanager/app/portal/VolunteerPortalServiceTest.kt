@@ -1,0 +1,345 @@
+package com.eventmanager.app.portal
+
+import com.eventmanager.app.data.models.AccountTransfer
+import com.eventmanager.app.data.models.Gender
+import com.eventmanager.app.data.models.Job
+import com.eventmanager.app.data.models.JobTypeConfig
+import com.eventmanager.app.data.models.Volunteer
+import com.eventmanager.app.data.remote.NoOpFirestoreGateway
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import kotlin.test.AfterTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertIs
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+
+private const val ORG = "org-a"
+private const val UID = "PortalUid000000000000001"
+
+/** In-memory Firestore: documents per "collection/id", listeners fed by the test. */
+private class FakeGateway : NoOpFirestoreGateway() {
+    val docs = mutableMapOf<String, Map<String, Any?>>()
+    val deleted = mutableListOf<String>()
+    val listeners = mutableMapOf<String, suspend (List<Pair<String, Map<String, Any?>>>) -> Unit>()
+    var claimsRefused = false
+
+    override fun isAvailable() = true
+
+    override suspend fun setPlainDocument(orgId: String, collection: String, docId: String, data: Map<String, Any?>, merge: Boolean) {
+        val key = "$collection/$docId"
+        docs[key] = if (merge) (docs[key].orEmpty() + data) else data
+    }
+
+    override suspend fun deleteDocument(orgId: String, collection: String, docId: String) {
+        docs.remove("$collection/$docId")
+        deleted += "$collection/$docId"
+    }
+
+    override suspend fun getDocumentFromServer(orgId: String, collection: String, docId: String) = docs["$collection/$docId"]
+
+    override fun listenCollection(
+        orgId: String,
+        collection: String,
+        onSnapshot: suspend (List<Pair<String, Map<String, Any?>>>) -> Unit,
+    ): AutoCloseable {
+        listeners[collection] = onSnapshot
+        return AutoCloseable { listeners.remove(collection) }
+    }
+
+    override suspend fun claimDocument(
+        orgId: String,
+        collection: String,
+        docId: String,
+        claimable: (Map<String, Any?>) -> Boolean,
+        claimFields: Map<String, Any?>,
+    ): Map<String, Any?>? {
+        if (claimsRefused) return null
+        val key = "$collection/$docId"
+        val current = docs[key] ?: return null
+        if (!claimable(current)) return null
+        docs[key] = current + claimFields
+        return current
+    }
+
+    suspend fun push(collection: String) {
+        val prefix = "$collection/"
+        val snapshot = docs.filterKeys { it.startsWith(prefix) }.map { (k, v) -> k.removePrefix(prefix) to v }
+        listeners[collection]!!.invoke(snapshot)
+    }
+}
+
+private class FakeHost(initial: List<Volunteer>) : VolunteerPortalHost {
+    val volunteers = initial.toMutableList()
+    val created = mutableListOf<Volunteer>()
+    val mailed = mutableListOf<Volunteer>()
+    val storage = mutableMapOf<String, ByteArray>()
+    var canMail = true
+    private var pending = emptyList<VolunteerSignupForm>()
+    private var hashes = emptyMap<String, String>()
+
+    override val deviceId = "device-1"
+    override fun apiKey() = "key"
+    override fun currencyCode() = "CHF"
+    override fun associationName() = "Asso"
+    override fun dateOffsetHours() = 0
+    override fun institutionLogoPng() = ""
+    override fun profilePhotosEnabled() = true
+    override suspend fun volunteers() = volunteers.toList()
+    override suspend fun createVolunteer(volunteer: Volunteer, photo: ByteArray?): Volunteer {
+        created += volunteer
+        volunteers += volunteer
+        return volunteer
+    }
+    override suspend fun saveVolunteer(volunteer: Volunteer): Boolean {
+        val i = volunteers.indexOfFirst { it.id == volunteer.id }
+        if (i < 0) return false
+        volunteers[i] = volunteer
+        return true
+    }
+    override suspend fun attachVolunteerPhoto(volunteer: Volunteer, bytes: ByteArray) = true
+    override suspend fun downloadStorage(path: String) = storage[path]
+    override suspend fun uploadStorageJpeg(path: String, bytes: ByteArray): Boolean {
+        storage[path] = bytes
+        return true
+    }
+    override suspend fun deleteStorage(path: String) {
+        storage.remove(path)
+    }
+    override suspend fun volunteerPhotoBytes(volunteer: Volunteer): ByteArray? = null
+    override fun canSendQrEmail() = canMail
+    override suspend fun sendQrEmail(volunteer: Volunteer): Boolean {
+        mailed += volunteer
+        return true
+    }
+    override fun loadPendingSignupForms() = pending
+    override fun savePendingSignupForms(forms: List<VolunteerSignupForm>) {
+        pending = forms
+    }
+    override fun loadPublishedHashes() = hashes
+    override fun savePublishedHashes(hashes: Map<String, String>) {
+        this.hashes = hashes
+    }
+}
+
+private class FakeAuth(private val create: PortalAuthResult) : PortalAuthApi {
+    val resets = mutableListOf<String>()
+    override suspend fun createAccount(email: String, password: String) = create
+    override suspend fun sendPasswordReset(email: String, languageCode: String): PortalAuthResult {
+        resets += email
+        return PortalAuthResult.Sent
+    }
+}
+
+class VolunteerPortalServiceTest {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    @AfterTest
+    fun tearDown() = scope.cancel()
+
+    private fun volunteer(id: String, email: String, enabled: Boolean = false, uid: String = "", admin: Boolean = false) =
+        Volunteer(
+            id = id,
+            name = "Léa",
+            lastNameAbbreviation = "MARTIN",
+            email = email,
+            phoneNumber = "+41 79 000 00 00",
+            portalEnabled = enabled,
+            portalUid = uid,
+            isAdmin = admin,
+            firebaseOrgId = ORG,
+        )
+
+    private fun service(gateway: FakeGateway, host: FakeHost, auth: PortalAuthApi = FakeAuth(PortalAuthResult.Sent)) =
+        VolunteerPortalService(ORG, gateway, host, scope, authClientFactory = { auth }, publishDebounceMs = 0)
+
+    private fun startedService(gateway: FakeGateway, host: FakeHost, auth: PortalAuthApi = FakeAuth(PortalAuthResult.Sent)) =
+        service(gateway, host, auth).also {
+            it.start(MutableStateFlow(host.volunteers.toList()), MutableStateFlow(emptyList<Job>()),
+                MutableStateFlow(emptyList<AccountTransfer>()), MutableStateFlow(emptyList<JobTypeConfig>()))
+        }
+
+    private fun submittedForm(email: String = "max@example.org", photoPath: String = "") = mapOf(
+        "status" to "SUBMITTED",
+        "submittedUid" to UID,
+        "email" to email,
+        "firstName" to "Max",
+        "lastName" to "Dupont",
+        "phone" to "+41 78 555 12 34",
+        "dateOfBirth" to "1999-07-21",
+        "gender" to "MALE",
+        "photoPath" to photoPath,
+        "consent" to true,
+        "lang" to "fr",
+    )
+
+    @Test
+    fun registrationCreatesALinkedVolunteerAndCleansUp() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(emptyList())
+        startedService(gateway, host)
+        val photo = "orgs/$ORG/portalSignupPhotos/form00000001.jpg"
+        host.storage[photo] = byteArrayOf(1, 2, 3)
+        gateway.docs["volunteerSignupForms/form00000001"] = submittedForm(photoPath = photo)
+        gateway.push("volunteerSignupForms")
+
+        val created = host.created.single()
+        assertEquals("Max", created.name)
+        assertEquals("DUPONT", created.lastNameAbbreviation)
+        assertEquals(Gender.MALE, created.gender)
+        assertEquals("1999-07-21", created.dateOfBirth)
+        assertTrue(created.portalEnabled)
+        assertEquals(UID, created.portalUid)
+        assertFalse(created.isAdmin)
+        assertNull(gateway.docs["volunteerSignupForms/form00000001"])
+        assertFalse(host.storage.containsKey(photo))
+    }
+
+    @Test
+    fun registrationLinksAnExistingVolunteerWithTheSameEmail() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(volunteer("V1", "Max@Example.org")))
+        startedService(gateway, host)
+        gateway.docs["volunteerSignupForms/form00000002"] = submittedForm()
+        gateway.push("volunteerSignupForms")
+
+        assertTrue(host.created.isEmpty())
+        val linked = host.volunteers.single()
+        assertEquals("V1", linked.id)
+        assertEquals(UID, linked.portalUid)
+        assertTrue(linked.portalEnabled)
+    }
+
+    @Test
+    fun aRegistrationClaimedByAnotherDeviceIsLeftAlone() = runBlocking {
+        val gateway = FakeGateway().apply { claimsRefused = true }
+        val host = FakeHost(emptyList())
+        startedService(gateway, host)
+        gateway.docs["volunteerSignupForms/form00000003"] = submittedForm()
+        gateway.push("volunteerSignupForms")
+        assertTrue(host.created.isEmpty())
+    }
+
+    @Test
+    fun profileRequestUpdatesOnlyNameAndPhone() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true, uid = UID, admin = true)))
+        startedService(gateway, host)
+        gateway.docs["portalRequests/${UID}_PROFILE"] = mapOf(
+            "uid" to UID, "type" to "PROFILE", "status" to "PENDING", "email" to "lea@example.org",
+            "firstName" to "Léonie", "lastName" to "Martin-Durand", "phone" to "+41 79 999 99 99",
+        )
+        gateway.push("portalRequests")
+
+        val v = host.volunteers.single()
+        assertEquals("Léonie", v.name)
+        assertEquals("MARTIN-DURAND", v.lastNameAbbreviation)
+        assertEquals("+41 79 999 99 99", v.phoneNumber)
+        assertEquals("lea@example.org", v.email)
+        assertTrue(v.isAdmin, "admin flag untouched")
+        assertEquals("DONE", gateway.docs["portalRequests/${UID}_PROFILE"]!!["status"])
+    }
+
+    @Test
+    fun qrRequestsAreRefusedForAdminsAndWaitForADeviceThatCanMail() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true, uid = UID, admin = true)))
+        host.canMail = false
+        startedService(gateway, host)
+        val key = "portalRequests/${UID}_QR_EMAIL"
+        gateway.docs[key] = mapOf("uid" to UID, "type" to "QR_EMAIL", "status" to "PENDING", "email" to "lea@example.org")
+        gateway.push("portalRequests")
+        assertEquals("PENDING", gateway.docs[key]!!["status"], "no mailer: left for another device")
+
+        host.canMail = true
+        gateway.push("portalRequests")
+        assertEquals("REJECTED", gateway.docs[key]!!["status"])
+        assertEquals("NOT_ALLOWED", gateway.docs[key]!!["reason"])
+        assertTrue(host.mailed.isEmpty())
+    }
+
+    @Test
+    fun qrRequestMailsTheAddressOnTheProfile() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(volunteer("V1", "profile@example.org", enabled = true, uid = UID)))
+        startedService(gateway, host)
+        gateway.docs["portalRequests/${UID}_QR_EMAIL"] =
+            mapOf("uid" to UID, "type" to "QR_EMAIL", "status" to "PENDING", "email" to "login@example.org")
+        gateway.push("portalRequests")
+        assertEquals("profile@example.org", host.mailed.single().email)
+        assertEquals("DONE", gateway.docs["portalRequests/${UID}_QR_EMAIL"]!!["status"])
+    }
+
+    @Test
+    fun claimLinksOnlyAnOpenAccessWithTheVerifiedEmail() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(
+            volunteer("V1", "lea@example.org", enabled = true),
+            volunteer("V2", "closed@example.org", enabled = false),
+        ))
+        startedService(gateway, host)
+        gateway.docs["portalRequests/${UID}_CLAIM"] =
+            mapOf("uid" to UID, "type" to "CLAIM", "status" to "PENDING", "email" to "lea@example.org")
+        gateway.push("portalRequests")
+        assertEquals(UID, host.volunteers.first { it.id == "V1" }.portalUid)
+
+        val other = "OtherUid0000000000000002"
+        gateway.docs["portalRequests/${other}_CLAIM"] =
+            mapOf("uid" to other, "type" to "CLAIM", "status" to "PENDING", "email" to "closed@example.org")
+        gateway.push("portalRequests")
+        assertEquals("", host.volunteers.first { it.id == "V2" }.portalUid)
+        assertEquals("NO_ACCESS", gateway.docs["portalRequests/${other}_CLAIM"]!!["reason"])
+    }
+
+    @Test
+    fun publishesLinkedVolunteersOnceAndTakesRevokedPagesDown() = runBlocking {
+        val gateway = FakeGateway()
+        val linked = volunteer("V1", "lea@example.org", enabled = true, uid = UID)
+        val host = FakeHost(listOf(linked, volunteer("V2", "x@example.org")))
+        val volunteers = MutableStateFlow(host.volunteers.toList())
+        val service = service(gateway, host)
+        service.start(volunteers, MutableStateFlow(emptyList()), MutableStateFlow(emptyList()), MutableStateFlow(emptyList()))
+
+        withTimeout(5_000) { while (gateway.docs["volunteerPortal/$UID"] == null) delay(20) }
+        val doc = gateway.docs["volunteerPortal/$UID"]!!
+        assertEquals(setOf("schema", "payload", "contentHash", "updatedAt"), doc.keys)
+        assertFalse((doc["payload"] as String).contains("V1"), "wallet id must never be published")
+        assertEquals(1, gateway.docs.keys.count { it.startsWith("volunteerPortal/") })
+        assertTrue(gateway.docs.containsKey("portalBranding/default"))
+
+        volunteers.value = listOf(linked.copy(portalEnabled = false, portalUid = ""))
+        withTimeout(5_000) { while (gateway.docs["volunteerPortal/$UID"] != null) delay(20) }
+        assertTrue("volunteerPortal/$UID" in gateway.deleted)
+    }
+
+    @Test
+    fun grantingAccessStoresTheUidAndSendsTheSetPasswordMail() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(volunteer("V1", "lea@example.org")))
+        val auth = FakeAuth(PortalAuthResult.Created("NewUid00000000000000003"))
+        val result = service(gateway, host, auth).grantAccess(host.volunteers.single(), "fr")
+        val created = assertIs<PortalGrantResult.Created>(result)
+        assertTrue(created.password.length >= 12)
+        assertTrue(created.resetSent)
+        assertEquals("NewUid00000000000000003", host.volunteers.single().portalUid)
+        assertEquals(listOf("lea@example.org"), auth.resets)
+    }
+
+    @Test
+    fun grantingAccessToAnExistingAccountWaitsForTheClaim() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(volunteer("V1", "lea@example.org")))
+        val result = service(gateway, host, FakeAuth(PortalAuthResult.EmailExists)).grantAccess(host.volunteers.single(), "fr")
+        assertIs<PortalGrantResult.ExistingAccount>(result)
+        assertTrue(host.volunteers.single().portalEnabled)
+        assertEquals("", host.volunteers.single().portalUid)
+    }
+}

@@ -14,7 +14,7 @@ const TRANSLATIONS = {
     namePlaceholder: "Name {n}",
     accessLabel: "Access for this person",
     disclaimer:
-      "Accesses you tick are a request only. They are never guaranteed — confirmation comes on the night, depending on the show.",
+      "Accesses you tick are a request only. They are never guaranteed: confirmation comes on the night, depending on the show.",
     comments: "Comments",
     commentsPlaceholder: "Optional notes…",
     submit: "Send the guest list",
@@ -40,7 +40,7 @@ const TRANSLATIONS = {
     namePlaceholder: "Nom {n}",
     accessLabel: "Demande d'accès pour cette personne",
     disclaimer:
-      "Les accès cochés sont une demande uniquement. Ils ne sont jamais garantis — une confirmation sera donnée le soir, selon le contexte de la soirée.",
+      "Les accès cochés sont une demande uniquement. Ils ne sont jamais garantis : une confirmation sera donnée le soir, selon le contexte de la soirée.",
     comments: "Commentaires",
     commentsPlaceholder: "Notes optionnelles…",
     submit: "Envoyer la guestlist",
@@ -92,7 +92,7 @@ const TRANSLATIONS = {
     namePlaceholder: "Name {n}",
     accessLabel: "Zugang für diese Person",
     disclaimer:
-      "Angekreuzte Zugänge sind nur eine Anfrage. Sie sind nie garantiert — die Bestätigung erfolgt am Abend, je nach Situation.",
+      "Angekreuzte Zugänge sind nur eine Anfrage. Sie sind nie garantiert: Die Bestätigung erfolgt am Abend, je nach Situation.",
     comments: "Kommentare",
     commentsPlaceholder: "Optionale Hinweise…",
     submit: "Gästeliste senden",
@@ -184,6 +184,7 @@ export function applyStaticI18n() {
   const title = document.getElementById("title");
   if (title && !title.dataset.locked) title.textContent = t("title");
   document.title = t("title");
+  if (window.NoctuTheme) window.NoctuTheme.refreshLabels();
 }
 
 export function setLabelOverrides(raw) {

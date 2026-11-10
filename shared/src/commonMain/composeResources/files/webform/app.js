@@ -1,12 +1,14 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import {
   getFirestore,
+  connectFirestoreEmulator,
   doc,
   getDoc,
   setDoc,
   updateDoc,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-import { applyStaticI18n, currentLang, setLang, setLabelOverrides, t } from "./i18n.js?v=field-labels-2";
+import { applyStaticI18n, currentLang, setLang, setLabelOverrides, t } from "./i18n.js?v=mist-1";
+import { EMULATOR_PORTS, isLocalDev } from "./firebase-env.js?v=mist-1";
 
 const loadingEl = document.getElementById("state-loading");
 const closedEl = document.getElementById("state-closed");
@@ -301,6 +303,7 @@ async function main() {
     return;
   }
   const db = getFirestore(app);
+  if (isLocalDev()) connectFirestoreEmulator(db, location.hostname, EMULATOR_PORTS.firestore);
   const ref = doc(db, "orgs", path.orgId, "guestForms", path.formId);
   let snap;
   try {

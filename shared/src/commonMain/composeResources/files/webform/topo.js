@@ -14,7 +14,10 @@ if (!gl) {
   // Phones run `mediump` as 16-bit floats (max ~65504). The simplex noise below permutes values
   // up to ~289² × 34, which overflows fp16 and collapses every pixel to one flat band — the
   // "solid colour instead of the animation" bug on mobile. Ask for highp whenever the GPU has it.
-  const fs = `
+  // fwidth() gives the exact width of one pixel in noise units, so line edges can be blended
+  // over a single pixel. Nearly every GPU has it; older ones fall back to a fixed softness.
+  const hasDerivatives = Boolean(gl.getExtension("OES_standard_derivatives"));
+  const fs = `${hasDerivatives ? "#extension GL_OES_standard_derivatives : enable\n#define HAS_DERIVATIVES 1" : ""}
     #ifdef GL_FRAGMENT_PRECISION_HIGH
     precision highp float;
     #else
@@ -83,17 +86,30 @@ if (!gl) {
       float raw = snoise3(samplePos);
       float normalized = (raw + 1.0) * 0.5;
       float scaled = uBands * normalized;
-      float rounded = ceil(scaled);
-      float roundingError = rounded - scaled;
-      if (roundingError > uEdgeThreshold) {
+      // Each contour line covers [k - threshold, k] in "scaled" units. Measure the distance to the
+      // nearest line centre and fade its edges over about one pixel (anti-aliasing), instead of
+      // the hard cut that made the lines look pixelated once the canvas is stretched.
+      float halfWidth = uEdgeThreshold * 0.5;
+      float k = floor(scaled + halfWidth + 0.5);
+      float dist = abs(scaled - (k - halfWidth));
+      #ifdef HAS_DERIVATIVES
+      float aa = max(fwidth(scaled) * 0.85, 0.0015);
+      #else
+      float aa = 0.02;
+      #endif
+      float coverage = 1.0 - smoothstep(halfWidth - aa, halfWidth + aa, dist);
+      if (coverage <= 0.0) {
         gl_FragColor = vec4(0.0);
         return;
       }
-      float band = floor(mod(rounded, 4.0));
-      if (band < 0.5) gl_FragColor = uColor0;
-      else if (band < 1.5) gl_FragColor = uColor1;
-      else if (band < 2.5) gl_FragColor = uColor2;
-      else gl_FragColor = uColor3;
+      float band = floor(mod(k, 4.0));
+      vec4 color;
+      if (band < 0.5) color = uColor0;
+      else if (band < 1.5) color = uColor1;
+      else if (band < 2.5) color = uColor2;
+      else color = uColor3;
+      // Colours are premultiplied, so scaling the whole vector fades the line cleanly.
+      gl_FragColor = color * coverage;
     }
   `;
 
@@ -127,10 +143,37 @@ if (!gl) {
   gl.uniform1f(u("uBands"), 9.0);
   gl.uniform1f(u("uEdgeThreshold"), 0.16);
   gl.uniform1f(u("uTimeScale"), 0.009);
-  gl.uniform4f(u("uColor0"), 0.70, 0.62, 0.86, 0.52);
-  gl.uniform4f(u("uColor1"), 0.69, 0.75, 0.77, 0.46);
-  gl.uniform4f(u("uColor2"), 0.97, 0.73, 0.85, 0.40);
-  gl.uniform4f(u("uColor3"), 0.70, 0.62, 0.86, 0.36);
+  // Band colours come from the active theme (--topo-0 … --topo-3 in theme.css), so the field
+  // follows light / dark mode instead of being hard-coded.
+  const FALLBACK = [
+    [1.0, 0.71, 0.62, 0.42],
+    [0.66, 0.82, 0.95, 0.36],
+    [0.88, 0.69, 0.65, 0.30],
+    [0.12, 0.40, 0.56, 0.55],
+  ];
+  function parseColor(raw, fallback) {
+    const value = String(raw || "").trim();
+    let m = value.match(/^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+)\s*)?\)$/i);
+    if (m) {
+      return [Number(m[1]) / 255, Number(m[2]) / 255, Number(m[3]) / 255, m[4] === undefined ? 1 : Number(m[4])];
+    }
+    m = value.match(/^#([0-9a-f]{6})$/i);
+    if (m) {
+      const n = parseInt(m[1], 16);
+      return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255, 1];
+    }
+    return fallback;
+  }
+  function applyThemeColors() {
+    const style = getComputedStyle(document.documentElement);
+    for (let i = 0; i < 4; i++) {
+      const c = parseColor(style.getPropertyValue(`--topo-${i}`), FALLBACK[i]);
+      // The canvas composites with premultiplied alpha: straight colours would wash out to white
+      // on a light page.
+      gl.uniform4f(u(`uColor${i}`), c[0] * c[3], c[1] * c[3], c[2] * c[3], c[3]);
+    }
+  }
+  applyThemeColors();
 
   // The topographic field is soft, so a down-scaled buffer stretched by CSS looks identical
   // while doing a fraction of the per-pixel work. This is what lets phones render it at all and
@@ -197,6 +240,11 @@ if (!gl) {
     event.preventDefault();
     stop();
   }, false);
+
+  window.addEventListener("nl-themechange", () => {
+    applyThemeColors();
+    if (!rafId) draw(reduceMotion ? 0 : performance.now() - start);
+  });
 
   if (reduceMotion) {
     draw(0); // a single static topographic frame, no continuous animation

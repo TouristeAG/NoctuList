@@ -185,6 +185,8 @@ actual fun VolunteerDetailPanel(
 
             DesktopShiftHistorySection(sortedJobs, venues, jobTypeConfigs, platformContext)
 
+            VolunteerPortalAccessCard(viewModel = viewModel, volunteer = volunteer)
+
             if (viewModel != null) {
                 LocalAdminRightsSection(
                     viewModel = viewModel,

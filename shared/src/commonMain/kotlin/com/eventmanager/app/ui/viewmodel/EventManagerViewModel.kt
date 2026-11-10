@@ -54,6 +54,12 @@ import com.eventmanager.app.data.remote.PendingRemoteWriteQueue
 import com.eventmanager.app.data.remote.createFirestoreGateway
 import com.eventmanager.app.data.remote.FirestoreGateway
 import com.eventmanager.app.data.remote.downloadProfilePhotoBytes
+import com.eventmanager.app.portal.PortalGrantResult
+import com.eventmanager.app.portal.PortalQrMailer
+import com.eventmanager.app.portal.SignupFormState
+import com.eventmanager.app.portal.VolunteerPortalHost
+import com.eventmanager.app.portal.VolunteerPortalService
+import com.eventmanager.app.portal.VolunteerSignupForm
 import com.eventmanager.app.data.remote.createFirebaseAuthService
 import com.eventmanager.app.data.remote.GitLiveProfilePhotoStorageGateway
 import com.eventmanager.app.data.remote.FirestoreApplyPolicy
@@ -124,6 +130,7 @@ class EventManagerViewModel(
     private companion object {
         const val VM_LOG_TAG = "EventManagerVM"
         const val PHOTO_REQUEST_BACKGROUND_POLL_MS = 20_000L
+        const val VOLUNTEER_PORTAL_CHECK_MS = 30_000L
         /** Reuse an open link only if it stays valid for at least this long. */
         const val PHOTO_REQUEST_REUSE_MARGIN_MS = 24L * 60 * 60 * 1000
     }
@@ -1584,6 +1591,13 @@ class EventManagerViewModel(
             delay(2500)
             ensurePhotoRequestLoop()
         }
+        viewModelScope.launch {
+            delay(3500)
+            while (isActive) {
+                runCatching { ensureVolunteerPortalService() }
+                delay(VOLUNTEER_PORTAL_CHECK_MS)
+            }
+        }
         platformContext?.let { ctx ->
             val sm = SettingsManager(ctx)
             val savedVenue = sm.getPeopleCounterSelectedVenueId()
@@ -1629,6 +1643,8 @@ class EventManagerViewModel(
     
     override fun onCleared() {
         super.onCleared()
+        volunteerPortalService?.stop()
+        volunteerPortalService = null
         backgroundSyncJob?.cancel()
         backgroundSyncJob = null
         sheetsMirrorJob?.cancel()
@@ -2583,6 +2599,211 @@ class EventManagerViewModel(
                 }
                 delay(PHOTO_REQUEST_BACKGROUND_POLL_MS)
             }
+        }
+    }
+
+    // endregion
+
+    // region Volunteer portal (registration links, personal web space)
+
+    private val _volunteerPortalEnabled = MutableStateFlow(false)
+
+    /** Firebase backend and the institution turned the volunteer portal on. */
+    val volunteerPortalEnabled: StateFlow<Boolean> = _volunteerPortalEnabled.asStateFlow()
+
+    private var volunteerPortalService: VolunteerPortalService? = null
+    private var volunteerPortalServiceOrg: String = ""
+
+    fun isVolunteerPortalFeatureEnabled(): Boolean =
+        getActiveBackendType() == BackendType.FIREBASE &&
+            settingsManagerCached?.isVolunteerPortalEnabled() == true
+
+    private fun publishVolunteerPortalSettings() {
+        _volunteerPortalEnabled.value = isVolunteerPortalFeatureEnabled()
+    }
+
+    fun setVolunteerPortalEnabled(enabled: Boolean) {
+        val settings = settingsManagerCached ?: return
+        if (getActiveBackendType() != BackendType.FIREBASE) return
+        val service = volunteerPortalService
+        settings.setVolunteerPortalEnabled(enabled)
+        publishVolunteerPortalSettings()
+        backupInstitutionSettingsToSheets()
+        viewModelScope.launch {
+            if (!enabled) runCatching { service?.unpublishAll() }
+            ensureVolunteerPortalService()
+        }
+    }
+
+    /** Sign-in page volunteers bookmark. Empty while the site origin is unknown. */
+    fun volunteerPortalUrl(): String =
+        settingsManagerCached?.volunteerPortalUrl(resolveActiveFirebaseOrgIdForWrites()).orEmpty()
+
+    fun volunteerSignupUrl(form: VolunteerSignupForm): String =
+        settingsManagerCached?.volunteerSignupUrl(form.orgId, form.formId).orEmpty()
+
+    /** Registration links need the portal on and a public site origin to build the link from. */
+    fun isVolunteerSignupLinkAvailable(): Boolean =
+        isVolunteerPortalFeatureEnabled() && guestFormSiteOrigin().isNotBlank()
+
+    private fun ensureVolunteerPortalService() {
+        publishVolunteerPortalSettings()
+        val org = resolveActiveFirebaseOrgIdForWrites().trim()
+        if (!isVolunteerPortalFeatureEnabled() || org.isBlank()) {
+            volunteerPortalService?.stop()
+            volunteerPortalService = null
+            volunteerPortalServiceOrg = ""
+            return
+        }
+        if (volunteerPortalService != null && volunteerPortalServiceOrg == org) return
+        volunteerPortalService?.stop()
+        val gateway = photoRequestGateway() ?: return
+        if (!gateway.isAvailable()) return
+        val service = VolunteerPortalService(
+            orgId = org,
+            gateway = gateway,
+            host = volunteerPortalHost,
+            scope = viewModelScope,
+        )
+        volunteerPortalService = service
+        volunteerPortalServiceOrg = org
+        service.start(volunteers, jobs, accountTransfers, jobTypeConfigs)
+    }
+
+    private fun requirePortalService(): VolunteerPortalService? {
+        ensureVolunteerPortalService()
+        return volunteerPortalService.also {
+            if (it == null) _syncError.value = "The volunteer portal needs Firebase, the portal turned on and a signed-in team account."
+        }
+    }
+
+    suspend fun createVolunteerSignupForm(): VolunteerSignupForm? {
+        if (!isVolunteerSignupLinkAvailable()) {
+            _syncError.value = "Registration links need the volunteer portal on and the public form site."
+            return null
+        }
+        return requirePortalService()?.createSignupForm()
+            ?: null.also { _syncError.value = "Registration link could not be created. Check the connection and Firestore rules." }
+    }
+
+    suspend fun checkVolunteerSignupForm(form: VolunteerSignupForm): SignupFormState =
+        volunteerPortalService?.signupFormState(form) ?: SignupFormState.Waiting
+
+    suspend fun grantVolunteerPortalAccess(volunteer: Volunteer, languageCode: String): PortalGrantResult {
+        if (rejectIfCrudSoftLocked("updating volunteers")) return PortalGrantResult.Failed("LOCKED")
+        val service = requirePortalService() ?: return PortalGrantResult.Failed("UNAVAILABLE")
+        return service.grantAccess(tagVolunteerWithActiveOrg(volunteer), languageCode)
+    }
+
+    /** App language, used for the Firebase e-mails sent to volunteers. */
+    fun currentLanguageCode(): String = settingsManagerCached?.getLanguage() ?: "en"
+
+    /**
+     * "Add volunteer" with the portal switch on: saves the profile first, then opens the portal
+     * access (account + password shown once + "choose your password" e-mail).
+     */
+    suspend fun addVolunteerWithPortalAccess(
+        volunteer: Volunteer,
+        profilePhotoJpeg: ByteArray?,
+        languageCode: String,
+    ): PortalGrantResult {
+        if (rejectIfCrudSoftLocked("adding volunteers")) return PortalGrantResult.Failed("LOCKED")
+        val created = volunteerPortalHost.createVolunteer(volunteer, profilePhotoJpeg)
+            ?: return PortalGrantResult.Failed("SAVE_FAILED")
+        return grantVolunteerPortalAccess(created, languageCode)
+    }
+
+    suspend fun sendVolunteerPortalPasswordReset(volunteer: Volunteer, languageCode: String): Boolean =
+        requirePortalService()?.sendPasswordReset(volunteer, languageCode) ?: false
+
+    suspend fun revokeVolunteerPortalAccess(volunteer: Volunteer): Boolean {
+        if (rejectIfCrudSoftLocked("updating volunteers")) return false
+        val service = requirePortalService() ?: return false
+        return service.revokeAccess(tagVolunteerWithActiveOrg(volunteer))
+    }
+
+    private val volunteerPortalHost = object : VolunteerPortalHost {
+        override val deviceId: String
+            get() = settingsManagerCached?.getOrCreatePersistentDeviceId().orEmpty()
+
+        override fun apiKey(): String = settingsManagerCached?.getFirebaseApiKey().orEmpty()
+        override fun currencyCode(): String = settingsManagerCached?.getCurrencyCode() ?: "CHF"
+        override fun associationName(): String = settingsManagerCached?.getEmailAssociationName().orEmpty()
+        override fun dateOffsetHours(): Int = settingsManagerCached?.getDateChangeOffsetHours() ?: 0
+        override fun institutionLogoPng(): String = settingsManagerCached?.getInstitutionLogoPng().orEmpty()
+        override fun profilePhotosEnabled(): Boolean = isProfilePhotoUploadEnabled()
+
+        override suspend fun volunteers(): List<Volunteer> = repository.getAllVolunteersOnce()
+
+        override suspend fun createVolunteer(volunteer: Volunteer, photo: ByteArray?): Volunteer? {
+            if (rejectIfCrudSoftLocked("adding volunteers")) return null
+            val tagged = tagVolunteerWithActiveOrg(volunteer)
+            repository.insertVolunteer(tagged)
+            val withPhoto = persistVolunteerPhotoAfterSave(tagged, photo)
+            syncCoordinator?.afterVolunteerSaved(withPhoto)
+            runCatching { recalcAndUploadVolunteerGuestList() }
+            return withPhoto
+        }
+
+        override suspend fun saveVolunteer(volunteer: Volunteer): Boolean {
+            if (rejectIfCrudSoftLocked("updating volunteers")) return false
+            val existing = repository.getVolunteerById(volunteer.id) ?: return false
+            // The portal never changes admin rights, NFC cards or photos.
+            val safe = volunteer.copy(
+                isAdmin = existing.isAdmin,
+                nfcCardUid = existing.nfcCardUid,
+                nfcCardUidHash = existing.nfcCardUidHash,
+                profilePhotoPath = existing.profilePhotoPath,
+                profilePhotoUrl = existing.profilePhotoUrl,
+            )
+            val tagged = tagVolunteerWithActiveOrg(safe)
+            repository.updateVolunteer(tagged)
+            syncCoordinator?.afterVolunteerSaved(tagged)
+            return true
+        }
+
+        override suspend fun attachVolunteerPhoto(volunteer: Volunteer, bytes: ByteArray): Boolean {
+            val tagged = tagVolunteerWithActiveOrg(repository.getVolunteerById(volunteer.id) ?: return false)
+            val updated = persistVolunteerPhotoAfterSave(tagged, bytes)
+            if (updated == tagged) return false
+            syncCoordinator?.afterVolunteerSaved(updated)
+            return true
+        }
+
+        override suspend fun downloadStorage(path: String): ByteArray? =
+            downloadProfilePhotoBytes(platformContext, url = "", storagePath = path)
+
+        override suspend fun uploadStorageJpeg(path: String, bytes: ByteArray): Boolean =
+            profilePhotoStorage.uploadJpegToPath(path, bytes)
+
+        override suspend fun deleteStorage(path: String) {
+            profilePhotoStorage.delete(path)
+        }
+
+        override suspend fun volunteerPhotoBytes(volunteer: Volunteer): ByteArray? =
+            downloadProfilePhotoBytes(platformContext, volunteer.profilePhotoUrl, volunteer.resolvedProfilePhotoPath())
+
+        override fun canSendQrEmail(): Boolean =
+            platformContext?.let { PortalQrMailer.canSend(it) } ?: false
+
+        override suspend fun sendQrEmail(volunteer: Volunteer): Boolean {
+            val ctx = platformContext ?: return false
+            val settings = settingsManagerCached ?: return false
+            return PortalQrMailer.send(ctx, settings, volunteer)
+        }
+
+        override fun loadPendingSignupForms(): List<VolunteerSignupForm> =
+            VolunteerSignupForm.decodeList(settingsManagerCached?.getPendingSignupFormsJson().orEmpty())
+
+        override fun savePendingSignupForms(forms: List<VolunteerSignupForm>) {
+            settingsManagerCached?.savePendingSignupFormsJson(VolunteerSignupForm.encodeList(forms))
+        }
+
+        override fun loadPublishedHashes(): Map<String, String> =
+            VolunteerPortalService.decodeHashes(settingsManagerCached?.getPortalPublishedHashesJson().orEmpty())
+
+        override fun savePublishedHashes(hashes: Map<String, String>) {
+            settingsManagerCached?.savePortalPublishedHashesJson(VolunteerPortalService.encodeHashes(hashes))
         }
     }
 
@@ -6133,6 +6354,7 @@ class EventManagerViewModel(
                 publishPosSubcategories()
                 publishTemporaryGuestSettings()
                 publishGuestFormSettings()
+                publishVolunteerPortalSettings()
 
                 vmDebug {
                     "StateFlows updated - Guests: $oldGuestCount → ${_guests.value.size}, " +

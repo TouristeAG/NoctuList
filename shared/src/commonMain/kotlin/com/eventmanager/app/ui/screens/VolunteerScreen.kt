@@ -1,5 +1,13 @@
 package com.eventmanager.app.ui.screens
 
+import com.eventmanager.app.portal.PortalGrantResult
+import com.eventmanager.app.ui.components.AddVolunteerChoiceDialog
+import com.eventmanager.app.ui.components.PortalAccessToggleRow
+import com.eventmanager.app.ui.components.PortalGrantResultDialog
+import com.eventmanager.app.ui.components.VolunteerSignupLinkDialog
+import com.eventmanager.app.ui.components.portalMailLanguage
+import com.eventmanager.app.ui.components.rememberVolunteerPortalEnabled
+import kotlinx.coroutines.launch
 import com.eventmanager.app.platform.LocalPlatformContext
 import com.eventmanager.app.ui.components.DialogWindowFollowsScreenSize
 import com.eventmanager.app.resources.Res
@@ -73,6 +81,12 @@ fun VolunteerScreen(
     val accountTransfers = viewModel?.accountTransfers?.collectAsState()?.value ?: emptyList()
     val accountBalances = viewModel?.accountBalances?.collectAsState()?.value ?: emptyMap()
     var showAddDialog by remember { mutableStateOf(false) }
+    val portalEnabled = rememberVolunteerPortalEnabled(viewModel)
+    val portalSignupAvailable = portalEnabled && viewModel?.isVolunteerSignupLinkAvailable() == true
+    var showAddChoice by remember { mutableStateOf(false) }
+    var showSignupLink by remember { mutableStateOf(false) }
+    var portalGrant by remember { mutableStateOf<Pair<Volunteer, PortalGrantResult>?>(null) }
+    val portalScope = rememberCoroutineScope()
     var showEditDialog by remember { mutableStateOf<Volunteer?>(null) }
     var showDetailPanel by remember { mutableStateOf<Volunteer?>(null) }
     var showDeleteDialog by remember { mutableStateOf<Volunteer?>(null) }
@@ -135,7 +149,7 @@ fun VolunteerScreen(
                     fontWeight = FontWeight.Bold
                 )
                 Button(
-                    onClick = { showAddDialog = true },
+                    onClick = { if (portalSignupAvailable) showAddChoice = true else showAddDialog = true },
                     modifier = Modifier.fillMaxWidth().height(getResponsiveButtonHeight())
                 ) {
                     Icon(Icons.Default.PersonAdd, contentDescription = null)
@@ -155,7 +169,7 @@ fun VolunteerScreen(
                     fontWeight = FontWeight.Bold
                 )
                 Button(
-                    onClick = { showAddDialog = true },
+                    onClick = { if (portalSignupAvailable) showAddChoice = true else showAddDialog = true },
                     modifier = Modifier.height(getResponsiveButtonHeight())
                 ) {
                     Icon(Icons.Default.PersonAdd, contentDescription = null)
@@ -273,12 +287,35 @@ fun VolunteerScreen(
         }
     }
     
+    if (showAddChoice) {
+        AddVolunteerChoiceDialog(
+            onFillIn = {
+                showAddChoice = false
+                showAddDialog = true
+            },
+            onSendForm = {
+                showAddChoice = false
+                showSignupLink = true
+            },
+            onDismiss = { showAddChoice = false },
+        )
+    }
+
+    if (showSignupLink && viewModel != null) {
+        VolunteerSignupLinkDialog(viewModel = viewModel, onDismiss = { showSignupLink = false })
+    }
+
+    portalGrant?.let { (volunteer, result) ->
+        PortalGrantResultDialog(viewModel, volunteer, result, onDismiss = { portalGrant = null })
+    }
+
     // Add Volunteer Dialog
     if (showAddDialog) {
         AddVolunteerDialog(
             onDismiss = { showAddDialog = false },
             profilePhotosEnabled = rememberProfilePhotosUploadEnabled(viewModel),
-            onConfirm = { name, abbreviation, email, phone, dateOfBirth, gender, photo ->
+            portalAccessAvailable = portalEnabled && viewModel != null,
+            onConfirm = { name, abbreviation, email, phone, dateOfBirth, gender, photo, createPortalAccess ->
                 val newVolunteer = Volunteer(
                     name = name,
                     lastNameAbbreviation = abbreviation,
@@ -287,7 +324,18 @@ fun VolunteerScreen(
                     dateOfBirth = dateOfBirth,
                     gender = gender
                 )
-                onAddVolunteer(newVolunteer, photo)
+                if (createPortalAccess && viewModel != null) {
+                    portalScope.launch {
+                        val result = viewModel.addVolunteerWithPortalAccess(
+                            newVolunteer,
+                            photo,
+                            portalMailLanguage(viewModel),
+                        )
+                        portalGrant = newVolunteer to result
+                    }
+                } else {
+                    onAddVolunteer(newVolunteer, photo)
+                }
                 showAddDialog = false
             }
         )
@@ -481,8 +529,9 @@ fun VolunteerCard(
 @Composable
 fun AddVolunteerDialog(
     onDismiss: () -> Unit,
-    onConfirm: (String, String, String, String, String, Gender?, ByteArray?) -> Unit,
+    onConfirm: (String, String, String, String, String, Gender?, ByteArray?, Boolean) -> Unit,
     profilePhotosEnabled: Boolean = false,
+    portalAccessAvailable: Boolean = false,
 ) {
     val platformContext = LocalPlatformContext.current
     var name by remember { mutableStateOf("") }
@@ -493,6 +542,7 @@ fun AddVolunteerDialog(
     var selectedGender by remember { mutableStateOf<Gender?>(null) }
     var expandedGender by remember { mutableStateOf(false) }
     var pendingPhotoBytes by remember { mutableStateOf<ByteArray?>(null) }
+    var createPortalAccess by remember { mutableStateOf(portalAccessAvailable) }
     
     // Validation states
     var emailError by remember { mutableStateOf<String?>(null) }
@@ -648,6 +698,14 @@ fun AddVolunteerDialog(
                             onPicked = { pendingPhotoBytes = it },
                             onClearPending = { pendingPhotoBytes = null },
                         )
+
+                        if (portalAccessAvailable) {
+                            PortalAccessToggleRow(
+                                checked = createPortalAccess,
+                                onCheckedChange = { createPortalAccess = it },
+                                enabled = true,
+                            )
+                        }
                     }
                     
                     // Action Buttons
@@ -667,7 +725,7 @@ fun AddVolunteerDialog(
                         Button(
                             onClick = { 
                                 val storageDate = ValidationUtils.convertDateToStorageFormat(dateOfBirth) ?: dateOfBirth
-                                onConfirm(name, abbreviation, email, phone, storageDate, selectedGender, pendingPhotoBytes) 
+                                onConfirm(name, abbreviation, email, phone, storageDate, selectedGender, pendingPhotoBytes, portalAccessAvailable && createPortalAccess) 
                             },
                             enabled = name.isNotBlank() && abbreviation.isNotBlank() && 
                                      email.isNotBlank() && phone.isNotBlank() && dateOfBirth.isNotBlank() &&

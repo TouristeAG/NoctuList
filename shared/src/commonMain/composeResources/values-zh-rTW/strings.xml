@@ -1470,37 +1470,37 @@
     <string name="firebase_tutorial_oauth_note">Gmail/郵件 OAuth（開發者桌面 JSON）是獨立的，不可用於 Firebase 登入。請使用此 Firebase 專案中的機構 Web client ID + 密鑰。</string>
     <string name="firebase_tutorial_method_label">指南方式</string>
     <string name="firebase_tutorial_method_firebase">Firebase 控制台</string>
-    <string name="firebase_tutorial_method_firebase_hint">建議：console.firebase.google.com — Auth、Firestore 和 Web 設定介面更清晰。僅需短暫開啟 Cloud 控制台取得 Web 用戶端密鑰和 localhost 重新導向。</string>
+    <string name="firebase_tutorial_method_firebase_hint">建議：console.firebase.google.com，Auth、Firestore 和 Web 設定介面更清晰。僅需短暫開啟 Cloud 控制台取得 Web 用戶端密鑰和 localhost 重新導向。</string>
     <string name="firebase_tutorial_method_cloud">Google Cloud 控制台</string>
     <string name="firebase_tutorial_method_cloud_hint">適用於已使用 console.cloud.google.com 的管理員（與 Sheets 同一專案）。仍需開啟一次 Firebase 以設定 Google 登入和 Application ID（appId）。</string>
     <string name="firebase_tutorial_copy_rules">複製 firestore.rules 到剪貼簿</string>
-    <string name="firebase_tutorial_copy_rules_done">已複製 — 貼到 Firestore → Rules，然後發佈</string>
-    <string name="firebase_tutorial_copy_rules_error">無法載入規則 — 請開啟專案中的 firebase/firestore.rules</string>
+    <string name="firebase_tutorial_copy_rules_done">已複製，貼到 Firestore → Rules，然後發佈</string>
+    <string name="firebase_tutorial_copy_rules_error">無法載入規則，請開啟專案中的 firebase/firestore.rules</string>
     <string name="firebase_tutorial_copy_redirect_uris">複製 localhost 重新導向 URI</string>
-    <string name="firebase_tutorial_copy_redirect_uris_done">已複製 — 將每個 URI 貼到 Authorized redirect URIs，然後儲存</string>
+    <string name="firebase_tutorial_copy_redirect_uris_done">已複製，將每個 URI 貼到 Authorized redirect URIs，然後儲存</string>
     <string name="firebase_tutorial_storage_optional_title">選用：個人資料照片（Firebase Storage）</string>
-    <string name="firebase_tutorial_storage_optional_body">略過此步以留在免費 Spark 方案。啟用 Storage 可能需要付費 Blaze 方案。\n\n若要個人資料照片：\n1. Firebase Console → Build → Storage → Get started（同一專案）。\n2. Storage → Rules（網址須包含 /storage/rules — 不是 Firestore）。\n3. 貼上 NoctuList 的 Storage 規則（下方按鈕）→ Publish。\n4. 在 NoctuList 設定 → Firebase 中開啟「啟用個人資料照片」（機構內所有裝置都會開啟）。\n\n可以稍後完成。沒有 Storage，應用程式仍可完整使用。</string>
+    <string name="firebase_tutorial_storage_optional_body">略過此步以留在免費 Spark 方案。啟用 Storage 可能需要付費 Blaze 方案。\n\n若要個人資料照片：\n1. Firebase Console → Build → Storage → Get started（同一專案）。\n2. Storage → Rules（網址須包含 /storage/rules，不是 Firestore）。\n3. 貼上 NoctuList 的 Storage 規則（下方按鈕）→ Publish。\n4. 在 NoctuList 設定 → Firebase 中開啟「啟用個人資料照片」（機構內所有裝置都會開啟）。\n\n可以稍後完成。沒有 Storage，應用程式仍可完整使用。</string>
     <string name="firebase_tutorial_copy_storage_rules">複製 storage.rules 到剪貼簿</string>
-    <string name="firebase_tutorial_copy_storage_rules_done">已複製 — 貼到 Storage → Rules，然後發佈</string>
-    <string name="firebase_tutorial_copy_storage_rules_error">無法載入規則 — 請開啟專案中的 firebase/storage.rules</string>
+    <string name="firebase_tutorial_copy_storage_rules_done">已複製，貼到 Storage → Rules，然後發佈</string>
+    <string name="firebase_tutorial_copy_storage_rules_error">無法載入規則，請開啟專案中的 firebase/storage.rules</string>
     <string name="firebase_tutorial_fb_step1_title">1. 建立或開啟 Firebase 專案</string>
     <string name="firebase_tutorial_fb_step1_body">1. 開啟 https://console.firebase.google.com，使用可管理專案的機構 Google 帳號登入。
 2. 點擊新增專案（或選擇現有專案）。
-3. 若已在 Cloud 專案上使用 Google Sheets：選擇「使用現有 Google Cloud 專案」並選擇同一專案 — 勿建立第二個空專案。
+3. 若已在 Cloud 專案上使用 Google Sheets：選擇「使用現有 Google Cloud 專案」並選擇同一專案，勿建立第二個空專案。
 4. Analytics 選用。完成精靈。
 5. 記下 Project ID（專案設定 → 一般）。將貼到 NoctuList。</string>
     <string name="firebase_tutorial_fb_step2_title">2. 建立 Firestore</string>
     <string name="firebase_tutorial_fb_step2_body">在 Firebase 控制台，同一專案：
 1. Build → Firestore Database → 建立資料庫。
 2. 建議選擇正式模式、靠近場地的區域（如需則選 EU），然後建立。
-3. 請勿手動新增文件 — NoctuList 會在 orgs/{orgId}/… 下建立</string>
+3. 請勿手動新增文件，NoctuList 會在 orgs/{orgId}/… 下建立</string>
     <string name="firebase_tutorial_fb_step3_title">3. 發佈安全規則</string>
-    <string name="firebase_tutorial_fb_step3_body">Firebase 控制台 → Build → Firestore → Rules（URL 須包含 /firestore/rules — 不是 Realtime Database）。
-全選，貼上 NoctuList 規則（下方按鈕），然後發佈。無這些規則，裝置無法安全讀寫。</string>
+    <string name="firebase_tutorial_fb_step3_body">Firebase 控制台 → Build → Firestore → Rules（URL 須包含 /firestore/rules，不是 Realtime Database）。
+全選，貼上 NoctuList 規則（下方按鈕），然後發佈。無這些規則，裝置無法安全讀寫。\n每次 NoctuList 更新後，請重新發布規則。</string>
     <string name="firebase_tutorial_fb_step4_title">4. 啟用 Google 登入</string>
     <string name="firebase_tutorial_fb_step4_body">1. Firebase 控制台 → Build → Authentication → 開始使用（如需要）。
 2. 登入方式 → Google → 啟用 → 儲存。
-3. 在該畫面記下 Firebase 為 Google 提供者顯示的 Web client ID — 這是機構 Web 用戶端（非 Gmail 桌面）。
+3. 在該畫面記下 Firebase 為 Google 提供者顯示的 Web client ID，這是機構 Web 用戶端（非 Gmail 桌面）。
 4. 若 Firebase 自動建立 Web OAuth 用戶端，請保留。勿替換為開發者 Gmail OAuth JSON。</string>
     <string name="firebase_tutorial_fb_step5_title">5. 將值複製到 NoctuList</string>
     <string name="firebase_tutorial_fb_step5_body">保持此清單開啟。
@@ -1508,7 +1508,7 @@
 A) Web 設定（最簡單）
 • 專案設定（齒輪）→ 一般 → 您的應用程式 → Web 應用程式。
 • 若無：新增應用程式 → Web (&lt;/&gt;)，暱稱「NoctuList」，略過 Hosting。
-• 開啟 Config / SDK 片段，複製 apiKey、appId、projectId — 或將整段貼到 NoctuList「貼上 Firebase Web 設定」。
+• 開啟 Config / SDK 片段，複製 apiKey、appId、projectId：或將整段貼到 NoctuList「貼上 Firebase Web 設定」。
 
 B) Web client ID
 • Authentication → 登入方式 → Google → Web client ID
@@ -1541,11 +1541,11 @@ C) Web client secret（桌面端必需）
 1. 選單 ☰ → APIs &amp; Services → Library →「Cloud Firestore API」→ Enable。
 2. 選單 ☰ → Firestore → 如提示則建立資料庫。
 3. 建議選擇 Native / 正式、靠近場地的區域，然後建立。
-4. 請勿手動新增文件 — NoctuList 建立 orgs/{orgId}/…</string>
+4. 請勿手動新增文件，NoctuList 建立 orgs/{orgId}/…</string>
     <string name="firebase_tutorial_cloud_step3_title">3. 發佈安全規則</string>
-    <string name="firebase_tutorial_cloud_step3_body">Cloud 控制台 → Firestore → Rules（URL 須包含 firestore 和 rules — 不是 Realtime Database）。
+    <string name="firebase_tutorial_cloud_step3_body">Cloud 控制台 → Firestore → Rules（URL 須包含 firestore 和 rules，不是 Realtime Database）。
 貼上 NoctuList 規則（下方按鈕）→ 發佈。
-若 Cloud UI 無 Rules 編輯器：Firebase 控制台 → Build → Firestore → Rules → 貼上 → 發佈。</string>
+若 Cloud UI 無 Rules 編輯器：Firebase 控制台 → Build → Firestore → Rules → 貼上 → 發佈。\n每次 NoctuList 更新後，請重新發布規則。</string>
     <string name="firebase_tutorial_cloud_step4_title">4. 啟用 Google 登入 + Web OAuth 用戶端</string>
     <string name="firebase_tutorial_cloud_step4_body">A) Firebase Auth（需完成一次）
 1. console.firebase.google.com → 同一專案 → Authentication → 登入方式 → Google → 啟用 → 儲存。
@@ -1564,11 +1564,11 @@ B) 機構 Web OAuth 用戶端（非 Gmail 桌面）
 → 儲存，等待約一分鐘，然後重試登入。
 5. 複製 Client ID 和 Client secret 供第 5 步使用。</string>
     <string name="firebase_tutorial_cloud_step5_title">5. 將值複製到 NoctuList</string>
-    <string name="firebase_tutorial_cloud_step5_body">A) Project ID — Cloud 專案選擇器 / IAM &amp; Admin → Settings。
+    <string name="firebase_tutorial_cloud_step5_body">A) Project ID：Cloud 專案選擇器 / IAM &amp; Admin → Settings。
 
-B) API key — Credentials → API keys（現有瀏覽器金鑰，或 Create credentials → API key 一次）。
+B) API key：Credentials → API keys（現有瀏覽器金鑰，或 Create credentials → API key 一次）。
 
-C) Web client ID + secret — Credentials → OAuth 2.0 Client IDs → Web application（第 4 步）。兩者貼到 NoctuList（secret = 桌面登入）。
+C) Web client ID + secret：Credentials → OAuth 2.0 Client IDs → Web application（第 4 步）。兩者貼到 NoctuList（secret = 桌面登入）。
 
 D) Application ID（appId）
 • Firebase 控制台 → 專案設定 → 一般 → 您的應用程式 → Web。
@@ -1578,10 +1578,10 @@ D) Application ID（appId）
 繼續第 6 步。</string>
     <string name="firebase_tutorial_step7_title">6. 填寫 NoctuList，然後遷移 / 連線</string>
     <string name="firebase_tutorial_step7_body">在管理員 Firebase 同步或遷移對話框中：
-• 組織 ID — 簡短共用名稱（例如：noctulist-club）。每台裝置相同。
+• 組織 ID：簡短共用名稱（例如：noctulist-club）。每台裝置相同。
 • Project ID、Application ID、API key、Web client ID，桌面端還需 Web client secret。
 • 或貼上 Web 設定 + 填寫 Web client ID/secret，然後為其他裝置使用加入 QR 碼。
-使用 Google 登入（首位管理員成為組織管理員）。僅在登入成功後再開始從 Sheets 遷移。其他裝置透過 QR 碼 / follow 加入 — 不應重新輸入密鑰。</string>
+使用 Google 登入（首位管理員成為組織管理員）。僅在登入成功後再開始從 Sheets 遷移。其他裝置透過 QR 碼 / follow 加入，不應重新輸入密鑰。</string>
     <string name="firebase_tutorial_step8_title">7. 設定完成後</string>
     <string name="firebase_tutorial_step8_body">Firestore 中應看到 orgs/{yourOrgId}/…（guests、members、metadata 等）。在驗證收銀、門禁和第二台裝置前請保留 Sheets 備份。計費：測試期間保持免費 Spark / 免費層；僅超出配額時升級。</string>
     <string name="migration_wizard_to_firebase_title">切換到 Firebase</string>
@@ -2341,12 +2341,14 @@ D) Application ID（appId）
     <string name="guest_form_deploy_commands">npm install -g firebase-tools\nfirebase login\nfirebase deploy --only hosting --project YOUR_PROJECT_ID</string>
     <string name="firebase_tutorial_forms_optional_title">選用：公開嘉賓名單表單（Firebase Hosting）</string>
     <string name="firebase_tutorial_forms_optional_body">在本 Firebase 專案上發布一次表單網站（免費 Hosting）。之後 NoctuList 裡每個表單只是一個唯一連結，無需再開終端機。</string>
-    <string name="guest_form_step1">1. 在設定 → Firebase → 選用功能中，開啟藝人嘉賓名單表單。</string>
+    <string name="firebase_tutorial_portal_optional_title">選用：志工入口網站</string>
+    <string name="firebase_tutorial_portal_optional_body">如果志工不需要自己的網頁空間，可略過此部分。它需要上方的表單網站。\n\n1. Firebase 控制台 → Build → Authentication → Sign-in method → Add new provider → Email/Password → Enable。保持「Email link」關閉，然後儲存。\n2. Authentication → Settings → User actions：保持「Email enumeration protection」開啟。\n3. 發布最新的 Firestore 規則（第 3 步）；如使用照片，也發布 Storage 規則。\n4. 重新匯出表單網站並部署（見上方）。這會加入註冊頁面與志工空間。\n5. 在 NoctuList 設定 → Firebase 中開啟「啟用志工入口網站」。登入網址會顯示在那裡。\n\n如需「寄送我的 QR 碼」，請保持至少一台已設定 Gmail 的 NoctuList 裝置運作。</string>
+    <string name="guest_form_step1">1. 在設定 → Firebase → 選用功能中，開啟藝人嘉賓名單表單或志工入口網站。</string>
     <string name="guest_form_step2">2. 在電腦上點「匯出表單網站」，儲存並解壓。資料夾中須有 index.html 和 firebase.json。</string>
     <string name="guest_form_step3">3. 從 https://nodejs.org 安裝 Node.js LTS 22 或 24（綠色 LTS 按鈕，不要 Current）。安裝後重新開啟終端機。</string>
     <string name="guest_form_step4">4. 開啟終端機。輸入 cd，空白鍵，把解壓資料夾拖進視窗，按 Enter。</string>
     <string name="guest_form_step5">5. 複製下方指令，貼到終端機並按 Enter。用擁有此 Firebase 專案的 Google 帳號登入。</string>
-    <string name="guest_form_step6">6. 終端機顯示 “Deploy complete!” 後網站即上線。之後在 NoctuList 建立表單即可，無需再部署。</string>
+    <string name="guest_form_step6">6. 終端機顯示 “Deploy complete!” 後網站即上線。之後建立的表單無需再部署。NoctuList 更新後，請重新匯出並部署網站。</string>
     <string name="guest_form_terminal_caption">在終端機執行的指令</string>
     <string name="guest_form_copy_commands">複製指令</string>
     <string name="guest_form_commands_copied">指令已複製</string>
@@ -2455,4 +2457,46 @@ D) Application ID（appId）
     <string name="profile_photo_request_expired">此連結已過期。請關閉並重新建立。</string>
     <string name="profile_photo_request_failed">無法建立連結。請檢查網路連線，並確認已發布最新的 Firestore 和 Storage 規則。</string>
     <string name="profile_photo_request_hint">可以關閉此視窗：只要此裝置上的 NoctuList 保持開啟，照片送達後仍會自動加入。</string>
+    <string name="portal_settings_title">志工入口網站</string>
+    <string name="portal_settings_body">每位志工在表單網站上擁有個人空間：資料、班次、福利與錢包。開啟前：在 Firebase Authentication 中啟用電子郵件／密碼登入，重新發布 Firestore 與 Storage 規則，並重新部署表單網站。</string>
+    <string name="portal_enable">啟用志工入口網站</string>
+    <string name="portal_sign_in_url">登入頁面：%1$s</string>
+    <string name="portal_add_choice_title">新增志工</string>
+    <string name="portal_add_choice_fill">自行填寫資料</string>
+    <string name="portal_add_choice_fill_desc">現在填寫資料，可同時開通其入口網站存取。</string>
+    <string name="portal_add_choice_link">傳送註冊表單</string>
+    <string name="portal_add_choice_link_desc">由志工自行填寫資料並設定密碼。</string>
+    <string name="portal_signup_link_title">註冊表單</string>
+    <string name="portal_signup_link_body">將此一次性連結傳送給新志工，7 天內有效。對方送出後，其資料會立即顯示在這裡。</string>
+    <string name="portal_signup_link_creating">正在建立連結…</string>
+    <string name="portal_signup_link_failed">無法建立連結。請檢查網路連線，並確認已發布最新的 Firestore 規則。</string>
+    <string name="portal_signup_link_waiting">等待註冊…</string>
+    <string name="portal_signup_link_received">已收到註冊，正在新增志工…</string>
+    <string name="portal_signup_link_done">新志工已新增。</string>
+    <string name="portal_signup_link_expired">此連結已過期，請重新建立。</string>
+    <string name="portal_create_access_toggle">建立志工入口網站帳號</string>
+    <string name="portal_create_access_toggle_desc">系統會產生一組只顯示一次的密碼；志工也會收到一封電子郵件以設定自己的密碼。</string>
+    <string name="portal_access_title">志工入口網站</string>
+    <string name="portal_access_status_none">未開通入口網站</string>
+    <string name="portal_access_status_pending">已開通，等待首次登入</string>
+    <string name="portal_access_status_active">已啟用</string>
+    <string name="portal_access_create">開通存取</string>
+    <string name="portal_access_reset">傳送重設密碼連結</string>
+    <string name="portal_access_revoke">取消存取</string>
+    <string name="portal_access_revoke_confirm_title">取消入口網站存取？</string>
+    <string name="portal_access_revoke_confirm_body">%1$s 將無法再查看其入口網站。登入仍可使用，但在重新開通前不會顯示任何內容。</string>
+    <string name="portal_access_no_email">請先為此志工新增電子郵件地址。</string>
+    <string name="portal_access_reset_sent">重設密碼連結已寄至 %1$s。</string>
+    <string name="portal_access_reset_failed">無法寄出重設郵件。</string>
+    <string name="portal_access_failed">無法開通入口網站存取（%1$s）。</string>
+    <string name="portal_access_existing">%1$s 已有帳號。已寄出設定新密碼的連結，其下次登入時入口網站將開通。</string>
+    <string name="portal_access_admin_note">管理員志工無法透過入口網站索取 QR 碼。</string>
+    <string name="portal_access_email_note">在此修改電子郵件不會變更登入地址。</string>
+    <string name="portal_password_title">入口網站存取已開通</string>
+    <string name="portal_password_body">請將此密碼交給 %1$s。密碼只會顯示一次，對方可在入口網站中修改。</string>
+    <string name="portal_password_reset_sent">同時已寄送設定個人密碼的郵件至 %1$s。</string>
+    <string name="portal_password_copy">複製</string>
+    <string name="portal_password_copied">已複製</string>
+    <string name="portal_password_sign_in_at">登入網址：%1$s</string>
+    <string name="portal_working">請稍候…</string>
 </resources>

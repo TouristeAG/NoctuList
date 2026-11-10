@@ -273,6 +273,8 @@ object FirestoreChangeApplier {
             firebaseOrgId = FirestoreApplyPolicy.orgIdToPersist(existing?.firebaseOrgId.orEmpty(), orgId),
             profilePhotoPath = photos.path,
             profilePhotoUrl = photos.url,
+            portalEnabled = boolOf(decrypted["portalEnabled"]) ?: false,
+            portalUid = stringOf(decrypted["portalUid"]).orEmpty(),
         )
         if (existing == null) repository.insertVolunteer(remote) else repository.updateVolunteer(remote)
     }

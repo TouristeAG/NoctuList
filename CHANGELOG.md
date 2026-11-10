@@ -4,6 +4,34 @@ All notable changes to NoctuList are documented here. Version numbers follow [Se
 
 ---
 
+## Unreleased
+
+New, optional: a personal web space for volunteers, and a refreshed look for every public page.
+
+### Features
+
+- **Volunteer portal (Firebase only, off by default).** Settings, Firebase, "Volunteer portal". Each volunteer signs in on the form site (`/v/{orgId}`) and sees their profile, rank and status, shifts (past and upcoming), current benefits, unique entries left, wallet balance and their 5 latest transfers. They can change their first name, last name, phone number and password, ask for their QR code by e-mail and download their data. Works on phones, tablets and computers (1, 2 or 3 columns).
+- **Registration links.** "Add volunteer" offers "Send a registration form": a single-use link and QR code valid 7 days. The volunteer picks an e-mail and password, fills in their details and an optional photo; the profile appears in NoctuList on its own.
+- **Portal access for existing volunteers.** New "Volunteer portal" card on each profile: create access (a password shown once plus a "choose your password" e-mail), send a password reset link, or remove access. "Add volunteer" can open the access at the same time.
+- **QR code by e-mail from the portal**, sent by any NoctuList device with Gmail set up, only to the address on the profile, at most every 10 minutes, never for admin volunteers.
+- **Volunteer space on the home screen.** The portal can be added from the browser menu ("Add to Home Screen" / "Install app"); it then opens full screen with its own icon and stays signed in by default.
+- **Sunset Mist theme on the public pages**, light and dark (follows the device, with a toggle), on the guest list form, the photo page, registration and the portal. Nunito is now served by the site itself instead of Google Fonts.
+
+### Security
+
+- Firestore rules **v12** and new Storage rules. A volunteer can only read their own filtered page; the wallet QR id, NFC data and admin flag never leave the devices. E-mail verification is required, every write is checked field by field, requests are throttled server-side, and the whole portal is closed by the rules while the setting is off.
+- E-mail/password accounts can never act as team members, even with an invitation code.
+- Strict Content-Security-Policy and security headers on the form site.
+
+### Upgrade notes
+
+- **Database:** Room 51 to 52 (volunteer `portalEnabled`, `portalUid`).
+- **Firestore and Storage rules:** republish both (`NOCTULIST_RULES_VERSION = 12`).
+- **Hosting:** export the form site again from the app and redeploy it.
+- **Firebase Console, before turning the portal on:** Authentication, Sign-in method, enable **Email/Password**. Recommended: keep **Email enumeration protection** on.
+
+---
+
 ## 2.1.16 — 2026-11-09
 
 Optional patch: the people counter is visible again on tablets in portrait.

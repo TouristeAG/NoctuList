@@ -1,8 +1,37 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+    // Volunteer-portal accounts (e-mail + password) never count as team members.
     function isSignedIn() {
-      return request.auth != null;
+      return request.auth != null
+        && request.auth.token.get('firebase', {}).get('sign_in_provider', '') != 'password';
+    }
+
+    function isPasswordAccount() {
+      return request.auth != null
+        && request.auth.token.get('firebase', {}).get('sign_in_provider', '') == 'password';
+    }
+
+    function isPortalUser() {
+      return isPasswordAccount() && request.auth.token.get('email_verified', false) == true;
+    }
+
+    function portalOn(orgId) {
+      return firestore.exists(/databases/(default)/documents/orgs/$(orgId)/institutionSettings/volunteer_portal_enabled)
+        && firestore.get(/databases/(default)/documents/orgs/$(orgId)/institutionSettings/volunteer_portal_enabled)
+             .data.get('value', '') in ['true', true];
+    }
+
+    function signupFormPath(orgId, formId) {
+      return /databases/(default)/documents/orgs/$(orgId)/volunteerSignupForms/$(formId);
+    }
+
+    function signupFormAcceptsPhoto(orgId, formId) {
+      return firestore.exists(signupFormPath(orgId, formId))
+        && firestore.get(signupFormPath(orgId, formId)).data.status == 'OPEN'
+        && firestore.get(signupFormPath(orgId, formId)).data.get('photosEnabled', false) == true
+        && request.time.toMillis()
+             < asMillis(firestore.get(signupFormPath(orgId, formId)).data.expiresAtMillis);
     }
 
     function memberPath(orgId) {
@@ -38,6 +67,29 @@ service firebase.storage {
         && photoRequestIsOpen(orgId, fileName.split('[.]')[0])
         && request.resource.size < 3 * 1024 * 1024
         && request.resource.contentType.matches('image/jpeg');
+    }
+
+    // Optional photo picked on the volunteer registration page (/s/). The person has just created
+    // their portal account; the app imports the photo onto the new profile and deletes it.
+    match /orgs/{orgId}/portalSignupPhotos/{fileName} {
+      allow read, delete: if isMember(orgId);
+      allow create, update: if isPasswordAccount()
+        && portalOn(orgId)
+        && fileName.matches('^[A-Za-z0-9_-]{10,64}[.]jpg$')
+        && signupFormAcceptsPhoto(orgId, fileName.split('[.]')[0])
+        && request.resource.size < 3 * 1024 * 1024
+        && request.resource.contentType.matches('image/jpeg');
+    }
+
+    // Copy of a volunteer's profile photo published by the app for the portal, keyed by the portal
+    // account id — never by the volunteer id, which doubles as the wallet QR code.
+    match /orgs/{orgId}/portalPhotos/{fileName} {
+      allow read: if isMember(orgId)
+        || (portalOn(orgId) && isPortalUser() && fileName == request.auth.uid + '.jpg');
+      allow create, update: if isMember(orgId)
+        && request.resource.size < 3 * 1024 * 1024
+        && request.resource.contentType.matches('image/jpeg');
+      allow delete: if isMember(orgId);
     }
 
     match /orgs/{orgId}/profilePhotos/{kind}/{fileName} {

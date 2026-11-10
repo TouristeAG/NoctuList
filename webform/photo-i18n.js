@@ -146,4 +146,5 @@ export function applyStaticI18n() {
     node.setAttribute("aria-label", t(node.dataset.i18nAria));
   });
   document.title = t("title");
+  if (window.NoctuTheme) window.NoctuTheme.refreshLabels();
 }

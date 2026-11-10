@@ -1,78 +1,7 @@
-:root {
-  --bg: #121212;
-  --surface: #1c1b1f;
-  --card: rgba(30, 30, 30, 0.88);
-  --primary: #b39ddb;
-  --on: #e1e1e1;
-  --muted: #b3b3b3;
-  --line: rgba(179, 157, 219, 0.28);
-  --radius: 16px;
-}
+/* Guest list form (/g/…) and profile photo page (/p/…). Base tokens live in theme.css. */
 
-* { box-sizing: border-box; }
-html, body { margin: 0; min-height: 100%; }
-body {
-  font-family: Nunito, system-ui, sans-serif;
-  /* Themed gradient sits under the animated canvas, so the page still looks right when WebGL
-     is missing or its context is lost (common on phones). */
-  background:
-    radial-gradient(1200px 800px at 20% -10%, rgba(179, 157, 219, 0.16), transparent 60%),
-    radial-gradient(1000px 700px at 100% 10%, rgba(179, 157, 219, 0.10), transparent 55%),
-    var(--bg);
-  background-attachment: fixed;
-  color: var(--on);
-}
-#topo {
-  position: fixed;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.6;
-}
-.lang-bar {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  justify-content: flex-end;
-  max-width: 560px;
-  margin: 0 auto;
-  padding: 16px 16px 0;
-}
-.lang-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--muted);
-}
-.lang-label select {
-  appearance: none;
-  background: var(--surface);
-  color: var(--on);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 6px 28px 6px 12px;
-  font: inherit;
-  font-weight: 800;
-  cursor: pointer;
-  background-image: linear-gradient(45deg, transparent 50%, var(--primary) 50%),
-    linear-gradient(135deg, var(--primary) 50%, transparent 50%);
-  background-position: calc(100% - 14px) calc(50% - 2px), calc(100% - 9px) calc(50% - 2px);
-  background-size: 5px 5px, 5px 5px;
-  background-repeat: no-repeat;
-}
-.page {
-  position: relative;
-  z-index: 1;
-  max-width: 560px;
-  margin: 0 auto;
-  padding: 16px 16px 64px;
-}
 .people-heading {
-  margin: 24px 0 0;
+  margin: 26px 0 0;
   font-size: 1rem;
   font-weight: 800;
 }
@@ -91,33 +20,6 @@ body {
   font-weight: 800;
   color: var(--muted);
 }
-.card {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 28px 24px;
-  backdrop-filter: blur(10px);
-}
-.hidden { display: none !important; }
-h1 { margin: 0 0 8px; font-size: 1.7rem; font-weight: 800; text-align: center; }
-.meta, .muted { color: var(--muted); text-align: center; line-height: 1.45; }
-label {
-  display: block;
-  margin: 16px 0 0;
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--muted);
-}
-input, textarea {
-  width: 100%;
-  margin-top: 6px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: #1e1e1e;
-  color: var(--on);
-  font: inherit;
-}
 textarea {
   resize: vertical;
   min-height: 88px;
@@ -125,10 +27,10 @@ textarea {
 }
 label.comments { margin-top: 20px; }
 .person {
-  margin-top: 16px;
+  margin-top: 14px;
   padding: 14px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-sm);
+  background: var(--container);
   border: 1px solid var(--line);
 }
 .person-head {
@@ -142,10 +44,14 @@ label.comments { margin-top: 20px; }
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--field);
+  color: var(--on);
   padding: 6px 12px;
+  font: inherit;
   font-size: 0.85rem;
+  font-weight: 700;
   cursor: pointer;
   user-select: none;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
@@ -157,32 +63,25 @@ label.comments { margin-top: 20px; }
   opacity: 0.65;
 }
 .chip:hover { border-color: var(--primary); }
-.chip.on { background: var(--primary); color: #1c1b1f; border-color: transparent; font-weight: 700; }
+.chip.on {
+  background: var(--primary);
+  color: var(--on-primary);
+  border-color: transparent;
+  font-weight: 800;
+}
 .chip.on::before { content: "✓"; opacity: 1; }
 .chip.full {
   opacity: 0.45;
   cursor: not-allowed;
 }
-.chip.full:hover { border-color: var(--line); }
-.primary, .ghost {
-  width: 100%;
-  margin-top: 18px;
-  padding: 14px;
-  border-radius: 12px;
-  border: 0;
-  font: inherit;
-  font-weight: 800;
-  cursor: pointer;
-}
-.primary { background: var(--primary); color: #1c1b1f; }
-.ghost { background: transparent; color: var(--primary); border: 1px solid var(--line); }
+.chip.full:hover { border-color: var(--line-strong); }
 .disclaimer {
   margin-top: 16px;
   font-size: 0.82rem;
   color: var(--muted);
   line-height: 1.45;
 }
-.error { color: #f8bbd9; margin-top: 12px; }
+
 .logos {
   display: flex;
   align-items: center;
@@ -220,7 +119,7 @@ label.comments { margin-top: 20px; }
   content: "";
   width: 1px;
   height: 48px;
-  background: var(--line);
+  background: var(--line-strong);
   order: 1;
 }
 .logos.two .logo:first-child { order: 0; }
@@ -235,7 +134,7 @@ label.comments { margin-top: 20px; }
   }
 }
 
-/* Profile photo request page (/p/{org}/{request}) */
+/* Profile photo picker (photo request page and signup step 3) */
 .photo-intro { margin: 4px 0 0; }
 .photo-preview {
   display: flex;
@@ -246,8 +145,8 @@ label.comments { margin-top: 20px; }
   margin: 24px auto 4px;
   padding: 0;
   border-radius: 50%;
-  border: 2px dashed var(--line);
-  background-color: rgba(255, 255, 255, 0.03);
+  border: 2px dashed var(--line-strong);
+  background-color: var(--container);
   background-size: cover;
   background-position: center;
   color: var(--primary);
@@ -266,4 +165,3 @@ label.comments { margin-top: 20px; }
 }
 .photo-preview.done:not(.has-photo) { display: none; }
 .photo-status { margin: 14px 0 0; }
-.primary:disabled, .ghost:disabled { opacity: 0.45; cursor: not-allowed; }

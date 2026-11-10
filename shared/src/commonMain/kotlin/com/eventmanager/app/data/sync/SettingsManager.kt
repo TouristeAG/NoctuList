@@ -204,6 +204,9 @@ class SettingsManager(private val storage: AppStorage) {
         private const val KEY_TEMP_GUEST_VENUE_ACCESSES = "temp_guest_venue_accesses"
         private const val KEY_TEMP_GUEST_CREDITS_ENABLED = "temp_guest_credits_enabled"
         private const val KEY_GUEST_FORMS_ENABLED = "guest_forms_enabled"
+        private const val KEY_VOLUNTEER_PORTAL_ENABLED = "volunteer_portal_enabled"
+        private const val KEY_PENDING_SIGNUP_FORMS = "volunteer_portal_pending_signup_forms"
+        private const val KEY_PORTAL_PUBLISHED_HASHES = "volunteer_portal_published_hashes"
         private const val KEY_GUEST_FORMS_BILLETERIE_VALIDATE_ENABLED =
             "guest_forms_billeterie_validate_enabled"
         private const val KEY_GUEST_FORM_BASE_URL = "guest_form_base_url"
@@ -420,6 +423,42 @@ class SettingsManager(private val storage: AppStorage) {
     fun setGuestFormsEnabled(enabled: Boolean) {
         storage.putBoolean(KEY_GUEST_FORMS_ENABLED, enabled)
         touchInstitutionSettingLastModified(InstitutionSettingsKeys.GUEST_FORMS_ENABLED)
+    }
+
+    /** Opt-in: off by default, so no volunteer account or public portal page works until enabled. */
+    fun isVolunteerPortalEnabled(): Boolean = storage.getBoolean(KEY_VOLUNTEER_PORTAL_ENABLED, false)
+
+    fun setVolunteerPortalEnabled(enabled: Boolean) {
+        storage.putBoolean(KEY_VOLUNTEER_PORTAL_ENABLED, enabled)
+        touchInstitutionSettingLastModified(InstitutionSettingsKeys.VOLUNTEER_PORTAL_ENABLED)
+    }
+
+    /** Volunteer portal sign-in page for one organization. Empty when the site origin is unknown. */
+    fun volunteerPortalUrl(orgId: String): String {
+        val base = resolveGuestFormBaseUrl()
+        if (base.isBlank() || orgId.isBlank()) return ""
+        return "$base/v/${orgId.trim()}"
+    }
+
+    /** Single-use volunteer registration page. Empty when the site origin is unknown. */
+    fun volunteerSignupUrl(orgId: String, formId: String): String {
+        val base = resolveGuestFormBaseUrl()
+        if (base.isBlank() || orgId.isBlank() || formId.isBlank()) return ""
+        return "$base/s/${orgId.trim()}/${formId.trim()}"
+    }
+
+    /** Device-local: registration links this device created and that are still open (JSON list). */
+    fun getPendingSignupFormsJson(): String = storage.getString(KEY_PENDING_SIGNUP_FORMS, "") ?: ""
+
+    fun savePendingSignupFormsJson(json: String) {
+        storage.putString(KEY_PENDING_SIGNUP_FORMS, json)
+    }
+
+    /** Device-local: `orgId/uid -> content hash` of the portal projections this device published. */
+    fun getPortalPublishedHashesJson(): String = storage.getString(KEY_PORTAL_PUBLISHED_HASHES, "") ?: ""
+
+    fun savePortalPublishedHashesJson(json: String) {
+        storage.putString(KEY_PORTAL_PUBLISHED_HASHES, json)
     }
 
     /** Off by default: only the admin guest list can accept or refuse pending forms. */
@@ -1114,6 +1153,7 @@ class SettingsManager(private val storage: AppStorage) {
             InstitutionSettingsKeys.TEMP_GUEST_CREDITS_ENABLED ->
                 isTemporaryGuestCreditsEnabled().toString()
             InstitutionSettingsKeys.GUEST_FORMS_ENABLED -> isGuestFormsEnabled().toString()
+            InstitutionSettingsKeys.VOLUNTEER_PORTAL_ENABLED -> isVolunteerPortalEnabled().toString()
             InstitutionSettingsKeys.GUEST_FORMS_BILLETERIE_VALIDATE_ENABLED ->
                 isGuestFormsBilleterieValidateEnabled().toString()
             InstitutionSettingsKeys.GUEST_FORM_BASE_URL -> getGuestFormBaseUrl()
@@ -1268,6 +1308,11 @@ class SettingsManager(private val storage: AppStorage) {
             InstitutionSettingsKeys.GUEST_FORMS_ENABLED ->
                 storage.putBoolean(
                     KEY_GUEST_FORMS_ENABLED,
+                    value.trim().equals("true", ignoreCase = true),
+                )
+            InstitutionSettingsKeys.VOLUNTEER_PORTAL_ENABLED ->
+                storage.putBoolean(
+                    KEY_VOLUNTEER_PORTAL_ENABLED,
                     value.trim().equals("true", ignoreCase = true),
                 )
             InstitutionSettingsKeys.GUEST_FORMS_BILLETERIE_VALIDATE_ENABLED ->

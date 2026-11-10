@@ -89,6 +89,37 @@ If you want profile photos later:
 
 Without that toggle, there is no upload UI and no Storage `put`. You can copy the same rules from the in-app Firebase help (`?`).
 
+### Optional: volunteer portal
+
+**Skip this section unless volunteers should get their own web space.** Needs the public form
+site (see the guest form hosting guide in the app). Storage is only needed for photos.
+
+1. **Authentication, Sign-in method:** enable **Email/Password** (leave "Email link" off). Keep
+   **Email enumeration protection** on (Authentication, Settings, User actions).
+2. **Firestore, Rules** and **Storage, Rules:** publish the latest files
+   ([`firebase/firestore.rules`](firebase/firestore.rules) v12 and
+   [`firebase/storage.rules`](firebase/storage.rules)).
+3. **Hosting:** export the form site from the app again and redeploy it. It adds `/s/` (registration)
+   and `/v/` (volunteer space) and sends strict security headers.
+4. In NoctuList **Settings, Firebase**, an org admin turns on **Volunteer portal**. The sign-in
+   address `https://<site>/v/<orgId>` is shown there.
+5. Optional, for "Send me my QR code": at least one NoctuList device with Gmail set up (Email
+   settings) should be running. Requests wait until one is online.
+
+How it stays safe:
+
+- A volunteer only ever reads `orgs/{orgId}/volunteerPortal/{uid}`, a filtered copy NoctuList
+  publishes for them. The volunteer id (which is also their wallet QR code), NFC data and the admin
+  flag are never published.
+- Reading requires a verified e-mail address. Changes go through `portalRequests`, which the rules
+  check field by field and throttle; a NoctuList device validates and applies them.
+- E-mail/password accounts can never become team members.
+- Turning the setting off closes everything in the rules, and NoctuList removes the published pages.
+
+Admins never see passwords. For a volunteer created in the app, NoctuList generates a first password
+(shown once) and sends a "choose your password" e-mail; later, use **Send a password reset link** on
+the volunteer profile.
+
 ### Optional — import shifts from Google Docs/Sheets (Desktop)
 
 A shorter operator-facing copy of this section lives in [GOOGLE_DRIVE_IMPORT_SETUP.md](GOOGLE_DRIVE_IMPORT_SETUP.md).

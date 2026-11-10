@@ -87,6 +87,12 @@ object InstitutionSettingsKeys {
      */
     const val INSTITUTION_LOGO_PNG = "institution_logo_png"
 
+    /**
+     * Opt-in volunteer portal (registration links + personal web space); off by default and
+     * Firebase only. The Firestore rules read this document as a server-side kill switch.
+     */
+    const val VOLUNTEER_PORTAL_ENABLED = "volunteer_portal_enabled"
+
     /** Everything driving the Firebase-only artist guest list forms. */
     val GUEST_FORM_KEYS: List<String> = listOf(
         GUEST_FORMS_ENABLED,
@@ -173,6 +179,7 @@ object InstitutionSettingsKeys {
         ANNOUNCEMENTS_NON_ADMIN_SEND_ENABLED,
         POS_SUBCATEGORIES,
         DRIVE_IMPORT_ENABLED,
+        VOLUNTEER_PORTAL_ENABLED,
     ) + TEMP_GUEST_KEYS + GUEST_FORM_KEYS + BACKEND_KEYS + SHEETS_MIRROR_KEYS
 
     /**
@@ -183,6 +190,7 @@ object InstitutionSettingsKeys {
     val FIREBASE_ONLY_KEYS: Set<String> = setOf(
         POS_SUBCATEGORIES,
         DRIVE_IMPORT_ENABLED,
+        VOLUNTEER_PORTAL_ENABLED,
     ) + TEMP_GUEST_KEYS + GUEST_FORM_KEYS
 
     fun isSyncedToSheets(key: String): Boolean = key !in FIREBASE_ONLY_KEYS

@@ -4,25 +4,29 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Guest list</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/styles.css?v=field-labels-2" />
+  <meta name="theme-color" content="#f4f7fb" />
+  <meta name="referrer" content="no-referrer" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <script src="/theme.js?v=mist-1"></script>
+  <link rel="stylesheet" href="/theme.css?v=mist-1" />
+  <link rel="stylesheet" href="/styles.css?v=mist-1" />
 </head>
 <body>
   <canvas id="topo" aria-hidden="true"></canvas>
-  <div class="lang-bar">
-    <label class="lang-label" for="lang">
-      <span data-i18n="lang">Language</span>
-      <select id="lang" aria-label="Language">
+  <header class="topbar">
+    <div class="topbar-actions">
+      <button type="button" class="icon-btn" data-theme-toggle></button>
+      <label class="sr-only" for="lang" data-i18n="lang">Language</label>
+      <select id="lang" class="lang-select" aria-label="Language">
         <option value="fr">FR</option>
         <option value="en">EN</option>
         <option value="es">ES</option>
         <option value="de">DE</option>
         <option value="it">IT</option>
       </select>
-    </label>
-  </div>
+    </div>
+  </header>
   <main class="page">
     <section class="card" id="state-loading">
       <p class="muted" data-i18n="loading">Loading…</p>
@@ -52,7 +56,7 @@
       <div id="people"></div>
       <button type="button" class="ghost" id="add-person" data-i18n="addPerson">Add a person</button>
       <p class="disclaimer" id="disclaimer" hidden data-i18n="disclaimer">
-        Accesses you tick are a request only. They are never guaranteed — confirmation comes on the night, depending on the show.
+        Accesses you tick are a request only. They are never guaranteed: confirmation comes on the night, depending on the show.
       </p>
       <label class="comments">
         <span data-i18n="comments">Comments</span>
@@ -62,7 +66,7 @@
       <p class="error hidden" id="error"></p>
     </form>
   </main>
-  <script type="module" src="/topo.js?v=field-labels-2"></script>
-  <script type="module" src="/app.js?v=field-labels-2"></script>
+  <script type="module" src="/topo.js?v=topo-aa-1"></script>
+  <script type="module" src="/app.js?v=mist-1"></script>
 </body>
 </html>

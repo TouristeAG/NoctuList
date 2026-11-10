@@ -1608,37 +1608,37 @@
     <string name="firebase_tutorial_oauth_note">OAuth Gmail/email (JSON Desktop developer) separatum est et non debet reuti pro Firebase Sign-In. Utere Web client ID + secret institutionis ex hoc projecto Firebase.</string>
     <string name="firebase_tutorial_method_label">Methodus guide</string>
     <string name="firebase_tutorial_method_firebase">Console Firebase</string>
-    <string name="firebase_tutorial_method_firebase_hint">Commendatum: console.firebase.google.com — screens clariores pro Auth, Firestore et config web. Aperi breviter Cloud Console solum pro secret client Web et redirectionibus localhost.</string>
+    <string name="firebase_tutorial_method_firebase_hint">Commendatum: console.firebase.google.com. Screens clariores pro Auth, Firestore et config web. Aperi breviter Cloud Console solum pro secret client Web et redirectionibus localhost.</string>
     <string name="firebase_tutorial_method_cloud">Console Google Cloud</string>
     <string name="firebase_tutorial_method_cloud_hint">Pro adminibus iam in console.cloud.google.com (idem projectum ac Sheets). Tamen aperi Firebase semel pro Auth Google et Application ID (appId).</string>
     <string name="firebase_tutorial_copy_rules">Copia firestore.rules in clipboard</string>
-    <string name="firebase_tutorial_copy_rules_done">Copiatum — incolla in Firestore → Rules, deinde Publish</string>
-    <string name="firebase_tutorial_copy_rules_error">Non potui onerare regulas — aperi firebase/firestore.rules in projecto</string>
+    <string name="firebase_tutorial_copy_rules_done">Copiatum. Incolla in Firestore → Rules, deinde Publish</string>
+    <string name="firebase_tutorial_copy_rules_error">Non potui onerare regulas. Aperi firebase/firestore.rules in projecto</string>
     <string name="firebase_tutorial_copy_redirect_uris">Copia URI redirectionis localhost</string>
-    <string name="firebase_tutorial_copy_redirect_uris_done">Copiatum — singulas URI in Authorized redirect URIs incola, deinde Save</string>
+    <string name="firebase_tutorial_copy_redirect_uris_done">Copiatum. Singulas URI in Authorized redirect URIs incola, deinde Save</string>
     <string name="firebase_tutorial_storage_optional_title">Facultativum: photogrammæ profili (Firebase Storage)</string>
-    <string name="firebase_tutorial_storage_optional_body">Omitte ut in plano gratuito Spark maneas. Storage activare planum Blaze (solvendum) exigere potest.\n\nPro photogrammatibus profili:\n1. Firebase Console → Build → Storage → Get started (idem projectum).\n2. Storage → Rules (URL debet /storage/rules continere — non Firestore).\n3. Regulas Storage NoctuList incolla (button infra) → Publish.\n4. In NoctuList Settings → Firebase, «Photogrammæ profili activare» accende (in omnibus institutionis machinis activatur).\n\nPostea facere potes. App sine Storage plene operatur.</string>
+    <string name="firebase_tutorial_storage_optional_body">Omitte ut in plano gratuito Spark maneas. Storage activare planum Blaze (solvendum) exigere potest.\n\nPro photogrammatibus profili:\n1. Firebase Console → Build → Storage → Get started (idem projectum).\n2. Storage → Rules (URL debet /storage/rules continere, non Firestore).\n3. Regulas Storage NoctuList incolla (button infra) → Publish.\n4. In NoctuList Settings → Firebase, «Photogrammæ profili activare» accende (in omnibus institutionis machinis activatur).\n\nPostea facere potes. App sine Storage plene operatur.</string>
     <string name="firebase_tutorial_copy_storage_rules">Copia storage.rules in clipboard</string>
-    <string name="firebase_tutorial_copy_storage_rules_done">Copiatum — incolla in Storage → Rules, deinde Publish</string>
-    <string name="firebase_tutorial_copy_storage_rules_error">Non potui onerare regulas — aperi firebase/storage.rules in projecto</string>
+    <string name="firebase_tutorial_copy_storage_rules_done">Copiatum. Incolla in Storage → Rules, deinde Publish</string>
+    <string name="firebase_tutorial_copy_storage_rules_error">Non potui onerare regulas. Aperi firebase/storage.rules in projecto</string>
     <string name="firebase_tutorial_fb_step1_title">1. Creare vel aperire projectum Firebase</string>
     <string name="firebase_tutorial_fb_step1_body">1. Aperi https://console.firebase.google.com et sign in cum ratione Google institutionis quae potest administrare projectum.
 2. Clicca Add project (vel selige existens).
-3. Si iam utaris Google Sheets in projecto Cloud: elige «Use an existing Google Cloud project» et idem projectum — ne crea secundum projectum vacuum.
+3. Si iam utaris Google Sheets in projecto Cloud: elige «Use an existing Google Cloud project» et idem projectum. Ne crea secundum projectum vacuum.
 4. Analytics est optionale. Fini wizard.
 5. Nota Project ID (Project settings → General). Incollabis in NoctuList.</string>
     <string name="firebase_tutorial_fb_step2_title">2. Creare Firestore</string>
     <string name="firebase_tutorial_fb_step2_body">In Firebase Console, idem projectum:
 1. Build → Firestore Database → Create database.
 2. Praefere production mode, regio prope loca tua (EU si requiritur), deinde create.
-3. Ne adde documenta manu — NoctuList creat sub orgs/{orgId}/…</string>
+3. Ne adde documenta manu. NoctuList creat sub orgs/{orgId}/…</string>
     <string name="firebase_tutorial_fb_step3_title">3. Publicare regulas securitatis</string>
-    <string name="firebase_tutorial_fb_step3_body">Firebase Console → Build → Firestore → Rules (URL debet continere /firestore/rules — non Realtime Database).
-Selige omnia, incolla regulas NoctuList (button infra), deinde Publish. Sine his regulis instrumenta non possunt secure legere vel scribere.</string>
+    <string name="firebase_tutorial_fb_step3_body">Firebase Console → Build → Firestore → Rules (URL debet continere /firestore/rules, non Realtime Database).
+Selige omnia, incolla regulas NoctuList (button infra), deinde Publish. Sine his regulis instrumenta non possunt secure legere vel scribere.\nPost quamque renovationem NoctuList, regulas iterum divulga.</string>
     <string name="firebase_tutorial_fb_step4_title">4. Activare Google Sign-In</string>
     <string name="firebase_tutorial_fb_step4_body">1. Firebase Console → Build → Authentication → Get started (si opus).
 2. Sign-in method → Google → Enable → Save.
-3. In ea screen nota Web client ID quod Firebase monstrat pro Google provider — hoc est Web client institutionis (non Gmail Desktop).
+3. In ea screen nota Web client ID quod Firebase monstrat pro Google provider. Hoc est Web client institutionis (non Gmail Desktop).
 4. Si Firebase creat automatice Web OAuth client, serva. Ne substitue cum JSON OAuth Gmail developer.</string>
     <string name="firebase_tutorial_fb_step5_title">5. Copia valores in NoctuList</string>
     <string name="firebase_tutorial_fb_step5_body">Serva hanc listam apertam.
@@ -1646,7 +1646,7 @@ Selige omnia, incolla regulas NoctuList (button infra), deinde Publish. Sine his
 A) Config web (facillimum)
 • Project settings (gear) → General → Your apps → Web app.
 • Si nulla: Add app → Web (&lt;/&gt;), nickname «NoctuList», skip Hosting.
-• Aperi Config / SDK snippet et copia apiKey, appId, projectId — vel incolla totum snippet in NoctuList «Incolla config web Firebase».
+• Aperi Config / SDK snippet et copia apiKey, appId, projectId. Vel incolla totum snippet in NoctuList «Incolla config web Firebase».
 
 B) Web client ID
 • Authentication → Sign-in method → Google → Web client ID
@@ -1679,11 +1679,11 @@ Liga Firebase semel si opus: https://console.firebase.google.com → Add project
 1. Menu ☰ → APIs &amp; Services → Library → «Cloud Firestore API» → Enable.
 2. Menu ☰ → Firestore → Create database si rogatur.
 3. Praefere Native / production, regio prope loca, deinde create.
-4. Ne adde documenta manu — NoctuList creat orgs/{orgId}/…</string>
+4. Ne adde documenta manu. NoctuList creat orgs/{orgId}/…</string>
     <string name="firebase_tutorial_cloud_step3_title">3. Publicare regulas securitatis</string>
-    <string name="firebase_tutorial_cloud_step3_body">Cloud Console → Firestore → Rules (URL debet continere firestore et rules — non Realtime Database).
+    <string name="firebase_tutorial_cloud_step3_body">Cloud Console → Firestore → Rules (URL debet continere firestore et rules, non Realtime Database).
 Incolla regulas NoctuList (button infra) → Publish.
-Si nullus editor Rules in Cloud UI: Firebase Console → Build → Firestore → Rules → incolla → Publish.</string>
+Si nullus editor Rules in Cloud UI: Firebase Console → Build → Firestore → Rules → incolla → Publish.\nPost quamque renovationem NoctuList, regulas iterum divulga.</string>
     <string name="firebase_tutorial_cloud_step4_title">4. Activare Google Sign-In + Web OAuth client</string>
     <string name="firebase_tutorial_cloud_step4_body">A) Firebase Auth (semel requiritur)
 1. console.firebase.google.com → idem projectum → Authentication → Sign-in method → Google → Enable → Save.
@@ -1702,11 +1702,11 @@ Origines optionales (sine path): http://localhost:8889 etc.
 → Save, expecta circiter unum minutum, deinde retry Sign-In.
 5. Copia Client ID et Client secret pro gradu 5.</string>
     <string name="firebase_tutorial_cloud_step5_title">5. Copia valores in NoctuList</string>
-    <string name="firebase_tutorial_cloud_step5_body">A) Project ID — Cloud project picker / IAM &amp; Admin → Settings.
+    <string name="firebase_tutorial_cloud_step5_body">A) Project ID: Cloud project picker / IAM &amp; Admin → Settings.
 
-B) API key — Credentials → API keys (Browser key existens, vel Create credentials → API key semel).
+B) API key: Credentials → API keys (Browser key existens, vel Create credentials → API key semel).
 
-C) Web client ID + secret — Credentials → OAuth 2.0 Client IDs → Web application (gradus 4). Incolla utrumque in NoctuList (secret = Desktop Sign-In).
+C) Web client ID + secret: Credentials → OAuth 2.0 Client IDs → Web application (gradus 4). Incolla utrumque in NoctuList (secret = Desktop Sign-In).
 
 D) Application ID (appId)
 • Firebase Console → Project settings → General → Your apps → Web.
@@ -1716,10 +1716,10 @@ D) Application ID (appId)
 Perge ad gradum 6.</string>
     <string name="firebase_tutorial_step7_title">6. Imple NoctuList, deinde migra / connecte</string>
     <string name="firebase_tutorial_step7_body">In Admin Firebase sync vel dialogo migrationis:
-• Organization ID — nomen breve commune (exemplum: noctulist-club). Idem in omni instrumento.
+• Organization ID: nomen breve commune (exemplum: noctulist-club). Idem in omni instrumento.
 • Project ID, Application ID, API key, Web client ID, et in Desktop Web client secret.
 • Vel incolla web config + imple Web client ID/secret, deinde utere join QR pro aliis instrumentis.
-Sign in cum Google (primus admin fit org admin). Solum post Sign-In felicem incipe migrationem si transis ex Sheets. Pares join per QR / follow — non debent retypare secreta.</string>
+Sign in cum Google (primus admin fit org admin). Solum post Sign-In felicem incipe migrationem si transis ex Sheets. Pares join per QR / follow. Non debent retypare secreta.</string>
     <string name="firebase_tutorial_step8_title">7. Post configurationem</string>
     <string name="firebase_tutorial_step8_body">In Firestore debes videre orgs/{yourOrgId}/… (guests, members, metadata, etc.). Serva Sheets ut backup donec POS, porta et secundum instrumentum verificata. Billing: mane in free Spark / free tier dum testas; upgrade solum si excedis quotas.</string>
     <string name="migration_wizard_to_firebase_title">Transire ad Firebase</string>
@@ -2345,13 +2345,15 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="guest_form_export_android">Promulgatio computatrum exigit. Hunc ducem in NoctuList in computatro aperi, fasciculum exporta, a gradu 3 perge.</string>
     <string name="guest_form_deploy_commands">npm install -g firebase-tools\nfirebase login\nfirebase deploy --only hosting --project YOUR_PROJECT_ID</string>
     <string name="firebase_tutorial_forms_optional_title">Optio: formulæ publicæ (Firebase Hosting)</string>
-    <string name="firebase_tutorial_forms_optional_body">Situm formularum semel in hoc Firebase incepto prome (Hosting gratuitum). Postea quaeque formula in NoctuList nexus unicus est — sine Terminale iterum.</string>
-    <string name="guest_form_step1">1. In Optiones → Firebase → facultativa, formulas invitatorum artificum accende.</string>
+    <string name="firebase_tutorial_forms_optional_body">Situm formularum semel in hoc Firebase incepto prome (Hosting gratuitum). Postea quaeque formula in NoctuList nexus unicus est. Sine Terminale iterum.</string>
+    <string name="firebase_tutorial_portal_optional_title">Optio: porta voluntariorum</string>
+    <string name="firebase_tutorial_portal_optional_body">Hoc omitte nisi voluntarii spatium suum in rete habere debent. Situm formularum e parte superiore requirit.\n\n1. Firebase Console → Build → Authentication → Sign-in method → Add new provider → Email/Password → Enable. «Email link» exstinctum relinque, deinde Serva.\n2. Authentication → Settings → User actions: «Email enumeration protection» accensum tene.\n3. Regulas Firestore novissimas divulga (gradus 3) et, si imagines adhibes, regulas Storage.\n4. Situm formularum iterum exporta et explica (pars superior). Paginam inscriptionis et spatium voluntariorum addit.\n5. In NoctuList, Optiones → Firebase, «Portam voluntariorum accende» accende. Inscriptio aditus ibi ostenditur.\n\nPro «Mitte mihi codicem QR», saltem unum instrumentum NoctuList cum Gmail parato accensum tene.</string>
+    <string name="guest_form_step1">1. In Optiones → Firebase → facultativa, formulas invitatorum artificum aut portam voluntariorum accende.</string>
     <string name="guest_form_step2">2. In computatro situm exporta, fasciculum serva et extrahe. Plica index.html et firebase.json continere debet.</string>
     <string name="guest_form_step3">3. Node.js LTS 22 aut 24 ex https://nodejs.org instaura (viridis LTS, non Current). Terminale post inaugurationem reaperi.</string>
     <string name="guest_form_step4">4. Terminale aperi. Scribe cd, spatium, plicam extractam in fenestram trahe, Enter preme.</string>
     <string name="guest_form_step5">5. Mandata infra exscribe, in Terminale insere, Enter. Cum computo Google huius Firebase incepti domino connecte.</string>
-    <string name="guest_form_step6">6. Cum Terminale «Deploy complete!» ostendit, situs vivit. Formulas postea in NoctuList crea — sine novo promulgatu.</string>
+    <string name="guest_form_step6">6. Cum Terminale «Deploy complete!» ostendit, situs vivit. Formulae postea creatae novum promulgatum non requirunt. Post renovationem NoctuList, situm iterum exporta et explica.</string>
     <string name="guest_form_terminal_caption">Mandata in Terminale exsequenda</string>
     <string name="guest_form_copy_commands">Mandata exscribere</string>
     <string name="guest_form_commands_copied">Mandata exscripta</string>
@@ -2460,4 +2462,46 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="profile_photo_request_expired">Hic nexus exspiravit. Claude et novum crea.</string>
     <string name="profile_photo_request_failed">Nexus creari non potuit. Conexionem et regulas Firestore Storageque recentissimas inspice.</string>
     <string name="profile_photo_request_hint">Hanc fenestram claudere potes: photographema tamen addetur cum advenerit, dum NoctuList in hoc instrumento apertum est.</string>
+    <string name="portal_settings_title">Porta voluntariorum</string>
+    <string name="portal_settings_body">Quisque voluntarius spatium personale in situ formularum accipit: profilum, vices, commoda et crumenam. Antequam accendas: aditum per epistulam et tesseram in Firebase Authentication admitte, regulas Firestore et Storage iterum divulga, situmque formularum iterum explica.</string>
+    <string name="portal_enable">Portam voluntariorum accende</string>
+    <string name="portal_sign_in_url">Pagina aditus: %1$s</string>
+    <string name="portal_add_choice_title">Voluntarium adde</string>
+    <string name="portal_add_choice_fill">Profilum ipse imple</string>
+    <string name="portal_add_choice_fill_desc">Data nunc insere. Aditum ad portam simul aperire potes.</string>
+    <string name="portal_add_choice_link">Formulam inscriptionis mitte</string>
+    <string name="portal_add_choice_link_desc">Voluntarius sua data ipse implet tesseramque eligit.</string>
+    <string name="portal_signup_link_title">Formula inscriptionis</string>
+    <string name="portal_signup_link_body">Hunc nexum semel utendum novo voluntario mitte. Septem dies valet. Profilum hic apparet simul ac miserit.</string>
+    <string name="portal_signup_link_creating">Nexus creatur…</string>
+    <string name="portal_signup_link_failed">Nexus creari non potuit. Conexionem inspice et regulas Firestore novissimas divulgatas esse.</string>
+    <string name="portal_signup_link_waiting">Inscriptionem exspectamus…</string>
+    <string name="portal_signup_link_received">Inscriptio accepta. Voluntarius additur…</string>
+    <string name="portal_signup_link_done">Novus voluntarius additus est.</string>
+    <string name="portal_signup_link_expired">Hic nexus exspiravit. Novum crea.</string>
+    <string name="portal_create_access_toggle">Aditum ad portam voluntariorum crea</string>
+    <string name="portal_create_access_toggle_desc">Tessera generatur et semel ostenditur; voluntarius etiam epistulam accipit ut suam eligat.</string>
+    <string name="portal_access_title">Porta voluntariorum</string>
+    <string name="portal_access_status_none">Nullus aditus</string>
+    <string name="portal_access_status_pending">Aditus apertus, primum ingressum exspectamus</string>
+    <string name="portal_access_status_active">Aditus activus</string>
+    <string name="portal_access_create">Aditum crea</string>
+    <string name="portal_access_reset">Nexum tesserae renovandae mitte</string>
+    <string name="portal_access_revoke">Aditum remove</string>
+    <string name="portal_access_revoke_confirm_title">Aditumne removere vis?</string>
+    <string name="portal_access_revoke_confirm_body">%1$s portam suam iam non videbit. Ingressus manet sed nihil ostendit donec aditus iterum aperiatur.</string>
+    <string name="portal_access_no_email">Primum inscriptionem electronicam huic voluntario adde.</string>
+    <string name="portal_access_reset_sent">Nexus tesserae renovandae ad %1$s missus est.</string>
+    <string name="portal_access_reset_failed">Epistula renovationis mitti non potuit.</string>
+    <string name="portal_access_failed">Aditus creari non potuit (%1$s).</string>
+    <string name="portal_access_existing">Ratio pro %1$s iam exstat. Nexus novae tesserae eligendae missus est; porta proximo ingressu aperietur.</string>
+    <string name="portal_access_admin_note">Voluntarii administratores codicem QR per portam petere non possunt.</string>
+    <string name="portal_access_email_note">Mutatio inscriptionis hic inscriptionem ingressus non mutat.</string>
+    <string name="portal_password_title">Aditus creatus</string>
+    <string name="portal_password_body">Hanc tesseram %1$s trade. Semel tantum ostenditur. In porta mutari potest.</string>
+    <string name="portal_password_reset_sent">Epistula ad tesseram propriam eligendam etiam ad %1$s missa est.</string>
+    <string name="portal_password_copy">Exscribe</string>
+    <string name="portal_password_copied">Exscriptum</string>
+    <string name="portal_password_sign_in_at">Ingredere hic: %1$s</string>
+    <string name="portal_working">Exspecta quaeso…</string>
 </resources>

@@ -233,6 +233,9 @@ interface ProfilePhotoStorageGateway {
     ): ProfilePhotoUploadResult?
 
     suspend fun delete(path: String): Boolean
+
+    /** Uploads a JPEG to an exact Storage path (portal photo copies). False when it failed. */
+    suspend fun uploadJpegToPath(path: String, jpegBytes: ByteArray): Boolean = false
 }
 
 class NoOpProfilePhotoStorageGateway : ProfilePhotoStorageGateway {

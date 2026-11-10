@@ -150,6 +150,10 @@ data class Volunteer(
     val profilePhotoPath: String = "",
     /** Firebase Storage download URL; empty when unused. Never synced to Google Sheets. */
     val profilePhotoUrl: String = "",
+    /** Volunteer portal access opened by an admin (or a registration link). Firebase only. */
+    val portalEnabled: Boolean = false,
+    /** Firebase Auth uid of the linked portal account; empty until linked. Firebase only. */
+    val portalUid: String = "",
 )
 
 @Entity(

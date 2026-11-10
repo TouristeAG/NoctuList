@@ -78,6 +78,41 @@ interface FirestoreGateway {
     suspend fun deleteDocument(orgId: String, collection: String, docId: String)
     /** Server-backed get. Null when the document is missing or the server cannot be reached. */
     suspend fun getDocumentFromServer(orgId: String, collection: String, docId: String): Map<String, Any?>? = null
+
+    /**
+     * Writes [data] exactly as given: no legacy `json` envelope, no flattening. Used for documents
+     * read by the public pages (volunteer portal), whose shape the Firestore rules check.
+     */
+    suspend fun setPlainDocument(
+        orgId: String,
+        collection: String,
+        docId: String,
+        data: Map<String, Any?>,
+        merge: Boolean = true,
+    ) = upsertDocument(orgId, collection, docId, data)
+
+    /**
+     * Live view of a whole small collection (`orgs/{orgId}/{collection}`): [onSnapshot] gets every
+     * document each time something changes. Null when Firestore is unavailable. Close to stop.
+     */
+    fun listenCollection(
+        orgId: String,
+        collection: String,
+        onSnapshot: suspend (List<Pair<String, Map<String, Any?>>>) -> Unit,
+    ): AutoCloseable? = null
+
+    /**
+     * Transaction: when the document exists and [claimable] accepts its current data, merges
+     * [claimFields] into it and returns the data as it was. Null otherwise — someone else won.
+     * Lets several devices race for the same portal request without processing it twice.
+     */
+    suspend fun claimDocument(
+        orgId: String,
+        collection: String,
+        docId: String,
+        claimable: (Map<String, Any?>) -> Boolean,
+        claimFields: Map<String, Any?>,
+    ): Map<String, Any?>? = null
     suspend fun pullAllIntoRepository(
         orgId: String,
         repository: EventManagerRepository,
@@ -135,7 +170,7 @@ interface FirestoreGateway {
 }
 
 /** Safe default when Firebase is not configured — used for Sheets-only installs. */
-class NoOpFirestoreGateway : FirestoreGateway {
+open class NoOpFirestoreGateway : FirestoreGateway {
     override fun isAvailable(): Boolean = false
     override suspend fun startOrgListeners(orgIds: List<String>, onChange: suspend (FirestoreRemoteChange) -> Unit) {}
     override fun stopOrgListeners() {}

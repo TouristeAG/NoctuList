@@ -24,6 +24,28 @@ object GuestFormSiteBundle {
         "photo.js",
         "photo-i18n.js",
         "firebase.json",
+        // Shared Sunset Mist theme (light / dark) and self-hosted font.
+        "theme.css",
+        "theme.js",
+        "firebase-env.js",
+        "fonts/nunito-400.ttf",
+        "fonts/nunito-600.ttf",
+        "fonts/nunito-700.ttf",
+        "fonts/nunito-800.ttf",
+        "fonts/OFL.txt",
+        "icons/icon-192.png",
+        "icons/icon-512.png",
+        "icons/icon-maskable-512.png",
+        "icons/apple-touch-icon.png",
+        // Volunteer portal: registration (/s/) and personal space (/v/).
+        "signup.html",
+        "signup.js",
+        "portal.html",
+        "portal.js",
+        "portal.css",
+        "portal-i18n.js",
+        "portal-common.js",
+        "manifest.webmanifest",
     )
 
     @OptIn(ExperimentalResourceApi::class)

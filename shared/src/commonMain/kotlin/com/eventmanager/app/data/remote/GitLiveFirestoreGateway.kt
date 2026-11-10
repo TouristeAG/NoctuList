@@ -224,6 +224,79 @@ class GitLiveFirestoreGateway(
         return decodeSnapshot(snap)
     }
 
+    override suspend fun setPlainDocument(
+        orgId: String,
+        collection: String,
+        docId: String,
+        data: Map<String, Any?>,
+        merge: Boolean,
+    ) {
+        val firestore = db() ?: throw IllegalStateException("Firestore is not initialized")
+        if (orgId.isBlank() || collection.isBlank() || docId.isBlank()) return
+        firestore.collection("orgs").document(orgId).collection(collection).document(docId)
+            .set(toFirestoreFieldMap(data), merge = merge)
+    }
+
+    override fun listenCollection(
+        orgId: String,
+        collection: String,
+        onSnapshot: suspend (List<Pair<String, Map<String, Any?>>>) -> Unit,
+    ): AutoCloseable? {
+        val firestore = db() ?: return null
+        if (orgId.isBlank() || collection.isBlank()) return null
+        val job = scope.launch {
+            // A denied or dropped listener (signed out, rules not yet published, offline) ends its
+            // flow; keep retrying so the portal comes back by itself once access is there.
+            while (true) {
+                firestore.collection("orgs").document(orgId).collection(collection)
+                    .snapshots
+                    .catch { e -> println("Firestore listen failed for $collection in $orgId: ${e.message}") }
+                    .collect { snapshot ->
+                        val docs = snapshot.documents.map { it.id to decodeSnapshot(it) }
+                        try {
+                            onSnapshot(docs)
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            println("Firestore listener handler failed for $collection: ${e.message}")
+                        }
+                    }
+                kotlinx.coroutines.delay(30_000)
+            }
+        }
+        return AutoCloseable { job.cancel() }
+    }
+
+    override suspend fun claimDocument(
+        orgId: String,
+        collection: String,
+        docId: String,
+        claimable: (Map<String, Any?>) -> Boolean,
+        claimFields: Map<String, Any?>,
+    ): Map<String, Any?>? {
+        val firestore = db() ?: return null
+        if (orgId.isBlank() || collection.isBlank() || docId.isBlank()) return null
+        val ref = firestore.collection("orgs").document(orgId).collection(collection).document(docId)
+        return try {
+            var claimed: Map<String, Any?>? = null
+            firestore.runTransaction {
+                claimed = null
+                val snap = get(ref)
+                if (!snap.exists) return@runTransaction
+                val current = decodeSnapshot(snap)
+                if (!claimable(current)) return@runTransaction
+                set(ref, toFirestoreFieldMap(claimFields), merge = true)
+                claimed = current
+            }
+            claimed
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            println("Firestore claim failed for $collection/$docId: ${e.message}")
+            null
+        }
+    }
+
     override suspend fun pullAllIntoRepository(
         orgId: String,
         repository: EventManagerRepository,
@@ -594,6 +667,8 @@ class GitLiveFirestoreGateway(
             )
             put("isAdmin", volunteer.isAdmin)
             putProfilePhotoFields(volunteer.profilePhotoPath, volunteer.profilePhotoUrl)
+            put("portalEnabled", volunteer.portalEnabled)
+            put("portalUid", volunteer.portalUid)
         },
         volunteer.firebaseOrgId,
     )

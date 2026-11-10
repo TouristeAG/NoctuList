@@ -1,16 +1,19 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import {
   getFirestore,
+  connectFirestoreEmulator,
   doc,
   getDoc,
   updateDoc,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import {
   getStorage,
+  connectStorageEmulator,
   ref as storageRef,
   uploadBytes,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
-import { applyStaticI18n, currentLang, setLang, t } from "./photo-i18n.js?v=photo-1";
+import { applyStaticI18n, currentLang, setLang, t } from "./photo-i18n.js?v=mist-1";
+import { EMULATOR_PORTS, isLocalDev } from "./firebase-env.js?v=mist-1";
 
 // Mirrors PROFILE_PHOTO_MAX_EDGE_PX / JPEG quality in the app, so the upload is already the size
 // the app stores and stays well under the 3 MB Storage rule.
@@ -194,6 +197,10 @@ async function main() {
   }
   const db = getFirestore(app);
   const storage = getStorage(app);
+  if (isLocalDev()) {
+    connectFirestoreEmulator(db, location.hostname, EMULATOR_PORTS.firestore);
+    connectStorageEmulator(storage, location.hostname, EMULATOR_PORTS.storage);
+  }
   const requestRef = doc(db, "orgs", path.orgId, "photoRequests", path.requestId);
   let data;
   try {

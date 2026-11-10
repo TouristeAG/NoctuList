@@ -1470,37 +1470,37 @@
     <string name="firebase_tutorial_oauth_note">OAuth Gmail/correo (JSON Desktop del desarrollador) es independiente y no debe reutilizarse para el inicio de sesión Firebase. Use el Web client ID + secreto de la institución de este proyecto Firebase.</string>
     <string name="firebase_tutorial_method_label">Método de la guía</string>
     <string name="firebase_tutorial_method_firebase">Consola Firebase</string>
-    <string name="firebase_tutorial_method_firebase_hint">Recomendado: console.firebase.google.com — pantallas más claras para Auth, Firestore y configuración web. Abra Cloud Console brevemente solo para el secreto del cliente Web y las redirecciones localhost.</string>
+    <string name="firebase_tutorial_method_firebase_hint">Recomendado: console.firebase.google.com. Pantallas más claras para Auth, Firestore y configuración web. Abra Cloud Console brevemente solo para el secreto del cliente Web y las redirecciones localhost.</string>
     <string name="firebase_tutorial_method_cloud">Consola de Google Cloud</string>
     <string name="firebase_tutorial_method_cloud_hint">Para administradores que ya usan console.cloud.google.com (mismo proyecto que Sheets). Aún debe abrir Firebase una vez para Auth Google y Application ID (appId).</string>
     <string name="firebase_tutorial_copy_rules">Copiar firestore.rules al portapapeles</string>
-    <string name="firebase_tutorial_copy_rules_done">Copiado — pegue en Firestore → Rules y luego Publique</string>
-    <string name="firebase_tutorial_copy_rules_error">No se pudieron cargar las reglas — abra firebase/firestore.rules en el proyecto</string>
+    <string name="firebase_tutorial_copy_rules_done">Copiado. Pegue en Firestore → Rules y luego Publique</string>
+    <string name="firebase_tutorial_copy_rules_error">No se pudieron cargar las reglas. Abra firebase/firestore.rules en el proyecto</string>
     <string name="firebase_tutorial_copy_redirect_uris">Copiar URI localhost de redirección</string>
-    <string name="firebase_tutorial_copy_redirect_uris_done">Copiado — pegue cada URI en Authorized redirect URIs y guarde</string>
+    <string name="firebase_tutorial_copy_redirect_uris_done">Copiado. Pegue cada URI en Authorized redirect URIs y guarde</string>
     <string name="firebase_tutorial_storage_optional_title">Opcional: fotos de perfil (Firebase Storage)</string>
-    <string name="firebase_tutorial_storage_optional_body">Omítalo para permanecer en el plan gratuito Spark. Activar Storage puede exigir el plan Blaze (de pago).\n\nSi desea fotos de perfil:\n1. Firebase Console → Build → Storage → Get started (mismo proyecto).\n2. Storage → Rules (la URL debe contener /storage/rules — no Firestore).\n3. Pegue las reglas Storage de NoctuList (botón abajo) → Publish.\n4. En NoctuList Ajustes → Firebase, active «Activar fotos de perfil» (se activa en todos los dispositivos de la organización).\n\nPuede hacerlo más tarde. La app funciona por completo sin Storage.</string>
+    <string name="firebase_tutorial_storage_optional_body">Omítalo para permanecer en el plan gratuito Spark. Activar Storage puede exigir el plan Blaze (de pago).\n\nSi desea fotos de perfil:\n1. Firebase Console → Build → Storage → Get started (mismo proyecto).\n2. Storage → Rules (la URL debe contener /storage/rules, no Firestore).\n3. Pegue las reglas Storage de NoctuList (botón abajo) → Publish.\n4. En NoctuList Ajustes → Firebase, active «Activar fotos de perfil» (se activa en todos los dispositivos de la organización).\n\nPuede hacerlo más tarde. La app funciona por completo sin Storage.</string>
     <string name="firebase_tutorial_copy_storage_rules">Copiar storage.rules al portapapeles</string>
-    <string name="firebase_tutorial_copy_storage_rules_done">Copiado — pegue en Storage → Rules y luego Publique</string>
-    <string name="firebase_tutorial_copy_storage_rules_error">No se pudieron cargar las reglas — abra firebase/storage.rules en el proyecto</string>
+    <string name="firebase_tutorial_copy_storage_rules_done">Copiado. Pegue en Storage → Rules y luego Publique</string>
+    <string name="firebase_tutorial_copy_storage_rules_error">No se pudieron cargar las reglas. Abra firebase/storage.rules en el proyecto</string>
     <string name="firebase_tutorial_fb_step1_title">1. Crear o abrir el proyecto Firebase</string>
     <string name="firebase_tutorial_fb_step1_body">1. Abra https://console.firebase.google.com e inicie sesión con una cuenta de Google de la institución que pueda gestionar el proyecto.
 2. Haga clic en Añadir proyecto (o seleccione uno existente).
-3. Si ya usa Google Sheets en un proyecto Cloud: elija «Usar un proyecto de Google Cloud existente» y seleccione ese mismo proyecto — no cree un segundo proyecto vacío.
+3. Si ya usa Google Sheets en un proyecto Cloud: elija «Usar un proyecto de Google Cloud existente» y seleccione ese mismo proyecto. No cree un segundo proyecto vacío.
 4. Analytics es opcional. Termine el asistente.
 5. Anote el Project ID (Configuración del proyecto → General). Lo pegará en NoctuList.</string>
     <string name="firebase_tutorial_fb_step2_title">2. Crear Firestore</string>
     <string name="firebase_tutorial_fb_step2_body">En Firebase Console, mismo proyecto:
 1. Build → Firestore Database → Crear base de datos.
 2. Prefiera modo producción, región cercana a sus locales (UE si es necesario) y luego crear.
-3. No añada documentos manualmente — NoctuList los crea bajo orgs/{orgId}/…</string>
+3. No añada documentos manualmente. NoctuList los crea bajo orgs/{orgId}/…</string>
     <string name="firebase_tutorial_fb_step3_title">3. Publicar reglas de seguridad</string>
-    <string name="firebase_tutorial_fb_step3_body">Firebase Console → Build → Firestore → Rules (la URL debe contener /firestore/rules — no Realtime Database).
-Seleccione todo, pegue las reglas de NoctuList (botón abajo) y luego Publique. Sin estas reglas, los dispositivos no pueden leer ni escribir de forma segura.</string>
+    <string name="firebase_tutorial_fb_step3_body">Firebase Console → Build → Firestore → Rules (la URL debe contener /firestore/rules, no Realtime Database).
+Seleccione todo, pegue las reglas de NoctuList (botón abajo) y luego Publique. Sin estas reglas, los dispositivos no pueden leer ni escribir de forma segura.\nTras cada actualización de NoctuList, publique de nuevo las reglas.</string>
     <string name="firebase_tutorial_fb_step4_title">4. Activar inicio de sesión con Google</string>
     <string name="firebase_tutorial_fb_step4_body">1. Firebase Console → Build → Authentication → Comenzar (si hace falta).
 2. Método de inicio de sesión → Google → Activar → Guardar.
-3. En esa pantalla, anote el Web client ID que Firebase muestra para el proveedor Google — es el cliente Web de la institución (no Gmail Desktop).
+3. En esa pantalla, anote el Web client ID que Firebase muestra para el proveedor Google. Es el cliente Web de la institución (no Gmail Desktop).
 4. Si Firebase crea automáticamente un cliente OAuth Web, consérvelo. No lo sustituya por el JSON OAuth Gmail del desarrollador.</string>
     <string name="firebase_tutorial_fb_step5_title">5. Copiar valores en NoctuList</string>
     <string name="firebase_tutorial_fb_step5_body">Mantenga esta lista abierta.
@@ -1508,7 +1508,7 @@ Seleccione todo, pegue las reglas de NoctuList (botón abajo) y luego Publique. 
 A) Configuración web (más fácil)
 • Configuración del proyecto (engranaje) → General → Sus apps → app Web.
 • Si no hay ninguna: Añadir app → Web (&lt;/&gt;), apodo «NoctuList», omitir Hosting.
-• Abra Config / fragmento SDK y copie apiKey, appId, projectId — o pegue todo el fragmento en NoctuList «Pegar configuración web de Firebase».
+• Abra Config / fragmento SDK y copie apiKey, appId, projectId. O pegue todo el fragmento en NoctuList «Pegar configuración web de Firebase».
 
 B) Web client ID
 • Authentication → Método de inicio de sesión → Google → Web client ID
@@ -1541,11 +1541,11 @@ Vincule Firebase si hace falta: https://console.firebase.google.com → Añadir 
 1. Menú ☰ → APIs &amp; Services → Library → «Cloud Firestore API» → Enable.
 2. Menú ☰ → Firestore → Crear base de datos si se solicita.
 3. Prefiera Native / producción, región cercana a sus locales, luego crear.
-4. No añada documentos manualmente — NoctuList crea orgs/{orgId}/…</string>
+4. No añada documentos manualmente. NoctuList crea orgs/{orgId}/…</string>
     <string name="firebase_tutorial_cloud_step3_title">3. Publicar reglas de seguridad</string>
-    <string name="firebase_tutorial_cloud_step3_body">Cloud Console → Firestore → Rules (la URL debe contener firestore y rules — no Realtime Database).
+    <string name="firebase_tutorial_cloud_step3_body">Cloud Console → Firestore → Rules (la URL debe contener firestore y rules, no Realtime Database).
 Pegue las reglas de NoctuList (botón abajo) → Publique.
-Si no hay editor Rules en la UI de Cloud: Firebase Console → Build → Firestore → Rules → pegar → Publique.</string>
+Si no hay editor Rules en la UI de Cloud: Firebase Console → Build → Firestore → Rules → pegar → Publique.\nTras cada actualización de NoctuList, publique de nuevo las reglas.</string>
     <string name="firebase_tutorial_cloud_step4_title">4. Activar Google Sign-In + cliente OAuth Web</string>
     <string name="firebase_tutorial_cloud_step4_body">A) Firebase Auth (obligatorio una vez)
 1. console.firebase.google.com → mismo proyecto → Authentication → Método de inicio de sesión → Google → Activar → Guardar.
@@ -1564,11 +1564,11 @@ Orígenes opcionales (sin ruta): http://localhost:8889 etc.
 → Guarde, espere un minuto aproximadamente y vuelva a intentar el inicio de sesión.
 5. Copie Client ID y Client secret para el paso 5.</string>
     <string name="firebase_tutorial_cloud_step5_title">5. Copiar valores en NoctuList</string>
-    <string name="firebase_tutorial_cloud_step5_body">A) Project ID — selector de proyecto Cloud / IAM &amp; Admin → Settings.
+    <string name="firebase_tutorial_cloud_step5_body">A) Project ID: selector de proyecto Cloud / IAM &amp; Admin → Settings.
 
-B) Clave API — Credentials → API keys (clave de navegador existente, o Create credentials → API key una vez).
+B) Clave API: Credentials → API keys (clave de navegador existente, o Create credentials → API key una vez).
 
-C) Web client ID + secreto — Credentials → OAuth 2.0 Client IDs → Web application (paso 4). Pegue ambos en NoctuList (secreto = inicio de sesión Escritorio).
+C) Web client ID + secreto: Credentials → OAuth 2.0 Client IDs → Web application (paso 4). Pegue ambos en NoctuList (secreto = inicio de sesión Escritorio).
 
 D) Application ID (appId)
 • Firebase Console → Configuración del proyecto → General → Sus apps → Web.
@@ -1578,10 +1578,10 @@ D) Application ID (appId)
 Continúe con el paso 6.</string>
     <string name="firebase_tutorial_step7_title">6. Completar NoctuList y migrar / conectar</string>
     <string name="firebase_tutorial_step7_body">En Sincronización Firebase de administrador o el diálogo de migración:
-• ID de organización — nombre corto compartido (ejemplo: noctulist-club). Igual en cada dispositivo.
+• ID de organización: nombre corto compartido (ejemplo: noctulist-club). Igual en cada dispositivo.
 • Project ID, Application ID, clave API, Web client ID y en Escritorio el secreto del cliente Web.
 • O pegue la configuración web + complete Web client ID/secreto, luego use el QR de unión para otros dispositivos.
-Inicie sesión con Google (el primer administrador se convierte en admin de la org). Solo tras un inicio de sesión correcto, inicie la migración si cambia desde Sheets. Los demás se unen vía QR / follow — no deben volver a escribir secretos.</string>
+Inicie sesión con Google (el primer administrador se convierte en admin de la org). Solo tras un inicio de sesión correcto, inicie la migración si cambia desde Sheets. Los demás se unen vía QR / follow. No deben volver a escribir secretos.</string>
     <string name="firebase_tutorial_step8_title">7. Tras la configuración</string>
     <string name="firebase_tutorial_step8_body">En Firestore debería ver orgs/{suOrgId}/… (guests, members, metadata, etc.). Mantenga Sheets como copia de seguridad hasta verificar TPV, puerta y un segundo dispositivo. Facturación: permanezca en el plan gratuito Spark mientras prueba; actualice solo si supera las cuotas.</string>
     <string name="migration_wizard_to_firebase_title">Cambiar a Firebase</string>
@@ -2340,13 +2340,15 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="guest_form_export_android">La publicación requiere un ordenador. Abrid esta guía en NoctuList en escritorio, exportad el zip y seguid desde el paso 3.</string>
     <string name="guest_form_deploy_commands">npm install -g firebase-tools\nfirebase login\nfirebase deploy --only hosting --project YOUR_PROJECT_ID</string>
     <string name="firebase_tutorial_forms_optional_title">Opcional: formularios públicos de guestlist (Firebase Hosting)</string>
-    <string name="firebase_tutorial_forms_optional_body">Publicad una vez el sitio de formularios en este proyecto Firebase (Hosting gratis). Después, cada formulario en NoctuList es un enlace único — sin volver a Terminal.</string>
-    <string name="guest_form_step1">1. En Ajustes → Firebase → opciones, activad los formularios de guestlist de artista.</string>
+    <string name="firebase_tutorial_forms_optional_body">Publicad una vez el sitio de formularios en este proyecto Firebase (Hosting gratis). Después, cada formulario en NoctuList es un enlace único. Sin volver a Terminal.</string>
+    <string name="firebase_tutorial_portal_optional_title">Opcional: portal de voluntarios</string>
+    <string name="firebase_tutorial_portal_optional_body">Omita esta parte si los voluntarios no necesitan su propio espacio web. Requiere el sitio de formularios de la sección anterior.\n\n1. Firebase Console → Build → Authentication → Sign-in method → Add new provider → Email/Password → Enable. Deje «Email link» desactivado y guarde.\n2. Authentication → Settings → User actions: mantenga activada «Email enumeration protection».\n3. Publique las últimas reglas de Firestore (paso 3) y, si usa fotos, las reglas de Storage.\n4. Exporte de nuevo el sitio de formularios y despliéguelo (sección anterior). Esto añade la página de registro y el espacio de voluntarios.\n5. En NoctuList, Ajustes → Firebase, active «Activar el portal de voluntarios». La dirección de acceso aparece allí.\n\nPara «Enviarme mi código QR», mantenga encendido al menos un dispositivo NoctuList con Gmail configurado.</string>
+    <string name="guest_form_step1">1. En Ajustes → Firebase → opciones, activad los formularios de guestlist de artista o el portal de voluntarios.</string>
     <string name="guest_form_step2">2. En un ordenador, pulsad «Exportar el sitio de formularios», guardad el zip y descomprimidlo. La carpeta debe contener index.html y firebase.json.</string>
     <string name="guest_form_step3">3. Instalad Node.js LTS 22 o 24 desde https://nodejs.org (botón verde LTS, no Current). Volved a abrir Terminal después de instalar.</string>
     <string name="guest_form_step4">4. Abrid Terminal. Escribid cd, espacio, arrastrad la carpeta descomprimida a la ventana y pulsad Intro.</string>
     <string name="guest_form_step5">5. Copiad las órdenes de abajo, pegadlas en Terminal e Intro. Entrad con la cuenta de Google dueña de este proyecto Firebase.</string>
-    <string name="guest_form_step6">6. Cuando Terminal muestre «Deploy complete!», el sitio está en línea. Luego cread formularios en NoctuList — sin otro despliegue.</string>
+    <string name="guest_form_step6">6. Cuando Terminal muestre «Deploy complete!», el sitio está en línea. Los formularios creados después no necesitan otro despliegue. Tras una actualización de NoctuList, exportad y desplegad el sitio de nuevo.</string>
     <string name="guest_form_terminal_caption">Órdenes para Terminal</string>
     <string name="guest_form_copy_commands">Copiar órdenes</string>
     <string name="guest_form_commands_copied">Órdenes copiadas</string>
@@ -2455,4 +2457,46 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="profile_photo_request_expired">Este enlace ha caducado. Cierra y crea uno nuevo.</string>
     <string name="profile_photo_request_failed">No se pudo crear el enlace. Comprueba la conexión y que las últimas reglas de Firestore y Storage estén publicadas.</string>
     <string name="profile_photo_request_hint">Puedes cerrar esta ventana: la foto se añadirá igualmente cuando llegue, mientras NoctuList esté abierto en este dispositivo.</string>
+    <string name="portal_settings_title">Portal de voluntarios</string>
+    <string name="portal_settings_body">Cada voluntario obtiene un espacio web personal en el sitio de formularios: perfil, turnos, ventajas y monedero. Antes de activarlo: habilita el inicio de sesión con correo/contraseña en Firebase Authentication, vuelve a publicar las reglas de Firestore y Storage, y vuelve a desplegar el sitio de formularios.</string>
+    <string name="portal_enable">Activar el portal de voluntarios</string>
+    <string name="portal_sign_in_url">Página de acceso: %1$s</string>
+    <string name="portal_add_choice_title">Añadir un voluntario</string>
+    <string name="portal_add_choice_fill">Rellenar el perfil yo mismo</string>
+    <string name="portal_add_choice_fill_desc">Introduce los datos ahora. Puedes abrir su acceso al portal al mismo tiempo.</string>
+    <string name="portal_add_choice_link">Enviar un formulario de inscripción</string>
+    <string name="portal_add_choice_link_desc">El voluntario rellena sus propios datos y elige una contraseña.</string>
+    <string name="portal_signup_link_title">Formulario de inscripción</string>
+    <string name="portal_signup_link_body">Envía este enlace de un solo uso al nuevo voluntario. Es válido durante 7 días. Su perfil aparece aquí en cuanto lo envíe.</string>
+    <string name="portal_signup_link_creating">Creando el enlace…</string>
+    <string name="portal_signup_link_failed">No se pudo crear el enlace. Comprueba la conexión y que las últimas reglas de Firestore estén publicadas.</string>
+    <string name="portal_signup_link_waiting">Esperando la inscripción…</string>
+    <string name="portal_signup_link_received">Inscripción recibida. Añadiendo al voluntario…</string>
+    <string name="portal_signup_link_done">Se ha añadido el nuevo voluntario.</string>
+    <string name="portal_signup_link_expired">Este enlace ha caducado. Crea uno nuevo.</string>
+    <string name="portal_create_access_toggle">Crear un acceso al portal de voluntarios</string>
+    <string name="portal_create_access_toggle_desc">Se genera una contraseña que se muestra una sola vez; el voluntario también recibe un correo para elegir la suya.</string>
+    <string name="portal_access_title">Portal de voluntarios</string>
+    <string name="portal_access_status_none">Sin acceso al portal</string>
+    <string name="portal_access_status_pending">Acceso abierto, esperando el primer inicio de sesión</string>
+    <string name="portal_access_status_active">Acceso activo</string>
+    <string name="portal_access_create">Crear acceso</string>
+    <string name="portal_access_reset">Enviar un enlace para restablecer la contraseña</string>
+    <string name="portal_access_revoke">Quitar el acceso</string>
+    <string name="portal_access_revoke_confirm_title">¿Quitar el acceso al portal?</string>
+    <string name="portal_access_revoke_confirm_body">%1$s ya no verá su portal. Su inicio de sesión seguirá funcionando, pero no mostrará nada hasta que se vuelva a abrir el acceso.</string>
+    <string name="portal_access_no_email">Primero añade una dirección de correo a este voluntario.</string>
+    <string name="portal_access_reset_sent">Se ha enviado un enlace de restablecimiento a %1$s.</string>
+    <string name="portal_access_reset_failed">No se pudo enviar el correo de restablecimiento.</string>
+    <string name="portal_access_failed">No se pudo crear el acceso (%1$s).</string>
+    <string name="portal_access_existing">Ya existe una cuenta para %1$s. Se ha enviado un enlace para elegir una nueva contraseña; su portal se abrirá en su próximo inicio de sesión.</string>
+    <string name="portal_access_admin_note">Los voluntarios administradores no pueden pedir su código QR desde el portal.</string>
+    <string name="portal_access_email_note">Cambiar el correo aquí no cambia la dirección usada para iniciar sesión.</string>
+    <string name="portal_password_title">Acceso creado</string>
+    <string name="portal_password_body">Entrega esta contraseña a %1$s. Solo se muestra una vez. Podrá cambiarla en el portal.</string>
+    <string name="portal_password_reset_sent">También se ha enviado a %1$s un correo para elegir su propia contraseña.</string>
+    <string name="portal_password_copy">Copiar</string>
+    <string name="portal_password_copied">Copiado</string>
+    <string name="portal_password_sign_in_at">Acceso en: %1$s</string>
+    <string name="portal_working">Espera un momento…</string>
 </resources>

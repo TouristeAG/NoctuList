@@ -5,6 +5,8 @@
       "firebase.json",
       "**/.*"
     ],
+    "cleanUrls": false,
+    "trailingSlash": false,
     "rewrites": [
       {
         "source": "/g/**",
@@ -13,11 +15,52 @@
       {
         "source": "/p/**",
         "destination": "/photo.html"
+      },
+      {
+        "source": "/s/**",
+        "destination": "/signup.html"
+      },
+      {
+        "source": "/v/**",
+        "destination": "/portal.html"
       }
     ],
     "headers": [
       {
-        "source": "**/*.@(js|css)",
+        "source": "**",
+        "headers": [
+          {
+            "key": "Content-Security-Policy",
+            "value": "default-src 'self'; script-src 'self' https://www.gstatic.com; style-src 'self'; img-src 'self' data: blob: https://firebasestorage.googleapis.com; font-src 'self'; connect-src 'self' https://firestore.googleapis.com https://firebasestorage.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.gstatic.com; manifest-src 'self'; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; worker-src 'none'; upgrade-insecure-requests"
+          },
+          {
+            "key": "Strict-Transport-Security",
+            "value": "max-age=31536000; includeSubDomains"
+          },
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "X-Frame-Options",
+            "value": "DENY"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "no-referrer"
+          },
+          {
+            "key": "Cross-Origin-Opener-Policy",
+            "value": "same-origin"
+          },
+          {
+            "key": "Permissions-Policy",
+            "value": "geolocation=(), microphone=(), payment=(), usb=(), serial=(), bluetooth=(), interest-cohort=()"
+          }
+        ]
+      },
+      {
+        "source": "**/*.@(js|css|html|webmanifest)",
         "headers": [
           {
             "key": "Cache-Control",
@@ -26,11 +69,20 @@
         ]
       },
       {
-        "source": "/@(index|photo).html",
+        "source": "/v/**",
         "headers": [
           {
             "key": "Cache-Control",
-            "value": "no-cache"
+            "value": "no-store"
+          }
+        ]
+      },
+      {
+        "source": "/portal.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-store"
           }
         ]
       }

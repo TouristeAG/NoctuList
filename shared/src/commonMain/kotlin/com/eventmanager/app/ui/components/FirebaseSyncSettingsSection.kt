@@ -146,6 +146,9 @@ fun FirebaseSyncSettingsSection(
     guestFormsBilleterieValidateEnabled: Boolean = false,
     onGuestFormsBilleterieValidateEnabledChange: (Boolean) -> Unit = {},
     guestFormSiteOrigin: String = "",
+    volunteerPortalEnabled: Boolean = false,
+    onVolunteerPortalEnabledChange: (Boolean) -> Unit = {},
+    volunteerPortalUrl: String = "",
 ) {
     val ready = firebaseConnectionReady(configuredOrgs, projectId, applicationId, apiKey, authEmail)
     val projectReady = projectId.isNotBlank() && applicationId.isNotBlank() && apiKey.isNotBlank()
@@ -322,6 +325,12 @@ fun FirebaseSyncSettingsSection(
                     billeterieValidateEnabled = guestFormsBilleterieValidateEnabled,
                     onBilleterieValidateEnabledChange = onGuestFormsBilleterieValidateEnabledChange,
                     siteOrigin = guestFormSiteOrigin,
+                    canEdit = isFirebaseOrgAdmin,
+                )
+                VolunteerPortalSettingsCard(
+                    enabled = volunteerPortalEnabled,
+                    onEnabledChange = onVolunteerPortalEnabledChange,
+                    portalUrl = volunteerPortalUrl,
                     canEdit = isFirebaseOrgAdmin,
                 )
                 GuidedStepCard(
