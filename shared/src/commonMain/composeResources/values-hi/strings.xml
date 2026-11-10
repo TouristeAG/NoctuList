@@ -2466,6 +2466,8 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="portal_settings_body">हर स्वयंसेवक को फ़ॉर्म साइट पर एक निजी वेब स्थान मिलता है: प्रोफ़ाइल, शिफ़्ट, लाभ और वॉलेट। चालू करने से पहले: Firebase Authentication में ईमेल/पासवर्ड साइन-इन सक्षम करें, Firestore और Storage नियम दोबारा प्रकाशित करें, और फ़ॉर्म साइट दोबारा डिप्लॉय करें।</string>
     <string name="portal_enable">स्वयंसेवक पोर्टल सक्षम करें</string>
     <string name="portal_sign_in_url">साइन-इन पेज: %1$s</string>
+    <string name="portal_server_active">स्वचालित प्रोसेसिंग चालू है। आखिरी बार चला: %1$s</string>
+    <string name="portal_server_inactive">स्वचालित प्रोसेसिंग सेट नहीं है। NoctuList डिवाइस ऑनलाइन होने पर अनुरोधों को संभालता है।</string>
     <string name="portal_add_choice_title">स्वयंसेवक जोड़ें</string>
     <string name="portal_add_choice_fill">प्रोफ़ाइल खुद भरें</string>
     <string name="portal_add_choice_fill_desc">अभी विवरण दर्ज करें। आप साथ ही उनकी पोर्टल पहुँच भी खोल सकते हैं।</string>

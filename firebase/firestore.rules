@@ -1,5 +1,5 @@
 rules_version = '2';
-// NoctuList Firestore rules — NOCTULIST_RULES_VERSION = 12
+// NoctuList Firestore rules — NOCTULIST_RULES_VERSION = 13
 // Republish this exact file in Firebase Console → Firestore → Rules after every app update,
 // otherwise members that already exist cannot re-join their organization.
 service cloud.firestore {
@@ -442,13 +442,25 @@ service cloud.firestore {
              + duration.value(portalRequestDelayMinutes(request.resource.data.type), 'm');
     }
 
+    // E-mail template the devices publish for the Cloud Functions that mail volunteers.
+    match /orgs/{orgId}/portalMail/{docId} {
+      allow read, write: if isMember(orgId);
+    }
+
+    // Presence document written by the Cloud Functions (Admin SDK bypasses rules). Members only read it.
+    match /orgs/{orgId}/portalServer/{docId} {
+      allow read: if isMember(orgId);
+      allow write: if false;
+    }
+
     match /orgs/{orgId}/{document=**} {
       allow read: if isMember(orgId);
       allow write: if isMember(orgId)
         && document[0] != 'transfers'
         && document[0] != 'members'
         && document[0] != 'metadata'
-        && document[0] != 'institutionSettings';
+        && document[0] != 'institutionSettings'
+        && document[0] != 'portalServer';
     }
   }
 }

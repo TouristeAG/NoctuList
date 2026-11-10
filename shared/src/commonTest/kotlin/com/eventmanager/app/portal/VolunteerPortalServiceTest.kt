@@ -186,6 +186,19 @@ class VolunteerPortalServiceTest {
     )
 
     @Test
+    fun serverStatusDocShowsUpInServerStatus() = runBlocking {
+        val gateway = FakeGateway()
+        val service = startedService(gateway, FakeHost(emptyList()))
+        assertEquals(null, service.serverStatus.value)
+        gateway.docs["portalServer/status"] = mapOf("version" to "3", "lastRunAt" to 1_700_000_000_000L)
+        gateway.push("portalServer")
+        assertEquals(PortalServerStatus("3", 1_700_000_000_000L), service.serverStatus.value)
+        gateway.docs.remove("portalServer/status")
+        gateway.push("portalServer")
+        assertEquals(null, service.serverStatus.value)
+    }
+
+    @Test
     fun freshRequestIsLeftToServer() = runBlocking {
         val gateway = FakeGateway()
         val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true, uid = UID)))

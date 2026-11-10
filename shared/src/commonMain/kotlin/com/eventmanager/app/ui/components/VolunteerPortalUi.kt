@@ -58,7 +58,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.eventmanager.app.data.models.Volunteer
+import com.eventmanager.app.data.sync.DateFormatUtils
+import com.eventmanager.app.platform.LocalPlatformContext
 import com.eventmanager.app.portal.PortalGrantResult
+import com.eventmanager.app.portal.PortalServerStatus
 import com.eventmanager.app.portal.SignupFormState
 import com.eventmanager.app.portal.VolunteerSignupForm
 import com.eventmanager.app.resources.Res
@@ -96,6 +99,8 @@ import com.eventmanager.app.resources.portal_password_copy
 import com.eventmanager.app.resources.portal_password_reset_sent
 import com.eventmanager.app.resources.portal_password_sign_in_at
 import com.eventmanager.app.resources.portal_password_title
+import com.eventmanager.app.resources.portal_server_active
+import com.eventmanager.app.resources.portal_server_inactive
 import com.eventmanager.app.resources.portal_settings_body
 import com.eventmanager.app.resources.portal_settings_title
 import com.eventmanager.app.resources.portal_sign_in_url
@@ -135,6 +140,7 @@ fun VolunteerPortalSettingsCard(
     onEnabledChange: (Boolean) -> Unit,
     portalUrl: String,
     canEdit: Boolean,
+    serverStatus: PortalServerStatus? = null,
 ) {
     GuidedStepCard(
         title = stringResource(Res.string.portal_settings_title),
@@ -151,6 +157,16 @@ fun VolunteerPortalSettingsCard(
                 modifier = Modifier.weight(1f).padding(end = 8.dp),
             )
             Switch(checked = enabled, onCheckedChange = onEnabledChange, enabled = canEdit)
+        }
+        if (enabled) {
+            val platformContext = LocalPlatformContext.current
+            val lastRun = serverStatus?.let { DateFormatUtils.formatDateTime(it.lastRunAt, platformContext) }
+            Text(
+                if (lastRun != null) stringResource(Res.string.portal_server_active, lastRun)
+                else stringResource(Res.string.portal_server_inactive),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
         if (enabled && portalUrl.isNotBlank()) {
             Text(

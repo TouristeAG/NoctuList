@@ -57,6 +57,7 @@ import com.eventmanager.app.data.remote.downloadProfilePhotoBytes
 import com.eventmanager.app.portal.PortalGrantResult
 import com.eventmanager.app.portal.PortalMailTemplate
 import com.eventmanager.app.portal.PortalQrMailer
+import com.eventmanager.app.portal.PortalServerStatus
 import com.eventmanager.app.portal.SignupFormState
 import com.eventmanager.app.portal.VolunteerPortalHost
 import com.eventmanager.app.portal.VolunteerPortalService
@@ -2612,6 +2613,12 @@ class EventManagerViewModel(
     /** Firebase backend and the institution turned the volunteer portal on. */
     val volunteerPortalEnabled: StateFlow<Boolean> = _volunteerPortalEnabled.asStateFlow()
 
+    private val _portalServerStatus = MutableStateFlow<PortalServerStatus?>(null)
+
+    /** Last run of the portal Cloud Functions, null when they never ran or the portal is off. */
+    val portalServerStatus: StateFlow<PortalServerStatus?> = _portalServerStatus.asStateFlow()
+    private var portalServerStatusJob: kotlinx.coroutines.Job? = null
+
     private var volunteerPortalService: VolunteerPortalService? = null
     private var volunteerPortalServiceOrg: String = ""
 
@@ -2654,6 +2661,8 @@ class EventManagerViewModel(
             volunteerPortalService?.stop()
             volunteerPortalService = null
             volunteerPortalServiceOrg = ""
+            portalServerStatusJob?.cancel()
+            _portalServerStatus.value = null
             return
         }
         if (volunteerPortalService != null && volunteerPortalServiceOrg == org) return
@@ -2669,6 +2678,8 @@ class EventManagerViewModel(
         volunteerPortalService = service
         volunteerPortalServiceOrg = org
         service.start(volunteers, jobs, accountTransfers, jobTypeConfigs)
+        portalServerStatusJob?.cancel()
+        portalServerStatusJob = viewModelScope.launch { service.serverStatus.collect { _portalServerStatus.value = it } }
     }
 
     private fun requirePortalService(): VolunteerPortalService? {

@@ -2466,6 +2466,8 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="portal_settings_body">Quisque voluntarius spatium personale in situ formularum accipit: profilum, vices, commoda et crumenam. Antequam accendas: aditum per epistulam et tesseram in Firebase Authentication admitte, regulas Firestore et Storage iterum divulga, situmque formularum iterum explica.</string>
     <string name="portal_enable">Portam voluntariorum accende</string>
     <string name="portal_sign_in_url">Pagina aditus: %1$s</string>
+    <string name="portal_server_active">Processus automaticus activus est. Ultimum cursum: %1$s</string>
+    <string name="portal_server_inactive">Processus automaticus non est institutus. Instrumentum NoctuList petitiones tractat cum in linea est.</string>
     <string name="portal_add_choice_title">Voluntarium adde</string>
     <string name="portal_add_choice_fill">Profilum ipse imple</string>
     <string name="portal_add_choice_fill_desc">Data nunc insere. Aditum ad portam simul aperire potes.</string>

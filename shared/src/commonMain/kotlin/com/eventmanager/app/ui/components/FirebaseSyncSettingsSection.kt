@@ -1,5 +1,6 @@
 package com.eventmanager.app.ui.components
 
+import com.eventmanager.app.portal.PortalServerStatus
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -147,6 +148,7 @@ fun FirebaseSyncSettingsSection(
     onGuestFormsBilleterieValidateEnabledChange: (Boolean) -> Unit = {},
     guestFormSiteOrigin: String = "",
     volunteerPortalEnabled: Boolean = false,
+    portalServerStatus: PortalServerStatus? = null,
     onVolunteerPortalEnabledChange: (Boolean) -> Unit = {},
     volunteerPortalUrl: String = "",
 ) {
@@ -332,6 +334,7 @@ fun FirebaseSyncSettingsSection(
                     onEnabledChange = onVolunteerPortalEnabledChange,
                     portalUrl = volunteerPortalUrl,
                     canEdit = isFirebaseOrgAdmin,
+                    serverStatus = portalServerStatus,
                 )
                 GuidedStepCard(
                     title = stringResource(Res.string.profile_photos_settings_title),

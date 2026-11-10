@@ -363,3 +363,24 @@ describe("storage", () => {
     await assertSucceeds(getBytes(ref(staff().storage(), `orgs/${ORG}/portalPhotos/vol1.jpg`)));
   });
 });
+
+describe("portalMail and portalServer", () => {
+  test("members read and write the mail template only", async () => {
+    const db = staff().firestore();
+    await assertSucceeds(setDoc(doc(db, path("portalMail/default")), { subject: "Hi", lastModified: Date.now() }));
+    await assertSucceeds(getDoc(doc(db, path("portalMail/default"))));
+    await assertFails(getDoc(doc(portal("vol1").firestore(), path("portalMail/default"))));
+    await assertFails(getDoc(doc(anon().firestore(), path("portalMail/default"))));
+    await assertFails(setDoc(doc(portal("vol1").firestore(), path("portalMail/default")), { subject: "X" }));
+  });
+
+  test("members read the server status but nobody writes it", async () => {
+    await seed((db) => setDoc(doc(db, path("portalServer/status")), { version: "1", lastRunAt: Date.now() }));
+    await assertSucceeds(getDoc(doc(staff().firestore(), path("portalServer/status"))));
+    await assertFails(getDoc(doc(portal("vol1").firestore(), path("portalServer/status"))));
+    await assertFails(getDoc(doc(anon().firestore(), path("portalServer/status"))));
+    await assertFails(setDoc(doc(staff().firestore(), path("portalServer/status")), { version: "2", lastRunAt: 1 }));
+    await assertFails(deleteDoc(doc(staff().firestore(), path("portalServer/status"))));
+    await assertFails(setDoc(doc(portal("vol1").firestore(), path("portalServer/status")), { version: "2" }));
+  });
+});

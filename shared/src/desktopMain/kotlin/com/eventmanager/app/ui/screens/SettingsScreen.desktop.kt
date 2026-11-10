@@ -259,6 +259,7 @@ actual fun SettingsScreen(
     var driveImportEnabled by remember { mutableStateOf(viewModel.isDriveImportEnabled()) }
     val guestFormsEnabled by viewModel.guestFormsEnabled.collectAsState()
     val volunteerPortalEnabled by viewModel.volunteerPortalEnabled.collectAsState()
+    val portalServerStatus by viewModel.portalServerStatus.collectAsState()
     val guestFormsBilleterieValidateEnabled by viewModel.guestFormsBilleterieValidateEnabled.collectAsState()
     val billeterieSendEnabled by viewModel.announcementsBilleterieSendEnabled.collectAsState()
 
@@ -498,6 +499,7 @@ actual fun SettingsScreen(
                     },
                     guestFormSiteOrigin = viewModel.guestFormSiteOrigin(),
                     volunteerPortalEnabled = volunteerPortalEnabled,
+                    portalServerStatus = portalServerStatus,
                     onVolunteerPortalEnabledChange = { viewModel.setVolunteerPortalEnabled(it) },
                     volunteerPortalUrl = viewModel.volunteerPortalUrl(),
                     projectId = firebaseProjectId,

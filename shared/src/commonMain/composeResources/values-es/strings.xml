@@ -2461,6 +2461,8 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="portal_settings_body">Cada voluntario obtiene un espacio web personal en el sitio de formularios: perfil, turnos, ventajas y monedero. Antes de activarlo: habilita el inicio de sesión con correo/contraseña en Firebase Authentication, vuelve a publicar las reglas de Firestore y Storage, y vuelve a desplegar el sitio de formularios.</string>
     <string name="portal_enable">Activar el portal de voluntarios</string>
     <string name="portal_sign_in_url">Página de acceso: %1$s</string>
+    <string name="portal_server_active">El procesamiento automático está activo. Última ejecución: %1$s</string>
+    <string name="portal_server_inactive">El procesamiento automático no está configurado. Un dispositivo NoctuList atiende las solicitudes cuando está en línea.</string>
     <string name="portal_add_choice_title">Añadir un voluntario</string>
     <string name="portal_add_choice_fill">Rellenar el perfil yo mismo</string>
     <string name="portal_add_choice_fill_desc">Introduce los datos ahora. Puedes abrir su acceso al portal al mismo tiempo.</string>

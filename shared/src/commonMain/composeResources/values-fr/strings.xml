@@ -2397,6 +2397,8 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="portal_settings_body">Chaque bénévole obtient un espace web personnel sur le site des formulaires : profil, shifts, avantages et porte-monnaie. Avant d\'activer : activez la connexion E-mail/Mot de passe dans Firebase Authentication, republiez les règles Firestore et Storage, puis redéployez le site des formulaires.</string>
     <string name="portal_enable">Activer la plateforme bénévole</string>
     <string name="portal_sign_in_url">Page de connexion : %1$s</string>
+    <string name="portal_server_active">Le traitement automatique est actif. Dernière exécution : %1$s</string>
+    <string name="portal_server_inactive">Le traitement automatique n\'est pas configuré. Un appareil NoctuList traite les demandes lorsqu\'il est en ligne.</string>
     <string name="portal_add_choice_title">Ajouter un bénévole</string>
     <string name="portal_add_choice_fill">Remplir le profil moi-même</string>
     <string name="portal_add_choice_fill_desc">Saisissez les informations maintenant. Vous pouvez ouvrir son accès à la plateforme en même temps.</string>

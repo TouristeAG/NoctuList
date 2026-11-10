@@ -2461,6 +2461,8 @@ D) Application ID（appId）
     <string name="portal_settings_body">每位志工在表單網站上擁有個人空間：資料、班次、福利與錢包。開啟前：在 Firebase Authentication 中啟用電子郵件／密碼登入，重新發布 Firestore 與 Storage 規則，並重新部署表單網站。</string>
     <string name="portal_enable">啟用志工入口網站</string>
     <string name="portal_sign_in_url">登入頁面：%1$s</string>
+    <string name="portal_server_active">自動處理已開啟。上次執行：%1$s</string>
+    <string name="portal_server_inactive">自動處理尚未設定。NoctuList 裝置在線時會處理請求。</string>
     <string name="portal_add_choice_title">新增志工</string>
     <string name="portal_add_choice_fill">自行填寫資料</string>
     <string name="portal_add_choice_fill_desc">現在填寫資料，可同時開通其入口網站存取。</string>

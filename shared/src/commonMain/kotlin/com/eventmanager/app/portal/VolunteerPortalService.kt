@@ -11,6 +11,9 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job as CoroutineJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
@@ -91,6 +94,10 @@ class VolunteerPortalService(
     private var latestSignupDocs: List<Pair<String, Map<String, Any?>>> = emptyList()
     private var latestRequestDocs: List<Pair<String, Map<String, Any?>>> = emptyList()
     private var started = false
+    private val _serverStatus = MutableStateFlow<PortalServerStatus?>(null)
+
+    /** Last run reported by the Cloud Functions, or null when none ever ran. */
+    val serverStatus: StateFlow<PortalServerStatus?> = _serverStatus.asStateFlow()
 
     fun start(
         volunteers: Flow<List<Volunteer>>,
@@ -107,6 +114,10 @@ class VolunteerPortalService(
         gateway.listenCollection(orgId, PortalRequest.COLLECTION) { docs ->
             latestRequestDocs = docs
             processRequests(docs)
+        }?.let { listeners += it }
+        gateway.listenCollection(orgId, PortalServerStatus.COLLECTION) { docs ->
+            _serverStatus.value = docs.firstOrNull { it.first == PortalServerStatus.DOC }
+                ?.let { PortalServerStatus.fromMap(it.second) }
         }?.let { listeners += it }
         publisherJob = scope.launch {
             combine(volunteers, jobs, transfers, jobTypeConfigs) { v, j, t, c -> Snapshot(v, j, t, c) }

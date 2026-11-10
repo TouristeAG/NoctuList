@@ -67,6 +67,19 @@ data class SignupSubmission(
 
 enum class PortalRequestType { PROFILE, QR_EMAIL, CLAIM }
 
+/** `orgs/{orgId}/portalServer/status`, written by the Cloud Functions after each run. */
+data class PortalServerStatus(val version: String, val lastRunAt: Long) {
+    companion object {
+        const val COLLECTION = "portalServer"
+        const val DOC = "status"
+
+        fun fromMap(data: Map<String, Any?>): PortalServerStatus? {
+            val at = firestoreMillisOf(data["lastRunAt"]) ?: return null
+            return PortalServerStatus(data["version"]?.toString().orEmpty(), at)
+        }
+    }
+}
+
 /** `orgs/{orgId}/portalRequests/{uid}_{type}` written by a signed-in portal account. */
 data class PortalRequest(
     val requestId: String,
