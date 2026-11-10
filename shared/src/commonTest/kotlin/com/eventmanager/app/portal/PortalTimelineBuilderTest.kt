@@ -7,6 +7,7 @@ import com.eventmanager.app.data.models.JobType
 import com.eventmanager.app.data.models.JobTypeConfig
 import com.eventmanager.app.data.models.ManualRewards
 import com.eventmanager.app.data.models.NovaJobType
+import com.eventmanager.app.data.models.isNovaMeetingOnlyStylePerk
 import com.eventmanager.app.data.utils.DateTimeUtils
 import com.eventmanager.app.data.models.ShiftTime
 import com.eventmanager.app.data.models.Volunteer
@@ -84,7 +85,7 @@ class PortalTimelineBuilderTest {
 
     @Test
     fun shiftAt2300LocalCountsForThatDay() {
-        // 22:00 Geneva time: a late shift still belongs to its own day.
+        // 22:00 Geneva time (CET) on 2026-11-11: a late shift still belongs to its own day.
         val shift = Instant.parse("2026-11-11T21:00:00Z").toEpochMilli()
         val timeline = PortalTimelineBuilder.build(volunteer, listOf(barJob(shift)), listOf(barConfig), now, 2)
         val dayStart = Instant.parse("2026-11-11T01:00:00Z").toEpochMilli() // Geneva midnight + 2h
@@ -133,5 +134,44 @@ class PortalTimelineBuilderTest {
         val extended = build(listOf(job(now - day), job(now + 2 * day, "later")), cfg = cfg)
         assertNotNull(extended.gains.singleOrNull())
         assertTrue(extended.gains.single().gains.any { it.freeEntry }, "later validUntil is a gain")
+    }
+
+    @Test
+    fun rebuildingLaterTheSameDayGivesTheSameTimeline() {
+        // 18:00 Geneva on 2026-11-10 is 17:00 UTC; builds at 15:00 UTC and 21:00 UTC are the same local day.
+        val shift = Instant.parse("2026-11-10T17:00:00Z").toEpochMilli()
+        val jobs = listOf(barJob(shift))
+        val early = PortalTimelineBuilder.build(volunteer, jobs, listOf(barConfig), Instant.parse("2026-11-10T15:00:00Z").toEpochMilli(), 0)
+        val late = PortalTimelineBuilder.build(volunteer, jobs, listOf(barConfig), Instant.parse("2026-11-10T21:00:00Z").toEpochMilli(), 0)
+        assertTrue(early.gains.single().gains.isNotEmpty())
+        assertEquals(early, late)
+    }
+
+    @Test
+    fun benefitFirstSeenAtALaterDayGetsItsOwnExpiryStep() {
+        val cfg = config(durationDays = 3)
+        val timeline = build(listOf(job(now + 20 * day)), cfg = cfg)
+        val validUntil = timeline.gains.single().gains.mapNotNull { it.validUntil }.single()
+        val expiry = timeline.steps.first { it.from == validUntil + 1 }
+        assertFalse(expiry.benefits.any { it.freeEntry })
+    }
+
+    @Test
+    fun orionNeverSeesNovaMeetingOnlyPerks() {
+        val meeting = JobTypeConfig(
+            name = "Meeting", isShiftJob = true, novaJobType = NovaJobType.MEETING, requiresShiftTime = false,
+        )
+        val orion = JobTypeConfig(name = "Comité", isShiftJob = false, isOrionJob = true)
+        fun meetingJob(date: Long) = job(date).copy(jobTypeName = "Meeting")
+        fun orionJob(date: Long) = job(date).copy(jobTypeName = "Comité")
+        val today = DateTimeUtils.getStartOfDayWithOffset(now, 0)
+        val meetingOnly = PortalTimelineBuilder.build(
+            volunteer, listOf(meetingJob(today + hour)), listOf(meeting, orion), now, 0,
+        )
+        assertTrue(meetingOnly.steps.first().benefits.any { it.drinkTokens == 1 }, "control: Nova gets the meeting drink")
+        val asOrion = PortalTimelineBuilder.build(
+            volunteer, listOf(meetingJob(today + hour), orionJob(today - 10 * day)), listOf(meeting, orion), now, 0,
+        )
+        assertTrue(asOrion.steps.all { step -> step.benefits.none { it.isNovaMeetingOnlyStylePerk() } })
     }
 }

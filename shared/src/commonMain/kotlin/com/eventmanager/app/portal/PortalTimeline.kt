@@ -44,13 +44,16 @@ object PortalTimelineBuilder {
         // Same day convention as BenefitCalculator: Geneva day start plus offsetHours.
         fun dayStart(t: Long) = DateTimeUtils.getStartOfDayWithOffset(t, offsetHours)
 
+        // The first step can start after `now` when `now` falls inside the offset window (calculator convention).
         val today = dayStart(now)
         val horizonEnd = dayStart(today + HORIZON_DAYS * DAY + DAY / 2)
-        val upcoming = jobs.filter { it.date > now }.sortedBy { it.date }.take(MAX_UPCOMING)
+        // Day-aligned, not `now`-based: every shift of today stays "upcoming" for the whole local day,
+        // so rebuilding later the same day gives the same result.
+        val upcoming = jobs.filter { dayStart(it.date) >= today }.sortedBy { it.date }.take(MAX_UPCOMING)
 
         // A shift counts from the start of its own day, so that night's perks show on that day.
         fun visibleAt(point: Long, source: List<Job>) =
-            source.filter { it.date <= point || dayStart(it.date) <= point }
+            source.filter { dayStart(it.date) <= point }
 
         fun stepAt(point: Long, source: List<Job>): PortalTimelineStep {
             val visible = visibleAt(point, source)
@@ -95,6 +98,7 @@ object PortalTimelineBuilder {
         val gains = upcoming.map { job ->
             val point = dayStart(job.date)
             val with = stepAt(point, jobs).benefits
+            // Identity compare: equal-looking jobs are still distinct shifts.
             val without = stepAt(point, jobs.filter { it !== job }).benefits
             PortalShiftGains(job.jobNanoId, gainsBetween(without, with))
         }
