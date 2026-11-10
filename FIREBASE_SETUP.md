@@ -141,14 +141,17 @@ NoctuList device is online.** Needs the form site and the volunteer portal above
    firebase deploy --only hosting,functions
    ```
    The first time, the terminal asks for the Gmail address, the region and the app password.
-   Use the same region as the Firestore database: `eur3` is `europe-west1`, Zurich is
-   `europe-west6`.
-5. Clean old builds automatically:
+   Use the same region as the Firestore database: `eur3` is `europe-west1`, `nam5` is
+   `us-central1`, Zurich is `europe-west6`.
+   If the first deploy fails with an Eventarc or permission error, wait a few minutes and run the
+   deploy again.
+5. Clean old builds automatically, with the region of the functions (step 4):
    ```
-   firebase functions:artifacts:setpolicy
+   firebase functions:artifacts:setpolicy --location <region>
    ```
 
-Once deployed, **Settings, Firebase** shows "Automatic processing is on".
+**Settings, Firebase** shows "Automatic processing is on" once the server has handled a first
+registration or request, not right after the deploy.
 
 What runs where:
 
