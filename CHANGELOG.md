@@ -23,15 +23,16 @@ New, optional: a personal web space for volunteers, and a refreshed look for eve
 
 ### Security
 
-- Firestore rules **v12** and new Storage rules. A volunteer can only read their own filtered page; the wallet QR id, NFC data and admin flag never leave the devices. E-mail verification is required, every write is checked field by field, requests are throttled server-side, and the whole portal is closed by the rules while the setting is off.
+- Firestore rules **v13** and new Storage rules. A volunteer can only read their own filtered page; the wallet QR id, NFC data and admin flag never leave the devices. E-mail verification is required, every write is checked field by field, requests are throttled server-side, and the whole portal is closed by the rules while the setting is off.
 - E-mail/password accounts can never act as team members, even with an invitation code.
 - Strict Content-Security-Policy and security headers on the form site.
 
 ### Upgrade notes
 
 - **Database:** Room 51 to 52 (volunteer `portalEnabled`, `portalUid`).
-- **Firestore and Storage rules:** republish both (`NOCTULIST_RULES_VERSION = 12`).
+- **Firestore and Storage rules:** republish both (`NOCTULIST_RULES_VERSION = 13`).
 - **Hosting:** export the form site again from the app and redeploy it.
+- **All devices:** update NoctuList on every device. Older versions publish the old page format and do not wait for the server.
 - **Automatic processing (optional):** Blaze plan, Gmail app password, then `firebase deploy --only hosting,functions` from the exported folder (see FIREBASE_SETUP.md).
 - **Firebase Console, before turning the portal on:** Authentication, Sign-in method, enable **Email/Password**. Recommended: keep **Email enumeration protection** on.
 
