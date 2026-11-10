@@ -6,6 +6,8 @@ import com.eventmanager.app.data.models.Job
 import com.eventmanager.app.data.models.JobType
 import com.eventmanager.app.data.models.JobTypeConfig
 import com.eventmanager.app.data.models.ManualRewards
+import com.eventmanager.app.data.models.NovaJobType
+import com.eventmanager.app.data.utils.DateTimeUtils
 import com.eventmanager.app.data.models.ShiftTime
 import com.eventmanager.app.data.models.Volunteer
 import java.time.Instant
@@ -43,12 +45,18 @@ class PortalTimelineBuilderTest {
     private fun build(jobs: List<Job>, offset: Int = 0, cfg: JobTypeConfig = config()) =
         PortalTimelineBuilder.build(volunteer, jobs, listOf(cfg), now, offset)
 
-    private fun localMidnightAfter(t: Long, offset: Int): Long = Math.floorDiv(t + offset * hour, day) * day - offset * hour + day
+    private val barConfig = JobTypeConfig(
+        name = "Bar", isShiftJob = true, novaJobType = NovaJobType.DEFAULT_SHIFT, requiresShiftTime = true,
+    )
+
+    private fun barJob(date: Long) = job(date).copy(jobType = JobType.BAR, jobTypeName = "Bar")
 
     @Test
     fun firstStepStartsAtLocalMidnight() {
+        // Convention asserted: the BenefitCalculator day start, i.e. Geneva midnight (CET, UTC+1 in
+        // November) plus offsetHours. Geneva midnight on 2026-11-10 is 2026-11-09 23:00 UTC, +2h = 01:00 UTC.
         val timeline = build(emptyList(), offset = 2)
-        assertEquals(Instant.parse("2026-11-09T22:00:00Z").toEpochMilli(), timeline.steps.first().from)
+        assertEquals(Instant.parse("2026-11-10T01:00:00Z").toEpochMilli(), timeline.steps.first().from)
     }
 
     @Test
@@ -59,23 +67,29 @@ class PortalTimelineBuilderTest {
     @Test
     fun upcomingShiftCreatesStepAndGains() {
         val shift = now + day
-        val timeline = build(listOf(job(shift)))
-        val expectedFrom = localMidnightAfter(shift, 0)
-        assertTrue(timeline.steps.any { it.from == expectedFrom })
-        assertTrue(timeline.steps.first { it.from == expectedFrom }.benefits.any { it.freeEntry })
+        val timeline = PortalTimelineBuilder.build(volunteer, listOf(barJob(shift)), listOf(barConfig), now, 0)
+        val dayStart = DateTimeUtils.getStartOfDayWithOffset(shift, 0)
+        val step = timeline.steps.first { it.from == dayStart }
+        assertTrue(step.benefits.any { it.freeEntry }, "same-night free entry is in the step on the shift day")
         val gains = timeline.gains.single()
         assertEquals("j$shift", gains.jobNanoId)
         assertTrue(gains.gains.any { it.freeEntry })
     }
 
     @Test
+    fun oneDayRewardIsAGain() {
+        val timeline = build(listOf(job(now + day)), cfg = config(durationDays = 1))
+        assertTrue(timeline.gains.single().gains.any { it.freeEntry })
+    }
+
+    @Test
     fun shiftAt2300LocalCountsForThatDay() {
-        // 23:00 local (UTC+2) on 2026-11-11 is 21:00 UTC.
+        // 22:00 Geneva time: a late shift still belongs to its own day.
         val shift = Instant.parse("2026-11-11T21:00:00Z").toEpochMilli()
-        val timeline = build(listOf(job(shift)), offset = 2)
-        val followingLocalMidnight = Instant.parse("2026-11-11T22:00:00Z").toEpochMilli()
+        val timeline = PortalTimelineBuilder.build(volunteer, listOf(barJob(shift)), listOf(barConfig), now, 2)
+        val dayStart = Instant.parse("2026-11-11T01:00:00Z").toEpochMilli() // Geneva midnight + 2h
         val step = timeline.steps.first { it.benefits.any { b -> b.freeEntry } }
-        assertEquals(followingLocalMidnight, step.from)
+        assertEquals(dayStart, step.from)
         assertTrue(timeline.gains.single().gains.any { it.freeEntry })
     }
 
