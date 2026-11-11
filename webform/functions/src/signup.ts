@@ -16,7 +16,7 @@ import {
 import { volunteerId } from "./nanoid";
 import { parseSignup, type SignupSubmission } from "./validate";
 
-type PhotoBucket = ReturnType<Storage["bucket"]>;
+export type PhotoBucket = ReturnType<Storage["bucket"]>;
 
 type Data = Record<string, unknown>;
 type Outcome = "CREATED" | "LINKED" | "ALREADY_LINKED" | "INVALID";
@@ -41,6 +41,8 @@ export const signupPhotoPath = (orgId: string, formId: string): string =>
 export const volunteerPhotoPath = (orgId: string, id: string): string =>
   `orgs/${orgId.trim()}/profilePhotos/volunteers/${id.trim()}.jpg`;
 export const portalPhotoPath = (orgId: string, uid: string): string => `orgs/${orgId}/portalPhotos/${uid}.jpg`;
+/** A new photo picked in the portal, waiting for the PROFILE request that announces it. */
+export const portalUploadPath = (orgId: string, uid: string): string => `orgs/${orgId}/portalPhotoUploads/${uid}.jpg`;
 
 /**
  * Handles one write of `orgs/{orgId}/volunteerSignupForms/{formId}`. The trigger also fires on
@@ -132,7 +134,16 @@ async function readSignupPhoto(
 ): Promise<Buffer | null> {
   // parseSignup only ever returns this form's own path, or "".
   if (photoPath === "") return null;
-  if ((await institutionSetting(db, orgId, "profile_photos_enabled")).trim().toLowerCase() !== "true") return null;
+  if (!(await profilePhotosOn(db, orgId))) return null;
+  return readJpeg(bucket, photoPath);
+}
+
+export async function profilePhotosOn(db: Firestore, orgId: string): Promise<boolean> {
+  return (await institutionSetting(db, orgId, "profile_photos_enabled")).trim().toLowerCase() === "true";
+}
+
+/** An uploaded file, only when it is a JPEG within the size cap of the Storage rules. */
+export async function readJpeg(bucket: PhotoBucket, photoPath: string): Promise<Buffer | null> {
   const file = bucket.file(photoPath);
   const [exists] = await file.exists();
   if (!exists) return null;
@@ -144,7 +155,7 @@ async function readSignupPhoto(
 }
 
 /** New bytes and metadata: no download token of the uploader's file is carried over. */
-async function saveJpeg(bucket: PhotoBucket, path: string, bytes: Buffer): Promise<void> {
+export async function saveJpeg(bucket: PhotoBucket, path: string, bytes: Buffer): Promise<void> {
   await bucket.file(path).save(bytes, { contentType: "image/jpeg", resumable: false });
 }
 

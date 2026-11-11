@@ -202,7 +202,9 @@ if (!gl) {
   resize();
 
   const start = performance.now();
-  const frameBudgetMs = 1000 / 30; // ~30 fps keeps the GPU cool during long sessions
+  // The field drifts about 3 px per second, so 12 fps moves each line a quarter pixel per frame:
+  // indistinguishable from 60 fps, at a fifth of the GPU work for long sessions.
+  const frameBudgetMs = 1000 / 12;
   let lastDraw = 0;
   let rafId = 0;
 

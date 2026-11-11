@@ -326,7 +326,7 @@ class SetupRunner(
         const val MAX_RETRIES = 5
         const val RETRY_SECONDS = 120
         const val MAX_LOG_LINES = 200
-        val SERVER_FUNCTIONS = listOf("onSignupWritten", "onPortalRequestWritten")
+        val SERVER_FUNCTIONS = listOf("onSignupWritten", "onPortalRequestWritten", "onMailOutboxWritten")
         val MACHINE_STEPS = setOf(SetupStepId.TOOLS, SetupStepId.LOGIN)
         val HOSTING_URL = Regex("Hosting URL:\\s*(https://\\S+)")
         val NO_SITE = Regex("no Hosting site", RegexOption.IGNORE_CASE)

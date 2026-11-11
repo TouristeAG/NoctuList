@@ -896,6 +896,11 @@
     <string name="email_send_api">Envoyer via Gmail API</string>
     <string name="email_send_manual_description">Ouvrir l\'application email avec contenu HTML et QR code en pièce jointe</string>
     <string name="email_send_api_description">Envoyer automatiquement via Gmail API avec images intégrées</string>
+    <string name="email_send_site">Envoyer via le site</string>
+    <string name="email_send_site_description">Envoyé par le site depuis l\'adresse Gmail de l\'association</string>
+    <string name="email_site_no_answer">Le site n\'a pas répondu. Vérifiez que le serveur du portail est installé, ou connectez-vous avec Gmail.</string>
+    <string name="email_site_too_large">Cet e-mail est trop lourd pour passer par le site. Désactivez le logo ou le pass Wallet, ou connectez-vous avec Gmail.</string>
+    <string name="email_site_rejected">Le site n\'a pas pu envoyer cet e-mail. Vérifiez l\'adresse et le compte Gmail de l\'association.</string>
     <string name="email_no_email_title">Aucune Adresse Email</string>
     <string name="email_no_email_message">Ce·tte bénévole n\'a pas d\'adresse email. Veuillez en ajouter une d\'abord.</string>
     <string name="email_no_email_guest_staff_message">Cet·te invité·e n\'a pas d\'adresse e-mail enregistrée. Un·e administrateur·rice doit en ajouter une avant l\'envoi du QR depuis cet écran.</string>

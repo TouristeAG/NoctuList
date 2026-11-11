@@ -107,7 +107,11 @@ private class FakeHost(initial: List<Volunteer>) : VolunteerPortalHost {
         volunteers[i] = volunteer
         return true
     }
-    override suspend fun attachVolunteerPhoto(volunteer: Volunteer, bytes: ByteArray) = true
+    val attached = mutableListOf<Pair<String, ByteArray>>()
+    override suspend fun attachVolunteerPhoto(volunteer: Volunteer, bytes: ByteArray): Boolean {
+        attached += volunteer.id to bytes
+        return true
+    }
     override suspend fun downloadStorage(path: String) = storage[path]
     override suspend fun uploadStorageJpeg(path: String, bytes: ByteArray): Boolean {
         storage[path] = bytes
@@ -227,6 +231,46 @@ class VolunteerPortalServiceTest {
         )
         gateway.push("portalRequests")
         assertEquals("DONE", gateway.docs[key]!!["status"])
+    }
+
+    @Test
+    fun profileRequestWithPhotoAttachesUploadAndRemovesIt() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true, uid = UID)))
+        val upload = "orgs/$ORG/portalPhotoUploads/$UID.jpg"
+        val jpeg = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xE0.toByte(), 1, 2, 3)
+        host.storage[upload] = jpeg
+        startedService(gateway, host)
+        val key = "portalRequests/${UID}_PROFILE"
+        gateway.docs[key] = mapOf(
+            "uid" to UID, "type" to "PROFILE", "status" to "PENDING", "email" to "lea@example.org",
+            "firstName" to "Neo", "lastName" to "X", "phone" to "+41 79 999 99 99", "photo" to true,
+            "requestedAt" to System.currentTimeMillis() - 150_000,
+        )
+        gateway.push("portalRequests")
+        assertEquals("DONE", gateway.docs[key]!!["status"])
+        assertEquals("Neo", host.volunteers.single().name)
+        assertEquals("V1", host.attached.single().first)
+        assertTrue(host.attached.single().second.contentEquals(jpeg))
+        assertFalse(upload in host.storage)
+    }
+
+    @Test
+    fun profileRequestWithMissingPhotoIsRejectedWithoutChanges() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true, uid = UID)))
+        startedService(gateway, host)
+        val key = "portalRequests/${UID}_PROFILE"
+        gateway.docs[key] = mapOf(
+            "uid" to UID, "type" to "PROFILE", "status" to "PENDING", "email" to "lea@example.org",
+            "firstName" to "Neo", "lastName" to "X", "phone" to "+41 79 999 99 99", "photo" to true,
+            "requestedAt" to System.currentTimeMillis() - 150_000,
+        )
+        gateway.push("portalRequests")
+        assertEquals("REJECTED", gateway.docs[key]!!["status"])
+        assertEquals("INVALID", gateway.docs[key]!!["reason"])
+        assertEquals("Léa", host.volunteers.single().name)
+        assertTrue(host.attached.isEmpty())
     }
 
     @Test

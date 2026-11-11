@@ -859,6 +859,11 @@
     <string name="email_send_api">Enviar vía Gmail API</string>
     <string name="email_send_manual_description">Abrir aplicación de email con contenido HTML y código QR como adjunto</string>
     <string name="email_send_api_description">Enviar automáticamente vía Gmail API con imágenes integradas</string>
+    <string name="email_send_site">Enviar a través del sitio</string>
+    <string name="email_send_site_description">El sitio lo envía desde la dirección Gmail de la asociación</string>
+    <string name="email_site_no_answer">El sitio no respondió. Comprueba que el servidor del portal esté instalado o inicia sesión con Gmail.</string>
+    <string name="email_site_too_large">Este correo es demasiado grande para enviarlo por el sitio. Desactiva el logo o el pase de Wallet, o inicia sesión con Gmail.</string>
+    <string name="email_site_rejected">El sitio no pudo enviar este correo. Revisa la dirección y la cuenta Gmail de la asociación.</string>
     <string name="email_no_email_title">Sin Dirección de Email</string>
     <string name="email_no_email_message">Este voluntario no tiene una dirección de email. Por favor, agrega una primero.</string>
     <string name="email_no_email_guest_staff_message">Este invitado no tiene correo registrado. Un administrador debe añadir uno antes de poder enviar el QR desde esta pantalla.</string>

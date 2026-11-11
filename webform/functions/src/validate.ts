@@ -25,6 +25,8 @@ export interface PortalRequest {
   firstName: string;
   lastName: string;
   phone: string;
+  /** PROFILE only: a new photo waits in `portalPhotoUploads/{uid}.jpg`. */
+  photo: boolean;
 }
 
 // `u` makes quantifiers count code points like the JVM regex engine does.
@@ -121,7 +123,7 @@ export function parseRequest(requestId: string, data: Record<string, unknown>): 
     const lastName = cleanName(data.lastName);
     const phone = cleanPhone(data.phone);
     if (firstName === null || lastName === null || phone === null) return null;
-    return { requestId, uid, type, status, email, firstName, lastName, phone };
+    return { requestId, uid, type, status, email, firstName, lastName, phone, photo: data.photo === true };
   }
-  return { requestId, uid, type, status, email, firstName: "", lastName: "", phone: "" };
+  return { requestId, uid, type, status, email, firstName: "", lastName: "", phone: "", photo: false };
 }

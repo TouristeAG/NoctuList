@@ -8,6 +8,8 @@ import com.eventmanager.app.email.QrEmailHtmlOptions
 import com.eventmanager.app.email.QrEmailProfile
 import com.eventmanager.app.email.QrEmailRecipientCode
 import com.eventmanager.app.email.QrEmailTheme
+import com.eventmanager.app.email.SiteMailRelay
+import com.eventmanager.app.email.SiteMailResult
 import com.eventmanager.app.platform.PlatformContext
 import com.eventmanager.app.platform.PlatformFileManager
 import com.eventmanager.app.platform.appDataDir
@@ -81,6 +83,34 @@ class DesktopQrEmailService(private val context: PlatformContext) {
             to = recipientEmail,
             mimeMessage = prepared.mimeMessage,
         )
+    }
+
+    /**
+     * Same message as [sendViaGmailApi], handed to the site (SiteMailRelay) for devices without a
+     * Gmail account. Gmail on the device keeps priority: callers only use this when it is absent.
+     */
+    suspend fun sendViaSite(
+        profile: QrEmailProfile,
+        settingsManager: SettingsManager,
+        recipientEmail: String,
+        recipientName: String,
+        qrPayload: String,
+        template: DesktopQrEmailTemplateStrings,
+        codes: List<QrEmailRecipientCode> = emptyList(),
+    ): SiteMailResult {
+        val prepared = runCatching {
+            prepareEmail(
+                profile = profile,
+                settingsManager = settingsManager,
+                recipientEmail = recipientEmail,
+                recipientName = recipientName,
+                qrPayload = qrPayload,
+                template = template,
+                forManualSend = false,
+                codes = codes,
+            )
+        }.getOrNull() ?: return SiteMailResult.Rejected
+        return SiteMailRelay.send(recipientEmail, prepared.mimeMessage)
     }
 
     fun sendManually(

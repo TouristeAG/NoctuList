@@ -165,6 +165,57 @@ function gmail(user: string, password: string): Transporter {
   return cached.transporter;
 }
 
+export interface RawOutgoingMail {
+  /** One plain address, already checked with safeRecipient. */
+  to: string;
+  /** Display name of the sender, "" for the bare address (only shown in the test capture). */
+  fromName: string;
+  /** The finished message for this sender address and send time. */
+  build: (from: string, now: Date) => string;
+}
+
+/**
+ * A message the app built itself (mailOutbox), sent as is through the association's Gmail with
+ * the envelope pinned to [msg.to]. Same rules and logging as sendMail.
+ */
+export async function sendRawMail(msg: RawOutgoingMail, transport: MailTransport): Promise<boolean> {
+  try {
+    const to = safeRecipient(msg.to);
+    const user = transport.user().trim();
+    if (to === null || safeRecipient(user) === null) {
+      logger.error("mail not sent", { reason: "BAD_ADDRESS" });
+      return false;
+    }
+    const raw = msg.build(user, new Date());
+    if (isCapture()) {
+      await transport.db.collection("_testMail").add({
+        to,
+        from: { name: msg.fromName.replace(CONTROL, " ").trim(), address: user },
+        raw,
+        size: raw.length,
+        capturedAt: Date.now(),
+      });
+      return true;
+    }
+    const password = transport.password().replace(/\s+/g, "");
+    if (password === "") {
+      logger.error("mail not sent", { reason: "NO_PASSWORD" });
+      return false;
+    }
+    const smtp = transport.smtp ?? gmail;
+    await smtp(user, password).sendMail({ envelope: { from: user, to: [to] }, raw });
+    return true;
+  } catch (e) {
+    const err = e as { code?: unknown; responseCode?: unknown };
+    logger.error("mail not sent", {
+      reason: "SEND_FAILED",
+      code: err?.code === undefined ? "" : String(err.code),
+      responseCode: typeof err?.responseCode === "number" ? err.responseCode : 0,
+    });
+    return false;
+  }
+}
+
 /**
  * Sends through the association's Gmail account (SMTP with an app password). True once Gmail
  * accepted the message. Only error codes are logged: SMTP messages can quote addresses.

@@ -1136,6 +1136,11 @@
     <string name="email_send_api">Envoyer via Gmail API</string>
     <string name="email_send_manual_description">Aperiapplication email cum contentum HTML et Codex QR en adnexum</string>
     <string name="email_send_api_description">Automatice mitte per Gmail API cum imaginibus embedded</string>
+    <string name="email_send_site">Mitte per situm</string>
+    <string name="email_send_site_description">Situs ex inscriptione Gmail societatis mittit</string>
+    <string name="email_site_no_answer">Situs non respondit. Inspice num server portae paratus sit, aut per Gmail intra.</string>
+    <string name="email_site_too_large">Haec epistula nimis magna est ut per situm eat. Signum aut tesseram Wallet remove, aut per Gmail intra.</string>
+    <string name="email_site_rejected">Situs hanc epistulam mittere non potuit. Inscriptionem et rationem Gmail societatis inspice.</string>
     <string name="email_no_email_title">Nulla Email Address</string>
     <string name="email_no_email_message">Haec voluntarius n'a pasde adresse email. Quaeso en ajouterde abord.</string>
     <string name="email_no_email_guest_staff_message">Haec hospese n'a pasde adresse e-mail servatume. Une administrateurrice doit en ajouter avantenvoi ex QR ex cet tabula.</string>

@@ -16,7 +16,7 @@
   --bg-glow-1: rgba(232, 74, 42, 0.10);
   --bg-glow-2: rgba(79, 127, 168, 0.16);
   --surface: #f8fafd;
-  --card: rgba(255, 255, 255, 0.82);
+  --card: rgba(255, 255, 255, 0.88);
   --card-solid: #ffffff;
   --container: #ebf0f6;
   --container-high: #e4eaf1;
@@ -57,7 +57,7 @@
   --bg-glow-1: rgba(255, 181, 159, 0.10);
   --bg-glow-2: rgba(168, 210, 243, 0.10);
   --surface: #0d141d;
-  --card: rgba(22, 33, 45, 0.80);
+  --card: rgba(22, 33, 45, 0.88);
   --card-solid: #16212d;
   --container: #16212d;
   --container-high: #1f2b38;
@@ -102,18 +102,28 @@
 html, body { margin: 0; min-height: 100%; }
 body {
   font-family: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
-  /* Glow sits under the animated canvas, so the page still looks right without WebGL. */
-  background:
-    radial-gradient(1100px 760px at 12% -12%, var(--bg-glow-1), transparent 62%),
-    radial-gradient(1000px 720px at 100% 8%, var(--bg-glow-2), transparent 58%),
-    var(--bg);
-  background-attachment: fixed;
+  background: var(--bg);
   color: var(--on);
   -webkit-font-smoothing: antialiased;
   transition: background-color 0.25s ease, color 0.25s ease;
 }
 ::selection { background: var(--primary-container); color: var(--on-primary-container); }
 
+/* Glow sits under the animated canvas, so the page still looks right without WebGL. It lives on a
+   fixed layer instead of `background-attachment: fixed`, which repaints the whole page on scroll. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(1100px 760px at 12% -12%, var(--bg-glow-1), transparent 62%),
+    radial-gradient(1000px 720px at 100% 8%, var(--bg-glow-2), transparent 58%);
+}
+
+/* No backdrop-filter anywhere above this canvas: every animated frame (and every scroll step)
+   would force the browser to re-blur each card, which is what made the pages lag. */
 #topo {
   position: fixed;
   inset: 0;
@@ -173,8 +183,6 @@ body {
   background: var(--card);
   color: var(--on);
   cursor: pointer;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
 }
 .icon-btn:hover { border-color: var(--primary); }
@@ -194,8 +202,6 @@ body {
   font-size: 0.82rem;
   font-weight: 800;
   cursor: pointer;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   background-image: linear-gradient(45deg, transparent 50%, var(--primary) 50%),
     linear-gradient(135deg, var(--primary) 50%, transparent 50%);
   background-position: calc(100% - 15px) calc(50% + 1px), calc(100% - 10px) calc(50% + 1px);
@@ -219,8 +225,6 @@ body {
   border-radius: var(--radius);
   padding: 28px 24px;
   box-shadow: var(--shadow);
-  backdrop-filter: blur(14px) saturate(1.1);
-  -webkit-backdrop-filter: blur(14px) saturate(1.1);
 }
 @media (max-width: 420px) {
   .card { padding: 22px 18px; }

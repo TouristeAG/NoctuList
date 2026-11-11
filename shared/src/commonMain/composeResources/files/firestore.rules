@@ -1,5 +1,5 @@
 rules_version = '2';
-// NoctuList Firestore rules — NOCTULIST_RULES_VERSION = 13
+// NoctuList Firestore rules — NOCTULIST_RULES_VERSION = 14
 // Republish this exact file in Firebase Console → Firestore → Rules after every app update,
 // otherwise members that already exist cannot re-join their organization.
 service cloud.firestore {
@@ -414,7 +414,9 @@ service cloud.firestore {
         && d.email == request.auth.token.get('email', '')
         && (
           (d.type == 'PROFILE'
-            && d.keys().hasOnly(['uid', 'type', 'status', 'requestedAt', 'email', 'firstName', 'lastName', 'phone'])
+            && d.keys().hasOnly(['uid', 'type', 'status', 'requestedAt', 'email', 'firstName', 'lastName', 'phone', 'photo'])
+            // photo: a new picture waits in portalPhotoUploads/{uid}.jpg.
+            && d.get('photo', true) == true
             && validPersonName(d.firstName)
             && validPersonName(d.lastName)
             && validPhone(d.phone))
@@ -449,6 +451,27 @@ service cloud.firestore {
       allow read, write: if isMember(orgId);
     }
 
+    // QR e-mails a team device hands to the Cloud Functions when it has no Gmail account of its
+    // own (SiteMailRelay). Only the server answers (Admin SDK); the device reads the answer and
+    // deletes the document.
+    match /orgs/{orgId}/mailOutbox/{mailId} {
+      allow get, delete: if isMember(orgId);
+      allow create: if isMember(orgId)
+        && request.resource.data.keys().hasOnly(['schema', 'status', 'to', 'raw', 'fromName', 'createdBy', 'createdAt'])
+        && request.resource.data.schema == 1
+        && request.resource.data.status == 'PENDING'
+        && request.resource.data.to is string
+        && request.resource.data.to.size() > 0
+        && request.resource.data.to.size() <= 254
+        && request.resource.data.raw is string
+        && request.resource.data.raw.size() > 0
+        && request.resource.data.raw.size() <= 900000
+        && request.resource.data.fromName is string
+        && request.resource.data.fromName.size() <= 80
+        && request.resource.data.createdBy == request.auth.uid;
+      allow update: if false;
+    }
+
     // Presence document written by the Cloud Functions (Admin SDK bypasses rules). Members only read it.
     match /orgs/{orgId}/portalServer/{docId} {
       allow read: if isMember(orgId);
@@ -462,7 +485,8 @@ service cloud.firestore {
         && document[0] != 'members'
         && document[0] != 'metadata'
         && document[0] != 'institutionSettings'
-        && document[0] != 'portalServer';
+        && document[0] != 'portalServer'
+        && document[0] != 'mailOutbox';
     }
   }
 }

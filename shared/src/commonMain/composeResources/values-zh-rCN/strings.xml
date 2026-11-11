@@ -998,6 +998,11 @@
     <string name="email_send_api">通过 Gmail API 发送</string>
     <string name="email_send_manual_description">打开邮件应用，包含 HTML 内容和 QR 码附件</string>
     <string name="email_send_api_description">通过 Gmail API 自动发送，包含嵌入图片</string>
+    <string name="email_send_site">通过网站发送</string>
+    <string name="email_send_site_description">由网站使用协会的 Gmail 地址发送</string>
+    <string name="email_site_no_answer">网站没有响应。请检查门户服务器是否已部署，或使用 Gmail 登录。</string>
+    <string name="email_site_too_large">此邮件太大，无法通过网站发送。请关闭标志或电子钱包卡，或使用 Gmail 登录。</string>
+    <string name="email_site_rejected">网站无法发送此邮件。请检查地址和协会的 Gmail 帐户。</string>
     <string name="email_no_email_title">无电子邮件地址</string>
     <string name="email_no_email_message">此志愿者没有电子邮件地址。请先添加一个。</string>
     <string name="email_no_email_guest_staff_message">此来宾没有存档的电子邮件地址。须由管理员添加后，才能从此界面发送二维码。</string>

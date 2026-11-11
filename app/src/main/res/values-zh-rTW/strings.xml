@@ -859,6 +859,11 @@
     <string name="email_send_api">透過 Gmail API 傳送</string>
     <string name="email_send_manual_description">開啟郵件應用程式，包含 HTML 內容和 QR 碼附件</string>
     <string name="email_send_api_description">透過 Gmail API 自動傳送，包含嵌入圖片</string>
+    <string name="email_send_site">透過網站傳送</string>
+    <string name="email_send_site_description">由網站使用協會的 Gmail 地址傳送</string>
+    <string name="email_site_no_answer">網站沒有回應。請檢查入口網站伺服器是否已部署，或使用 Gmail 登入。</string>
+    <string name="email_site_too_large">此郵件太大，無法透過網站傳送。請關閉標誌或電子錢包卡，或使用 Gmail 登入。</string>
+    <string name="email_site_rejected">網站無法傳送此郵件。請檢查地址和協會的 Gmail 帳戶。</string>
     <string name="email_no_email_title">無電子郵件地址</string>
     <string name="email_no_email_message">此志工沒有電子郵件地址。請先新增一個。</string>
     <string name="email_no_email_guest_staff_message">此賓客沒有存檔的電子郵件地址。須由管理員新增後，才能從此畫面傳送 QR 碼。</string>

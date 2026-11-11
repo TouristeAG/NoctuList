@@ -6,8 +6,10 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { deleteApp, initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
+import { getStorage } from "firebase-admin/storage";
 
 const PROJECT = "demo-noctulist";
+const BUCKET = `${PROJECT}.appspot.com`;
 const TOKEN = "%%NOCTULIST_FIRST_NAME%%";
 // 1x1 PNG.
 const LOGO_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
@@ -18,7 +20,9 @@ if (!process.env.FIRESTORE_EMULATOR_HOST) {
 
 let app;
 let db;
+let bucket;
 let counter = 0;
+const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0xff, 0xd9]);
 
 const sha256 = (s) => createHash("sha256").update(s, "utf8").digest("hex");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -151,8 +155,9 @@ function assertResult(doc, status, reason) {
 }
 
 before(async () => {
-  app = initializeApp({ projectId: PROJECT }, "request-tests");
+  app = initializeApp({ projectId: PROJECT, storageBucket: BUCKET }, "request-tests");
   db = getFirestore(app);
+  bucket = getStorage(app).bucket();
   await fetch(
     `http://${process.env.FIRESTORE_EMULATOR_HOST}/emulator/v1/projects/${PROJECT}/databases/(default)/documents`,
     { method: "DELETE" },
@@ -205,6 +210,52 @@ describe("onPortalRequestWritten: PROFILE", () => {
     assert.deepEqual(Object.keys(patched), Object.keys(before), "key order kept");
     assert.deepEqual(patched, { ...before, firstName: "Léa Marie", lastName: "DUPONT-DURAND", phone: "+41 79 123 45 67" });
     assert.ok(!projection.payload.includes(existing.id));
+  });
+
+  test("profilePhotoReplacesPhotoWithNewVersion", async () => {
+    const org = await newOrg();
+    await db.doc(`orgs/${org}/institutionSettings/profile_photos_enabled`).set({ value: "true", lastModified: 1 });
+    const uid = newUid("profilePhoto");
+    const existing = await addVolunteer(org, { portalUid: uid, profilePhotoUrl: "https://old.example/photo.jpg" });
+    const payload = JSON.stringify({
+      firstName: "Léa", lastName: "MARTIN", phone: "079 000 00 00", hasPhoto: true, photoVersion: "abcdef0123456789",
+      shifts: [],
+    });
+    await db.doc(`orgs/${org}/volunteerPortal/${uid}`).set({ schema: 2, payload, contentHash: sha256(payload), updatedAt: 1 });
+    const upload = `orgs/${org}/portalPhotoUploads/${uid}.jpg`;
+    await bucket.file(upload).save(JPEG, { contentType: "image/jpeg", resumable: false });
+
+    const ref = await sendRequest(org, uid, "PROFILE", { firstName: "Léa", lastName: "Martin", phone: "079 000 00 00", photo: true });
+    assertResult(await waitResult(ref), "DONE", "");
+
+    const v = await volunteer(org, existing.id);
+    const path = `orgs/${org}/profilePhotos/volunteers/${existing.id}.jpg`;
+    assert.equal(v.profilePhotoPath, path);
+    assert.ok(v.profilePhotoUrl.includes(encodeURIComponent(path)) && /[?&]token=/.test(v.profilePhotoUrl));
+    assert.deepEqual((await bucket.file(path).download())[0], JPEG);
+    assert.deepEqual((await bucket.file(`orgs/${org}/portalPhotos/${uid}.jpg`).download())[0], JPEG);
+    assert.equal((await bucket.file(upload).exists())[0], false, "upload removed");
+
+    const patched = JSON.parse((await db.doc(`orgs/${org}/volunteerPortal/${uid}`).get()).data().payload);
+    assert.equal(patched.hasPhoto, true);
+    assert.equal(patched.photoVersion, sha256(v.profilePhotoUrl).slice(0, 16));
+    assert.deepEqual(Object.keys(patched), Object.keys(JSON.parse(payload)), "key order kept");
+  });
+
+  test("profilePhotoRefusedWhenPhotosOffOrMissing", async () => {
+    for (const photos of ["false", "true"]) {
+      const org = await newOrg();
+      await db.doc(`orgs/${org}/institutionSettings/profile_photos_enabled`).set({ value: photos, lastModified: 1 });
+      const uid = newUid("profileNoPhoto");
+      const existing = await addVolunteer(org, { portalUid: uid });
+      const upload = `orgs/${org}/portalPhotoUploads/${uid}.jpg`;
+      // Photos off: a file is there but must be ignored. Photos on: nothing was uploaded.
+      if (photos === "false") await bucket.file(upload).save(JPEG, { contentType: "image/jpeg", resumable: false });
+      const ref = await sendRequest(org, uid, "PROFILE", { firstName: "Max", lastName: "Roe", phone: "0791112233", photo: true });
+      assertResult(await waitResult(ref), "REJECTED", "INVALID");
+      assert.deepEqual(await volunteer(org, existing.id), existing, photos);
+      assert.equal((await bucket.file(upload).exists())[0], false, "upload removed");
+    }
   });
 
   test("profileLastModifiedIsNowWhenPreviousIsOld", async () => {

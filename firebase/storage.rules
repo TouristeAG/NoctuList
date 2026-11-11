@@ -22,6 +22,12 @@ service firebase.storage {
              .data.get('value', '') in ['true', true];
     }
 
+    function profilePhotosOn(orgId) {
+      return firestore.exists(/databases/(default)/documents/orgs/$(orgId)/institutionSettings/profile_photos_enabled)
+        && firestore.get(/databases/(default)/documents/orgs/$(orgId)/institutionSettings/profile_photos_enabled)
+             .data.get('value', '') in ['true', true];
+    }
+
     function signupFormPath(orgId, formId) {
       return /databases/(default)/documents/orgs/$(orgId)/volunteerSignupForms/$(formId);
     }
@@ -77,6 +83,19 @@ service firebase.storage {
         && portalOn(orgId)
         && fileName.matches('^[A-Za-z0-9_-]{10,64}[.]jpg$')
         && signupFormAcceptsPhoto(orgId, fileName.split('[.]')[0])
+        && request.resource.size < 3 * 1024 * 1024
+        && request.resource.contentType.matches('image/jpeg');
+    }
+
+    // New photo picked by a volunteer in their portal space, sent along with a PROFILE request.
+    // Keyed by the portal account id; the server (or a device) moves it onto the profile and
+    // deletes it, so the volunteer may only write their own file and never read it back.
+    match /orgs/{orgId}/portalPhotoUploads/{fileName} {
+      allow read, delete: if isMember(orgId);
+      allow create, update: if isPortalUser()
+        && portalOn(orgId)
+        && profilePhotosOn(orgId)
+        && fileName == request.auth.uid + '.jpg'
         && request.resource.size < 3 * 1024 * 1024
         && request.resource.contentType.matches('image/jpeg');
     }

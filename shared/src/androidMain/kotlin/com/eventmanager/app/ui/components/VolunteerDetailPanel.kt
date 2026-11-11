@@ -65,6 +65,9 @@ import com.eventmanager.app.data.sync.SettingsManager
 import com.eventmanager.app.data.sync.GmailAuthService
 import com.eventmanager.app.data.sync.GmailAuthorizationRequiredException
 import com.eventmanager.app.data.sync.GmailSendService
+import com.eventmanager.app.data.sync.SiteMailFailedException
+import com.eventmanager.app.data.sync.siteMailFailureMessage
+import com.eventmanager.app.email.SiteMailRelay
 import com.eventmanager.app.data.sync.tryLaunchGmailConsent
 import com.eventmanager.app.utils.DigitalWalletPassGenerator
 import android.widget.Toast
@@ -535,6 +538,7 @@ actual fun VolunteerDetailPanel(
         val gmailSendService = remember { GmailSendService(emailContext) }
         val coroutineScope = rememberCoroutineScope()
         val isGmailAuthenticated = remember { gmailAuthService.isAccountSelected() }
+        val siteAvailable = remember { !isGmailAuthenticated && SiteMailRelay.isAvailable() }
         
         // Holder for authLauncher - needed to break circular dependency
         val authLauncherHolder = remember { mutableStateOf<androidx.activity.result.ActivityResultLauncher<Intent>?>(null) }
@@ -554,13 +558,15 @@ actual fun VolunteerDetailPanel(
         ) {
             try {
                 // Get Gmail service
-                val gmailService = try {
+                // Gmail on this device first; without an account the site sends the same mail.
+                val useSite = !gmailAuthService.isAccountSelected() && SiteMailRelay.isAvailable()
+                val gmailService = if (useSite) null else try {
                     gmailAuthService.createGmailService()
                 } catch (e: GmailAuthorizationRequiredException) {
                     tryLaunchGmailConsent(e, authLauncherHolder.value, emailContext)
                     return
                 }
-                if (gmailService == null) {
+                if (gmailService == null && !useSite) {
                     Toast.makeText(
                         emailContext,
                         emailContext.getString(R.string.email_api_not_authenticated),
@@ -698,6 +704,10 @@ actual fun VolunteerDetailPanel(
                         onSuccess()
                     },
                     onFailure = { e ->
+                        if (e is SiteMailFailedException) {
+                            Toast.makeText(emailContext, siteMailFailureMessage(emailContext, e.result), Toast.LENGTH_LONG).show()
+                            return@fold
+                        }
                         android.util.Log.d("GmailAuth", "Email send failed: ${e.javaClass.simpleName} - ${e.message}")
                         if (tryLaunchGmailConsent(e, authLauncherHolder.value, emailContext)) {
                             return@fold
@@ -950,7 +960,7 @@ actual fun VolunteerDetailPanel(
                     }
                     
                     // API Send Option (only if authenticated)
-                    if (isGmailAuthenticated) {
+                    if (isGmailAuthenticated || siteAvailable) {
                         Button(
                             onClick = {
                                 // Don't dismiss dialog immediately - wait for success or auth required
@@ -988,11 +998,11 @@ actual fun VolunteerDetailPanel(
                                 }
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = if (isSendingEmail) getStringResource(R.string.email_sending) else getStringResource(R.string.email_send_api),
+                                    text = if (isSendingEmail) getStringResource(R.string.email_sending) else if (isGmailAuthenticated) getStringResource(R.string.email_send_api) else getStringResource(R.string.email_send_site),
                                     style = MaterialTheme.typography.titleSmall
                                 )
                                 Text(
-                                    text = getStringResource(R.string.email_send_api_description),
+                                    text = if (isGmailAuthenticated) getStringResource(R.string.email_send_api_description) else getStringResource(R.string.email_send_site_description),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
                                 )

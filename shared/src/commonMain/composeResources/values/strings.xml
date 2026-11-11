@@ -1136,6 +1136,11 @@
     <string name="email_send_api">Send via Gmail API</string>
     <string name="email_send_manual_description">Open email app with HTML content and QR code attachment</string>
     <string name="email_send_api_description">Send automatically via Gmail API with embedded images</string>
+    <string name="email_send_site">Send through the site</string>
+    <string name="email_send_site_description">Sent by the site from the association's Gmail address</string>
+    <string name="email_site_no_answer">The site did not answer. Check that the portal server is set up, or sign in with Gmail.</string>
+    <string name="email_site_too_large">This e-mail is too large to go through the site. Turn off the logo or the wallet pass, or sign in with Gmail.</string>
+    <string name="email_site_rejected">The site could not send this e-mail. Check the address and the association's Gmail account.</string>
     <string name="email_no_email_title">No Email Address</string>
     <string name="email_no_email_message">This volunteer doesn't have an email address. Please add one first.</string>
     <string name="email_no_email_guest_staff_message">This guest has no email address on file. An administrator must add one before the QR can be sent from this screen.</string>

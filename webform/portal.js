@@ -31,9 +31,10 @@ import {
   getDownloadURL,
   getStorage,
   ref as storageRef,
+  uploadBytes,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 import { EMULATOR_PORTS, isLocalDev, loadConfig, parseOrgPath } from "./firebase-env.js?v=portal-2";
-import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=portal-2";
+import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=portal-3";
 import {
   EMAIL_RE,
   authErrorKey,
@@ -43,6 +44,7 @@ import {
   el,
   icon,
   passwordProblem,
+  toJpeg,
 } from "./portal-common.js?v=portal-2";
 
 const $ = (id) => document.getElementById(id);
@@ -699,6 +701,41 @@ function historyTile(view) {
 
 // ---------- "My account" window (details, password, data) ----------
 
+/** The team's devices publish whether profile photos are on; the Storage rules refuse uploads otherwise. */
+function photosEnabled() {
+  return branding?.photosEnabled === true;
+}
+
+/** Current photo with a button to pick a new one; the picked JPEG is kept until the form is sent. */
+function photoPicker(onError) {
+  let blob = null;
+  let previewUrl = "";
+  const preview = avatar();
+  preview.classList.add("avatar-edit");
+  const file = el("input", { type: "file", accept: "image/*", class: "hidden" });
+  const choose = el("button", { type: "button", class: "ghost", text: t(photoUrl ? "changePhoto" : "choosePhoto") });
+  choose.addEventListener("click", () => file.click());
+  file.addEventListener("change", async () => {
+    onError("");
+    const picked = file.files && file.files[0];
+    file.value = "";
+    if (!picked) return;
+    if (picked.type && !picked.type.startsWith("image/")) return onError("notImage");
+    try {
+      blob = await toJpeg(picked);
+    } catch {
+      return onError("unreadable");
+    }
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    previewUrl = URL.createObjectURL(blob);
+    preview.textContent = "";
+    preview.style.backgroundImage = `url("${previewUrl}")`;
+    choose.textContent = t("changePhoto");
+  });
+  const node = el("div", { class: "photo-edit" }, preview, choose, file);
+  return { node, picked: () => blob };
+}
+
 function profileForm(onDone) {
   const p = projection;
   const first = el("input", { value: p.firstName || "", maxlength: "60", autocomplete: "given-name" });
@@ -706,17 +743,21 @@ function profileForm(onDone) {
   const phone = el("input", { type: "tel", value: p.phone || "", maxlength: "32", autocomplete: "tel" });
   const msg = el("p", { class: "hidden", role: "status" });
   const save = el("button", { type: "submit", class: "primary", text: t("save") });
+  const say = (cls, key) => {
+    msg.className = cls;
+    msg.textContent = t(key);
+  };
+  const photo = photosEnabled()
+    ? photoPicker((key) => (key ? say("error", key) : (msg.className = "hidden")))
+    : null;
   const form = el("form", { novalidate: true },
+    photo?.node ?? null,
     el("div", { class: "row-2" },
       el("label", {}, el("span", { text: t("firstName") }), first),
       el("label", {}, el("span", { text: t("lastName") }), last)),
     el("label", {}, el("span", { text: t("phone") }), phone),
     msg,
     save);
-  const say = (cls, key) => {
-    msg.className = cls;
-    msg.textContent = t(key);
-  };
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     form.querySelectorAll("[aria-invalid]").forEach((n) => n.removeAttribute("aria-invalid"));
@@ -733,8 +774,20 @@ function profileForm(onDone) {
     if (!phoneValue) return fail("errPhone", phone);
     if (isWaiting(requests.PROFILE) || requestCooldownMinutes("PROFILE") > 0) return fail("profileWait", first);
     save.disabled = true;
+    const blob = photo?.picked() ?? null;
+    if (blob) {
+      try {
+        const upload = storageRef(storage, `orgs/${path.orgId}/portalPhotoUploads/${user.uid}.jpg`);
+        await uploadBytes(upload, blob, { contentType: "image/jpeg" });
+      } catch (error) {
+        console.warn("photo upload failed", error?.code);
+        say("error", "photoUploadFailed");
+        save.disabled = false;
+        return;
+      }
+    }
     try {
-      await sendRequest("PROFILE", { firstName, lastName, phone: phoneValue });
+      await sendRequest("PROFILE", { firstName, lastName, phone: phoneValue, ...(blob ? { photo: true } : {}) });
       say("success", "profileSent");
       onDone?.();
     } catch (error) {
@@ -793,7 +846,7 @@ function openAccountDialog() {
   body.append(
     el("section", { class: "dialog-section" },
       el("h3", { text: t("myInfo") }),
-      el("p", { class: "hint", text: t("myInfoHint") }),
+      el("p", { class: "hint", text: t(photosEnabled() ? "myInfoHintPhoto" : "myInfoHint") }),
       profileForm()),
     el("details", { class: "dialog-section fold" },
       el("summary", {}, icon("shield", 16), el("span", { text: t("changePassword") })),

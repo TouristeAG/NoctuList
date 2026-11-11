@@ -5,6 +5,9 @@ import android.content.Intent
 import android.util.Base64
 import android.util.Log
 import android.widget.Toast
+import com.eventmanager.app.R
+import com.eventmanager.app.email.SiteMailRelay
+import com.eventmanager.app.email.SiteMailResult
 import androidx.activity.result.ActivityResultLauncher
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAuthIOException
 import com.google.api.client.googleapis.extensions.android.gms.auth.UserRecoverableAuthIOException
@@ -65,6 +68,18 @@ fun tryLaunchGmailConsent(
 class GmailNotConfiguredException(message: String) : Exception(message)
 class GmailPlayServicesUnavailableException(message: String) : Exception(message)
 
+/** The site (SiteMailRelay) did not send a mail handed to it; [result] says why. */
+class SiteMailFailedException(val result: SiteMailResult) : Exception("Site mail: $result")
+
+/** What to tell the user when the site did not send a QR e-mail. */
+fun siteMailFailureMessage(context: Context, result: SiteMailResult): String = context.getString(
+    when (result) {
+        SiteMailResult.TooLarge -> R.string.email_site_too_large
+        SiteMailResult.Rejected -> R.string.email_site_rejected
+        else -> R.string.email_site_no_answer
+    }
+)
+
 /**
  * One QR image of a mail that carries several codes, e.g. a whole artist guest list.
  * [contentId] must match the `cid:` reference used in the HTML body.
@@ -86,7 +101,8 @@ class GmailSendService(private val context: Context) {
      * Sends an email via Gmail API with multipart/related content
      */
     suspend fun sendEmail(
-        gmailService: Gmail,
+        /** Null without a Gmail account on this device: the same message then goes through the site. */
+        gmailService: Gmail?,
         to: String,
         subject: String,
         htmlContent: String,
@@ -113,6 +129,12 @@ class GmailSendService(private val context: Context) {
                 boundary = boundary
             )
             
+            if (gmailService == null) {
+                val result = SiteMailRelay.send(to, mimeMessage)
+                return@withContext if (result == SiteMailResult.Sent) Result.success(Unit)
+                else Result.failure(SiteMailFailedException(result))
+            }
+
             // Convert to bytes and encode to base64url
             val bytes = mimeMessage.toByteArray(Charsets.UTF_8)
             val encodedEmail = Base64.encodeToString(bytes, Base64.NO_PADDING or Base64.URL_SAFE or Base64.NO_WRAP)

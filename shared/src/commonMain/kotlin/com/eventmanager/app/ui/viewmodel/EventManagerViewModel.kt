@@ -1600,6 +1600,7 @@ class EventManagerViewModel(
                 delay(VOLUNTEER_PORTAL_CHECK_MS)
             }
         }
+        com.eventmanager.app.email.SiteMailRelay.install(::siteMailTarget)
         platformContext?.let { ctx ->
             val sm = SettingsManager(ctx)
             val savedVenue = sm.getPeopleCounterSelectedVenueId()
@@ -1645,6 +1646,7 @@ class EventManagerViewModel(
     
     override fun onCleared() {
         super.onCleared()
+        com.eventmanager.app.email.SiteMailRelay.install(null)
         volunteerPortalService?.stop()
         volunteerPortalService = null
         backgroundSyncJob?.cancel()
@@ -2683,6 +2685,24 @@ class EventManagerViewModel(
         service.start(volunteers, jobs, accountTransfers, jobTypeConfigs)
         portalServerStatusJob?.cancel()
         portalServerStatusJob = viewModelScope.launch { service.serverStatus.collect { _portalServerStatus.value = it } }
+    }
+
+    /**
+     * Where QR e-mails go when this device has no Gmail account: the site's Cloud Functions, which
+     * the portal setup deploys. Null unless Firebase, the portal and a team sign-in are all there.
+     */
+    private fun siteMailTarget(): com.eventmanager.app.email.SiteMailRelay.Target? {
+        if (!isVolunteerPortalFeatureEnabled()) return null
+        val org = resolveActiveFirebaseOrgIdForWrites().trim()
+        if (org.isBlank()) return null
+        val uid = com.eventmanager.app.data.remote.FirebaseAuthBridge.currentUserId()?.trim().orEmpty()
+        if (uid.isBlank()) return null
+        val gateway = photoRequestGateway()?.takeIf { it.isAvailable() } ?: return null
+        val outbox = com.eventmanager.app.email.SiteMailOutbox(gateway, org, uid, System::currentTimeMillis)
+        return com.eventmanager.app.email.SiteMailRelay.Target(
+            outbox = outbox,
+            fromName = settingsManagerCached?.getEmailAssociationName().orEmpty(),
+        )
     }
 
     private fun requirePortalService(): VolunteerPortalService? {

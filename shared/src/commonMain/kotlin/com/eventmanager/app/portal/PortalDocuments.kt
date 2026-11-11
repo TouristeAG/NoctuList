@@ -90,6 +90,8 @@ data class PortalRequest(
     val firstName: String = "",
     val lastName: String = "",
     val phone: String = "",
+    /** PROFILE only: a new photo waits in `portalPhotoUploads/{uid}.jpg`. */
+    val photo: Boolean = false,
 ) {
     companion object {
         const val COLLECTION = "portalRequests"
@@ -174,6 +176,7 @@ object PortalInputValidator {
                 firstName = cleanName(data["firstName"]) ?: return null,
                 lastName = cleanName(data["lastName"]) ?: return null,
                 phone = cleanPhone(data["phone"]) ?: return null,
+                photo = data["photo"] == true,
             )
             else -> PortalRequest(requestId = requestId, uid = uid, type = type, status = status, email = email)
         }

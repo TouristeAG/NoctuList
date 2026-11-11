@@ -320,15 +320,12 @@ class VolunteerPortalService(
         when (request.type) {
             PortalRequestType.CLAIM -> handleClaim(request, owner, volunteers)
             PortalRequestType.PROFILE -> {
-                if (owner == null) return complete(requestId, PortalRequest.STATUS_REJECTED, "NO_ACCESS")
-                val updated = owner.copy(
-                    name = request.firstName,
-                    lastNameAbbreviation = request.lastName.uppercase(),
-                    phoneNumber = request.phone,
-                    lastModified = maxOf(now, owner.lastModified + 1),
-                )
-                val ok = updated == owner || host.saveVolunteer(updated)
-                complete(requestId, if (ok) PortalRequest.STATUS_DONE else PortalRequest.STATUS_REJECTED, if (ok) "" else "SAVE_FAILED")
+                val uploadPath = portalUploadPath(request.uid)
+                try {
+                    updateProfile(request, owner, uploadPath, now)
+                } finally {
+                    if (request.photo) runCatching { host.deleteStorage(uploadPath) }
+                }
             }
             PortalRequestType.QR_EMAIL -> {
                 val reason = when {
@@ -343,6 +340,36 @@ class VolunteerPortalService(
             }
         }
     }
+
+    /**
+     * Name, last name, phone and, when the request says so, the photo waiting in
+     * `portalPhotoUploads/{uid}.jpg`. Same answers as updateProfile in the Cloud Functions.
+     */
+    private suspend fun updateProfile(request: PortalRequest, owner: Volunteer?, uploadPath: String, now: Long) {
+        val requestId = request.requestId
+        if (owner == null) return complete(requestId, PortalRequest.STATUS_REJECTED, "NO_ACCESS")
+        val photo = if (request.photo) {
+            // Photos turned off, nothing uploaded or not a JPEG: the whole edit is refused.
+            val bytes = if (host.profilePhotosEnabled()) host.downloadStorage(uploadPath) else null
+            if (bytes == null || !isJpeg(bytes)) return complete(requestId, PortalRequest.STATUS_REJECTED, "INVALID")
+            bytes
+        } else {
+            null
+        }
+        val updated = owner.copy(
+            name = request.firstName,
+            lastNameAbbreviation = request.lastName.uppercase(),
+            phoneNumber = request.phone,
+            lastModified = maxOf(now, owner.lastModified + 1),
+        )
+        val ok = (updated == owner || host.saveVolunteer(updated)) &&
+            (photo == null || host.attachVolunteerPhoto(updated, photo))
+        complete(requestId, if (ok) PortalRequest.STATUS_DONE else PortalRequest.STATUS_REJECTED, if (ok) "" else "SAVE_FAILED")
+    }
+
+    private fun isJpeg(bytes: ByteArray): Boolean =
+        bytes.size in 4 until MAX_UPLOAD_BYTES &&
+            bytes[0] == 0xFF.toByte() && bytes[1] == 0xD8.toByte() && bytes[2] == 0xFF.toByte()
 
     private suspend fun handleClaim(request: PortalRequest, owner: Volunteer?, volunteers: List<Volunteer>) {
         if (owner != null) {
@@ -512,6 +539,8 @@ class VolunteerPortalService(
         val logo = host.institutionLogoPng().trim()
         val data = mapOf(
             "associationName" to host.associationName().trim().take(80),
+            // Lets the portal offer a photo change only when the rules accept the upload.
+            "photosEnabled" to host.profilePhotosEnabled(),
             // The rules cap nothing here, so keep the public document small.
             "logoDataUri" to if (logo.isNotBlank() && logo.length < 300_000) "data:image/png;base64,$logo" else "",
         )
@@ -580,6 +609,9 @@ class VolunteerPortalService(
 
     fun portalPhotoPath(uid: String): String = "orgs/$orgId/portalPhotos/$uid.jpg"
 
+    /** A new photo picked in the portal, announced by a PROFILE request with `photo: true`. */
+    fun portalUploadPath(uid: String): String = "orgs/$orgId/portalPhotoUploads/$uid.jpg"
+
     // endregion
 
     private fun processingFields(now: Long): Map<String, Any?> = mapOf(
@@ -614,6 +646,8 @@ class VolunteerPortalService(
         const val MAIL_DOC = "default"
         /** Age under which a signup or request is left to the Cloud Functions. */
         const val DEVICE_GRACE_MS = 120_000L
+        /** Same cap as the Storage rules for portal uploads. */
+        private const val MAX_UPLOAD_BYTES = 3 * 1024 * 1024
         private const val PUBLISH_DEBOUNCE_MS = 4_000L
         private const val RETRY_INTERVAL_MS = 2 * 60_000L
 

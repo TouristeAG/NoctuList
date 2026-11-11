@@ -299,6 +299,14 @@ describe("portalRequests", () => {
     await assertFails(getDocs(collection(db, path("portalRequests"))));
   });
 
+  test("profile may announce a new photo, only as true", async () => {
+    const db = portal("vol1").firestore();
+    await assertFails(setDoc(doc(db, path("portalRequests/vol1_PROFILE")), profile("vol1", { photo: false })));
+    await assertFails(setDoc(doc(db, path("portalRequests/vol1_PROFILE")), profile("vol1", { photo: "yes" })));
+    await assertFails(setDoc(doc(db, path("portalRequests/vol1_QR_EMAIL")), request("vol1", "QR_EMAIL", { photo: true })));
+    await assertSucceeds(setDoc(doc(db, path("portalRequests/vol1_PROFILE")), profile("vol1", { photo: true })));
+  });
+
   test("renewals are throttled and blocked while processing", async () => {
     const db = portal("vol1").firestore();
     await assertSucceeds(setDoc(doc(db, path("portalRequests/vol1_QR_EMAIL")), request("vol1", "QR_EMAIL")));
@@ -377,6 +385,25 @@ describe("storage", () => {
     await assertFails(getBytes(ref(storage, `orgs/${ORG}/portalSignupPhotos/${FORM}.jpg`)));
   });
 
+  test("portal photo upload: own file, photos on, never read back", async () => {
+    const upload = (uid, verified = true) =>
+      uploadBytes(ref(portal(uid, verified).storage(), `orgs/${ORG}/portalPhotoUploads/vol1.jpg`), jpeg, meta);
+    await assertFails(upload("vol1"));
+    await seed((db) => setDoc(doc(db, path("institutionSettings/profile_photos_enabled")), {
+      value: "true", lastModified: Date.now(),
+    }));
+    await assertSucceeds(upload("vol1"));
+    await assertFails(upload("vol2"));
+    await assertFails(upload("vol1", false));
+    await assertFails(uploadBytes(ref(portal("vol1").storage(), `orgs/${ORG}/portalPhotoUploads/vol1.jpg`), jpeg,
+      { contentType: "text/html" }));
+    await assertFails(uploadBytes(ref(anon().storage(), `orgs/${ORG}/portalPhotoUploads/vol1.jpg`), jpeg, meta));
+    await assertFails(getBytes(ref(portal("vol1").storage(), `orgs/${ORG}/portalPhotoUploads/vol1.jpg`)));
+    await assertSucceeds(getBytes(ref(staff().storage(), `orgs/${ORG}/portalPhotoUploads/vol1.jpg`)));
+    await setPortal(false);
+    await assertFails(upload("vol1"));
+  });
+
   test("portal photo readable by its owner only", async () => {
     await env.withSecurityRulesDisabled(async (ctx) => {
       await uploadBytes(ref(ctx.storage(), `orgs/${ORG}/portalPhotos/vol1.jpg`), jpeg, meta);
@@ -410,5 +437,47 @@ describe("portalMail and portalServer", () => {
     await assertFails(setDoc(doc(staff().firestore(), path("portalServer/status")), { version: "2", lastRunAt: 1 }));
     await assertFails(deleteDoc(doc(staff().firestore(), path("portalServer/status"))));
     await assertFails(setDoc(doc(portal("vol1").firestore(), path("portalServer/status")), { version: "2" }));
+  });
+});
+
+describe("mailOutbox", () => {
+  const mail = (uid = "admin1", overrides = {}) => ({
+    schema: 1,
+    status: "PENDING",
+    to: "lea@mail.example",
+    raw: "From: x@y.example\r\nSubject: QR\r\n\r\nbody",
+    fromName: "Asso",
+    createdBy: uid,
+    createdAt: Date.now(),
+    ...overrides,
+  });
+
+  test("members hand over a pending mail, read the answer and delete it", async () => {
+    const db = staff().firestore();
+    const ref = doc(db, path("mailOutbox/m1"));
+    await assertSucceeds(setDoc(ref, mail()));
+    await assertSucceeds(getDoc(ref));
+    await assertFails(updateDoc(ref, { status: "DONE" }));
+    await assertSucceeds(deleteDoc(ref));
+  });
+
+  test("only the documented shape is accepted", async () => {
+    const db = staff().firestore();
+    await assertFails(setDoc(doc(db, path("mailOutbox/m2")), mail("admin1", { status: "DONE" })));
+    await assertFails(setDoc(doc(db, path("mailOutbox/m3")), mail("admin1", { schema: 2 })));
+    await assertFails(setDoc(doc(db, path("mailOutbox/m4")), mail("someoneElse")));
+    await assertFails(setDoc(doc(db, path("mailOutbox/m5")), mail("admin1", { extra: true })));
+    await assertFails(setDoc(doc(db, path("mailOutbox/m6")), mail("admin1", { raw: "" })));
+    await assertFails(setDoc(doc(db, path("mailOutbox/m7")), mail("admin1", { raw: "x".repeat(900001) })));
+    await assertFails(setDoc(doc(db, path("mailOutbox/m8")), mail("admin1", { to: "x".repeat(255) })));
+    await assertFails(setDoc(doc(db, path("mailOutbox/m9")), mail("admin1", { fromName: "x".repeat(81) })));
+  });
+
+  test("portal accounts and anonymous visitors cannot use it", async () => {
+    await seed((db) => setDoc(doc(db, path("mailOutbox/seeded")), mail()));
+    await assertFails(setDoc(doc(portal("vol1").firestore(), path("mailOutbox/p1")), mail("vol1")));
+    await assertFails(getDoc(doc(portal("vol1").firestore(), path("mailOutbox/seeded"))));
+    await assertFails(setDoc(doc(anon().firestore(), path("mailOutbox/a1")), mail("anon")));
+    await assertFails(getDoc(doc(anon().firestore(), path("mailOutbox/seeded"))));
   });
 });

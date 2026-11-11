@@ -6,11 +6,13 @@ import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { defineSecret, defineString } from "firebase-functions/params";
 import { onRequestDocument } from "./requests";
 import { onSignupDocument } from "./signup";
+import { onOutboxDocument } from "./outbox";
 
 export { cleanName, cleanPhone, cleanEmail, parseSignup, parseRequest } from "./validate";
 export type { SignupSubmission, PortalRequest, PortalRequestType } from "./validate";
-export { buildQrMail, parseMailTemplate, safeRecipient, sendMail, smtpOptions } from "./mail";
-export type { MailTemplate, MailTransport, OutgoingMail, QrMail, SmtpClient } from "./mail";
+export { buildQrMail, parseMailTemplate, safeRecipient, sendMail, sendRawMail, smtpOptions } from "./mail";
+export type { MailTemplate, MailTransport, OutgoingMail, QrMail, RawOutgoingMail, SmtpClient } from "./mail";
+export { parseOutbox, rewriteHeaders, MAX_RAW_LENGTH } from "./outbox";
 
 const REGION = defineString("REGION", { default: "europe-west1" });
 /** The association's Gmail address that sends the QR e-mails. */
@@ -47,8 +49,26 @@ export const onPortalRequestWritten = onDocumentWritten(
   async (event) => {
     const after = event.data?.after;
     if (!after?.exists) return;
+    const { db, bucket } = admin();
+    const mail = { db, user: () => GMAIL_USER.value(), password: () => GMAIL_APP_PASSWORD.value() };
+    await onRequestDocument(db, bucket, mail, event.params.orgId, event.params.requestId, after.data());
+  },
+);
+
+/** QR e-mails from devices without a Gmail account of their own (SiteMailRelay, Kotlin). */
+export const onMailOutboxWritten = onDocumentWritten(
+  {
+    document: "orgs/{orgId}/mailOutbox/{mailId}",
+    region: REGION,
+    retry: false,
+    timeoutSeconds: 120,
+    secrets: [GMAIL_APP_PASSWORD],
+  },
+  async (event) => {
+    const after = event.data?.after;
+    if (!after?.exists) return;
     const { db } = admin();
     const mail = { db, user: () => GMAIL_USER.value(), password: () => GMAIL_APP_PASSWORD.value() };
-    await onRequestDocument(db, mail, event.params.orgId, event.params.requestId, after.data());
+    await onOutboxDocument(db, mail, event.params.orgId, event.params.mailId, after.data());
   },
 );

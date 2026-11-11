@@ -1136,6 +1136,11 @@
     <string name="email_send_api">जीमेल एपीआई के माध्यम से भेजें</string>
     <string name="email_send_manual_description">HTML सामग्री और QR कोड अनुलग्नक के साथ ईमेल ऐप खोलें</string>
     <string name="email_send_api_description">एम्बेडेड छवियों के साथ जीमेल एपीआई के माध्यम से स्वचालित रूप से भेजें</string>
+    <string name="email_send_site">साइट के माध्यम से भेजें</string>
+    <string name="email_send_site_description">साइट इसे संस्था के Gmail पते से भेजती है</string>
+    <string name="email_site_no_answer">साइट ने जवाब नहीं दिया। जाँचें कि पोर्टल सर्वर सेट है, या Gmail से साइन इन करें।</string>
+    <string name="email_site_too_large">यह ईमेल साइट से भेजने के लिए बहुत बड़ा है। लोगो या वॉलेट पास बंद करें, या Gmail से साइन इन करें।</string>
+    <string name="email_site_rejected">साइट यह ईमेल नहीं भेज सकी। पता और संस्था का Gmail खाता जाँचें।</string>
     <string name="email_no_email_title">कोई ईमेल पता नहीं</string>
     <string name="email_no_email_message">इस स्वयंसेवक के पास कोई ईमेल पता नहीं है. कृपया पहले एक जोड़ें.</string>
     <string name="email_no_email_guest_staff_message">इस अतिथि का फ़ाइल पर कोई ईमेल पता नहीं है। इस स्क्रीन से QR भेजने से पहले व्यवस्थापक को एक जोड़ना होगा।</string>

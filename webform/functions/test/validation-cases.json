@@ -825,7 +825,8 @@
    "email": "anna@example.com",
    "firstName": "Anna M",
    "lastName": "Rossi",
-   "phone": "079 123 45 67"
+   "phone": "079 123 45 67",
+   "photo": false
   }
  },
  {
@@ -897,7 +898,8 @@
    "email": "anna@example.com",
    "firstName": "",
    "lastName": "",
-   "phone": ""
+   "phone": "",
+   "photo": false
   }
  },
  {
@@ -922,7 +924,8 @@
    "email": "anna@example.com",
    "firstName": "",
    "lastName": "",
-   "phone": ""
+   "phone": "",
+   "photo": false
   }
  },
  {
@@ -946,7 +949,8 @@
    "email": "anna@example.com",
    "firstName": "",
    "lastName": "",
-   "phone": ""
+   "phone": "",
+   "photo": false
   }
  },
  {
@@ -1028,5 +1032,113 @@
    }
   },
   "expect": null
+ },
+ {
+  "fn": "parseRequest",
+  "input": {
+   "requestId": "Abc123XyZ9_PROFILE",
+   "data": {
+    "uid": "Abc123XyZ9",
+    "type": "PROFILE",
+    "status": "PENDING",
+    "email": "anna@example.com",
+    "firstName": "Anna",
+    "lastName": "Rossi",
+    "phone": "079 123 45 67",
+    "photo": true
+   }
+  },
+  "expect": {
+   "requestId": "Abc123XyZ9_PROFILE",
+   "uid": "Abc123XyZ9",
+   "type": "PROFILE",
+   "status": "PENDING",
+   "email": "anna@example.com",
+   "firstName": "Anna",
+   "lastName": "Rossi",
+   "phone": "079 123 45 67",
+   "photo": true
+  }
+ },
+ {
+  "fn": "parseRequest",
+  "input": {
+   "requestId": "Abc123XyZ9_PROFILE",
+   "data": {
+    "uid": "Abc123XyZ9",
+    "type": "PROFILE",
+    "status": "PENDING",
+    "email": "anna@example.com",
+    "firstName": "Anna",
+    "lastName": "Rossi",
+    "phone": "079 123 45 67",
+    "photo": "true"
+   }
+  },
+  "expect": {
+   "requestId": "Abc123XyZ9_PROFILE",
+   "uid": "Abc123XyZ9",
+   "type": "PROFILE",
+   "status": "PENDING",
+   "email": "anna@example.com",
+   "firstName": "Anna",
+   "lastName": "Rossi",
+   "phone": "079 123 45 67",
+   "photo": false
+  }
+ },
+ {
+  "fn": "parseRequest",
+  "input": {
+   "requestId": "Abc123XyZ9_PROFILE",
+   "data": {
+    "uid": "Abc123XyZ9",
+    "type": "PROFILE",
+    "status": "PENDING",
+    "email": "anna@example.com",
+    "firstName": "Anna",
+    "lastName": "Rossi",
+    "phone": "079 123 45 67",
+    "photo": 1
+   }
+  },
+  "expect": {
+   "requestId": "Abc123XyZ9_PROFILE",
+   "uid": "Abc123XyZ9",
+   "type": "PROFILE",
+   "status": "PENDING",
+   "email": "anna@example.com",
+   "firstName": "Anna",
+   "lastName": "Rossi",
+   "phone": "079 123 45 67",
+   "photo": false
+  }
+ },
+ {
+  "fn": "parseRequest",
+  "input": {
+   "requestId": "Abc123XyZ9_QR_EMAIL",
+   "data": {
+    "uid": "Abc123XyZ9",
+    "type": "QR_EMAIL",
+    "status": "PENDING",
+    "email": "anna@example.com",
+    "firstName": "Anna",
+    "lastName": "Rossi",
+    "phone": "079 123 45 67",
+    "photo": true
+   }
+  },
+  "expect": {
+   "requestId": "Abc123XyZ9_QR_EMAIL",
+   "uid": "Abc123XyZ9",
+   "type": "QR_EMAIL",
+   "status": "PENDING",
+   "email": "anna@example.com",
+   "firstName": "",
+   "lastName": "",
+   "phone": "",
+   "photo": false
+  }
  }
 ]

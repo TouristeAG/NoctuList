@@ -83,7 +83,7 @@ class SharedValidationCasesTest {
                         mapOf(
                             "requestId" to it.requestId, "uid" to it.uid, "type" to it.type.name,
                             "status" to it.status, "email" to it.email, "firstName" to it.firstName,
-                            "lastName" to it.lastName, "phone" to it.phone,
+                            "lastName" to it.lastName, "phone" to it.phone, "photo" to it.photo,
                         )
                     }
                     assertEquals(expect.toKotlin(), actualMap, label)
