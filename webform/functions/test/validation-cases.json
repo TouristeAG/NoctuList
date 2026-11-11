@@ -1140,5 +1140,178 @@
    "phone": "",
    "photo": false
   }
+ },
+ {
+  "fn": "parseRequest",
+  "input": {
+   "requestId": "Abc123XyZ9_GOOGLE_LINK",
+   "data": {
+    "uid": "Abc123XyZ9",
+    "status": "PENDING",
+    "email": "anna@example.com",
+    "type": "GOOGLE_LINK",
+    "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa0123456789abcdef0123456789abcdef"
+   }
+  },
+  "expect": {
+   "requestId": "Abc123XyZ9_GOOGLE_LINK",
+   "uid": "Abc123XyZ9",
+   "type": "GOOGLE_LINK",
+   "status": "PENDING",
+   "email": "anna@example.com",
+   "firstName": "",
+   "lastName": "",
+   "phone": "",
+   "photo": false,
+   "codeHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa0123456789abcdef0123456789abcdef"
+  }
+ },
+ {
+  "fn": "parseRequest",
+  "input": {
+   "requestId": "Abc123XyZ9_GOOGLE_LINK",
+   "data": {
+    "uid": "Abc123XyZ9",
+    "status": "PENDING",
+    "email": "anna@example.com",
+    "type": "GOOGLE_LINK",
+    "codeHash": "xyz"
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseRequest",
+  "input": {
+   "requestId": "Abc123XyZ9_GOOGLE_LINK",
+   "data": {
+    "uid": "Abc123XyZ9",
+    "status": "PENDING",
+    "email": "anna@example.com",
+    "type": "GOOGLE_LINK"
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseRequest",
+  "input": {
+   "requestId": "Abc123XyZ9_GOOGLE_UNLINK",
+   "data": {
+    "uid": "Abc123XyZ9",
+    "status": "PENDING",
+    "email": "anna@example.com",
+    "type": "GOOGLE_UNLINK"
+   }
+  },
+  "expect": {
+   "requestId": "Abc123XyZ9_GOOGLE_UNLINK",
+   "uid": "Abc123XyZ9",
+   "type": "GOOGLE_UNLINK",
+   "status": "PENDING",
+   "email": "anna@example.com",
+   "firstName": "",
+   "lastName": "",
+   "phone": "",
+   "photo": false
+  }
+ },
+ {
+  "fn": "parseGoogleClaim",
+  "input": {
+   "googleUid": "GoogleUid123",
+   "data": {
+    "type": "ADMIN_MATCH",
+    "status": "PENDING",
+    "email": "  Anna@Example.COM "
+   }
+  },
+  "expect": {
+   "googleUid": "GoogleUid123",
+   "type": "ADMIN_MATCH",
+   "status": "PENDING",
+   "email": "anna@example.com",
+   "code": ""
+  }
+ },
+ {
+  "fn": "parseGoogleClaim",
+  "input": {
+   "googleUid": "GoogleUid123",
+   "data": {
+    "type": "LINK_CODE",
+    "status": "PENDING",
+    "email": "anna@example.com",
+    "code": "Ab1_-Ab1_-Ab1_-Ab1_-Ab1_-Ab1_-Ab1_-Ab1_-xyz"
+   }
+  },
+  "expect": {
+   "googleUid": "GoogleUid123",
+   "type": "LINK_CODE",
+   "status": "PENDING",
+   "email": "anna@example.com",
+   "code": "Ab1_-Ab1_-Ab1_-Ab1_-Ab1_-Ab1_-Ab1_-Ab1_-xyz"
+  }
+ },
+ {
+  "fn": "parseGoogleClaim",
+  "input": {
+   "googleUid": "GoogleUid123",
+   "data": {
+    "type": "LINK_CODE",
+    "status": "PENDING",
+    "email": "anna@example.com",
+    "code": "short"
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseGoogleClaim",
+  "input": {
+   "googleUid": "GoogleUid123",
+   "data": {
+    "type": "LINK_CODE",
+    "status": "PENDING",
+    "email": "anna@example.com"
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseGoogleClaim",
+  "input": {
+   "googleUid": "GoogleUid123",
+   "data": {
+    "type": "OTHER",
+    "status": "PENDING",
+    "email": "anna@example.com"
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseGoogleClaim",
+  "input": {
+   "googleUid": "a/b",
+   "data": {
+    "type": "ADMIN_MATCH",
+    "status": "PENDING",
+    "email": "anna@example.com"
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseGoogleClaim",
+  "input": {
+   "googleUid": "GoogleUid123",
+   "data": {
+    "type": "ADMIN_MATCH",
+    "status": "PENDING",
+    "email": "nope"
+   }
+  },
+  "expect": null
  }
 ]

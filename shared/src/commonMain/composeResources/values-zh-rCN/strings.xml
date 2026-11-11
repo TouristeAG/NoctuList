@@ -2349,6 +2349,16 @@
     <string name="portal_settings_title">志愿者门户</string>
     <string name="portal_settings_body">每位志愿者在表单网站上拥有个人空间：资料、班次、福利和钱包。请先在 Firebase 设置页面中完成准备（登录方式、规则、表单网站），然后在这里开启。加上可选的自动处理，请求会在几秒内处理。</string>
     <string name="portal_enable">启用志愿者门户</string>
+    <string name="portal_google_title">使用 Google 账号登录</string>
+    <string name="portal_google_domains_label">志愿者的 Google Workspace 域名</string>
+    <string name="portal_google_domain_hint">域名（例如 association.ch）</string>
+    <string name="portal_google_verify_add">验证并添加</string>
+    <string name="portal_google_domain_remove">移除域名</string>
+    <string name="portal_google_other">此域名未使用 Google Workspace</string>
+    <string name="portal_google_not_found">找不到该域名</string>
+    <string name="portal_google_error">无法验证，请重试</string>
+    <string name="portal_google_enable">允许志愿者使用 Google 账号登录</string>
+    <string name="portal_google_needs_domain">请先添加由 Google Workspace 管理的域名，才能启用此选项</string>
     <string name="portal_sign_in_url">登录页面：%1$s</string>
     <string name="portal_server_active">自动处理已开启。上次运行：%1$s</string>
     <string name="portal_server_inactive">尚未发现自动处理。NoctuList 设备在线时会处理请求。</string>
@@ -2472,4 +2482,16 @@
     <string name="setup_login_code">登录页面上的代码</string>
     <string name="setup_login_finish">完成登录</string>
     <string name="setup_btn_run_again">重新运行</string>
+    <string name="portal_access_google_title">协会 Google 账号</string>
+    <string name="portal_access_google_hint">Google 邮箱地址</string>
+    <string name="portal_access_google_pending">等待首次登录</string>
+    <string name="portal_access_google_linked">已绑定</string>
+    <string name="portal_access_google_by_volunteer">由志愿者绑定</string>
+    <string name="portal_access_google_err_domain">此地址不在允许的域名内</string>
+    <string name="portal_access_google_err_taken">此地址已绑定到另一位志愿者</string>
+    <string name="portal_access_google_err_same_as_email">请使用协会的地址，而不是志愿者的个人地址</string>
+    <string name="portal_access_google_err_invalid">地址无效</string>
+    <string name="portal_access_google_err_save">保存失败，请重试。</string>
+    <string name="portal_access_google_remove_title">移除 Google 账号？</string>
+    <string name="portal_access_google_remove_body">%1$s 将无法再使用 %2$s 登录。密码登录仍然可用。</string>
 </resources>

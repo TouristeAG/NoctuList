@@ -2351,6 +2351,16 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="portal_settings_title">Volunteer portal</string>
     <string name="portal_settings_body">Each volunteer gets a personal web space on the form site: profile, shifts, benefits and wallet. Set it up first on the Firebase setup page (sign-in methods, rules, forms site), then turn it on here. Add the optional automatic processing so requests are handled in seconds.</string>
     <string name="portal_enable">Enable the volunteer portal</string>
+    <string name="portal_google_title">Sign in with a Google account</string>
+    <string name="portal_google_domains_label">Volunteer Google Workspace domains</string>
+    <string name="portal_google_domain_hint">Domain (e.g. association.ch)</string>
+    <string name="portal_google_verify_add">Verify and add</string>
+    <string name="portal_google_domain_remove">Remove domain</string>
+    <string name="portal_google_other">This domain does not use Google Workspace</string>
+    <string name="portal_google_not_found">Domain not found</string>
+    <string name="portal_google_error">Could not verify, please try again</string>
+    <string name="portal_google_enable">Let volunteers sign in with a Google account</string>
+    <string name="portal_google_needs_domain">Add a domain managed by Google Workspace to turn this option on</string>
     <string name="portal_sign_in_url">Sign-in page: %1$s</string>
     <string name="portal_server_active">Automatic processing is on. Last run: %1$s</string>
     <string name="portal_server_inactive">No automatic processing seen yet. A NoctuList device handles requests when it is online.</string>
@@ -2474,4 +2484,16 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="setup_login_code">Code from the sign-in page</string>
     <string name="setup_login_finish">Finish sign-in</string>
     <string name="setup_btn_run_again">Run again</string>
+    <string name="portal_access_google_title">Association Google account</string>
+    <string name="portal_access_google_hint">Google address</string>
+    <string name="portal_access_google_pending">Waiting for the first sign-in</string>
+    <string name="portal_access_google_linked">Linked</string>
+    <string name="portal_access_google_by_volunteer">linked by the volunteer</string>
+    <string name="portal_access_google_err_domain">This address is not in the allowed domains</string>
+    <string name="portal_access_google_err_taken">This address is already linked to another volunteer</string>
+    <string name="portal_access_google_err_same_as_email">Use the association address, not the volunteer\'s personal address</string>
+    <string name="portal_access_google_err_invalid">Invalid address</string>
+    <string name="portal_access_google_err_save">Saving failed, please try again.</string>
+    <string name="portal_access_google_remove_title">Remove the Google account?</string>
+    <string name="portal_access_google_remove_body">%1$s will no longer be able to sign in with %2$s. Their password sign-in still works.</string>
 </resources>

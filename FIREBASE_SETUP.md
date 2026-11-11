@@ -113,7 +113,7 @@ site (see the guest form hosting guide in the app). Storage is only needed for p
 1. **Authentication, Sign-in method:** enable **Email/Password** (leave "Email link" off). Keep
    **Email enumeration protection** on (Authentication, Settings, User actions).
 2. **Firestore, Rules** and **Storage, Rules:** publish the latest files
-   ([`firebase/firestore.rules`](firebase/firestore.rules) v12 and
+   ([`firebase/firestore.rules`](firebase/firestore.rules) v15 and
    [`firebase/storage.rules`](firebase/storage.rules)).
 3. **Hosting:** export the form site from the app again and redeploy it. It adds `/s/` (registration)
    and `/v/` (volunteer space) and sends strict security headers.
@@ -136,6 +136,61 @@ How it stays safe:
 Admins never see passwords. For a volunteer created in the app, NoctuList generates a first password
 (shown once) and sends a "choose your password" e-mail; later, use **Send a password reset link** on
 the volunteer profile.
+
+### Optional: sign in with an association Google account
+
+**Skip this unless the association has Google Workspace and wants volunteers to open their space
+with an account like `jean@asso.ch`.** It builds on the volunteer portal above; the personal e-mail
+and password sign-in stays available.
+
+1. **Authentication, Sign-in method:** the **Google** provider is already enabled for the team, so
+   there is nothing to add. If the portal is served from a custom domain, add that domain under
+   **Authentication, Settings, Authorized domains**.
+   The portal signs in through its own site (`authDomain` is the site's host), so Google must
+   accept that site as a redirect. In [Google Cloud Console, APIs and Services,
+   Credentials](https://console.cloud.google.com/apis/credentials), open the **Web application**
+   OAuth client used by Firebase and add under **Authorized redirect URIs**:
+   - `https://<project>.web.app/__/auth/handler`
+   - `https://<project>.firebaseapp.com/__/auth/handler`
+   - `https://<custom portal domain>/__/auth/handler` for each custom domain, if any
+2. **Firestore, Rules** and **Storage, Rules:** publish the new files (version 15). Both change.
+3. **Hosting and functions:** export the form site again and redeploy it (`firebase deploy --only
+   hosting,functions` from the exported folder). The site gets new security headers and the
+   functions get a new trigger on `portalGoogleClaims`.
+4. In NoctuList **Settings, Firebase, Volunteer portal**, add the association's Google Workspace
+   domains. Each one is checked with a DNS MX lookup (through dns.google); `gmail.com` is refused.
+   This list is separate from the team's allowed domains. Then turn on **Connexion avec un compte
+   Google**, which needs at least one verified domain.
+5. Linking an account, either way:
+   - The admin types the **Compte Google associatif** on the volunteer record ("Accès plateforme"
+     card). The volunteer links it automatically at their first Google sign-in.
+   - If no address is set, the volunteer opens **Mon compte** on the portal and uses **Associer
+     mon compte Google**. They can remove only a link they made themselves.
+
+The Google account stays a separate Firebase account, linked to the volunteer through
+`portalGoogleAccounts`. A staff member who is also a volunteer keeps their staff rights.
+
+Security headers: portal pages (`/v/**` and `/portal.html`) use
+`Cross-Origin-Opener-Policy: same-origin-allow-popups` so the Google window can talk back, and their
+Content-Security-Policy also allows `https://apis.google.com` and frames from the site itself.
+Firebase's reserved `/__/` paths may be framed by the site itself only. Every other page keeps the
+strict policy.
+
+Known limits:
+
+- Storage rules can read only 2 documents. While a link exists, the linked Google account can still
+  see and change its own volunteer's photo, even after the option or its domain is turned off.
+- Turning the option off signs out a live Google session only when its page next refreshes from the
+  server.
+- Like other portal requests, linking depends on the Cloud Functions or on a NoctuList device being
+  online.
+
+**To check once on the real site after deploying** (the Google window was only tested on the
+emulators): open `https://<site>/v/<orgId>` and try **Se connecter avec Google** with an association
+account, then **Associer mon compte Google** from **Mon compte**. Do it on a computer and on an
+iPhone. If the Google window fails to open or stays blank, the headers on Firebase's `/__/auth/`
+paths are the first place to look. If Google shows `redirect_uri_mismatch`, the redirect URI of
+step 1 is missing for that site.
 
 ### Optional: automatic processing (Cloud Functions)
 

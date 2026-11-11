@@ -6,7 +6,7 @@ import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { defineSecret, defineString } from "firebase-functions/params";
 
 // src/requests.ts
-import * as logger3 from "firebase-functions/logger";
+import * as logger4 from "firebase-functions/logger";
 
 // src/common.ts
 import { createHash } from "node:crypto";
@@ -43,12 +43,12 @@ function millisOf(value) {
   if (typeof toMillis === "function") return toMillis.call(value);
   return null;
 }
-async function claim(ref, isClaimable4) {
+async function claim(ref, isClaimable5) {
   return ref.firestore.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists) return null;
     const data = snap.data();
-    if (!isClaimable4(data)) return null;
+    if (!isClaimable5(data)) return null;
     tx.set(ref, { status: STATUS_PROCESSING, processingAt: Date.now(), processingDevice: "server" }, { merge: true });
     return data;
   });
@@ -79,11 +79,21 @@ function minimalProjection(v, now = Date.now()) {
   });
   return { schema: PROJECTION_SCHEMA, payload, contentHash: sha256(payload), updatedAt: now };
 }
+function patchedProjection(data, fields, now) {
+  if (data === void 0 || typeof data.payload !== "string") return null;
+  let payload;
+  try {
+    payload = JSON.parse(data.payload);
+  } catch {
+    return null;
+  }
+  if (payload === null || typeof payload !== "object" || Array.isArray(payload)) return null;
+  const text = JSON.stringify({ ...payload, ...fields });
+  return { payload: text, contentHash: sha256(text), updatedAt: now };
+}
 
-// src/mail.ts
+// src/google.ts
 import * as logger from "firebase-functions/logger";
-import nodemailer from "nodemailer";
-import QRCode from "qrcode";
 
 // src/validate.ts
 var NAME = /^[^<>{}\\]{1,60}$/u;
@@ -91,8 +101,11 @@ var PHONE = /^[0-9+() .-]{4,32}$/u;
 var DATE = /^(19|20)[0-9]{2}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/u;
 var EMAIL = /^[^@ \t\n\x0B\f\r]{1,64}@[^@ \t\n\x0B\f\r]{1,190}\.[^@ \t\n\x0B\f\r]{2,}$/u;
 var UID = /^[A-Za-z0-9]{6,128}$/u;
+var CODE_HASH = /^[0-9a-f]{64}$/u;
+var LINK_CODE = /^[A-Za-z0-9_-]{32,64}$/u;
 var LANGS = /* @__PURE__ */ new Set(["fr", "en", "es", "de", "it"]);
-var TYPES = ["PROFILE", "QR_EMAIL", "CLAIM"];
+var TYPES = ["PROFILE", "QR_EMAIL", "CLAIM", "GOOGLE_LINK", "GOOGLE_UNLINK"];
+var CLAIM_TYPES = ["ADMIN_MATCH", "LINK_CODE"];
 var GENDERS = /* @__PURE__ */ new Set(["FEMALE", "MALE", "NON_BINARY", "OTHER", "PREFER_NOT_TO_DISCLOSE"]);
 var WS = "\\t-\\r\\u001C-\\u0020\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000";
 var TRIM = new RegExp(`^[${WS}]+|[${WS}]+$`, "gu");
@@ -164,10 +177,282 @@ function parseRequest(requestId, data) {
     if (firstName === null || lastName === null || phone === null) return null;
     return { requestId, uid, type, status, email, firstName, lastName, phone, photo: data.photo === true };
   }
+  if (type === "GOOGLE_LINK") {
+    const codeHash = str(data.codeHash);
+    if (codeHash === void 0 || !CODE_HASH.test(codeHash)) return null;
+    return { requestId, uid, type, status, email, firstName: "", lastName: "", phone: "", photo: false, codeHash };
+  }
   return { requestId, uid, type, status, email, firstName: "", lastName: "", phone: "", photo: false };
+}
+function parseGoogleClaim(googleUid, data) {
+  if (!UID.test(googleUid)) return null;
+  const typeName = String(data.type);
+  if (!CLAIM_TYPES.includes(typeName)) return null;
+  const type = typeName;
+  const email = cleanEmail(data.email);
+  if (email === null) return null;
+  const status = data.status === null || data.status === void 0 ? "" : String(data.status);
+  let code = "";
+  if (type === "LINK_CODE") {
+    const raw = str(data.code);
+    if (raw === void 0 || !LINK_CODE.test(raw)) return null;
+    code = raw;
+  }
+  return { googleUid, type, status, email, code };
+}
+
+// src/google.ts
+var LINKED_BY_ADMIN = "ADMIN";
+var LINKED_BY_VOLUNTEER = "VOLUNTEER";
+var LINK_CODE_VALIDITY_MS = 10 * 60 * 1e3;
+var STATUS_PENDING = "PENDING";
+var DONE = { status: "DONE", reason: "" };
+var rejected = (reason) => ({ status: "REJECTED", reason });
+var isClaimable = (d) => d.status === STATUS_PENDING;
+var stringOf = (v) => v === null || v === void 0 ? "" : typeof v === "string" ? v : String(v);
+function boolOf(v) {
+  if (typeof v === "boolean") return v;
+  if (typeof v === "string") return v.toLowerCase() === "true";
+  if (typeof v === "number") return Number.isFinite(v) && Math.trunc(v) !== 0;
+  return false;
+}
+var isBlank = (s) => kotlinTrim(s) === "";
+function googleVolunteerOf(id, d) {
+  return {
+    id,
+    portalEnabled: boolOf(d.get("portalEnabled")),
+    portalUid: stringOf(d.get("portalUid")),
+    portalGoogleEmail: stringOf(d.get("portalGoogleEmail")),
+    portalGoogleUid: stringOf(d.get("portalGoogleUid")),
+    portalGoogleLinkedBy: stringOf(d.get("portalGoogleLinkedBy"))
+  };
+}
+var CONSUMER_DOMAINS = ["gmail.com", "googlemail.com"];
+function parseDomains(raw) {
+  const out = [];
+  for (const part of raw.split(/[,;\n\r]/)) {
+    let domain = kotlinTrim(part).toLowerCase();
+    if (domain.startsWith("@")) domain = domain.slice(1);
+    domain = kotlinTrim(domain).replace(/\.+$/, "");
+    if (domain !== "" && domain.includes(".") && !out.includes(domain) && !CONSUMER_DOMAINS.includes(domain)) {
+      out.push(domain);
+    }
+  }
+  return out;
+}
+function domainAllowed(email, domains) {
+  const clean = kotlinTrim(email).toLowerCase();
+  const at = clean.lastIndexOf("@");
+  const domain = at < 0 ? "" : clean.slice(at + 1);
+  return domain !== "" && !CONSUMER_DOMAINS.includes(domain) && domains.some((d) => kotlinTrim(d).toLowerCase() === domain);
+}
+function sameAddress(a, b) {
+  const left = kotlinTrim(a).toLowerCase();
+  return left !== "" && left === kotlinTrim(b).toLowerCase();
+}
+function isAliasValid(googleUid, aliasTarget, volunteers2) {
+  return aliasTarget !== null && !isBlank(aliasTarget) && volunteers2.some((v) => v.portalUid === aliasTarget && v.portalGoogleUid === googleUid);
+}
+var hasPortal = (v) => v.portalEnabled && !isBlank(v.portalUid);
+function adminMatch(c, volunteers2, domains, aliasTarget) {
+  if (!domainAllowed(c.email, domains)) return { kind: "REJECT", reason: "DOMAIN" };
+  if (isAliasValid(c.googleUid, aliasTarget, volunteers2)) return { kind: "ALREADY_LINKED" };
+  const candidates = volunteers2.filter((v) => hasPortal(v) && sameAddress(v.portalGoogleEmail, c.email));
+  if (candidates.length === 0) return { kind: "REJECT", reason: "NO_MATCH" };
+  if (candidates.length > 1) return { kind: "REJECT", reason: "AMBIGUOUS" };
+  const match = candidates[0];
+  const linkedBy = match.portalGoogleLinkedBy === LINKED_BY_VOLUNTEER ? LINKED_BY_VOLUNTEER : LINKED_BY_ADMIN;
+  return { kind: "LINK", volunteer: match, linkedBy };
+}
+function linkCode(c, request, requestedAtMillis, now, volunteers2, domains, aliasTarget) {
+  const codeOk = request !== null && request.type === "GOOGLE_LINK" && request.status === STATUS_PENDING && c.code !== "" && request.codeHash === sha256(c.code) && requestedAtMillis !== null && now - requestedAtMillis < LINK_CODE_VALIDITY_MS;
+  if (!codeOk) return { kind: "REJECT", reason: "CODE" };
+  const owner = volunteers2.find((v) => hasPortal(v) && v.portalUid === request.uid);
+  if (owner === void 0) return { kind: "REJECT", reason: "NO_MATCH" };
+  if (aliasTarget === owner.portalUid && owner.portalGoogleUid === c.googleUid) return { kind: "ALREADY_LINKED" };
+  if (!isBlank(owner.portalGoogleEmail)) return { kind: "REJECT", reason: "ALREADY_LINKED" };
+  if (!domainAllowed(c.email, domains)) return { kind: "REJECT", reason: "DOMAIN" };
+  const others = volunteers2.filter((v) => v.id !== owner.id);
+  if (others.some((v) => v.portalGoogleUid === c.googleUid)) return { kind: "REJECT", reason: "TAKEN" };
+  if (others.some((v) => sameAddress(v.portalGoogleEmail, c.email))) return { kind: "REJECT", reason: "TAKEN" };
+  return { kind: "LINK", volunteer: owner, linkedBy: LINKED_BY_VOLUNTEER };
+}
+function canUnlink(owner) {
+  if (owner === null) return "NO_ACCESS";
+  if (owner.portalGoogleLinkedBy === LINKED_BY_ADMIN) return "ADMIN_LINK";
+  return null;
+}
+var errorCode = (e) => {
+  const code = e?.code;
+  return code === void 0 ? "" : String(code);
+};
+var volunteersOf = (db, orgId) => db.collection(`orgs/${orgId}/volunteers`);
+var aliasRef = (db, orgId, googleUid) => db.doc(`orgs/${orgId}/portalGoogleAccounts/${googleUid}`);
+var projectionRef = (db, orgId, portalUid) => db.doc(`orgs/${orgId}/volunteerPortal/${portalUid}`);
+var GOOGLE_FIELDS = ["portalEnabled", "portalUid", "portalGoogleEmail", "portalGoogleUid", "portalGoogleLinkedBy"];
+async function googleOn(db, orgId) {
+  return await institutionSetting(db, orgId, "volunteer_portal_google_enabled") === "true";
+}
+async function googleLinkAllowed(db, orgId) {
+  const [on, domains] = await Promise.all([
+    googleOn(db, orgId),
+    institutionSetting(db, orgId, "volunteer_portal_google_domains")
+  ]);
+  return on && parseDomains(domains).length > 0;
+}
+function googleProjectionFields(portalGoogleEmail, linkedBy, allowed) {
+  const googleEmail = kotlinTrim(portalGoogleEmail);
+  return {
+    googleEmail,
+    googleLinkedBy: kotlinTrim(linkedBy),
+    googleLinkAvailable: allowed && googleEmail === ""
+  };
+}
+async function onGoogleClaimDocument(db, orgId, googleUid, data) {
+  if (data === void 0 || !isClaimable(data)) return;
+  let result;
+  try {
+    if (!await portalEnabled(db, orgId) || !await googleOn(db, orgId)) {
+      logger.info("google claim skipped", { orgId, reason: "OPTION_OFF" });
+      return;
+    }
+    const ref = db.doc(`orgs/${orgId}/portalGoogleClaims/${googleUid}`);
+    const claimed = await claim(ref, isClaimable);
+    if (claimed === null) return;
+    result = await processClaim(db, orgId, googleUid, claimed);
+    await completeClaim(ref, result);
+  } catch (e) {
+    logger.error("google claim failed", { orgId, reason: "FAILED", code: errorCode(e) });
+    return;
+  }
+  try {
+    await touchStatus(db, orgId);
+  } catch (e) {
+    logger.error("server status not written", { orgId, code: errorCode(e) });
+  }
+  logger.info("google claim processed", { orgId, status: result.status, reason: result.reason });
+}
+async function completeClaim(ref, result) {
+  await ref.set({ status: result.status, reason: result.reason, processedAt: Date.now(), code: "" }, { merge: true });
+}
+async function processClaim(db, orgId, googleUid, claimed) {
+  const c = parseGoogleClaim(googleUid, claimed);
+  if (c === null) return rejected("INVALID");
+  const now = Date.now();
+  const [all, domainSetting, aliasSnap] = await Promise.all([
+    volunteersOf(db, orgId).select(...GOOGLE_FIELDS).get(),
+    institutionSetting(db, orgId, "volunteer_portal_google_domains"),
+    aliasRef(db, orgId, googleUid).get()
+  ]);
+  const volunteers2 = all.docs.map((d) => googleVolunteerOf(d.id, d));
+  const domains = parseDomains(domainSetting);
+  const rawTarget = aliasSnap.exists ? aliasSnap.get("volunteerUid") : void 0;
+  let aliasTarget = typeof rawTarget === "string" ? rawTarget : null;
+  if (aliasTarget !== null && !isAliasValid(googleUid, aliasTarget, volunteers2)) {
+    await aliasRef(db, orgId, googleUid).delete();
+    aliasTarget = null;
+  }
+  let linkRequest = null;
+  let decision;
+  if (c.type === "ADMIN_MATCH") {
+    decision = adminMatch(c, volunteers2, domains, aliasTarget);
+  } else {
+    const found = await db.collection(`orgs/${orgId}/portalRequests`).where("type", "==", "GOOGLE_LINK").where("codeHash", "==", sha256(c.code)).limit(1).get();
+    const doc = found.docs[0];
+    linkRequest = doc?.ref ?? null;
+    const request = doc !== void 0 ? parseRequest(doc.id, doc.data()) : null;
+    const requestedAt = doc !== void 0 ? millisOf(doc.get("requestedAt")) : null;
+    decision = linkCode(c, request, requestedAt, now, volunteers2, domains, aliasTarget);
+  }
+  let result;
+  switch (decision.kind) {
+    case "REJECT":
+      return rejected(decision.reason);
+    case "ALREADY_LINKED":
+      result = DONE;
+      break;
+    case "LINK":
+      result = await writeLink(db, orgId, c, decision.volunteer, decision.linkedBy, aliasTarget);
+      break;
+  }
+  if (result.status === "DONE" && linkRequest !== null) {
+    await linkRequest.set({ status: "DONE", reason: "", processedAt: Date.now() }, { merge: true });
+  }
+  return result;
+}
+var sameGoogleFields = (a, b) => a.portalEnabled === b.portalEnabled && a.portalUid === b.portalUid && a.portalGoogleEmail === b.portalGoogleEmail && a.portalGoogleUid === b.portalGoogleUid && a.portalGoogleLinkedBy === b.portalGoogleLinkedBy;
+async function writeLink(db, orgId, c, decided, linkedBy, aliasTarget) {
+  try {
+    const allowed = await googleLinkAllowed(db, orgId);
+    return await db.runTransaction(async (tx) => {
+      const ref = volunteersOf(db, orgId).doc(decided.id);
+      const alias = aliasRef(db, orgId, c.googleUid);
+      const page = projectionRef(db, orgId, decided.portalUid);
+      const previousUid = decided.portalGoogleUid;
+      const previous = !isBlank(previousUid) && previousUid !== c.googleUid ? aliasRef(db, orgId, previousUid) : null;
+      const [snap, aliasSnap, pageSnap, previousSnap] = await Promise.all([
+        tx.get(ref),
+        tx.get(alias),
+        tx.get(page),
+        previous !== null ? tx.get(previous) : Promise.resolve(null)
+      ]);
+      if (!snap.exists || !sameGoogleFields(googleVolunteerOf(snap.id, snap), decided)) return rejected("SAVE_FAILED");
+      const target = aliasSnap.exists ? aliasSnap.get("volunteerUid") : void 0;
+      if ((typeof target === "string" ? target : null) !== aliasTarget) return rejected("SAVE_FAILED");
+      const now = Date.now();
+      const email = isBlank(decided.portalGoogleEmail) ? c.email : kotlinTrim(decided.portalGoogleEmail);
+      if (previous !== null && previousSnap?.exists && previousSnap.get("volunteerUid") === decided.portalUid) {
+        tx.delete(previous);
+      }
+      tx.set(alias, { volunteerUid: decided.portalUid, email: c.email, linkedBy, linkedAt: now });
+      tx.update(ref, {
+        portalGoogleEmail: email,
+        portalGoogleUid: c.googleUid,
+        portalGoogleLinkedBy: linkedBy,
+        lastModified: Math.max(now, (millisOf(snap.get("lastModified")) ?? 0) + 1)
+      });
+      const patch = patchedProjection(pageSnap.data(), googleProjectionFields(email, linkedBy, allowed), now);
+      if (patch !== null) tx.update(page, patch);
+      return DONE;
+    });
+  } catch (e) {
+    logger.error("google link not saved", { orgId, code: errorCode(e) });
+    return rejected("SAVE_FAILED");
+  }
+}
+async function unlinkGoogle(db, orgId, requestId, uid) {
+  try {
+    const allowed = await googleLinkAllowed(db, orgId);
+    return await db.runTransaction(async (tx) => {
+      const linked = await tx.get(volunteersOf(db, orgId).where("portalUid", "==", uid));
+      const doc = linked.docs.find((d) => boolOf(d.get("portalEnabled")) && stringOf(d.get("portalUid")) === uid);
+      const owner = doc !== void 0 ? googleVolunteerOf(doc.id, doc) : null;
+      const reason = canUnlink(owner);
+      if (reason !== null || doc === void 0) return reason ?? "NO_ACCESS";
+      const page = projectionRef(db, orgId, uid);
+      const pageSnap = await tx.get(page);
+      const now = Date.now();
+      if (!isBlank(owner.portalGoogleUid)) tx.delete(aliasRef(db, orgId, owner.portalGoogleUid));
+      tx.update(doc.ref, {
+        portalGoogleEmail: "",
+        portalGoogleUid: "",
+        portalGoogleLinkedBy: "",
+        lastModified: Math.max(now, (millisOf(doc.get("lastModified")) ?? 0) + 1)
+      });
+      const patch = patchedProjection(pageSnap.data(), googleProjectionFields("", "", allowed), now);
+      if (patch !== null) tx.update(page, patch);
+      return "";
+    });
+  } catch (e) {
+    logger.error("google unlink not saved", { orgId, requestId, code: errorCode(e) });
+    return "SAVE_FAILED";
+  }
 }
 
 // src/mail.ts
+import * as logger2 from "firebase-functions/logger";
+import nodemailer from "nodemailer";
+import QRCode from "qrcode";
 var PORTAL_FIRST_NAME_TOKEN = "%%NOCTULIST_FIRST_NAME%%";
 var MAIL_TEMPLATE_SCHEMA = 1;
 var QR_WIDTH = 600;
@@ -259,7 +544,7 @@ async function sendRawMail(msg, transport) {
     const to = safeRecipient(msg.to);
     const user = transport.user().trim();
     if (to === null || safeRecipient(user) === null) {
-      logger.error("mail not sent", { reason: "BAD_ADDRESS" });
+      logger2.error("mail not sent", { reason: "BAD_ADDRESS" });
       return false;
     }
     const raw = msg.build(user, /* @__PURE__ */ new Date());
@@ -275,7 +560,7 @@ async function sendRawMail(msg, transport) {
     }
     const password = transport.password().replace(/\s+/g, "");
     if (password === "") {
-      logger.error("mail not sent", { reason: "NO_PASSWORD" });
+      logger2.error("mail not sent", { reason: "NO_PASSWORD" });
       return false;
     }
     const smtp = transport.smtp ?? gmail;
@@ -283,7 +568,7 @@ async function sendRawMail(msg, transport) {
     return true;
   } catch (e) {
     const err = e;
-    logger.error("mail not sent", {
+    logger2.error("mail not sent", {
       reason: "SEND_FAILED",
       code: err?.code === void 0 ? "" : String(err.code),
       responseCode: typeof err?.responseCode === "number" ? err.responseCode : 0
@@ -296,7 +581,7 @@ async function sendMail(msg, transport) {
     const to = safeRecipient(msg.to);
     const user = transport.user().trim();
     if (to === null || safeRecipient(user) === null) {
-      logger.error("mail not sent", { reason: "BAD_ADDRESS" });
+      logger2.error("mail not sent", { reason: "BAD_ADDRESS" });
       return false;
     }
     const fromName = msg.fromName.replace(CONTROL, " ").trim();
@@ -320,7 +605,7 @@ async function sendMail(msg, transport) {
     }
     const password = transport.password().replace(/\s+/g, "");
     if (password === "") {
-      logger.error("mail not sent", { reason: "NO_PASSWORD" });
+      logger2.error("mail not sent", { reason: "NO_PASSWORD" });
       return false;
     }
     const smtp = transport.smtp ?? gmail;
@@ -337,7 +622,7 @@ async function sendMail(msg, transport) {
     return true;
   } catch (e) {
     const err = e;
-    logger.error("mail not sent", {
+    logger2.error("mail not sent", {
       reason: "SEND_FAILED",
       code: err?.code === void 0 ? "" : String(err.code),
       responseCode: typeof err?.responseCode === "number" ? err.responseCode : 0
@@ -350,7 +635,7 @@ async function sendMail(msg, transport) {
 import { randomUUID } from "node:crypto";
 
 // src/signup.ts
-import * as logger2 from "firebase-functions/logger";
+import * as logger3 from "firebase-functions/logger";
 
 // src/nanoid.ts
 import { randomInt } from "node:crypto";
@@ -365,9 +650,9 @@ function volunteerId() {
 // src/signup.ts
 var STATUS_SUBMITTED = "SUBMITTED";
 var MAX_PHOTO_BYTES = 3 * 1024 * 1024;
-var isClaimable = (d) => d.status === STATUS_SUBMITTED;
-var isBlank = (v) => typeof v !== "string" || v.trim() === "";
-var errorCode = (e) => {
+var isClaimable2 = (d) => d.status === STATUS_SUBMITTED;
+var isBlank2 = (v) => typeof v !== "string" || v.trim() === "";
+var errorCode2 = (e) => {
   const code = e?.code;
   return code === void 0 ? "" : String(code);
 };
@@ -376,27 +661,27 @@ var volunteerPhotoPath = (orgId, id) => `orgs/${orgId.trim()}/profilePhotos/volu
 var portalPhotoPath = (orgId, uid) => `orgs/${orgId}/portalPhotos/${uid}.jpg`;
 var portalUploadPath = (orgId, uid) => `orgs/${orgId}/portalPhotoUploads/${uid}.jpg`;
 async function onSignupDocument(db, bucket, orgId, formId, current) {
-  if (current === void 0 || !isClaimable(current)) return;
+  if (current === void 0 || !isClaimable2(current)) return;
   if (!await portalEnabled(db, orgId)) {
-    logger2.info("signup skipped", { orgId, formId, reason: "PORTAL_OFF" });
+    logger3.info("signup skipped", { orgId, formId, reason: "PORTAL_OFF" });
     return;
   }
   const ref = db.doc(`orgs/${orgId}/volunteerSignupForms/${formId}`);
-  const claimed = await claim(ref, isClaimable);
+  const claimed = await claim(ref, isClaimable2);
   if (claimed === null) return;
   let outcome;
   try {
     outcome = await processClaimed(db, bucket, orgId, formId, ref, claimed);
   } catch (e) {
-    logger2.error("signup failed", { orgId, formId, reason: "FAILED", code: errorCode(e) });
+    logger3.error("signup failed", { orgId, formId, reason: "FAILED", code: errorCode2(e) });
     return;
   }
   try {
     await touchStatus(db, orgId);
   } catch (e) {
-    logger2.error("server status not written", { orgId, formId, code: errorCode(e) });
+    logger3.error("server status not written", { orgId, formId, code: errorCode2(e) });
   }
-  logger2.info("signup processed", { orgId, formId, reason: outcome });
+  logger3.info("signup processed", { orgId, formId, reason: outcome });
 }
 async function processClaimed(db, bucket, orgId, formId, ref, claimed) {
   const submission = parseSignup(formId, { ...claimed, status: STATUS_SUBMITTED }, orgId);
@@ -411,7 +696,7 @@ async function processClaimed(db, bucket, orgId, formId, ref, claimed) {
     outcome = "ALREADY_LINKED";
   } else {
     const sameEmail = volunteers2.docs.find(
-      (d) => typeof d.get("email") === "string" && d.get("email").trim().toLowerCase() === submission.email && isBlank(d.get("portalUid"))
+      (d) => typeof d.get("email") === "string" && d.get("email").trim().toLowerCase() === submission.email && isBlank2(d.get("portalUid"))
     );
     if (sameEmail !== void 0) {
       await link(db, bucket, orgId, sameEmail.ref, submission, photo);
@@ -448,17 +733,17 @@ async function saveJpeg(bucket, path, bytes) {
 async function link(db, bucket, orgId, ref, submission, photo) {
   const linked = await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
-    if (!snap.exists || !isBlank(snap.get("portalUid"))) return null;
+    if (!snap.exists || !isBlank2(snap.get("portalUid"))) return null;
     tx.update(ref, { portalEnabled: true, portalUid: submission.uid, lastModified: Date.now() });
     return snap.data();
   });
   if (linked === null) throw Object.assign(new Error("link conflict"), { code: "LINK_CONFLICT" });
-  if (photo === null || !isBlank(linked.profilePhotoPath) || !isBlank(linked.profilePhotoUrl)) return;
+  if (photo === null || !isBlank2(linked.profilePhotoPath) || !isBlank2(linked.profilePhotoUrl)) return;
   const path = volunteerPhotoPath(orgId, ref.id);
   await saveJpeg(bucket, path, photo);
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
-    if (!snap.exists || !isBlank(snap.get("profilePhotoPath")) || !isBlank(snap.get("profilePhotoUrl"))) return;
+    if (!snap.exists || !isBlank2(snap.get("profilePhotoPath")) || !isBlank2(snap.get("profilePhotoUrl"))) return;
     tx.update(ref, { profilePhotoPath: path, lastModified: Date.now() });
   });
 }
@@ -517,51 +802,51 @@ async function finish(bucket, ref, orgId, formId) {
 }
 
 // src/requests.ts
-var STATUS_PENDING = "PENDING";
+var STATUS_PENDING2 = "PENDING";
 var MAX_LABEL2 = 80;
-var DONE = { status: "DONE", reason: "" };
-var rejected = (reason) => ({ status: "REJECTED", reason });
-var isClaimable2 = (d) => d.status === STATUS_PENDING;
-var stringOf = (v) => v === null || v === void 0 ? "" : typeof v === "string" ? v : String(v);
-function boolOf(v) {
+var DONE2 = { status: "DONE", reason: "" };
+var rejected2 = (reason) => ({ status: "REJECTED", reason });
+var isClaimable3 = (d) => d.status === STATUS_PENDING2 && d.type !== "GOOGLE_LINK";
+var stringOf2 = (v) => v === null || v === void 0 ? "" : typeof v === "string" ? v : String(v);
+function boolOf2(v) {
   if (typeof v === "boolean") return v;
   if (typeof v === "string") return v.toLowerCase() === "true";
   if (typeof v === "number") return Number.isFinite(v) && Math.trunc(v) !== 0;
   return false;
 }
-var isBlank2 = (v) => kotlinTrim(stringOf(v)) === "";
-var isOwner = (d, uid) => boolOf(d.get("portalEnabled")) && stringOf(d.get("portalUid")) === uid;
-var errorCode2 = (e) => {
+var isBlank3 = (v) => kotlinTrim(stringOf2(v)) === "";
+var isOwner = (d, uid) => boolOf2(d.get("portalEnabled")) && stringOf2(d.get("portalUid")) === uid;
+var errorCode3 = (e) => {
   const code = e?.code;
   return code === void 0 ? "" : String(code);
 };
 async function onRequestDocument(db, bucket, mail, orgId, requestId, current) {
-  if (current === void 0 || !isClaimable2(current)) return;
+  if (current === void 0 || !isClaimable3(current)) return;
   let result;
   try {
     if (!await portalEnabled(db, orgId)) {
-      logger3.info("request skipped", { orgId, requestId, reason: "PORTAL_OFF" });
+      logger4.info("request skipped", { orgId, requestId, reason: "PORTAL_OFF" });
       return;
     }
     const ref = db.doc(`orgs/${orgId}/portalRequests/${requestId}`);
-    const claimed = await claim(ref, isClaimable2);
+    const claimed = await claim(ref, isClaimable3);
     if (claimed === null) return;
     result = await processClaimed2(db, bucket, mail, orgId, requestId, claimed);
     await complete(ref, result);
   } catch (e) {
-    logger3.error("request failed", { orgId, requestId, reason: "FAILED", code: errorCode2(e) });
+    logger4.error("request failed", { orgId, requestId, reason: "FAILED", code: errorCode3(e) });
     return;
   }
   try {
     await touchStatus(db, orgId);
   } catch (e) {
-    logger3.error("server status not written", { orgId, requestId, code: errorCode2(e) });
+    logger4.error("server status not written", { orgId, requestId, code: errorCode3(e) });
   }
-  logger3.info("request processed", { orgId, requestId, status: result.status, reason: result.reason });
+  logger4.info("request processed", { orgId, requestId, status: result.status, reason: result.reason });
 }
 async function processClaimed2(db, bucket, mail, orgId, requestId, claimed) {
   const request = parseRequest(requestId, claimed);
-  if (request === null) return rejected("INVALID");
+  if (request === null) return rejected2("INVALID");
   switch (request.type) {
     case "PROFILE":
       return updateProfile(db, bucket, orgId, requestId, request);
@@ -569,6 +854,12 @@ async function processClaimed2(db, bucket, mail, orgId, requestId, claimed) {
       return handleClaim(db, orgId, requestId, request);
     case "QR_EMAIL":
       return sendQr(db, mail, orgId, request);
+    case "GOOGLE_UNLINK": {
+      const reason = await unlinkGoogle(db, orgId, requestId, request.uid);
+      return reason === "" ? DONE2 : rejected2(reason);
+    }
+    case "GOOGLE_LINK":
+      return rejected2("INVALID");
   }
 }
 async function complete(ref, result) {
@@ -585,21 +876,21 @@ async function updateProfile(db, bucket, orgId, requestId, request) {
   }
 }
 async function saveProfile(db, bucket, orgId, requestId, request) {
-  const projectionRef = db.doc(`orgs/${orgId}/volunteerPortal/${request.uid}`);
+  const projectionRef2 = db.doc(`orgs/${orgId}/volunteerPortal/${request.uid}`);
   let photo = null;
   let ownerId = "";
   if (request.photo) {
     const linked = await volunteers(db, orgId).where("portalUid", "==", request.uid).get();
     const owner = linked.docs.find((d) => isOwner(d, request.uid));
-    if (owner === void 0) return rejected("NO_ACCESS");
-    if (!await profilePhotosOn(db, orgId)) return rejected("INVALID");
+    if (owner === void 0) return rejected2("NO_ACCESS");
+    if (!await profilePhotosOn(db, orgId)) return rejected2("INVALID");
     const bytes = await readJpeg(bucket, portalUploadPath(orgId, request.uid));
-    if (bytes === null) return rejected("INVALID");
+    if (bytes === null) return rejected2("INVALID");
     try {
       photo = await savePhoto(bucket, orgId, owner.id, request.uid, bytes);
     } catch (e) {
-      logger3.error("photo not saved", { orgId, requestId, code: errorCode2(e) });
-      return rejected("SAVE_FAILED");
+      logger4.error("photo not saved", { orgId, requestId, code: errorCode3(e) });
+      return rejected2("SAVE_FAILED");
     }
     ownerId = owner.id;
   }
@@ -607,9 +898,9 @@ async function saveProfile(db, bucket, orgId, requestId, request) {
     return await db.runTransaction(async (tx) => {
       const linked = await tx.get(volunteers(db, orgId).where("portalUid", "==", request.uid));
       const owner = linked.docs.find((d) => isOwner(d, request.uid));
-      if (owner === void 0) return rejected("NO_ACCESS");
-      if (photo !== null && owner.id !== ownerId) return rejected("SAVE_FAILED");
-      const projection = await tx.get(projectionRef);
+      if (owner === void 0) return rejected2("NO_ACCESS");
+      if (photo !== null && owner.id !== ownerId) return rejected2("SAVE_FAILED");
+      const projection = await tx.get(projectionRef2);
       const now = Date.now();
       const lastName = request.lastName.toUpperCase();
       tx.update(owner.ref, {
@@ -622,12 +913,12 @@ async function saveProfile(db, bucket, orgId, requestId, request) {
       const fields = { firstName: request.firstName, lastName, phone: request.phone };
       if (photo !== null) Object.assign(fields, { hasPhoto: true, photoVersion: photo.version });
       const patch = patchedProjection(projection.data(), fields, now);
-      if (patch !== null) tx.update(projectionRef, patch);
-      return DONE;
+      if (patch !== null) tx.update(projectionRef2, patch);
+      return DONE2;
     });
   } catch (e) {
-    logger3.error("profile not saved", { orgId, requestId, code: errorCode2(e) });
-    return rejected("SAVE_FAILED");
+    logger4.error("profile not saved", { orgId, requestId, code: errorCode3(e) });
+    return rejected2("SAVE_FAILED");
   }
 }
 async function savePhoto(bucket, orgId, volunteerId2, uid, bytes) {
@@ -642,66 +933,54 @@ async function savePhoto(bucket, orgId, volunteerId2, uid, bytes) {
   const url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(path)}?alt=media&token=${token}`;
   return { path, url, version: sha256(url).slice(0, 16) };
 }
-function patchedProjection(data, fields, now) {
-  if (data === void 0 || typeof data.payload !== "string") return null;
-  let payload;
-  try {
-    payload = JSON.parse(data.payload);
-  } catch {
-    return null;
-  }
-  if (payload === null || typeof payload !== "object" || Array.isArray(payload)) return null;
-  const text = JSON.stringify({ ...payload, ...fields });
-  return { payload: text, contentHash: sha256(text), updatedAt: now };
-}
 async function handleClaim(db, orgId, requestId, request) {
   const all = await volunteers(db, orgId).select("email", "portalEnabled", "portalUid").get();
-  if (all.docs.some((d) => isOwner(d, request.uid))) return DONE;
-  const sameEmail = (d) => boolOf(d.get("portalEnabled")) && kotlinTrim(stringOf(d.get("email"))).toLowerCase() === request.email;
+  if (all.docs.some((d) => isOwner(d, request.uid))) return DONE2;
+  const sameEmail = (d) => boolOf2(d.get("portalEnabled")) && kotlinTrim(stringOf2(d.get("email"))).toLowerCase() === request.email;
   const candidates = all.docs.filter(sameEmail);
-  const free = candidates.filter((d) => isBlank2(d.get("portalUid")));
-  if (candidates.length === 0) return rejected("NO_ACCESS");
-  if (free.length !== 1) return rejected("LINKED_ELSEWHERE");
+  const free = candidates.filter((d) => isBlank3(d.get("portalUid")));
+  if (candidates.length === 0) return rejected2("NO_ACCESS");
+  if (free.length !== 1) return rejected2("LINKED_ELSEWHERE");
   const ref = free[0].ref;
   try {
     return await db.runTransaction(async (tx) => {
       const linked = await tx.get(volunteers(db, orgId).where("portalUid", "==", request.uid));
-      if (linked.docs.some((d) => isOwner(d, request.uid))) return DONE;
+      if (linked.docs.some((d) => isOwner(d, request.uid))) return DONE2;
       const snap = await tx.get(ref);
-      if (!snap.exists || !sameEmail(snap) || !isBlank2(snap.get("portalUid"))) {
-        return rejected("SAVE_FAILED");
+      if (!snap.exists || !sameEmail(snap) || !isBlank3(snap.get("portalUid"))) {
+        return rejected2("SAVE_FAILED");
       }
       tx.update(ref, {
         portalUid: request.uid,
         lastModified: Math.max(Date.now(), (millisOf(snap.get("lastModified")) ?? 0) + 1)
       });
-      return DONE;
+      return DONE2;
     });
   } catch (e) {
-    logger3.error("claim not saved", { orgId, requestId, code: errorCode2(e) });
-    return rejected("SAVE_FAILED");
+    logger4.error("claim not saved", { orgId, requestId, code: errorCode3(e) });
+    return rejected2("SAVE_FAILED");
   }
 }
 async function sendQr(db, mail, orgId, request) {
   const linked = await volunteers(db, orgId).where("portalUid", "==", request.uid).get();
   const owner = linked.docs.find((d) => isOwner(d, request.uid));
-  if (owner === void 0) return rejected("NO_ACCESS");
-  if (boolOf(owner.get("isAdmin"))) return rejected("NOT_ALLOWED");
-  const email = kotlinTrim(stringOf(owner.get("email")));
-  if (email === "") return rejected("NO_EMAIL");
+  if (owner === void 0) return rejected2("NO_ACCESS");
+  if (boolOf2(owner.get("isAdmin"))) return rejected2("NOT_ALLOWED");
+  const email = kotlinTrim(stringOf2(owner.get("email")));
+  if (email === "") return rejected2("NO_EMAIL");
   const to = safeRecipient(email);
-  if (to === null) return rejected("NO_EMAIL");
+  if (to === null) return rejected2("NO_EMAIL");
   const [template, association] = await Promise.all([
     db.doc(`orgs/${orgId}/portalMail/default`).get(),
     associationName(db, orgId)
   ]);
-  const message = await buildQrMail(parseMailTemplate(template.data()), stringOf(owner.get("name")), owner.id);
+  const message = await buildQrMail(parseMailTemplate(template.data()), stringOf2(owner.get("name")), owner.id);
   const sent = await sendMail({ ...message, to, fromName: association.trim().slice(0, MAX_LABEL2) }, mail);
-  return sent ? DONE : rejected("SEND_FAILED");
+  return sent ? DONE2 : rejected2("SEND_FAILED");
 }
 
 // src/outbox.ts
-import * as logger4 from "firebase-functions/logger";
+import * as logger5 from "firebase-functions/logger";
 import { randomUUID as randomUUID2 } from "node:crypto";
 import { FieldValue } from "firebase-admin/firestore";
 var OUTBOX_SCHEMA = 1;
@@ -754,17 +1033,17 @@ function rewriteHeaders(raw, from, fromName, to, now) {
   ];
   return head.join("\r\n") + "\r\n" + raw.slice(end + eol.length);
 }
-var isClaimable3 = (d) => d.status === "PENDING";
-var errorCode3 = (e) => {
+var isClaimable4 = (d) => d.status === "PENDING";
+var errorCode4 = (e) => {
   const code = e?.code;
   return code === void 0 ? "" : String(code);
 };
 async function onOutboxDocument(db, mail, orgId, id, current) {
-  if (current === void 0 || !isClaimable3(current)) return;
+  if (current === void 0 || !isClaimable4(current)) return;
   const ref = db.doc(`orgs/${orgId}/mailOutbox/${id}`);
   let reason;
   try {
-    const claimed = await claim(ref, isClaimable3);
+    const claimed = await claim(ref, isClaimable4);
     if (claimed === null) return;
     reason = await sendClaimed(mail, claimed);
     await ref.set(
@@ -772,15 +1051,15 @@ async function onOutboxDocument(db, mail, orgId, id, current) {
       { merge: true }
     );
   } catch (e) {
-    logger4.error("outbox mail failed", { orgId, id, code: errorCode3(e) });
+    logger5.error("outbox mail failed", { orgId, id, code: errorCode4(e) });
     return;
   }
   try {
     await touchStatus(db, orgId);
   } catch (e) {
-    logger4.error("server status not written", { orgId, id, code: errorCode3(e) });
+    logger5.error("server status not written", { orgId, id, code: errorCode4(e) });
   }
-  logger4.info("outbox mail processed", { orgId, id, reason });
+  logger5.info("outbox mail processed", { orgId, id, reason });
 }
 async function sendClaimed(mail, claimed) {
   const parsed = parseOutbox(claimed);
@@ -844,15 +1123,28 @@ var onMailOutboxWritten = onDocumentWritten(
     await onOutboxDocument(db, mail, event.params.orgId, event.params.mailId, after.data());
   }
 );
+var onPortalGoogleClaimWritten = onDocumentWritten(
+  { document: "orgs/{orgId}/portalGoogleClaims/{googleUid}", region: REGION, retry: false },
+  async (event) => {
+    const after = event.data?.after;
+    if (!after?.exists) return;
+    const { db } = admin();
+    await onGoogleClaimDocument(db, event.params.orgId, event.params.googleUid, after.data());
+  }
+);
 export {
   MAX_RAW_LENGTH,
   buildQrMail,
   cleanEmail,
   cleanName,
   cleanPhone,
+  domainAllowed,
   onMailOutboxWritten,
+  onPortalGoogleClaimWritten,
   onPortalRequestWritten,
   onSignupWritten,
+  parseDomains,
+  parseGoogleClaim,
   parseMailTemplate,
   parseOutbox,
   parseRequest,

@@ -23,21 +23,24 @@ New, optional: a personal web space for volunteers, and a refreshed look for eve
 - **Upcoming shifts** now show what the volunteer will earn for each one.
 - **Today's benefits** are shown in the volunteer space even when no NoctuList device is online.
 - **Rank removed from the volunteer space.** Volunteers no longer see their rank.
+- **Sign in with an association Google account (optional).** Associations with Google Workspace list their domains in Settings, Firebase, Volunteer portal (each checked by a DNS lookup; gmail.com is refused), then turn on "Connexion avec un compte Google". The admin sets the "Compte Google associatif" on the volunteer record and the volunteer links it at first sign-in, or, if none is set, links it themselves from "Mon compte" with "Associer mon compte Google" and can remove only a link they made. The Google account stays a separate Firebase account, so staff who are also volunteers keep their staff rights. E-mail and password sign-in still works.
 
 ### Security
 
-- Firestore rules **v14** and new Storage rules. A volunteer can only read their own filtered page; the wallet QR id, NFC data and admin flag never leave the devices. E-mail verification is required, every write is checked field by field, requests are throttled server-side, and the whole portal is closed by the rules while the setting is off.
+- Firestore rules **v15** and new Storage rules. A volunteer can only read their own filtered page; the wallet QR id, NFC data and admin flag never leave the devices. E-mail verification is required, every write is checked field by field, requests are throttled server-side, and the whole portal is closed by the rules while the setting is off.
 - E-mail/password accounts can never act as team members, even with an invitation code.
-- Strict Content-Security-Policy and security headers on the form site.
+- Strict Content-Security-Policy and security headers on the form site. Portal pages (`/v/**`, `/portal.html`) use `Cross-Origin-Opener-Policy: same-origin-allow-popups` for the Google window and their Content-Security-Policy also allows `https://apis.google.com` and frames from the site itself; Firebase's reserved `/__/` paths may be framed by the site itself only. Every other page keeps the strict policy.
 
 ### Upgrade notes
 
-- **Database:** Room 51 to 52 (volunteer `portalEnabled`, `portalUid`).
-- **Firestore and Storage rules:** republish both (`NOCTULIST_RULES_VERSION = 14`).
-- **Hosting:** export the form site again from the app and redeploy it.
+- **Database:** Room 51 to 52 (volunteer `portalEnabled`, `portalUid`), then 52 to 53 (`portalGoogleEmail`, `portalGoogleUid`, `portalGoogleLinkedBy`).
+- **Firestore and Storage rules:** republish both (`NOCTULIST_RULES_VERSION = 15`).
+- **Hosting:** export the form site again from the app and redeploy it (new security headers).
 - **All devices:** update NoctuList on every device. Older versions publish the old page format and do not wait for the server.
-- **Automatic processing (optional):** Blaze plan, Gmail app password, then `firebase deploy --only hosting,functions` from the exported folder (see FIREBASE_SETUP.md). Redeploy after this update: the new `onMailOutboxWritten` function sends the app's QR e-mails.
-- **Firebase Console, before turning the portal on:** Authentication, Sign-in method, enable **Email/Password**. Recommended: keep **Email enumeration protection** on.
+- **Automatic processing (optional):** Blaze plan, Gmail app password, then `firebase deploy --only hosting,functions` from the exported folder (see FIREBASE_SETUP.md). Redeploy after this update: the new `onMailOutboxWritten` function sends the app's QR e-mails and the new `portalGoogleClaims` trigger links Google accounts.
+- **Firebase Console, before turning the portal on:** Authentication, Sign-in method, enable **Email/Password**. Recommended: keep **Email enumeration protection** on. For Google sign-in, the Google provider is already on for the team; with a custom portal domain, add it under Authentication, Settings, Authorized domains. In Google Cloud Console, APIs and Services, Credentials, add to the Authorized redirect URIs of the Web OAuth client used by Firebase: `https://<project>.web.app/__/auth/handler`, `https://<project>.firebaseapp.com/__/auth/handler` and the same path on any custom portal domain.
+- **Check once after deploying:** the Google sign-in window was verified on the emulators only. On the real site, try "Se connecter avec Google" and "Associer mon compte Google", including on an iPhone. `redirect_uri_mismatch` means the redirect URI above is missing.
+- **Known limits:** while a link exists, the linked Google account can still see and change its own volunteer's photo even after the option or its domain is turned off (Storage rules read at most 2 documents). Turning the option off signs out live Google sessions only when their page next refreshes from the server.
 
 ---
 

@@ -24,6 +24,8 @@ import kotlin.test.assertTrue
 
 private const val ORG = "org-a"
 private const val UID = "PortalUid000000000000001"
+private const val GOOGLE_UID = "GoogleUid000000000000001"
+private const val LINK_CODE = "abcdefghijklmnopqrstuvwxyz0123456789_-AB"
 
 /** In-memory Firestore: documents per "collection/id", listeners fed by the test. */
 private class FakeGateway : NoOpFirestoreGateway() {
@@ -85,6 +87,8 @@ private class FakeHost(initial: List<Volunteer>) : VolunteerPortalHost {
     var canMail = true
     var mailSubject = "Your QR code"
     var mailTemplateEnabled = true
+    var googleEnabled = true
+    var googleDomains = listOf("asso.ch")
     private var pending = emptyList<VolunteerSignupForm>()
     private var hashes = emptyMap<String, String>()
 
@@ -95,6 +99,8 @@ private class FakeHost(initial: List<Volunteer>) : VolunteerPortalHost {
     override fun dateOffsetHours() = 0
     override fun institutionLogoPng() = ""
     override fun profilePhotosEnabled() = true
+    override fun portalGoogleEnabled() = googleEnabled
+    override fun portalGoogleDomains() = googleDomains
     override suspend fun volunteers() = volunteers.toList()
     override suspend fun createVolunteer(volunteer: Volunteer, photo: ByteArray?): Volunteer {
         created += volunteer
@@ -489,4 +495,333 @@ class VolunteerPortalServiceTest {
         assertTrue(host.volunteers.single().portalEnabled)
         assertEquals("", host.volunteers.single().portalUid)
     }
+
+    // region Google accounts
+
+    private val old get() = System.currentTimeMillis() - 150_000
+
+    private fun adminMatchClaim(email: String = "jean@asso.ch", at: Long = old) = mapOf(
+        "type" to "ADMIN_MATCH", "status" to "PENDING", "email" to email, "requestedAt" to at,
+    )
+
+    @Test
+    fun adminMatchClaimLinksTheVolunteerAndAnswersDone() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(
+            volunteer("V1", "lea@example.org", enabled = true, uid = UID)
+                .copy(portalGoogleEmail = "jean@asso.ch", portalGoogleLinkedBy = Volunteer.GOOGLE_LINKED_BY_ADMIN),
+        ))
+        startedService(gateway, host)
+        val key = "portalGoogleClaims/$GOOGLE_UID"
+        gateway.docs[key] = adminMatchClaim()
+        gateway.push("portalGoogleClaims")
+
+        val alias = gateway.docs["portalGoogleAccounts/$GOOGLE_UID"]!!
+        assertEquals(setOf("volunteerUid", "email", "linkedBy", "linkedAt"), alias.keys)
+        assertEquals(UID, alias["volunteerUid"])
+        assertEquals("jean@asso.ch", alias["email"])
+        assertEquals("ADMIN", alias["linkedBy"])
+        val v = host.volunteers.single()
+        assertEquals(GOOGLE_UID, v.portalGoogleUid)
+        assertEquals("ADMIN", v.portalGoogleLinkedBy)
+        assertEquals("DONE", gateway.docs[key]!!["status"])
+        assertEquals("", gateway.docs[key]!!["reason"])
+    }
+
+    @Test
+    fun adminMatchClaimDropsThePreviousAlias() = runBlocking {
+        val oldUid = "OldGoogleUid000000000001"
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(
+            volunteer("V1", "lea@example.org", enabled = true, uid = UID)
+                .copy(portalGoogleEmail = "jean@asso.ch", portalGoogleUid = oldUid, portalGoogleLinkedBy = "VOLUNTEER"),
+        ))
+        gateway.docs["portalGoogleAccounts/$oldUid"] = mapOf("volunteerUid" to UID)
+        startedService(gateway, host)
+        gateway.docs["portalGoogleClaims/$GOOGLE_UID"] = adminMatchClaim()
+        gateway.push("portalGoogleClaims")
+
+        assertEquals("DONE", gateway.docs["portalGoogleClaims/$GOOGLE_UID"]!!["status"])
+        assertNull(gateway.docs["portalGoogleAccounts/$oldUid"], "the previous Google account loses access")
+        assertEquals("VOLUNTEER", gateway.docs["portalGoogleAccounts/$GOOGLE_UID"]!!["linkedBy"])
+        val v = host.volunteers.single()
+        assertEquals(GOOGLE_UID, v.portalGoogleUid)
+        assertEquals("VOLUNTEER", v.portalGoogleLinkedBy)
+    }
+
+    @Test
+    fun freshClaimIsLeftToServer() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(
+            volunteer("V1", "lea@example.org", enabled = true, uid = UID).copy(portalGoogleEmail = "jean@asso.ch", portalGoogleLinkedBy = "ADMIN"),
+        ))
+        startedService(gateway, host)
+        val key = "portalGoogleClaims/$GOOGLE_UID"
+        gateway.docs[key] = adminMatchClaim(at = System.currentTimeMillis() - 30_000)
+        gateway.push("portalGoogleClaims")
+        assertEquals("PENDING", gateway.docs[key]!!["status"])
+        assertNull(gateway.docs["portalGoogleAccounts/$GOOGLE_UID"])
+    }
+
+    @Test
+    fun claimsWaitWhileTheGoogleOptionIsOff() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(
+            volunteer("V1", "lea@example.org", enabled = true, uid = UID).copy(portalGoogleEmail = "jean@asso.ch", portalGoogleLinkedBy = "ADMIN"),
+        ))
+        host.googleEnabled = false
+        startedService(gateway, host)
+        val key = "portalGoogleClaims/$GOOGLE_UID"
+        gateway.docs[key] = adminMatchClaim()
+        gateway.push("portalGoogleClaims")
+        assertEquals("PENDING", gateway.docs[key]!!["status"])
+    }
+
+    @Test
+    fun staleAliasIsDeletedWhenNoVolunteerMatches() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true, uid = UID)))
+        startedService(gateway, host)
+        gateway.docs["portalGoogleAccounts/$GOOGLE_UID"] = mapOf("volunteerUid" to "GoneUid0000000000000009")
+        gateway.docs["portalGoogleClaims/$GOOGLE_UID"] = adminMatchClaim()
+        gateway.push("portalGoogleClaims")
+        assertNull(gateway.docs["portalGoogleAccounts/$GOOGLE_UID"])
+        assertEquals("REJECTED", gateway.docs["portalGoogleClaims/$GOOGLE_UID"]!!["status"])
+        assertEquals("NO_MATCH", gateway.docs["portalGoogleClaims/$GOOGLE_UID"]!!["reason"])
+    }
+
+    @Test
+    fun linkCodeClaimLinksTheRequesterAndClearsTheCode() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true, uid = UID)))
+        startedService(gateway, host)
+        val requestKey = "portalRequests/${UID}_GOOGLE_LINK"
+        gateway.docs[requestKey] = mapOf(
+            "uid" to UID, "type" to "GOOGLE_LINK", "status" to "PENDING", "email" to "lea@example.org",
+            "codeHash" to PortalProjectionBuilder.sha256(LINK_CODE), "requestedAt" to old,
+        )
+        gateway.push("portalRequests")
+        assertEquals("PENDING", gateway.docs[requestKey]!!["status"], "GOOGLE_LINK waits for its claim")
+
+        val claimKey = "portalGoogleClaims/$GOOGLE_UID"
+        gateway.docs[claimKey] = mapOf(
+            "type" to "LINK_CODE", "status" to "PENDING", "email" to "Jean@Asso.ch", "code" to LINK_CODE, "requestedAt" to old,
+        )
+        gateway.push("portalGoogleClaims")
+
+        val alias = gateway.docs["portalGoogleAccounts/$GOOGLE_UID"]!!
+        assertEquals(UID, alias["volunteerUid"])
+        assertEquals("VOLUNTEER", alias["linkedBy"])
+        val v = host.volunteers.single()
+        assertEquals("jean@asso.ch", v.portalGoogleEmail)
+        assertEquals(GOOGLE_UID, v.portalGoogleUid)
+        assertEquals("VOLUNTEER", v.portalGoogleLinkedBy)
+        assertEquals("DONE", gateway.docs[claimKey]!!["status"])
+        assertEquals("", gateway.docs[claimKey]!!["code"])
+        assertEquals("DONE", gateway.docs[requestKey]!!["status"])
+    }
+
+    @Test
+    fun wrongLinkCodeIsRejectedAndTheCodeCleared() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true, uid = UID)))
+        startedService(gateway, host)
+        gateway.docs["portalRequests/${UID}_GOOGLE_LINK"] = mapOf(
+            "uid" to UID, "type" to "GOOGLE_LINK", "status" to "PENDING", "email" to "lea@example.org",
+            "codeHash" to PortalProjectionBuilder.sha256("another-code-another-code-another-code"), "requestedAt" to old,
+        )
+        gateway.push("portalRequests")
+        val claimKey = "portalGoogleClaims/$GOOGLE_UID"
+        gateway.docs[claimKey] = mapOf(
+            "type" to "LINK_CODE", "status" to "PENDING", "email" to "jean@asso.ch", "code" to LINK_CODE, "requestedAt" to old,
+        )
+        gateway.push("portalGoogleClaims")
+        assertEquals("REJECTED", gateway.docs[claimKey]!!["status"])
+        assertEquals("CODE", gateway.docs[claimKey]!!["reason"])
+        assertEquals("", gateway.docs[claimKey]!!["code"])
+        assertEquals("", host.volunteers.single().portalGoogleUid)
+        assertNull(gateway.docs["portalGoogleAccounts/$GOOGLE_UID"])
+    }
+
+    @Test
+    fun unlinkOfAVolunteerLinkRemovesAliasAndFields() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(
+            volunteer("V1", "lea@example.org", enabled = true, uid = UID)
+                .copy(portalGoogleEmail = "jean@asso.ch", portalGoogleUid = GOOGLE_UID, portalGoogleLinkedBy = "VOLUNTEER"),
+        ))
+        gateway.docs["portalGoogleAccounts/$GOOGLE_UID"] = mapOf("volunteerUid" to UID)
+        startedService(gateway, host)
+        val key = "portalRequests/${UID}_GOOGLE_UNLINK"
+        gateway.docs[key] = mapOf("uid" to UID, "type" to "GOOGLE_UNLINK", "status" to "PENDING", "email" to "lea@example.org")
+        gateway.push("portalRequests")
+        assertEquals("DONE", gateway.docs[key]!!["status"])
+        assertNull(gateway.docs["portalGoogleAccounts/$GOOGLE_UID"])
+        val v = host.volunteers.single()
+        assertEquals("", v.portalGoogleEmail)
+        assertEquals("", v.portalGoogleUid)
+        assertEquals("", v.portalGoogleLinkedBy)
+    }
+
+    @Test
+    fun unlinkOfAnAdminLinkIsRefused() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(
+            volunteer("V1", "lea@example.org", enabled = true, uid = UID)
+                .copy(portalGoogleEmail = "jean@asso.ch", portalGoogleUid = GOOGLE_UID, portalGoogleLinkedBy = "ADMIN"),
+        ))
+        gateway.docs["portalGoogleAccounts/$GOOGLE_UID"] = mapOf("volunteerUid" to UID)
+        startedService(gateway, host)
+        val key = "portalRequests/${UID}_GOOGLE_UNLINK"
+        gateway.docs[key] = mapOf("uid" to UID, "type" to "GOOGLE_UNLINK", "status" to "PENDING", "email" to "lea@example.org")
+        gateway.push("portalRequests")
+        assertEquals("REJECTED", gateway.docs[key]!!["status"])
+        assertEquals("ADMIN_LINK", gateway.docs[key]!!["reason"])
+        assertTrue(gateway.docs.containsKey("portalGoogleAccounts/$GOOGLE_UID"))
+        assertEquals(GOOGLE_UID, host.volunteers.single().portalGoogleUid)
+    }
+
+    @Test
+    fun revokingAccessDeletesTheGoogleAlias() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(
+            volunteer("V1", "lea@example.org", enabled = true, uid = UID)
+                .copy(portalGoogleEmail = "jean@asso.ch", portalGoogleUid = GOOGLE_UID, portalGoogleLinkedBy = "ADMIN"),
+        ))
+        gateway.docs["portalGoogleAccounts/$GOOGLE_UID"] = mapOf("volunteerUid" to UID)
+        assertTrue(service(gateway, host).revokeAccess(host.volunteers.single()))
+        assertNull(gateway.docs["portalGoogleAccounts/$GOOGLE_UID"])
+        val v = host.volunteers.single()
+        assertFalse(v.portalEnabled)
+        assertEquals("", v.portalGoogleUid)
+        assertEquals("jean@asso.ch", v.portalGoogleEmail, "an admin address stays for a later reopening")
+    }
+
+    @Test
+    fun assigningAGoogleAccountChecksDomainAndUniqueness() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(
+            volunteer("V1", "lea@example.org", enabled = true, uid = UID),
+            volunteer("V2", "max@example.org").copy(portalGoogleEmail = "max@asso.ch", portalGoogleLinkedBy = "ADMIN"),
+        ))
+        val service = service(gateway, host)
+        val lea = host.volunteers.first { it.id == "V1" }
+        assertEquals("INVALID", service.assignGoogleAccount(lea, "not an address"))
+        assertEquals("DOMAIN", service.assignGoogleAccount(lea, "lea@gmail.com"))
+        assertEquals("TAKEN", service.assignGoogleAccount(lea, " MAX@asso.ch "))
+        assertNull(service.assignGoogleAccount(lea, "Lea@Asso.ch"))
+        val saved = host.volunteers.first { it.id == "V1" }
+        assertEquals("lea@asso.ch", saved.portalGoogleEmail)
+        assertEquals("ADMIN", saved.portalGoogleLinkedBy)
+    }
+
+    @Test
+    fun assigningTheRosterAddressIsRefused() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(volunteer("V1", "lea@asso.ch", enabled = true, uid = UID)))
+        val lea = host.volunteers.single()
+        assertEquals("SAME_AS_EMAIL", service(gateway, host).assignGoogleAccount(lea, " Lea@Asso.ch "))
+        assertEquals("", host.volunteers.single().portalGoogleEmail)
+    }
+
+    @Test
+    fun forgettingADeletedVolunteerDeletesItsGoogleAlias() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(
+            volunteer("V1", "lea@example.org", enabled = true, uid = UID)
+                .copy(portalGoogleEmail = "jean@asso.ch", portalGoogleUid = GOOGLE_UID, portalGoogleLinkedBy = "ADMIN"),
+        ))
+        gateway.docs["portalGoogleAccounts/$GOOGLE_UID"] = mapOf("volunteerUid" to UID)
+        service(gateway, host).forgetGoogleAlias(host.volunteers.single())
+        assertNull(gateway.docs["portalGoogleAccounts/$GOOGLE_UID"])
+    }
+
+    @Test
+    fun changingTheAssignedAddressDropsTheOldLink() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(
+            volunteer("V1", "lea@example.org", enabled = true, uid = UID)
+                .copy(portalGoogleEmail = "jean@asso.ch", portalGoogleUid = GOOGLE_UID, portalGoogleLinkedBy = "VOLUNTEER"),
+        ))
+        gateway.docs["portalGoogleAccounts/$GOOGLE_UID"] = mapOf("volunteerUid" to UID)
+        val service = service(gateway, host)
+        assertNull(service.assignGoogleAccount(host.volunteers.single(), "lea@asso.ch"))
+        assertNull(gateway.docs["portalGoogleAccounts/$GOOGLE_UID"])
+        val v = host.volunteers.single()
+        assertEquals("lea@asso.ch", v.portalGoogleEmail)
+        assertEquals("", v.portalGoogleUid)
+        assertEquals("ADMIN", v.portalGoogleLinkedBy)
+    }
+
+    @Test
+    fun removingTheGoogleAccountClearsEverything() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(
+            volunteer("V1", "lea@example.org", enabled = true, uid = UID)
+                .copy(portalGoogleEmail = "jean@asso.ch", portalGoogleUid = GOOGLE_UID, portalGoogleLinkedBy = "ADMIN"),
+        ))
+        gateway.docs["portalGoogleAccounts/$GOOGLE_UID"] = mapOf("volunteerUid" to UID)
+        assertTrue(service(gateway, host).removeGoogleAccount(host.volunteers.single()))
+        assertNull(gateway.docs["portalGoogleAccounts/$GOOGLE_UID"])
+        val v = host.volunteers.single()
+        assertEquals("", v.portalGoogleEmail)
+        assertEquals("", v.portalGoogleUid)
+        assertEquals("", v.portalGoogleLinkedBy)
+    }
+
+    @Test
+    fun projectionAndBrandingCarryTheGoogleState() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true, uid = UID)))
+        service(gateway, host).start(MutableStateFlow(host.volunteers.toList()), MutableStateFlow(emptyList()),
+            MutableStateFlow(emptyList()), MutableStateFlow(emptyList()))
+        withTimeout(5_000) { while (gateway.docs["volunteerPortal/$UID"] == null) delay(20) }
+        val payload = gateway.docs["volunteerPortal/$UID"]!!["payload"] as String
+        assertTrue(payload.contains("\"googleEmail\":\"\""))
+        assertTrue(payload.contains("\"googleLinkedBy\":\"\""))
+        assertTrue(payload.contains("\"googleLinkAvailable\":true"))
+        assertEquals(true, gateway.docs["portalBranding/default"]!!["googleLogin"])
+    }
+
+    @Test
+    fun brandingHidesGoogleLoginWithoutDomains() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(emptyList())
+        host.googleDomains = emptyList()
+        service(gateway, host).start(MutableStateFlow(emptyList()), MutableStateFlow(emptyList()),
+            MutableStateFlow(emptyList()), MutableStateFlow(emptyList()))
+        withTimeout(5_000) { while (gateway.docs["portalBranding/default"] == null) delay(20) }
+        assertEquals(false, gateway.docs["portalBranding/default"]!!["googleLogin"])
+    }
+
+    @Test
+    fun republishPicksUpAChangedGoogleOption() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true, uid = UID)))
+        val svc = service(gateway, host)
+        svc.start(MutableStateFlow(host.volunteers.toList()), MutableStateFlow(emptyList()),
+            MutableStateFlow(emptyList()), MutableStateFlow(emptyList()))
+        withTimeout(5_000) { while (gateway.docs["volunteerPortal/$UID"] == null) delay(20) }
+        assertEquals(true, gateway.docs["portalBranding/default"]!!["googleLogin"])
+        host.googleEnabled = false
+        svc.republish()
+        assertEquals(false, gateway.docs["portalBranding/default"]!!["googleLogin"])
+        assertTrue((gateway.docs["volunteerPortal/$UID"]!!["payload"] as String).contains("\"googleLinkAvailable\":false"))
+    }
+
+    @Test
+    fun republishPicksUpAnEmptiedDomainList() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(emptyList())
+        val svc = service(gateway, host)
+        svc.start(MutableStateFlow(emptyList()), MutableStateFlow(emptyList()),
+            MutableStateFlow(emptyList()), MutableStateFlow(emptyList()))
+        withTimeout(5_000) { while (gateway.docs["portalBranding/default"] == null) delay(20) }
+        assertEquals(true, gateway.docs["portalBranding/default"]!!["googleLogin"])
+        host.googleDomains = emptyList()
+        svc.republish()
+        assertEquals(false, gateway.docs["portalBranding/default"]!!["googleLogin"])
+    }
+
+    // endregion
 }

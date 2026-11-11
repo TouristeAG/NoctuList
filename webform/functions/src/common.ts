@@ -117,3 +117,20 @@ export function minimalProjection(v: MinimalProjectionInput, now = Date.now()): 
   });
   return { schema: PROJECTION_SCHEMA, payload, contentHash: sha256(payload), updatedAt: now };
 }
+
+/**
+ * The published page with the new profile fields, or null when there is none or it cannot be
+ * read (a device republishes it anyway once the roster entry changes). Key order is kept.
+ */
+export function patchedProjection(data: Data | undefined, fields: Data, now: number): Data | null {
+  if (data === undefined || typeof data.payload !== "string") return null;
+  let payload: unknown;
+  try {
+    payload = JSON.parse(data.payload);
+  } catch {
+    return null;
+  }
+  if (payload === null || typeof payload !== "object" || Array.isArray(payload)) return null;
+  const text = JSON.stringify({ ...(payload as Data), ...fields });
+  return { payload: text, contentHash: sha256(text), updatedAt: now };
+}

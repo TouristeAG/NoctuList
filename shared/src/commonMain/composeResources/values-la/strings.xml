@@ -2354,6 +2354,16 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="portal_settings_title">Porta voluntariorum</string>
     <string name="portal_settings_body">Quisque voluntarius spatium personale in situ formularum accipit: profilum, vices, commoda et crumenam. Primum in pagina configurationis Firebase para (modi aditus, regulae, situs formularum), deinde hic accende. Tractationem automaticam optionalem adde ut petitiones intra secundas tractentur.</string>
     <string name="portal_enable">Portam voluntariorum accende</string>
+    <string name="portal_google_title">Aditus per rationem Google</string>
+    <string name="portal_google_domains_label">Dominia Google Workspace voluntariorum</string>
+    <string name="portal_google_domain_hint">Dominium (e.g. association.ch)</string>
+    <string name="portal_google_verify_add">Proba et adde</string>
+    <string name="portal_google_domain_remove">Dominium remove</string>
+    <string name="portal_google_other">Hoc dominium Google Workspace non adhibet</string>
+    <string name="portal_google_not_found">Dominium non inventum</string>
+    <string name="portal_google_error">Probatio fieri non potuit, iterum conare</string>
+    <string name="portal_google_enable">Voluntariis permitte ut per rationem Google introeant</string>
+    <string name="portal_google_needs_domain">Adde dominium a Google Workspace administratum ut haec optio accendatur</string>
     <string name="portal_sign_in_url">Pagina aditus: %1$s</string>
     <string name="portal_server_active">Processus automaticus activus est. Ultimum cursum: %1$s</string>
     <string name="portal_server_inactive">Nullus processus automaticus adhuc visus est. Instrumentum NoctuList petitiones tractat cum in linea est.</string>
@@ -2477,4 +2487,16 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="setup_login_code">Codex paginae aditus</string>
     <string name="setup_login_finish">Aditum perfice</string>
     <string name="setup_btn_run_again">Iterum exsequere</string>
+    <string name="portal_access_google_title">Ratio Google consociationis</string>
+    <string name="portal_access_google_hint">Inscriptio Google</string>
+    <string name="portal_access_google_pending">Primum aditum exspectat</string>
+    <string name="portal_access_google_linked">Coniuncta</string>
+    <string name="portal_access_google_by_volunteer">a voluntario</string>
+    <string name="portal_access_google_err_domain">Haec inscriptio non est in dominiis permissis</string>
+    <string name="portal_access_google_err_taken">Haec inscriptio iam alii voluntario adiuncta est</string>
+    <string name="portal_access_google_err_same_as_email">Inscriptione societatis utere, non privata voluntarii</string>
+    <string name="portal_access_google_err_invalid">Inscriptio non valida</string>
+    <string name="portal_access_google_err_save">Servare non potuit, iterum conare.</string>
+    <string name="portal_access_google_remove_title">Rationem Google removere?</string>
+    <string name="portal_access_google_remove_body">%1$s non iam per %2$s intrare poterit. Aditus per tesseram manet.</string>
 </resources>

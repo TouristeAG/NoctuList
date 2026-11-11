@@ -22,6 +22,29 @@ service firebase.storage {
              .data.get('value', '') in ['true', true];
     }
 
+    function googleAliasPath(orgId) {
+      return /databases/(default)/documents/orgs/$(orgId)/portalGoogleAccounts/$(request.auth.uid);
+    }
+
+    function isGoogleAccount() {
+      return request.auth != null
+        && request.auth.token.get('firebase', {}).get('sign_in_provider', '') == 'google.com'
+        && request.auth.token.get('email_verified', false) == true
+        && request.auth.token.get('email', '') is string;
+    }
+
+    // Storage rules may read at most 2 Firestore documents per evaluation, so the Google branches
+    // below only check the alias written by staff (plus members or one setting). Unlike
+    // firestore.rules they do not check the portal switch, the Google option or the domain list:
+    // while the alias exists, the linked Google account keeps reading and replacing its own
+    // volunteer's portal photo even if the option or its domain is turned off. The Firestore
+    // rules still close the page and the PROFILE request that would use an upload.
+    // A missing alias makes .data an error, which refuses the request.
+    function googleAliasPhoto(orgId) {
+      // Strict read: no alias or no volunteerUid is an error, and an error denies.
+      return firestore.get(googleAliasPath(orgId)).data.volunteerUid + '.jpg';
+    }
+
     function profilePhotosOn(orgId) {
       return firestore.exists(/databases/(default)/documents/orgs/$(orgId)/institutionSettings/profile_photos_enabled)
         && firestore.get(/databases/(default)/documents/orgs/$(orgId)/institutionSettings/profile_photos_enabled)
@@ -92,10 +115,15 @@ service firebase.storage {
     // deletes it, so the volunteer may only write their own file and never read it back.
     match /orgs/{orgId}/portalPhotoUploads/{fileName} {
       allow read, delete: if isMember(orgId);
-      allow create, update: if isPortalUser()
-        && portalOn(orgId)
-        && profilePhotosOn(orgId)
-        && fileName == request.auth.uid + '.jpg'
+      allow create, update: if (
+          (isPortalUser()
+            && portalOn(orgId)
+            && profilePhotosOn(orgId)
+            && fileName == request.auth.uid + '.jpg')
+          || (isGoogleAccount()
+            && profilePhotosOn(orgId)
+            && fileName == googleAliasPhoto(orgId))
+        )
         && request.resource.size < 3 * 1024 * 1024
         && request.resource.contentType.matches('image/jpeg');
     }
@@ -104,7 +132,9 @@ service firebase.storage {
     // account id — never by the volunteer id, which doubles as the wallet QR code.
     match /orgs/{orgId}/portalPhotos/{fileName} {
       allow read: if isMember(orgId)
-        || (portalOn(orgId) && isPortalUser() && fileName == request.auth.uid + '.jpg');
+        // isPortalUser() first: a Google session must not spend a read on the portal switch.
+        || (isPortalUser() && portalOn(orgId) && fileName == request.auth.uid + '.jpg')
+        || (isGoogleAccount() && fileName == googleAliasPhoto(orgId));
       allow create, update: if isMember(orgId)
         && request.resource.size < 3 * 1024 * 1024
         && request.resource.contentType.matches('image/jpeg');

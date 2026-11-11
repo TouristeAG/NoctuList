@@ -19,6 +19,9 @@ cases.forEach((c, i) => {
       case "parseRequest":
         actual = lib.parseRequest(c.input.requestId, c.input.data);
         break;
+      case "parseGoogleClaim":
+        actual = lib.parseGoogleClaim(c.input.googleUid, c.input.data);
+        break;
       default:
         actual = lib[c.fn](c.input);
     }

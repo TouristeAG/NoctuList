@@ -154,7 +154,18 @@ data class Volunteer(
     val portalEnabled: Boolean = false,
     /** Firebase Auth uid of the linked portal account; empty until linked. Firebase only. */
     val portalUid: String = "",
-)
+    /** Association Google account linked to this volunteer; empty until linked. Firebase only. */
+    val portalGoogleEmail: String = "",
+    /** Firebase Auth uid of the linked Google account; empty until linked. Firebase only. */
+    val portalGoogleUid: String = "",
+    /** Who linked the Google account: [GOOGLE_LINKED_BY_ADMIN], [GOOGLE_LINKED_BY_VOLUNTEER] or empty. Firebase only. */
+    val portalGoogleLinkedBy: String = "",
+) {
+    companion object {
+        const val GOOGLE_LINKED_BY_ADMIN = "ADMIN"
+        const val GOOGLE_LINKED_BY_VOLUNTEER = "VOLUNTEER"
+    }
+}
 
 @Entity(
     tableName = "jobs",

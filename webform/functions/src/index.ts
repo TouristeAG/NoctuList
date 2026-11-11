@@ -7,12 +7,14 @@ import { defineSecret, defineString } from "firebase-functions/params";
 import { onRequestDocument } from "./requests";
 import { onSignupDocument } from "./signup";
 import { onOutboxDocument } from "./outbox";
+import { onGoogleClaimDocument } from "./google";
 
-export { cleanName, cleanPhone, cleanEmail, parseSignup, parseRequest } from "./validate";
-export type { SignupSubmission, PortalRequest, PortalRequestType } from "./validate";
+export { cleanName, cleanPhone, cleanEmail, parseSignup, parseRequest, parseGoogleClaim } from "./validate";
+export type { SignupSubmission, PortalRequest, PortalRequestType, PortalGoogleClaim, PortalGoogleClaimType } from "./validate";
 export { buildQrMail, parseMailTemplate, safeRecipient, sendMail, sendRawMail, smtpOptions } from "./mail";
 export type { MailTemplate, MailTransport, OutgoingMail, QrMail, RawOutgoingMail, SmtpClient } from "./mail";
 export { parseOutbox, rewriteHeaders, MAX_RAW_LENGTH } from "./outbox";
+export { domainAllowed, parseDomains } from "./google";
 
 const REGION = defineString("REGION", { default: "europe-west1" });
 /** The association's Gmail address that sends the QR e-mails. */
@@ -70,5 +72,16 @@ export const onMailOutboxWritten = onDocumentWritten(
     const { db } = admin();
     const mail = { db, user: () => GMAIL_USER.value(), password: () => GMAIL_APP_PASSWORD.value() };
     await onOutboxDocument(db, mail, event.params.orgId, event.params.mailId, after.data());
+  },
+);
+
+/** Google account links claimed by the portal page after a Google sign-in. */
+export const onPortalGoogleClaimWritten = onDocumentWritten(
+  { document: "orgs/{orgId}/portalGoogleClaims/{googleUid}", region: REGION, retry: false },
+  async (event) => {
+    const after = event.data?.after;
+    if (!after?.exists) return;
+    const { db } = admin();
+    await onGoogleClaimDocument(db, event.params.orgId, event.params.googleUid, after.data());
   },
 );

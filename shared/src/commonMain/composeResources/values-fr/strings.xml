@@ -2348,6 +2348,16 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="portal_settings_title">Plateforme bénévole</string>
     <string name="portal_settings_body">Chaque bénévole obtient un espace web personnel sur le site des formulaires : profil, shifts, avantages et porte-monnaie. Préparez-le d\'abord sur la page de configuration Firebase (méthodes de connexion, règles, site des formulaires), puis activez-le ici. Ajoutez le traitement automatique facultatif pour que les demandes soient traitées en quelques secondes.</string>
     <string name="portal_enable">Activer la plateforme bénévole</string>
+    <string name="portal_google_title">Connexion avec un compte Google</string>
+    <string name="portal_google_domains_label">Domaines Google Workspace des bénévoles</string>
+    <string name="portal_google_domain_hint">Domaine (ex. association.ch)</string>
+    <string name="portal_google_verify_add">Vérifier et ajouter</string>
+    <string name="portal_google_domain_remove">Retirer le domaine</string>
+    <string name="portal_google_other">Ce domaine n\'utilise pas Google Workspace</string>
+    <string name="portal_google_not_found">Domaine introuvable</string>
+    <string name="portal_google_error">Vérification impossible, réessayez</string>
+    <string name="portal_google_enable">Permettre aux bénévoles de se connecter avec un compte Google</string>
+    <string name="portal_google_needs_domain">Ajoutez un domaine géré par Google Workspace pour activer cette option</string>
     <string name="portal_sign_in_url">Page de connexion : %1$s</string>
     <string name="portal_server_active">Le traitement automatique est actif. Dernière exécution : %1$s</string>
     <string name="portal_server_inactive">Aucun traitement automatique constaté pour l\'instant. Un appareil NoctuList traite les demandes lorsqu\'il est en ligne.</string>
@@ -2471,4 +2481,16 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="setup_login_code">Code de la page de connexion</string>
     <string name="setup_login_finish">Terminer la connexion</string>
     <string name="setup_btn_run_again">Relancer</string>
+    <string name="portal_access_google_title">Compte Google associatif</string>
+    <string name="portal_access_google_hint">Adresse Google</string>
+    <string name="portal_access_google_pending">En attente de la première connexion</string>
+    <string name="portal_access_google_linked">Lié</string>
+    <string name="portal_access_google_by_volunteer">par le bénévole</string>
+    <string name="portal_access_google_err_domain">Cette adresse n\'est pas dans les domaines autorisés</string>
+    <string name="portal_access_google_err_taken">Cette adresse est déjà associée à un autre bénévole</string>
+    <string name="portal_access_google_err_same_as_email">Utilise l\'adresse de l\'association, pas l\'adresse personnelle du bénévole.</string>
+    <string name="portal_access_google_err_invalid">Adresse invalide</string>
+    <string name="portal_access_google_err_save">L\'enregistrement a échoué, réessayez.</string>
+    <string name="portal_access_google_remove_title">Retirer le compte Google ?</string>
+    <string name="portal_access_google_remove_body">%1$s ne pourra plus se connecter avec %2$s. La connexion par mot de passe reste possible.</string>
 </resources>

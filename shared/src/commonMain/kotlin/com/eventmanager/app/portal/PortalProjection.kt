@@ -37,6 +37,8 @@ data class PortalProjectionInput(
     /** Changes whenever the published photo changes, so the page reloads it. */
     val photoVersion: String,
     val mustSetPassword: Boolean,
+    /** Google sign-in is on with at least one verified domain: the page may offer "link my Google account". */
+    val googleLinkAllowed: Boolean = false,
     val now: Long,
     val offsetHours: Int,
 )
@@ -108,6 +110,11 @@ object PortalProjectionBuilder {
             put("qrEmailAllowed", !volunteer.isAdmin && volunteer.email.isNotBlank())
             put("mustSetPassword", input.mustSetPassword)
             put("association", input.associationName.trim().take(MAX_LABEL))
+            // The Google uid stays on the device: the page only needs the address and who linked it.
+            val googleEmail = volunteer.portalGoogleEmail.trim()
+            put("googleEmail", googleEmail)
+            put("googleLinkedBy", volunteer.portalGoogleLinkedBy.trim())
+            put("googleLinkAvailable", input.googleLinkAllowed && googleEmail.isEmpty())
         }.toString()
         return PortalProjection(payload = payload, contentHash = sha256(payload))
     }

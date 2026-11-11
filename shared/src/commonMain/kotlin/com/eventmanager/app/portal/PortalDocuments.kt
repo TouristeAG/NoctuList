@@ -65,7 +65,28 @@ data class SignupSubmission(
     val lang: String,
 )
 
-enum class PortalRequestType { PROFILE, QR_EMAIL, CLAIM }
+enum class PortalRequestType { PROFILE, QR_EMAIL, CLAIM, GOOGLE_LINK, GOOGLE_UNLINK }
+
+enum class PortalGoogleClaimType { ADMIN_MATCH, LINK_CODE }
+
+/** `orgs/{orgId}/portalGoogleClaims/{googleUid}` written by a signed-in association Google account. */
+data class PortalGoogleClaim(
+    val googleUid: String,
+    val type: PortalGoogleClaimType,
+    val status: String,
+    val email: String,
+    /** LINK_CODE only: the plaintext one-time link code. */
+    val code: String = "",
+) {
+    companion object {
+        const val COLLECTION = "portalGoogleClaims"
+    }
+}
+
+/** `orgs/{orgId}/portalGoogleAccounts/{googleUid}` maps a Google account to a volunteer. */
+object PortalGoogleAccount {
+    const val COLLECTION = "portalGoogleAccounts"
+}
 
 /** `orgs/{orgId}/portalServer/status`, written by the Cloud Functions after each run. */
 data class PortalServerStatus(val version: String, val lastRunAt: Long) {
@@ -92,6 +113,8 @@ data class PortalRequest(
     val phone: String = "",
     /** PROFILE only: a new photo waits in `portalPhotoUploads/{uid}.jpg`. */
     val photo: Boolean = false,
+    /** GOOGLE_LINK only: SHA-256 hex of the one-time link code. */
+    val codeHash: String = "",
 ) {
     companion object {
         const val COLLECTION = "portalRequests"
@@ -115,6 +138,8 @@ object PortalInputValidator {
     private val DATE = Regex("^(19|20)[0-9]{2}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$")
     private val EMAIL = Regex("^[^@\\s]{1,64}@[^@\\s]{1,190}\\.[^@\\s]{2,}$")
     private val UID = Regex("^[A-Za-z0-9]{6,128}$")
+    private val CODE_HASH = Regex("^[0-9a-f]{64}$")
+    private val LINK_CODE = Regex("^[A-Za-z0-9_-]{32,64}$")
     private val LANGS = setOf("fr", "en", "es", "de", "it")
 
     fun cleanName(raw: Any?): String? {
@@ -178,8 +203,28 @@ object PortalInputValidator {
                 phone = cleanPhone(data["phone"]) ?: return null,
                 photo = data["photo"] == true,
             )
+            PortalRequestType.GOOGLE_LINK -> PortalRequest(
+                requestId = requestId,
+                uid = uid,
+                type = type,
+                status = status,
+                email = email,
+                codeHash = (data["codeHash"] as? String)?.takeIf { CODE_HASH.matches(it) } ?: return null,
+            )
             else -> PortalRequest(requestId = requestId, uid = uid, type = type, status = status, email = email)
         }
+    }
+
+    fun parseGoogleClaim(googleUid: String, data: Map<String, Any?>): PortalGoogleClaim? {
+        if (!UID.matches(googleUid)) return null
+        val type = runCatching { PortalGoogleClaimType.valueOf(data["type"].toString()) }.getOrNull() ?: return null
+        val email = cleanEmail(data["email"]) ?: return null
+        val status = data["status"]?.toString().orEmpty()
+        val code = when (type) {
+            PortalGoogleClaimType.LINK_CODE -> (data["code"] as? String)?.takeIf { LINK_CODE.matches(it) } ?: return null
+            PortalGoogleClaimType.ADMIN_MATCH -> ""
+        }
+        return PortalGoogleClaim(googleUid, type, status, email, code)
     }
 }
 

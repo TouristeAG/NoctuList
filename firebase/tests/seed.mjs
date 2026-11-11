@@ -12,6 +12,9 @@ const HOST = "127.0.0.1";
 const DAY = 24 * 60 * 60 * 1000;
 
 const now = Date.now();
+// Google sign-in demo: the association's Workspace domain and the address an admin entered for Jean.
+export const GOOGLE_DOMAIN = "asso.example";
+export const JEAN_GOOGLE = `jean@${GOOGLE_DOMAIN}`;
 
 async function createAuthUser(email, password, emailVerified) {
   const base = `http://${HOST}:9099/identitytoolkit.googleapis.com/v1`;
@@ -53,6 +56,7 @@ export async function seed() {
   });
   await env.clearFirestore();
   const portalUid = await createAuthUser("lea.demo@example.org", "Demo-Passw0rd!", true);
+  const jeanUid = await createAuthUser("jean.demo@example.org", "Demo-Passw0rd!", true);
 
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
@@ -60,6 +64,17 @@ export async function seed() {
     await setDoc(org("metadata/config"), { createdAt: now });
     await setDoc(org("institutionSettings/volunteer_portal_enabled"), { value: "true", lastModified: now });
     await setDoc(org("institutionSettings/profile_photos_enabled"), { value: "true", lastModified: now });
+    await setDoc(org("institutionSettings/volunteer_portal_google_enabled"), { value: "true", lastModified: now });
+    await setDoc(org("institutionSettings/volunteer_portal_google_domains"), { value: GOOGLE_DOMAIN, lastModified: now });
+
+    // Roster entries the Google link is decided on: Léa links her own account from the portal,
+    // Jean has an address an admin entered (signing in with it links him).
+    const volunteer = (id, name, lastName, email, uid, googleEmail, linkedBy) => setDoc(org(`volunteers/${id}`), {
+      id, name, lastNameAbbreviation: lastName, email, phone: "079 000 00 00", isAdmin: false, lastModified: now,
+      portalEnabled: true, portalUid: uid, portalGoogleEmail: googleEmail, portalGoogleUid: "", portalGoogleLinkedBy: linkedBy,
+    });
+    await volunteer("volunteerdemolea0001x", "Léa", "MARTIN", "lea.demo@example.org", portalUid, "", "");
+    await volunteer("volunteerdemojean001x", "Jean", "DUPONT", "jean.demo@example.org", jeanUid, JEAN_GOOGLE, "ADMIN");
 
     await setDoc(org("guestForms/demoGuestForm0001"), {
       formId: "demoGuestForm0001",
@@ -103,6 +118,7 @@ export async function seed() {
     await setDoc(org("portalBranding/default"), {
       associationName: "Association Démo",
       logoDataUri: "",
+      googleLogin: true,
       lastModified: now,
     });
 
@@ -133,7 +149,10 @@ export async function seed() {
         { at: now - 16 * DAY, type: "MANUAL_ADJUSTMENT", amount: 10, label: "Bonus montage", venue: "" },
       ],
     };
-    const tail = { wallet, qrEmailAllowed: true, mustSetPassword: false, association: "Association Démo" };
+    const tail = {
+      wallet, qrEmailAllowed: true, mustSetPassword: false, association: "Association Démo",
+      googleEmail: "", googleLinkedBy: "", googleLinkAvailable: true,
+    };
     const benefit = (description, fields) => ({
       description, freeEntry: false, friendInvitation: false, inviteCount: 0, drinkTokens: 0, barDiscount: 0,
       guestListAccess: false, validUntil: null, futureEntriesRemaining: null, futureEntryInvites: null, ...fields,
@@ -206,15 +225,27 @@ export async function seed() {
       contentHash: "demo",
       updatedAt: now - 3 * 60 * 1000,
     });
+    const jean = {
+      ...payload, firstName: "Jean", lastName: "DUPONT", email: "jean.demo@example.org",
+      googleEmail: JEAN_GOOGLE, googleLinkedBy: "ADMIN", googleLinkAvailable: false,
+    };
+    await setDoc(org(`volunteerPortal/${jeanUid}`), {
+      schema: jean.timeline ? 2 : 1,
+      payload: JSON.stringify(jean),
+      contentHash: "demo",
+      updatedAt: now - 3 * 60 * 1000,
+    });
   });
   await env.cleanup();
-  return { portalUid };
+  return { portalUid, jeanUid };
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   seed()
     .then(({ portalUid }) => {
       console.log("Seeded demo-org. Portal login: lea.demo@example.org / Demo-Passw0rd!  uid", portalUid);
+      console.log(`Also jean.demo@example.org (same password). Google sign-in: ${JEAN_GOOGLE} is matched by the`);
+      console.log(`admin address; any other @${GOOGLE_DOMAIN} account can be linked from Léa's "My account".`);
       console.log("Guest form   http://127.0.0.1:5002/g/demo-org/demoGuestForm0001");
       console.log("Photo        http://127.0.0.1:5002/p/demo-org/demoPhotoReq0001");
       console.log("Signup       http://127.0.0.1:5002/s/demo-org/demoSignupForm0001");

@@ -84,6 +84,18 @@ class SharedValidationCasesTest {
                             "requestId" to it.requestId, "uid" to it.uid, "type" to it.type.name,
                             "status" to it.status, "email" to it.email, "firstName" to it.firstName,
                             "lastName" to it.lastName, "phone" to it.phone, "photo" to it.photo,
+                        ) + if (it.codeHash.isEmpty()) emptyMap() else mapOf("codeHash" to it.codeHash)
+                    }
+                    assertEquals(expect.toKotlin(), actualMap, label)
+                }
+                "parseGoogleClaim" -> {
+                    @Suppress("UNCHECKED_CAST")
+                    val data = input.jsonObject.getValue("data").toKotlin() as Map<String, Any?>
+                    val actual = PortalInputValidator.parseGoogleClaim(input.str("googleUid"), data)
+                    val actualMap = actual?.let {
+                        mapOf(
+                            "googleUid" to it.googleUid, "type" to it.type.name,
+                            "status" to it.status, "email" to it.email, "code" to it.code,
                         )
                     }
                     assertEquals(expect.toKotlin(), actualMap, label)

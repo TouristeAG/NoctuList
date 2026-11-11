@@ -1,10 +1,12 @@
 // Requests written by signed-in portal accounts: PROFILE (edit name, phone and photo), CLAIM (link an
-// existing roster entry by e-mail) and QR_EMAIL (mail the wallet QR code). Mirrors
+// existing roster entry by e-mail), QR_EMAIL (mail the wallet QR code) and GOOGLE_UNLINK (remove a
+// Google account the volunteer linked; GOOGLE_LINK is answered by google.ts). Mirrors
 // VolunteerPortalService.processRequest, handleClaim and complete (Kotlin); devices only step in
 // after their 2 minute grace period, or when a claim of ours is older than 5 minutes.
 import * as logger from "firebase-functions/logger";
 import type { DocumentReference, Firestore } from "firebase-admin/firestore";
-import { associationName, claim, millisOf, portalEnabled, sha256, touchStatus } from "./common";
+import { associationName, claim, millisOf, patchedProjection, portalEnabled, sha256, touchStatus } from "./common";
+import { unlinkGoogle } from "./google";
 import { buildQrMail, parseMailTemplate, safeRecipient, sendMail, type MailTransport } from "./mail";
 import { kotlinTrim, parseRequest, type PortalRequest } from "./validate";
 import { randomUUID } from "node:crypto";
@@ -29,7 +31,8 @@ export type RequestReason =
   | "NO_EMAIL"
   | "SEND_FAILED"
   | "SAVE_FAILED"
-  | "LINKED_ELSEWHERE";
+  | "LINKED_ELSEWHERE"
+  | "ADMIN_LINK";
 
 export interface RequestResult {
   status: "DONE" | "REJECTED";
@@ -42,10 +45,11 @@ const DONE: RequestResult = { status: "DONE", reason: "" };
 const rejected = (reason: Exclude<RequestReason, "">): RequestResult => ({ status: "REJECTED", reason });
 
 /**
- * Only pending requests. A PROCESSING claim, however old, is left to devices (their own clock
+ * Only pending requests, never GOOGLE_LINK: that one waits for the Google claim carrying its code
+ * (google.ts), which answers it. A PROCESSING claim, however old, is left to devices (their own clock
  * judges its age); the volunteer can also send the request again once it is 5 minutes old.
  */
-const isClaimable = (d: Data): boolean => d.status === STATUS_PENDING;
+const isClaimable = (d: Data): boolean => d.status === STATUS_PENDING && d.type !== "GOOGLE_LINK";
 
 /** stringOf (FirestoreChangeApplier): null is "", other values are their text. */
 const stringOf = (v: unknown): string => (v === null || v === undefined ? "" : typeof v === "string" ? v : String(v));
@@ -126,6 +130,13 @@ async function processClaimed(
       return handleClaim(db, orgId, requestId, request);
     case "QR_EMAIL":
       return sendQr(db, mail, orgId, request);
+    case "GOOGLE_UNLINK": {
+      const reason = await unlinkGoogle(db, orgId, requestId, request.uid);
+      return reason === "" ? DONE : rejected(reason);
+    }
+    case "GOOGLE_LINK":
+      // Never claimed (isClaimable): answered through its Google claim.
+      return rejected("INVALID");
   }
 }
 
@@ -243,23 +254,6 @@ async function savePhoto(
     `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(path)}` +
     `?alt=media&token=${token}`;
   return { path, url, version: sha256(url).slice(0, 16) };
-}
-
-/**
- * The published page with the new profile fields, or null when there is none or it cannot be
- * read (a device republishes it anyway once the roster entry changes). Key order is kept.
- */
-function patchedProjection(data: Data | undefined, fields: Data, now: number): Data | null {
-  if (data === undefined || typeof data.payload !== "string") return null;
-  let payload: unknown;
-  try {
-    payload = JSON.parse(data.payload);
-  } catch {
-    return null;
-  }
-  if (payload === null || typeof payload !== "object" || Array.isArray(payload)) return null;
-  const text = JSON.stringify({ ...(payload as Data), ...fields });
-  return { payload: text, contentHash: sha256(text), updatedAt: now };
 }
 
 /**

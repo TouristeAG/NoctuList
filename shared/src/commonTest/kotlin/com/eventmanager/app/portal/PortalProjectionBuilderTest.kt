@@ -83,6 +83,7 @@ class PortalProjectionBuilderTest {
         transfers: List<AccountTransfer> = emptyList(),
         at: Long = now,
         configs: List<JobTypeConfig> = emptyList(),
+        googleLinkAllowed: Boolean = false,
     ) = PortalProjectionInput(
         volunteer = v,
         jobs = jobs,
@@ -93,6 +94,7 @@ class PortalProjectionBuilderTest {
         hasPhoto = true,
         photoVersion = "abc",
         mustSetPassword = false,
+        googleLinkAllowed = googleLinkAllowed,
         now = at,
         offsetHours = 0,
     )
@@ -124,7 +126,7 @@ class PortalProjectionBuilderTest {
             listOf(
                 "firstName", "lastName", "email", "phone", "dateOfBirth", "gender", "hasPhoto", "photoVersion",
                 "shifts", "olderShifts", "lastShiftFloor", "timeline", "wallet", "qrEmailAllowed", "mustSetPassword",
-                "association",
+                "association", "googleEmail", "googleLinkedBy", "googleLinkAvailable",
             ),
             json.keys.toList(),
         )
@@ -292,5 +294,29 @@ class PortalProjectionBuilderTest {
         assertEquals(64, a.contentHash.length)
         val map = a.toFirestoreMap(updatedAt = 42L)
         assertEquals(setOf("schema", "payload", "contentHash", "updatedAt"), map.keys)
+    }
+
+    @Test
+    fun publishesTheGoogleLinkState() {
+        fun json(v: Volunteer, allowed: Boolean) =
+            Json.parseToJsonElement(PortalProjectionBuilder.build(input(v = v, googleLinkAllowed = allowed)).payload).jsonObject
+
+        val unlinked = json(volunteer, allowed = true)
+        assertEquals("", unlinked["googleEmail"]!!.jsonPrimitive.content)
+        assertEquals("", unlinked["googleLinkedBy"]!!.jsonPrimitive.content)
+        assertTrue(unlinked["googleLinkAvailable"]!!.jsonPrimitive.boolean)
+        assertFalse(json(volunteer, allowed = false)["googleLinkAvailable"]!!.jsonPrimitive.boolean)
+
+        val linked = volunteer.copy(
+            portalGoogleEmail = " jean@asso.ch ",
+            portalGoogleUid = "GoogleUidNeverPublished",
+            portalGoogleLinkedBy = Volunteer.GOOGLE_LINKED_BY_VOLUNTEER,
+        )
+        val payload = PortalProjectionBuilder.build(input(v = linked, googleLinkAllowed = true)).payload
+        val linkedJson = json(linked, allowed = true)
+        assertEquals("jean@asso.ch", linkedJson["googleEmail"]!!.jsonPrimitive.content)
+        assertEquals("VOLUNTEER", linkedJson["googleLinkedBy"]!!.jsonPrimitive.content)
+        assertFalse(linkedJson["googleLinkAvailable"]!!.jsonPrimitive.boolean)
+        assertFalse(payload.contains("GoogleUidNeverPublished"), "Google uid leaked")
     }
 }
