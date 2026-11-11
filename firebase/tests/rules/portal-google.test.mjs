@@ -10,6 +10,7 @@ import {
 import {
   Timestamp,
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -346,12 +347,37 @@ describe("storage", () => {
   test("not another one", async () => {
     await assertFails(getBytes(ref(google("g1").storage(), `orgs/${ORG}/portalPhotos/vol2.jpg`)));
     await assertFails(getBytes(ref(google("g2").storage(), `orgs/${ORG}/portalPhotos/vol1.jpg`)));
-    await assertFails(getBytes(ref(google("g1", "g1@other.example").storage(), `orgs/${ORG}/portalPhotos/vol1.jpg`)));
+    await assertFails(getBytes(ref(google("g2").storage(), `orgs/${ORG}/portalPhotos/.jpg`)));
+    await assertFails(getBytes(ref(portal("g1").storage(), `orgs/${ORG}/portalPhotos/vol1.jpg`)));
     await assertFails(uploadBytes(ref(google("g1").storage(), `orgs/${ORG}/portalPhotos/vol1.jpg`), jpeg, meta));
   });
 
-  test("photo access follows the Google option", async () => {
+  // Documented trade-off: Storage may read only 2 Firestore documents, so it checks the alias alone.
+  test("still reads it with the option off while the alias exists", async () => {
     await setSetting("volunteer_portal_google_enabled", "false");
+    await assertSucceeds(getBytes(ref(google("g1").storage(), `orgs/${ORG}/portalPhotos/vol1.jpg`)));
+    await seed((db) => deleteDoc(doc(db, path("portalGoogleAccounts/g1"))));
     await assertFails(getBytes(ref(google("g1").storage(), `orgs/${ORG}/portalPhotos/vol1.jpg`)));
+  });
+
+  test("staff google account with no alias still reads photos", async () => {
+    await assertSucceeds(getBytes(ref(google("staff1").storage(), `orgs/${ORG}/portalPhotos/vol1.jpg`)));
+    await assertSucceeds(getBytes(ref(google("staff1").storage(), `orgs/${ORG}/portalPhotos/vol2.jpg`)));
+  });
+
+  test("google session uploads a new photo under its volunteer's name only", async () => {
+    const upload = (ctx, name, m = meta) =>
+      uploadBytes(ref(ctx.storage(), `orgs/${ORG}/portalPhotoUploads/${name}`), jpeg, m);
+    await assertFails(upload(google("g1"), "vol1.jpg"));
+    await setSetting("profile_photos_enabled", "true");
+    await assertSucceeds(upload(google("g1"), "vol1.jpg"));
+    await assertFails(upload(google("g1"), "vol2.jpg"));
+    await assertFails(upload(google("g1"), "g1.jpg"));
+    await assertFails(upload(google("g2"), "vol1.jpg"));
+    await assertFails(upload(google("g2"), "g2.jpg"));
+    await assertFails(upload(google("g1"), "vol1.jpg", { contentType: "text/html" }));
+    await assertFails(getBytes(ref(google("g1").storage(), `orgs/${ORG}/portalPhotoUploads/vol1.jpg`)));
+    await setSetting("profile_photos_enabled", "false");
+    await assertFails(upload(google("g1"), "vol1.jpg"));
   });
 });
