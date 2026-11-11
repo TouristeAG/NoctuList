@@ -201,6 +201,7 @@ const T = {
     googleUnlinkPending: "Removing the Google account…",
     googleUnlinkAdmin: "The association linked this account. Only the association can remove it.",
     googleUnlinked: "Google account removed. Sign in with your e-mail and password.",
+    googleSlow: "Your profile could not be checked yet. Try again in a few minutes.",
   },
   fr: {
     shiftGains: "Ce shift te donne :",
@@ -380,7 +381,7 @@ const T = {
     googleWaitBody: "Recherche de la fiche bénévole liée à {email}…",
     googleNoMatch: "Ce compte Google n'est associé à aucun bénévole.",
     googleDomain: "Ce compte Google n'est pas accepté par l'association.",
-    googleFailed: "La connexion n'a pas pu être faite. Réessayez plus tard.",
+    googleFailed: "La connexion n'a pas pu être faite. Réessaie plus tard.",
     googleDisabled: "L'accès avec Google a été désactivé.",
     googlePopupBlocked: "La fenêtre de connexion a été bloquée. Autorise les fenêtres pop-up pour ce site, puis réessaie.",
     googleSection: "Compte Google",
@@ -391,13 +392,14 @@ const T = {
     googleLinking: "En attente du compte Google…",
     googleLinkDone: "Compte Google associé.",
     googleLinkLater: "Demande envoyée. Le compte Google apparaîtra ici une fois la demande traitée par l'équipe.",
-    googleCode: "Le lien a expiré, recommencez.",
+    googleCode: "Le lien a expiré, recommence.",
     googleTaken: "Ce compte Google est déjà utilisé.",
     googleAlreadyLinked: "Un compte Google est déjà associé à ta fiche.",
     googleWait: "Tu pourras réessayer dans une minute.",
     googleUnlinkPending: "Retrait du compte Google en cours…",
     googleUnlinkAdmin: "Ce compte a été associé par l'association. Elle seule peut le retirer.",
     googleUnlinked: "Compte Google retiré. Connecte-toi avec ton e-mail et ton mot de passe.",
+    googleSlow: "Ta fiche n'a pas encore pu être vérifiée. Réessaie dans quelques minutes.",
   },
   es: {
     shiftGains: "Este turno te da:",
@@ -595,6 +597,7 @@ const T = {
     googleUnlinkPending: "Quitando la cuenta de Google…",
     googleUnlinkAdmin: "La asociación vinculó esta cuenta. Solo la asociación puede quitarla.",
     googleUnlinked: "Cuenta de Google quitada. Inicia sesión con tu correo y tu contraseña.",
+    googleSlow: "Todavía no se pudo comprobar tu ficha. Vuelve a intentarlo en unos minutos.",
   },
   de: {
     shiftGains: "Diese Schicht bringt dir:",
@@ -792,6 +795,7 @@ const T = {
     googleUnlinkPending: "Das Google-Konto wird entfernt…",
     googleUnlinkAdmin: "Der Verein hat dieses Konto verknüpft. Nur der Verein kann es entfernen.",
     googleUnlinked: "Google-Konto entfernt. Melde dich mit deiner E-Mail und deinem Passwort an.",
+    googleSlow: "Dein Profil konnte noch nicht geprüft werden. Versuche es in ein paar Minuten noch einmal.",
   },
   it: {
     shiftGains: "Questo turno ti dà:",
@@ -989,6 +993,7 @@ const T = {
     googleUnlinkPending: "Rimozione dell'account Google in corso…",
     googleUnlinkAdmin: "L'associazione ha collegato questo account. Solo l'associazione può rimuoverlo.",
     googleUnlinked: "Account Google rimosso. Accedi con la tua e-mail e la tua password.",
+    googleSlow: "Non è stato ancora possibile verificare la tua scheda. Riprova tra qualche minuto.",
   },
 };
 

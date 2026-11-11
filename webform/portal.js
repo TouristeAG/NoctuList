@@ -328,6 +328,11 @@ async function requestAdminMatch(current) {
     }
   }
   if (user !== current) return;
+  // Nobody answered (no device online, Functions down): stop waiting rather than spin forever.
+  const timer = setTimeout(() => {
+    if (user === current && !portalUid) doSignOut("googleSlow");
+  }, LINK_WAIT_MS);
+  unsubscribers.push(() => clearTimeout(timer));
   unsubscribers.push(onSnapshot(ref, async (snap) => {
     const claim = snap.exists() ? snap.data() : null;
     if (!claim || snap.metadata.hasPendingWrites || user !== current || portalUid) return;
@@ -358,7 +363,30 @@ async function sha256Hex(text) {
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-/** A separate Firebase app for the Google account being linked, so the portal session stays as it is. */
+/**
+ * A separate Firebase app for the Google account being linked, so the portal session stays as it is.
+ * Made when the "Link" button is shown, so the click only has to open the popup: Safari and iOS
+ * block a popup that waits on the sign-in frame first (Firebase prepares it as soon as Auth starts
+ * on those browsers).
+ */
+let linkSession = null;
+
+function prepareLinkSession() {
+  if (!linkSession) linkSession = linkInstance();
+  return linkSession;
+}
+
+/** Signs the second instance out and deletes it; a link waiting for its answer stops quietly. */
+async function disposeLinkSession() {
+  const session = linkSession;
+  linkSession = null;
+  if (!session) return;
+  session.aborted = true;
+  session.stopWaiting?.();
+  await signOut(session.auth).catch(() => {});
+  await deleteApp(session.app).catch(() => {});
+}
+
 function linkInstance() {
   const app = initializeApp(firebaseConfig, `google-link-${Date.now()}`);
   const linkAuth = initializeAuth(app, { persistence: inMemoryPersistence, popupRedirectResolver: browserPopupRedirectResolver });
@@ -368,17 +396,22 @@ function linkInstance() {
     connectFirestoreEmulator(linkDb, location.hostname, EMULATOR_PORTS.firestore);
   }
   linkAuth.languageCode = currentLang();
-  return { app, auth: linkAuth, db: linkDb };
+  return { app, auth: linkAuth, db: linkDb, aborted: false, stopWaiting: null };
 }
 
-/** Resolves with the answered claim, or null when nobody answered in time. */
-function waitForClaim(ref) {
+/** Resolves with the answered claim, or null when nobody answered in time or the wait was stopped. */
+function waitForClaim(session, ref) {
   return new Promise((resolve, reject) => {
     let unsubscribe = () => {};
     const timer = setTimeout(() => {
       unsubscribe();
       resolve(null);
     }, LINK_WAIT_MS);
+    session.stopWaiting = () => {
+      clearTimeout(timer);
+      unsubscribe();
+      resolve(null);
+    };
     unsubscribe = onSnapshot(ref, (snap) => {
       const claim = snap.exists() ? snap.data() : null;
       if (!claim || snap.metadata.hasPendingWrites || !["DONE", "REJECTED"].includes(claim.status)) return;
@@ -401,19 +434,20 @@ async function onLinkClick() {
     googleMsg = { cls: "notice", key: "googleWait" };
     return renderGoogleBox();
   }
+  const second = prepareLinkSession();
+  const code = randomCode();
+  // The popup opens first, while the click still allows it; the request only has to exist
+  // before the claim that carries the code.
+  const attempt = Promise.allSettled([
+    signInWithPopup(second.auth, googleProvider()),
+    sha256Hex(code).then((codeHash) => sendRequest("GOOGLE_LINK", { codeHash })),
+  ]);
   linking = true;
   googleMsg = { cls: "notice", key: "googleLinking" };
   renderGoogleBox();
-  const code = randomCode();
-  let second = null;
   try {
-    second = linkInstance();
-    // The popup opens first, while the click still allows it; the request only has to exist
-    // before the claim that carries the code.
-    const [popup, sent] = await Promise.allSettled([
-      signInWithPopup(second.auth, googleProvider()),
-      sha256Hex(code).then((codeHash) => sendRequest("GOOGLE_LINK", { codeHash })),
-    ]);
+    const [popup, sent] = await attempt;
+    if (second.aborted) return;
     if (popup.status === "rejected") throw popup.reason;
     if (sent.status === "rejected") throw sent.reason;
     const google = popup.value.user;
@@ -422,16 +456,26 @@ async function onLinkClick() {
       await setDoc(ref, { type: "LINK_CODE", status: "PENDING", requestedAt: serverTimestamp(), email: google.email, code });
     } catch (error) {
       console.warn("google link claim refused", error?.code);
+      if (second.aborted) return;
       const previous = await getDoc(ref).then((s) => (s.exists() ? s.data() : null)).catch(() => null);
       const recent = previous && Date.now() - millisOf(previous.requestedAt) < 60_000;
       googleMsg = { cls: "error", key: recent ? "googleWait" : "googleDomain" };
       return;
     }
-    const answer = await waitForClaim(ref);
+    let answer;
+    try {
+      answer = await waitForClaim(second, ref);
+    } catch (error) {
+      console.warn("google link claim unavailable", error?.code);
+      if (!second.aborted) googleMsg = { cls: "error", key: "googleFailed" };
+      return;
+    }
+    if (second.aborted) return;
     if (!answer) googleMsg = { cls: "notice", key: "googleLinkLater" };
     else if (answer.status === "DONE") googleMsg = { cls: "success", key: "googleLinkDone" };
     else googleMsg = { cls: "error", key: LINK_CODE_KEYS[answer.reason] || "googleFailed" };
   } catch (error) {
+    if (second.aborted) return;
     if (popupDismissed(error)) {
       googleMsg = null;
     } else {
@@ -439,10 +483,8 @@ async function onLinkClick() {
       googleMsg = { cls: "error", key: String(error?.code).includes("permission-denied") ? "googleWait" : googleErrorKey(error) };
     }
   } finally {
-    if (second) {
-      await signOut(second.auth).catch(() => {});
-      await deleteApp(second.app).catch(() => {});
-    }
+    // One instance per attempt: a new one is prepared when the button is shown again.
+    if (linkSession === second) await disposeLinkSession();
     linking = false;
     renderGoogleBox();
   }
@@ -494,6 +536,7 @@ function renderGoogleBox() {
   } else if (!email && p.googleLinkAvailable === true && !isGoogleUser(user)) {
     const btn = el("button", { type: "button", class: "google-btn", onclick: onLinkClick }, googleMark(), t("googleLinkButton"));
     btn.disabled = linking;
+    if (!linking && $("account-dialog").open) prepareLinkSession();
     box.append(
       el("h3", { text: t("googleSection") }),
       el("p", { class: "hint", text: t("googleLinkHint") }),
@@ -533,6 +576,7 @@ function googleMark() {
 
 async function doSignOut(reasonKey) {
   if ($("account-dialog").open) $("account-dialog").close();
+  disposeLinkSession();
   stopListeners();
   portalUid = "";
   unlinkSent = false;
@@ -1198,10 +1242,11 @@ function openAccountDialog() {
       el("p", { class: "small-note", text: t("exportHint") }),
       el("p", { class: "small-note", text: t("signedInAs", { email: user.email }) })),
   ].filter(Boolean));
-  renderGoogleBox();
   $("account-title").textContent = t("account");
   if (typeof dialog.showModal === "function") dialog.showModal();
   else dialog.setAttribute("open", "");
+  // After opening: the Google section prepares its sign-in instance only while the window is open.
+  renderGoogleBox();
 }
 
 function exportData() {
@@ -1328,6 +1373,12 @@ function bindStatic() {
     window.addEventListener(type, armIdleTimer, { passive: true }));
   [MEDIA_2, MEDIA_3].forEach((m) => m.addEventListener("change", () => renderDashboard()));
   $("account-close").addEventListener("click", () => $("account-dialog").close());
+  // Closing "My account" stops a link in progress and drops the second Auth instance.
+  $("account-dialog").addEventListener("close", () => {
+    googleBox = null;
+    disposeLinkSession();
+    linking = false;
+  });
   $("account-dialog").addEventListener("click", (event) => {
     // A click on the backdrop (outside the panel) closes the window.
     if (event.target === $("account-dialog")) $("account-dialog").close();
