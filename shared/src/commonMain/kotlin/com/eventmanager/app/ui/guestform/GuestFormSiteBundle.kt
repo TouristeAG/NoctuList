@@ -14,7 +14,7 @@ import org.jetbrains.compose.resources.ExperimentalResourceApi
  */
 object GuestFormSiteBundle {
 
-    private val files = listOf(
+    val files: List<String> = listOf(
         "index.html",
         "styles.css",
         "app.js",
