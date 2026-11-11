@@ -91,8 +91,11 @@ var PHONE = /^[0-9+() .-]{4,32}$/u;
 var DATE = /^(19|20)[0-9]{2}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/u;
 var EMAIL = /^[^@ \t\n\x0B\f\r]{1,64}@[^@ \t\n\x0B\f\r]{1,190}\.[^@ \t\n\x0B\f\r]{2,}$/u;
 var UID = /^[A-Za-z0-9]{6,128}$/u;
+var CODE_HASH = /^[0-9a-f]{64}$/u;
+var LINK_CODE = /^[A-Za-z0-9_-]{32,64}$/u;
 var LANGS = /* @__PURE__ */ new Set(["fr", "en", "es", "de", "it"]);
-var TYPES = ["PROFILE", "QR_EMAIL", "CLAIM"];
+var TYPES = ["PROFILE", "QR_EMAIL", "CLAIM", "GOOGLE_LINK", "GOOGLE_UNLINK"];
+var CLAIM_TYPES = ["ADMIN_MATCH", "LINK_CODE"];
 var GENDERS = /* @__PURE__ */ new Set(["FEMALE", "MALE", "NON_BINARY", "OTHER", "PREFER_NOT_TO_DISCLOSE"]);
 var WS = "\\t-\\r\\u001C-\\u0020\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000";
 var TRIM = new RegExp(`^[${WS}]+|[${WS}]+$`, "gu");
@@ -164,7 +167,28 @@ function parseRequest(requestId, data) {
     if (firstName === null || lastName === null || phone === null) return null;
     return { requestId, uid, type, status, email, firstName, lastName, phone, photo: data.photo === true };
   }
+  if (type === "GOOGLE_LINK") {
+    const codeHash = str(data.codeHash);
+    if (codeHash === void 0 || !CODE_HASH.test(codeHash)) return null;
+    return { requestId, uid, type, status, email, firstName: "", lastName: "", phone: "", photo: false, codeHash };
+  }
   return { requestId, uid, type, status, email, firstName: "", lastName: "", phone: "", photo: false };
+}
+function parseGoogleClaim(googleUid, data) {
+  if (!UID.test(googleUid)) return null;
+  const typeName = String(data.type);
+  if (!CLAIM_TYPES.includes(typeName)) return null;
+  const type = typeName;
+  const email = cleanEmail(data.email);
+  if (email === null) return null;
+  const status = data.status === null || data.status === void 0 ? "" : String(data.status);
+  let code = "";
+  if (type === "LINK_CODE") {
+    const raw = str(data.code);
+    if (raw === void 0 || !LINK_CODE.test(raw)) return null;
+    code = raw;
+  }
+  return { googleUid, type, status, email, code };
 }
 
 // src/mail.ts
@@ -569,6 +593,8 @@ async function processClaimed2(db, bucket, mail, orgId, requestId, claimed) {
       return handleClaim(db, orgId, requestId, request);
     case "QR_EMAIL":
       return sendQr(db, mail, orgId, request);
+    default:
+      return rejected("INVALID");
   }
 }
 async function complete(ref, result) {
@@ -853,6 +879,7 @@ export {
   onMailOutboxWritten,
   onPortalRequestWritten,
   onSignupWritten,
+  parseGoogleClaim,
   parseMailTemplate,
   parseOutbox,
   parseRequest,
