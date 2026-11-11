@@ -4,7 +4,9 @@ import java.io.File
 
 /** What the step runner needs from the Firebase CLI ([FirebaseCli] in production). */
 interface SetupCli {
-    suspend fun login(onLine: (String) -> Unit)
+    /** Starts the paste-the-code sign-in (the CLI cannot open a browser from the app). */
+    suspend fun loginStart(): LoginChallenge
+    suspend fun loginFinish(code: String)
     suspend fun loginList(): List<String>
     suspend fun projectsList(): List<ProjectInfo>
     suspend fun projectsCreate(id: String, displayName: String, onLine: (String) -> Unit)

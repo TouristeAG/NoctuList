@@ -2407,7 +2407,7 @@
     <string name="setup_step_tools_title">获取工具</string>
     <string name="setup_step_tools_purpose">仅为这台电脑下载 Node.js 和 Firebase 工具。约 100 MB，只需一次。</string>
     <string name="setup_step_login_title">登录 Firebase</string>
-    <string name="setup_step_login_purpose">浏览器会打开。请选择拥有协会 Firebase 项目的 Google 账户。</string>
+    <string name="setup_step_login_purpose">Firebase 登录在 Google 页面上完成。点击运行：页面会打开，用拥有协会 Firebase 项目的账户登录，核对会话 ID，然后把页面显示的代码粘贴到这里。</string>
     <string name="setup_step_project_title">选择项目</string>
     <string name="setup_step_project_purpose">选择您的 Firebase 项目，或输入新的项目 ID 来创建。</string>
     <string name="setup_step_database_title">创建数据库</string>
@@ -2462,4 +2462,8 @@
     <string name="firebase_tutorial_copy_redirect_uris">复制 localhost 重定向 URI</string>
     <string name="firebase_tutorial_copy_redirect_uris_done">已复制，将每个 URI 粘贴到 Authorized redirect URIs，然后保存</string>
     <string name="setup_redirect_note">在该 Web 客户端的「已获授权的重定向 URI」中添加下方地址（复制按钮），然后保存。登录前请等一分钟。</string>
+    <string name="setup_login_session">会话 ID：%1$s</string>
+    <string name="setup_login_open">打开登录页面</string>
+    <string name="setup_login_code">登录页面上的代码</string>
+    <string name="setup_login_finish">完成登录</string>
 </resources>

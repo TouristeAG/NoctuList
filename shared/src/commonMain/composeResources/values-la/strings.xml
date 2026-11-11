@@ -2412,7 +2412,7 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="setup_step_tools_title">Instrumenta para</string>
     <string name="setup_step_tools_purpose">Node.js et instrumentum Firebase huic computatro tantum demittit. Circiter 100 MB, semel.</string>
     <string name="setup_step_login_title">In Firebase intra</string>
-    <string name="setup_step_login_purpose">Navigatrum aperitur. Rationem Google elige quae projectum Firebase societatis possidet.</string>
+    <string name="setup_step_login_purpose">Aditus in Firebase in pagina Google fit. Exsequere preme: pagina aperitur, intra ratione quae projectum Firebase societatis possidet, ID sessionis inspice, deinde codicem ostensum hic insere.</string>
     <string name="setup_step_project_title">Projectum elige</string>
     <string name="setup_step_project_purpose">Projectum Firebase elige, aut novum ID scribe ut novum crees.</string>
     <string name="setup_step_database_title">Basim datorum crea</string>
@@ -2467,4 +2467,8 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="firebase_tutorial_copy_redirect_uris">Copia URI redirectionis localhost</string>
     <string name="firebase_tutorial_copy_redirect_uris_done">Copiatum. Singulas URI in Authorized redirect URIs incola, deinde Save</string>
     <string name="setup_redirect_note">In eo Web client, sub Authorized redirect URIs, inscriptiones infra adde (globulus copiandi), deinde Serva. Unum minutum exspecta antequam intres.</string>
+    <string name="setup_login_session">ID sessionis: %1$s</string>
+    <string name="setup_login_open">Paginam aditus aperi</string>
+    <string name="setup_login_code">Codex paginae aditus</string>
+    <string name="setup_login_finish">Aditum perfice</string>
 </resources>

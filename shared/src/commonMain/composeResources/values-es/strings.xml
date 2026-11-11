@@ -2407,7 +2407,7 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="setup_step_tools_title">Obtener las herramientas</string>
     <string name="setup_step_tools_purpose">Descarga Node.js y la herramienta de Firebase solo en este ordenador. Unos 100 MB, una vez.</string>
     <string name="setup_step_login_title">Iniciar sesión en Firebase</string>
-    <string name="setup_step_login_purpose">Se abre su navegador. Elija la cuenta de Google propietaria del proyecto Firebase de la asociación.</string>
+    <string name="setup_step_login_purpose">El inicio de sesión en Firebase se hace en una página de Google. Pulse Ejecutar: se abre la página, inicie sesión con la cuenta propietaria del proyecto Firebase de la asociación, compruebe el ID de sesión y pegue aquí el código que muestra.</string>
     <string name="setup_step_project_title">Elegir el proyecto</string>
     <string name="setup_step_project_purpose">Elija su proyecto Firebase, o escriba un ID nuevo para crear uno.</string>
     <string name="setup_step_database_title">Crear la base de datos</string>
@@ -2462,4 +2462,8 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="firebase_tutorial_copy_redirect_uris">Copiar URI localhost de redirección</string>
     <string name="firebase_tutorial_copy_redirect_uris_done">Copiado. Pegue cada URI en Authorized redirect URIs y guarde</string>
     <string name="setup_redirect_note">En ese cliente Web, en «URI de redireccionamiento autorizados», añada las direcciones de abajo (botón copiar) y guarde. Espere un minuto antes de iniciar sesión.</string>
+    <string name="setup_login_session">ID de sesión: %1$s</string>
+    <string name="setup_login_open">Abrir la página de inicio de sesión</string>
+    <string name="setup_login_code">Código de la página de inicio de sesión</string>
+    <string name="setup_login_finish">Terminar el inicio de sesión</string>
 </resources>

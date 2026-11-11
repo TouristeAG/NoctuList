@@ -2406,7 +2406,7 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="setup_step_tools_title">Installer les outils</string>
     <string name="setup_step_tools_purpose">Télécharge Node.js et l\'outil Firebase, uniquement sur cet ordinateur. Environ 100 Mo, une seule fois.</string>
     <string name="setup_step_login_title">Se connecter à Firebase</string>
-    <string name="setup_step_login_purpose">Votre navigateur s\'ouvre. Choisissez le compte Google propriétaire du projet Firebase de l\'association.</string>
+    <string name="setup_step_login_purpose">La connexion à Firebase se fait sur une page Google. Appuyez sur Lancer : la page s\'ouvre, connectez-vous avec le compte propriétaire du projet Firebase de l\'association, vérifiez l\'ID de session, puis collez ici le code affiché.</string>
     <string name="setup_step_project_title">Choisir le projet</string>
     <string name="setup_step_project_purpose">Choisissez votre projet Firebase, ou tapez un nouvel ID pour en créer un.</string>
     <string name="setup_step_database_title">Créer la base de données</string>
@@ -2461,4 +2461,8 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="firebase_tutorial_copy_redirect_uris">Copier les URI localhost</string>
     <string name="firebase_tutorial_copy_redirect_uris_done">Copié. Collez chaque URI dans « URI de redirection autorisées », puis Enregistrer</string>
     <string name="setup_redirect_note">Dans ce client Web, sous « URI de redirection autorisés », ajoutez les adresses ci-dessous (bouton copier), puis Enregistrer. Attendez une minute avant de vous connecter.</string>
+    <string name="setup_login_session">ID de session : %1$s</string>
+    <string name="setup_login_open">Ouvrir la page de connexion</string>
+    <string name="setup_login_code">Code de la page de connexion</string>
+    <string name="setup_login_finish">Terminer la connexion</string>
 </resources>

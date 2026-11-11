@@ -2412,7 +2412,7 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="setup_step_tools_title">टूल प्राप्त करें</string>
     <string name="setup_step_tools_purpose">केवल इस कंप्यूटर के लिए Node.js और Firebase टूल डाउनलोड करता है। लगभग 100 MB, एक बार।</string>
     <string name="setup_step_login_title">Firebase में साइन इन करें</string>
-    <string name="setup_step_login_purpose">आपका ब्राउज़र खुलेगा। संस्था के Firebase प्रोजेक्ट वाला Google खाता चुनें।</string>
+    <string name="setup_step_login_purpose">Firebase में साइन इन एक Google पेज पर होता है। चलाएँ दबाएँ: पेज खुलेगा, संस्था के Firebase प्रोजेक्ट वाले खाते से साइन इन करें, session ID जाँचें, फिर दिखाया गया कोड यहाँ चिपकाएँ।</string>
     <string name="setup_step_project_title">प्रोजेक्ट चुनें</string>
     <string name="setup_step_project_purpose">अपना Firebase प्रोजेक्ट चुनें, या नया बनाने के लिए नया प्रोजेक्ट ID लिखें।</string>
     <string name="setup_step_database_title">डेटाबेस बनाएँ</string>
@@ -2467,4 +2467,8 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="firebase_tutorial_copy_redirect_uris">localhost redirect URI कॉपी करें</string>
     <string name="firebase_tutorial_copy_redirect_uris_done">कॉपी हुआ, प्रत्येक URI Authorized redirect URIs में चिपकाएँ, फिर Save</string>
     <string name="setup_redirect_note">उसी Web client में Authorized redirect URIs के नीचे नीचे दिए पते जोड़ें (कॉपी बटन), फिर Save करें। साइन इन से पहले एक मिनट रुकें।</string>
+    <string name="setup_login_session">Session ID: %1$s</string>
+    <string name="setup_login_open">साइन-इन पेज खोलें</string>
+    <string name="setup_login_code">साइन-इन पेज का कोड</string>
+    <string name="setup_login_finish">साइन इन पूरा करें</string>
 </resources>

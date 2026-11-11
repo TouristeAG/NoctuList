@@ -40,6 +40,7 @@ import com.eventmanager.app.platform.LocalPlatformContext
 import com.eventmanager.app.platform.openExternalUrl
 import com.eventmanager.app.resources.*
 import com.eventmanager.app.setup.CliErrorKind
+import com.eventmanager.app.setup.LoginChallenge
 import com.eventmanager.app.setup.SetupAutomation
 import com.eventmanager.app.setup.SetupStepId
 import com.eventmanager.app.setup.StepInput
@@ -120,7 +121,7 @@ fun AutomaticTab(
     ) {
         items(requiredSteps, key = { it.name }) { step ->
             Card(step, states[step] ?: StepState.Todo, onShowManual) {
-                StepControls(step, automation, pid, info.projects.map { it.id }, info.locations, info.account, info.region, info.siteUrl, info.toolsProgress, progress.confirmed)
+                StepControls(step, automation, pid, info.projects.map { it.id }, info.locations, info.account, info.region, info.siteUrl, info.toolsProgress, progress.confirmed, info.loginChallenge)
             }
         }
         item(key = "extras") {
@@ -140,7 +141,7 @@ fun AutomaticTab(
                 }
                 if (enabled) {
                     Card(step, states[step] ?: StepState.Todo, onShowManual) {
-                        StepControls(step, automation, pid, info.projects.map { it.id }, info.locations, info.account, info.region, info.siteUrl, info.toolsProgress, progress.confirmed)
+                        StepControls(step, automation, pid, info.projects.map { it.id }, info.locations, info.account, info.region, info.siteUrl, info.toolsProgress, progress.confirmed, info.loginChallenge)
                     }
                 }
             }
@@ -173,6 +174,7 @@ private fun StepControls(
     siteUrl: String,
     toolsProgress: Float?,
     confirmed: Set<SetupStepId>,
+    loginChallenge: LoginChallenge?,
 ) {
     val platform = LocalPlatformContext.current
     val open: (String) -> Unit = { openExternalUrl(platform, it) }
@@ -200,7 +202,21 @@ private fun StepControls(
             }
             SetupStepId.LOGIN -> {
                 if (account.isNotBlank()) Text(stringResource(Res.string.setup_signed_in_as, account))
-                RunButton()
+                val challenge = loginChallenge
+                if (challenge == null) {
+                    RunButton()
+                } else {
+                    var code by remember(challenge) { mutableStateOf("") }
+                    LaunchedEffect(challenge) { open(challenge.url) }
+                    Text(stringResource(Res.string.setup_login_session, challenge.sessionId), fontWeight = FontWeight.SemiBold)
+                    OutlinedButton(onClick = { open(challenge.url) }) { Text("↗  ${stringResource(Res.string.setup_login_open)}") }
+                    OutlinedTextField(code, { code = it.trim() }, label = { Text(stringResource(Res.string.setup_login_code)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { automation.run(step, StepInput(authCode = code)) }, enabled = code.isNotBlank() && !busy) {
+                            Text(stringResource(Res.string.setup_login_finish))
+                        }
+                    }
+                }
             }
             SetupStepId.PROJECT -> {
                 var picked by remember(projects) { mutableStateOf(projectId.takeIf { it in projects } ?: projects.firstOrNull().orEmpty()) }

@@ -23,8 +23,24 @@ class FirebaseCli(
     private val tools: ToolPaths,
     private val redactor: OutputRedactor,
 ) : SetupCli {
-    override suspend fun login(onLine: (String) -> Unit) {
-        exec(listOf("login"), step = SetupStepId.LOGIN, onLine = onLine)
+    /**
+     * Without a terminal the CLI uses its remote sign-in: it prints a session ID and a URL, and
+     * the admin brings back the code that page shows.
+     */
+    override suspend fun loginStart(): LoginChallenge {
+        val lines = exec(listOf("login"), step = SetupStepId.LOGIN).lines().map { it.replace(ANSI, "").trim() }
+        val url = lines.firstOrNull { it.startsWith("https://") }
+        val sessionLine = lines.indexOfFirst { it.contains("session ID", ignoreCase = true) }
+        val session = lines.drop(sessionLine + 1).firstOrNull { it.isNotBlank() }
+        if (url == null || sessionLine < 0 || session == null) {
+            throw CliException(CliErrorClassifier.classify(lines.joinToString("\n"), SetupStepId.LOGIN))
+        }
+        return LoginChallenge(session, url)
+    }
+
+    override suspend fun loginFinish(code: String) {
+        require(SetupValidators.authCode(code)) { "invalid authorization code" }
+        exec(listOf("login", code), step = SetupStepId.LOGIN)
     }
 
     /** E-mails of the signed-in accounts. The raw output holds tokens: it is never shown. */
@@ -196,5 +212,6 @@ class FirebaseCli(
         val ONLY = Regex("^(hosting|functions|firestore:rules|storage)(,(hosting|functions|firestore:rules|storage))*$")
         val SECRET_NAME = Regex("^[A-Z][A-Z0-9_]{1,63}$")
         val REGION = Regex("^[a-z]+-[a-z]+[0-9]+$")
+        val ANSI = Regex("\u001B\\[[0-9;]*m")
     }
 }

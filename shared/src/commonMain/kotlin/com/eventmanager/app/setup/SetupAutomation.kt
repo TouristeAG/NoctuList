@@ -14,6 +14,8 @@ class StepInput(
     val appPassword: CharArray? = null,
     val webClientId: String? = null,
     val webClientSecret: String? = null,
+    /** Code shown by the Google sign-in page for the Firebase CLI. */
+    val authCode: String? = null,
 )
 
 /** The Automatic tab's engine. Unavailable on phones, where only the Manual tab is shown. */
@@ -43,7 +45,11 @@ data class SetupInfo(
     val region: String = "",
     val siteUrl: String = "",
     val toolsProgress: Float? = null,
+    /** Set while the admin signs in: open [LoginChallenge.url], then paste the code. */
+    val loginChallenge: LoginChallenge? = null,
 )
+
+data class LoginChallenge(val sessionId: String, val url: String)
 
 data class ProjectInfo(val id: String, val displayName: String)
 

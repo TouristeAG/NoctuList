@@ -41,8 +41,10 @@ private class FakeCli : SetupCli {
 
     private fun fail(text: String, step: SetupStepId): Nothing = throw CliException(CliErrorClassifier.classify(text, step))
 
-    override suspend fun login(onLine: (String) -> Unit) { calls += "login" }
-    override suspend fun loginList() = listOf("admin@example.org")
+    var accounts = listOf("admin@example.org")
+    override suspend fun loginStart(): LoginChallenge { calls += "loginStart"; return LoginChallenge("AB12C", "https://auth.firebase.tools/login?x") }
+    override suspend fun loginFinish(code: String) { calls += "loginFinish $code"; accounts = listOf("admin@example.org") }
+    override suspend fun loginList() = accounts
     override suspend fun projectsList() = listOf(ProjectInfo("demo-project", "Demo"))
     override suspend fun projectsCreate(id: String, displayName: String, onLine: (String) -> Unit) { calls += "create $id" }
     override suspend fun databases(projectId: String) = databases.also { calls += "databases" }
@@ -198,6 +200,29 @@ class SetupRunnerTest {
         kotlinx.coroutines.delay(200)
         assertTrue(cli.calls.none { it == "deploy firestore:rules" })
         assertEquals(StepState.Todo, runner.states.value[SetupStepId.RULES])
+    }
+
+    @Test
+    fun loginShowsAChallengeThenFinishesWithTheCode(): Unit = runBlocking {
+        ready()
+        cli.accounts = emptyList()
+        runner.run(SetupStepId.LOGIN)
+        withTimeout(5_000) { runner.info.first { it.loginChallenge != null } }
+        awaitState(SetupStepId.LOGIN) { it == StepState.Todo }
+        assertEquals("AB12C", runner.info.value.loginChallenge?.sessionId)
+        runner.run(SetupStepId.LOGIN, StepInput(authCode = "4/0AVMBsJ_code12345"))
+        awaitState(SetupStepId.LOGIN) { it == StepState.Done }
+        assertTrue("loginFinish 4/0AVMBsJ_code12345" in cli.calls)
+        assertEquals(null, runner.info.value.loginChallenge)
+        assertEquals("admin@example.org", runner.info.value.account)
+    }
+
+    @Test
+    fun loginIsDoneAtOnceWhenAlreadySignedIn(): Unit = runBlocking {
+        ready()
+        runner.run(SetupStepId.LOGIN)
+        awaitState(SetupStepId.LOGIN) { it == StepState.Done }
+        assertTrue(cli.calls.none { it.startsWith("login") })
     }
 
     @Test

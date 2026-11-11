@@ -2409,7 +2409,7 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="setup_step_tools_title">Get the tools</string>
     <string name="setup_step_tools_purpose">Downloads Node.js and the Firebase tool for this computer only. About 100 MB, once.</string>
     <string name="setup_step_login_title">Sign in to Firebase</string>
-    <string name="setup_step_login_purpose">Your browser opens. Choose the Google account that owns the association\'s Firebase project.</string>
+    <string name="setup_step_login_purpose">Sign in to Firebase is done on a Google page. Press Run: the page opens, sign in with the account that owns the association\'s Firebase project, check the session ID, then paste the code it shows here.</string>
     <string name="setup_step_project_title">Choose the project</string>
     <string name="setup_step_project_purpose">Pick your Firebase project, or type a new project ID to create one.</string>
     <string name="setup_step_database_title">Create the database</string>
@@ -2464,4 +2464,8 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="firebase_tutorial_copy_redirect_uris">Copy localhost redirect URIs</string>
     <string name="firebase_tutorial_copy_redirect_uris_done">Copied. Paste each URI under Authorized redirect URIs, then Save</string>
     <string name="setup_redirect_note">In that Web client, under Authorized redirect URIs, add the addresses below (copy button), then Save. Wait one minute before signing in.</string>
+    <string name="setup_login_session">Session ID: %1$s</string>
+    <string name="setup_login_open">Open the sign-in page</string>
+    <string name="setup_login_code">Code from the sign-in page</string>
+    <string name="setup_login_finish">Finish sign-in</string>
 </resources>

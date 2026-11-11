@@ -2407,7 +2407,7 @@
     <string name="setup_step_tools_title">取得工具</string>
     <string name="setup_step_tools_purpose">只為這台電腦下載 Node.js 和 Firebase 工具。約 100 MB，只需一次。</string>
     <string name="setup_step_login_title">登入 Firebase</string>
-    <string name="setup_step_login_purpose">瀏覽器會開啟。請選擇擁有協會 Firebase 專案的 Google 帳戶。</string>
+    <string name="setup_step_login_purpose">Firebase 登入在 Google 頁面上完成。點選執行：頁面會開啟，用擁有協會 Firebase 專案的帳戶登入，核對工作階段 ID，然後把頁面顯示的代碼貼到這裡。</string>
     <string name="setup_step_project_title">選擇專案</string>
     <string name="setup_step_project_purpose">選擇您的 Firebase 專案，或輸入新的專案 ID 來建立。</string>
     <string name="setup_step_database_title">建立資料庫</string>
@@ -2462,4 +2462,8 @@
     <string name="firebase_tutorial_copy_redirect_uris">複製 localhost 重新導向 URI</string>
     <string name="firebase_tutorial_copy_redirect_uris_done">已複製，將每個 URI 貼到 Authorized redirect URIs，然後儲存</string>
     <string name="setup_redirect_note">在該 Web 用戶端的「已授權的重新導向 URI」中新增下方位址（複製按鈕），然後儲存。登入前請等一分鐘。</string>
+    <string name="setup_login_session">工作階段 ID：%1$s</string>
+    <string name="setup_login_open">開啟登入頁面</string>
+    <string name="setup_login_code">登入頁面上的代碼</string>
+    <string name="setup_login_finish">完成登入</string>
 </resources>

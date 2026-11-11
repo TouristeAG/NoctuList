@@ -92,6 +92,41 @@ class FirebaseCliTest {
         assertTrue(runner.calls.isEmpty())
     }
 
+    private val remoteLoginOutput = listOf(
+        "",
+        "To sign in to the Firebase CLI:",
+        "",
+        "1. Take note of your session ID:",
+        "",
+        "   \u001B[1mAB12C\u001B[22m",
+        "",
+        "2. Visit the URL below on any device and follow the instructions to get your code:",
+        "",
+        "   https://auth.firebase.tools/login?code_challenge=xyz&session=abc-123&attest=q",
+        "",
+        "3. Complete the login by running:",
+        "",
+        "   \u001B[1mfirebase login <authorizationCode>\u001B[22m",
+    ).joinToString("\n")
+
+    @Test
+    fun loginStartParsesSessionAndUrl(): Unit = runBlocking {
+        val runner = FakeProcessRunner { 0 to remoteLoginOutput }
+        val challenge = cli(runner).loginStart()
+        assertEquals("AB12C", challenge.sessionId)
+        assertEquals("https://auth.firebase.tools/login?code_challenge=xyz&session=abc-123&attest=q", challenge.url)
+        assertEquals(listOf(fb, "login"), runner.calls.single())
+    }
+
+    @Test
+    fun loginFinishPassesTheCodeAsOneArgument(): Unit = runBlocking {
+        val runner = FakeProcessRunner { 0 to "Success! Logged in as a@example.org" }
+        cli(runner).loginFinish("4/0AVMBsJ_x-y.z~Q12345")
+        assertEquals(listOf(fb, "login", "4/0AVMBsJ_x-y.z~Q12345"), runner.calls.single())
+        assertFailsWith<IllegalArgumentException> { cli(runner).loginFinish("code; rm -rf /") }
+        assertEquals(1, runner.calls.size)
+    }
+
     @Test
     fun loginListReturnsEmailsAndNeverLogsTokens() = runBlocking {
         val json = """{"status":"success","result":[{"user":{"email":"a@example.org"},"tokens":{"refresh_token":"SECRET_REFRESH"}}]}"""

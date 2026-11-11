@@ -124,10 +124,18 @@ class SetupRunner(
             }
             SetupStepId.LOGIN -> {
                 val c = requireCli()
-                c.login { log(step, it) }
-                val account = c.loginList().firstOrNull() ?: throw notLoggedIn(step)
-                _info.update { it.copy(account = account) }
-                markDone(step)
+                val code = input.authCode?.trim().orEmpty()
+                if (code.isNotEmpty()) c.loginFinish(code)
+                val account = c.loginList().firstOrNull()
+                if (account != null) {
+                    _info.update { it.copy(account = account, loginChallenge = null) }
+                    markDone(step)
+                } else {
+                    if (code.isNotEmpty()) throw notLoggedIn(step)
+                    val challenge = c.loginStart()
+                    _info.update { it.copy(loginChallenge = challenge) }
+                    setState(step, StepState.Todo)
+                }
             }
             SetupStepId.PROJECT -> {
                 val c = requireCli()
