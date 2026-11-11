@@ -47,6 +47,12 @@ Carte « Plateforme bénévole » (Paramètres → Firebase), admin, visible qua
 Réglages locaux : `VOLUNTEER_PORTAL_GOOGLE_ENABLED` et `VOLUNTEER_PORTAL_GOOGLE_DOMAINS`
 (liste sérialisée avec l'état de vérification et `verifiedAt`).
 
+Côté Firestore, ces réglages sont deux documents `institutionSettings` au format habituel
+`{value: string}` : `volunteer_portal_google_enabled` (`"true"` ou `"false"`) et
+`volunteer_portal_google_domains` (domaines vérifiés séparés par des virgules, que les règles lisent
+avec `value.split(',')`). Un domaine non vérifié n'est affiché que dans l'écran admin tant qu'il n'a
+pas passé la vérification : il n'est jamais enregistré.
+
 ## 4. Modèle de données
 
 ### 4.1 Room / `Volunteer` (migration 52 → 53)
@@ -61,15 +67,15 @@ Synchronisés via `volunteers/{id}`. Jamais écrits dans Google Sheets.
 
 | Document | Écrit par | Lu par | Contenu |
 |---|---|---|---|
-| `institutionSettings/volunteer_portal_google` | admin org | membres + règles | `enabled: bool`, `domains: map<string,bool>` (domaines vérifiés seulement, même forme que `allowedEmailDomains`). |
-| `portalPublic/config` | admin org | public (`get`) | `googleLogin: bool`. Rien d'autre (ni domaines, ni nom). |
+| `institutionSettings/volunteer_portal_google_enabled` et `volunteer_portal_google_domains` | admin org | membres + règles | `{value: string}` : `"true"`/`"false"`, et la liste des domaines vérifiés séparés par des virgules (voir section 3). |
+| `portalBranding/default` | admin org (publié par `publishBranding`) | public (`get`) | Document déjà public ; il gagne `googleLogin: bool`. Rien d'autre (ni domaines). Pas de `portalPublic/config`. |
 | `portalGoogleAccounts/{googleUid}` | membres, Functions | titulaire (`get`), membres | `volunteerUid`, `email`, `linkedBy`, `linkedAt`. |
 | `portalGoogleClaims/{googleUid}` | titulaire Google (création/renouvellement throttlé) ; traitement | titulaire (`get`), membres | `type ∈ {ADMIN_MATCH, LINK_CODE}`, `email`, `code` (LINK_CODE), `status`, `requestedAt`, `processedAt`, `reason`. |
-| `portalRequests/{uid}_GOOGLE_LINK` | titulaire (session mot de passe) | titulaire, membres | `codeHash` (SHA-256 hex), `expiresAt` (requestedAt + 10 min), champs habituels. |
+| `portalRequests/{uid}_GOOGLE_LINK` | titulaire (session mot de passe) | titulaire, membres | `codeHash` (SHA-256 hex), champs habituels. Pas d'`expiresAt` : l'expiration se calcule depuis `requestedAt` (+ 10 min). |
 | `portalRequests/{uid}_GOOGLE_UNLINK` | titulaire (mot de passe ou Google lié) | titulaire, membres | champs habituels. |
 
 La projection `volunteerPortal/{uid}` gagne deux champs : `googleEmail` (ou `""`) et
-`googleLinkedBy` (ou `""`), pour que « Mon compte » affiche le bon état. `googleLoginAvailable`
+`googleLinkedBy` (ou `""`), pour que « Mon compte » affiche le bon état. `googleLinkAvailable`
 (option active et aucune adresse associée) indique si le bouton « Associer » doit apparaître.
 
 ## 5. Règles de sécurité (version suivante)
@@ -95,7 +101,7 @@ La projection `volunteerPortal/{uid}` gagne deux champs : `googleEmail` (ou `""`
   `^[A-Za-z0-9_-]{32,64}$` pour LINK_CODE, renouvellement après 1 min et jamais pendant
   `PROCESSING`. `get` titulaire. Jamais de `list`.
 - `portalGoogleAccounts/{googleUid}` : `get` si `auth.uid == googleUid` ; écriture membres seulement.
-- `portalPublic/config` : `get` public ; écriture admin.
+- `portalBranding/default` : `get` public (déjà le cas) ; écriture admin.
 - Équipe : aucun changement. Un compte Google sans `members/{uid}` reste sans droit sur l'org
   (création de membre impossible sans code d'amorçage, pas d'admin si `metadata/config` existe).
   Les tests le vérifient explicitement pour un compte Google lié à un bénévole.
@@ -138,14 +144,14 @@ Couper l'accès portail d'un bénévole ou le supprimer supprime aussi son lien 
 
 ## 7. Portail web
 
-- `portalPublic/config` lu au chargement. Si `googleLogin`, la page de connexion affiche
+- `portalBranding/default` lu au chargement. Si `googleLogin`, la page de connexion affiche
   « Se connecter avec Google » sous le formulaire e-mail.
 - Connexion Google : `signInWithPopup(GoogleAuthProvider)` avec `prompt: select_account`
   (pas de paramètre `hd` : les domaines ne sont pas publiés, la barrière reste les règles). Si la fiche
   est illisible faute de lien : écrire ADMIN_MATCH et attendre la réponse (écoute du claim).
   DONE : afficher le tableau de bord. REJECTED : message selon `reason`, puis déconnexion.
 - « Mon compte » :
-  - aucune adresse et `googleLoginAvailable` : « Associer mon compte Google » ;
+  - aucune adresse et `googleLinkAvailable` : « Associer mon compte Google » ;
   - `linkedBy = VOLUNTEER` : « Compte Google : jean@asso.ch » + « Retirer » ;
   - `linkedBy = ADMIN` : rien.
   - Session Google : la partie mot de passe est masquée.
@@ -189,6 +195,12 @@ Couper l'accès portail d'un bénévole ou le supprimer supprime aussi son lien 
   clair/sombre, mobile/ordinateur.
 
 ## 10. Limites connues
+
+- Les codes de raison des réponses de traitement sont en MAJUSCULES (`AMBIGUOUS`, etc.), pas en minuscules comme dans les exemples plus haut.
+- ADMIN_MATCH traite un alias dont la cible n'est plus un bénévole portant ce `portalGoogleUid` comme périmé : il le supprime et poursuit la recherche.
+- Les règles Storage ne peuvent lire que 2 documents. Tant qu'un lien existe, le compte Google lié peut donc encore voir et modifier la photo de son propre bénévole, même après la désactivation de l'option ou le retrait de son domaine.
+- Désactiver l'option ne déconnecte une session Google déjà ouverte que lorsque sa page se rafraîchit depuis le serveur.
+- La fenêtre de connexion Google n'a été vérifiée que sur les émulateurs : à contrôler une fois sur le vrai site après le déploiement (« Se connecter avec Google » et « Associer mon compte Google »), y compris sur iPhone.
 
 - La vérification MX prouve que les e-mails du domaine passent par Google, pas l'abonnement
   Workspace lui-même. C'est suffisant ici : la barrière réelle est le domaine du compte Google.
