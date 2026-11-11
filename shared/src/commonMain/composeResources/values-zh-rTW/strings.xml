@@ -2482,4 +2482,15 @@
     <string name="setup_login_code">登入頁面上的代碼</string>
     <string name="setup_login_finish">完成登入</string>
     <string name="setup_btn_run_again">重新執行</string>
+    <string name="portal_access_google_title">協會 Google 帳號</string>
+    <string name="portal_access_google_hint">Google 電子郵件地址</string>
+    <string name="portal_access_google_pending">等待首次登入</string>
+    <string name="portal_access_google_linked">已綁定</string>
+    <string name="portal_access_google_by_volunteer">由志工綁定</string>
+    <string name="portal_access_google_err_domain">此地址不在允許的網域內</string>
+    <string name="portal_access_google_err_taken">此地址已綁定到另一位志工</string>
+    <string name="portal_access_google_err_invalid">地址無效</string>
+    <string name="portal_access_google_err_save">儲存失敗，請重試。</string>
+    <string name="portal_access_google_remove_title">移除 Google 帳號？</string>
+    <string name="portal_access_google_remove_body">%1$s 將無法再使用 %2$s 登入。密碼登入仍然可用。</string>
 </resources>

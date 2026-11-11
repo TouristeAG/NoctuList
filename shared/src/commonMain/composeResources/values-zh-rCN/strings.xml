@@ -2482,4 +2482,15 @@
     <string name="setup_login_code">登录页面上的代码</string>
     <string name="setup_login_finish">完成登录</string>
     <string name="setup_btn_run_again">重新运行</string>
+    <string name="portal_access_google_title">协会 Google 账号</string>
+    <string name="portal_access_google_hint">Google 邮箱地址</string>
+    <string name="portal_access_google_pending">等待首次登录</string>
+    <string name="portal_access_google_linked">已绑定</string>
+    <string name="portal_access_google_by_volunteer">由志愿者绑定</string>
+    <string name="portal_access_google_err_domain">此地址不在允许的域名内</string>
+    <string name="portal_access_google_err_taken">此地址已绑定到另一位志愿者</string>
+    <string name="portal_access_google_err_invalid">地址无效</string>
+    <string name="portal_access_google_err_save">保存失败，请重试。</string>
+    <string name="portal_access_google_remove_title">移除 Google 账号？</string>
+    <string name="portal_access_google_remove_body">%1$s 将无法再使用 %2$s 登录。密码登录仍然可用。</string>
 </resources>

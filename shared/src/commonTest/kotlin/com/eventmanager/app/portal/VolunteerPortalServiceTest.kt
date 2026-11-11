@@ -752,5 +752,20 @@ class VolunteerPortalServiceTest {
         assertEquals(false, gateway.docs["portalBranding/default"]!!["googleLogin"])
     }
 
+    @Test
+    fun republishPicksUpAChangedGoogleOption() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true, uid = UID)))
+        val svc = service(gateway, host)
+        svc.start(MutableStateFlow(host.volunteers.toList()), MutableStateFlow(emptyList()),
+            MutableStateFlow(emptyList()), MutableStateFlow(emptyList()))
+        withTimeout(5_000) { while (gateway.docs["volunteerPortal/$UID"] == null) delay(20) }
+        assertEquals(true, gateway.docs["portalBranding/default"]!!["googleLogin"])
+        host.googleEnabled = false
+        svc.republish()
+        assertEquals(false, gateway.docs["portalBranding/default"]!!["googleLogin"])
+        assertTrue((gateway.docs["volunteerPortal/$UID"]!!["payload"] as String).contains("\"googleLinkAvailable\":false"))
+    }
+
     // endregion
 }

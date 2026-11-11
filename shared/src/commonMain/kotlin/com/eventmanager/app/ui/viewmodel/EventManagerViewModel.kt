@@ -2646,6 +2646,11 @@ class EventManagerViewModel(
         _volunteerPortalGoogleDomains.value = settingsManagerCached?.volunteerPortalGoogleDomains().orEmpty()
     }
 
+    private fun republishVolunteerPortal() {
+        val service = volunteerPortalService ?: return
+        viewModelScope.launch { service.republish() }
+    }
+
     fun setVolunteerPortalGoogleEnabled(enabled: Boolean) {
         val settings = settingsManagerCached ?: return
         if (getActiveBackendType() != BackendType.FIREBASE) return
@@ -2653,6 +2658,7 @@ class EventManagerViewModel(
         val allowed = enabled && settings.volunteerPortalGoogleDomains().isNotEmpty()
         settings.setVolunteerPortalGoogleEnabled(allowed)
         publishVolunteerPortalSettings()
+        republishVolunteerPortal()
         backupInstitutionSettingsToSheets()
     }
 
@@ -2680,6 +2686,7 @@ class EventManagerViewModel(
         val target = com.eventmanager.app.data.remote.FirebaseEmailDomainPolicy.normalizeDomain(domain)
         settings.setVolunteerPortalGoogleDomains(settings.volunteerPortalGoogleDomains().filter { it != target })
         publishVolunteerPortalSettings()
+        republishVolunteerPortal()
         backupInstitutionSettingsToSheets()
     }
 
@@ -2689,6 +2696,7 @@ class EventManagerViewModel(
         val service = volunteerPortalService
         settings.setVolunteerPortalEnabled(enabled)
         publishVolunteerPortalSettings()
+        republishVolunteerPortal()
         backupInstitutionSettingsToSheets()
         viewModelScope.launch {
             if (!enabled) runCatching { service?.unpublishAll() }
@@ -2801,6 +2809,18 @@ class EventManagerViewModel(
 
     suspend fun sendVolunteerPortalPasswordReset(volunteer: Volunteer, languageCode: String): Boolean =
         requirePortalService()?.sendPasswordReset(volunteer, languageCode) ?: false
+
+    suspend fun assignVolunteerPortalGoogleAccount(volunteer: Volunteer, email: String): String? {
+        if (rejectIfCrudSoftLocked("updating volunteers")) return "SAVE_FAILED"
+        val service = requirePortalService() ?: return "SAVE_FAILED"
+        return service.assignGoogleAccount(tagVolunteerWithActiveOrg(volunteer), email)
+    }
+
+    suspend fun removeVolunteerPortalGoogleAccount(volunteer: Volunteer): Boolean {
+        if (rejectIfCrudSoftLocked("updating volunteers")) return false
+        val service = requirePortalService() ?: return false
+        return service.removeGoogleAccount(tagVolunteerWithActiveOrg(volunteer))
+    }
 
     suspend fun revokeVolunteerPortalAccess(volunteer: Volunteer): Boolean {
         if (rejectIfCrudSoftLocked("updating volunteers")) return false

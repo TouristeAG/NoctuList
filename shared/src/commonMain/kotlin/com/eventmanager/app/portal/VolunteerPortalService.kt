@@ -99,6 +99,7 @@ class VolunteerPortalService(
     private var latestSignupDocs: List<Pair<String, Map<String, Any?>>> = emptyList()
     private var latestRequestDocs: List<Pair<String, Map<String, Any?>>> = emptyList()
     private var latestClaimDocs: List<Pair<String, Map<String, Any?>>> = emptyList()
+    private var latestSnapshot: Snapshot? = null
     private var started = false
     private val _serverStatus = MutableStateFlow<PortalServerStatus?>(null)
 
@@ -130,7 +131,7 @@ class VolunteerPortalService(
                 ?.let { PortalServerStatus.fromMap(it.second) }
         }?.let { listeners += it }
         publisherJob = scope.launch {
-            combine(volunteers, jobs, transfers, jobTypeConfigs) { v, j, t, c -> Snapshot(v, j, t, c) }
+            combine(volunteers, jobs, transfers, jobTypeConfigs) { v, j, t, c -> Snapshot(v, j, t, c).also { latestSnapshot = it } }
                 .debounce(publishDebounceMs)
                 .collect { snapshot ->
                     runCatchingLogged("publish") { publishAll(snapshot) }
@@ -148,6 +149,15 @@ class VolunteerPortalService(
                 }
             }
         }
+    }
+
+    /**
+     * Re-runs the publish with the latest data, e.g. after the Google option or its domains changed.
+     * Content hashes keep unchanged documents from being rewritten.
+     */
+    suspend fun republish() {
+        val snapshot = latestSnapshot ?: return
+        runCatchingLogged("republish") { publishAll(snapshot) }
     }
 
     fun stop() {

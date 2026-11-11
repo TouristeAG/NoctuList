@@ -2482,4 +2482,15 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="setup_login_code">Código de la página de inicio de sesión</string>
     <string name="setup_login_finish">Terminar el inicio de sesión</string>
     <string name="setup_btn_run_again">Ejecutar de nuevo</string>
+    <string name="portal_access_google_title">Cuenta de Google de la asociación</string>
+    <string name="portal_access_google_hint">Dirección de Google</string>
+    <string name="portal_access_google_pending">Esperando el primer inicio de sesión</string>
+    <string name="portal_access_google_linked">Vinculada</string>
+    <string name="portal_access_google_by_volunteer">por el voluntario</string>
+    <string name="portal_access_google_err_domain">Esta dirección no está en los dominios permitidos</string>
+    <string name="portal_access_google_err_taken">Esta dirección ya está asociada a otro voluntario</string>
+    <string name="portal_access_google_err_invalid">Dirección no válida</string>
+    <string name="portal_access_google_err_save">No se pudo guardar, inténtalo de nuevo.</string>
+    <string name="portal_access_google_remove_title">¿Quitar la cuenta de Google?</string>
+    <string name="portal_access_google_remove_body">%1$s ya no podrá iniciar sesión con %2$s. El inicio de sesión con contraseña sigue funcionando.</string>
 </resources>

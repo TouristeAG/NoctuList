@@ -2484,4 +2484,15 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="setup_login_code">Code from the sign-in page</string>
     <string name="setup_login_finish">Finish sign-in</string>
     <string name="setup_btn_run_again">Run again</string>
+    <string name="portal_access_google_title">Association Google account</string>
+    <string name="portal_access_google_hint">Google address</string>
+    <string name="portal_access_google_pending">Waiting for the first sign-in</string>
+    <string name="portal_access_google_linked">Linked</string>
+    <string name="portal_access_google_by_volunteer">linked by the volunteer</string>
+    <string name="portal_access_google_err_domain">This address is not in the allowed domains</string>
+    <string name="portal_access_google_err_taken">This address is already linked to another volunteer</string>
+    <string name="portal_access_google_err_invalid">Invalid address</string>
+    <string name="portal_access_google_err_save">Saving failed, please try again.</string>
+    <string name="portal_access_google_remove_title">Remove the Google account?</string>
+    <string name="portal_access_google_remove_body">%1$s will no longer be able to sign in with %2$s. Their password sign-in still works.</string>
 </resources>

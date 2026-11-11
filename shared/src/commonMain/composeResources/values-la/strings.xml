@@ -2487,4 +2487,15 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="setup_login_code">Codex paginae aditus</string>
     <string name="setup_login_finish">Aditum perfice</string>
     <string name="setup_btn_run_again">Iterum exsequere</string>
+    <string name="portal_access_google_title">Ratio Google consociationis</string>
+    <string name="portal_access_google_hint">Inscriptio Google</string>
+    <string name="portal_access_google_pending">Primum aditum exspectat</string>
+    <string name="portal_access_google_linked">Coniuncta</string>
+    <string name="portal_access_google_by_volunteer">a voluntario</string>
+    <string name="portal_access_google_err_domain">Haec inscriptio non est in dominiis permissis</string>
+    <string name="portal_access_google_err_taken">Haec inscriptio iam alii voluntario adiuncta est</string>
+    <string name="portal_access_google_err_invalid">Inscriptio non valida</string>
+    <string name="portal_access_google_err_save">Servare non potuit, iterum conare.</string>
+    <string name="portal_access_google_remove_title">Rationem Google removere?</string>
+    <string name="portal_access_google_remove_body">%1$s non iam per %2$s intrare poterit. Aditus per tesseram manet.</string>
 </resources>
