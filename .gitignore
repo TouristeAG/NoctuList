@@ -33,3 +33,6 @@ __pycache__/
 *.pyc
 app/google-services.json
 .superpowers/
+
+# Claude Code worktrees
+.claude/worktrees/
