@@ -54,6 +54,23 @@ fun guestFormHostingCommands(projectId: String): String {
     }
 }
 
+/** Installs the portal functions and deploys them with the site, run from the exported folder. */
+fun portalServerDeployCommands(projectId: String): String {
+    val id = projectId.trim().ifBlank { "YOUR_PROJECT_ID" }
+    return buildString {
+        appendLine("cd functions")
+        appendLine("npm install")
+        appendLine("cd ..")
+        append("firebase deploy --only hosting,functions --project $id")
+    }
+}
+
+/** One-time cleanup policy so old function builds do not pile up in Artifact Registry. */
+fun portalServerCleanupCommand(projectId: String, region: String = "europe-west1"): String {
+    val id = projectId.trim().ifBlank { "YOUR_PROJECT_ID" }
+    return "firebase functions:artifacts:setpolicy --location $region --force --project $id"
+}
+
 /**
  * A read-only terminal-style text field. The user can select the commands, copy with the
  * system shortcut, or tap the button — the previous plain [Text] lines were not copyable.

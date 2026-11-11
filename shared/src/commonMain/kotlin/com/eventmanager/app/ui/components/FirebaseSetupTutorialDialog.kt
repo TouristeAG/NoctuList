@@ -55,6 +55,9 @@ import com.eventmanager.app.resources.firebase_tutorial_forms_optional_title
 import com.eventmanager.app.resources.firebase_tutorial_portal_optional_body
 import com.eventmanager.app.resources.firebase_tutorial_portal_optional_title
 import com.eventmanager.app.resources.firebase_tutorial_server_optional_body
+import com.eventmanager.app.resources.firebase_tutorial_server_optional_cleanup
+import com.eventmanager.app.resources.firebase_tutorial_server_optional_prompts
+import com.eventmanager.app.resources.firebase_tutorial_server_optional_status
 import com.eventmanager.app.resources.firebase_tutorial_server_optional_title
 import com.eventmanager.app.resources.firebase_tutorial_cloud_step1_body
 import com.eventmanager.app.resources.firebase_tutorial_cloud_step1_title
@@ -368,6 +371,23 @@ fun FirebaseSetupTutorialDialog(
                     )
                     Text(
                         stringResource(Res.string.firebase_tutorial_server_optional_body),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    CopyableTerminalBlock(commands = portalServerDeployCommands(projectId))
+                    Text(
+                        stringResource(Res.string.firebase_tutorial_server_optional_prompts),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        stringResource(Res.string.firebase_tutorial_server_optional_cleanup),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    CopyableTerminalBlock(commands = portalServerCleanupCommand(projectId))
+                    Text(
+                        stringResource(Res.string.firebase_tutorial_server_optional_status),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

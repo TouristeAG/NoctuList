@@ -124,30 +124,38 @@ the volunteer profile.
 ### Optional: automatic processing (Cloud Functions)
 
 **Skip this section unless requests and QR e-mails should be handled within seconds, even when no
-NoctuList device is online.** Needs the form site and the volunteer portal above.
+NoctuList device is online.** Needs the form site (Node.js and `firebase login` done) and the
+volunteer portal above.
 
-1. **Billing:** upgrade the Firebase project to the **Blaze** plan and create a **budget alert**
-   (for example 5 EUR). An association usually stays within the free quotas.
-2. **Gmail:** on the association's Gmail account, turn on 2-step verification and create an
-   **app password**.
-3. In the exported site folder:
-   ```
+1. **Paid plan.** Firebase Console, click **Spark** at the bottom left, then **Upgrade**, then
+   **Blaze**. Then in Google Cloud Console, open **Billing**, then **Budgets & alerts**, and create
+   a 5 EUR budget with e-mail alerts. An association usually stays within the free quotas.
+2. **Gmail app password.** Sign in to the association's Gmail account and turn on 2-step
+   verification. Open https://myaccount.google.com/apppasswords, create an app password named
+   `NoctuList` and keep the 16 letters it shows.
+3. **Region.** Firebase Console, **Firestore Database**: the location is shown at the top.
+   `eur3` means `europe-west1`, `nam5` means `us-central1`, `europe-west6` (Zurich) stays
+   `europe-west6`.
+4. **Fresh export.** In NoctuList, click **Export the form site** again and unzip it. The folder
+   now contains a `functions` folder.
+5. **Deploy.** Open Terminal in that folder (type `cd `, drag the folder into the window, press
+   Enter), then paste (replace `YOUR_PROJECT_ID`; the in-app guide fills it in for you):
+   ```bash
    cd functions
    npm install
    cd ..
+   firebase deploy --only hosting,functions --project YOUR_PROJECT_ID
    ```
-4. Deploy:
-   ```
-   firebase deploy --only hosting,functions
-   ```
-   The first time, the terminal asks for the Gmail address, the region and the app password.
-   Use the same region as the Firestore database: `eur3` is `europe-west1`, `nam5` is
-   `us-central1`, Zurich is `europe-west6`.
-   If the first deploy fails with an Eventarc or permission error, wait a few minutes and run the
-   deploy again.
-5. Clean old builds automatically, with the region of the functions (step 4):
-   ```
-   firebase functions:artifacts:setpolicy --location <region>
+   The first deploy asks three questions:
+   - `GMAIL_USER`: the association's Gmail address.
+   - `REGION`: press Enter to keep `europe-west1`, or type the region from step 3.
+   - `GMAIL_APP_PASSWORD`: paste the 16-letter app password (nothing shows while typing).
+
+   Answer `Y` if it asks to enable Google Cloud services. If it ends with an Eventarc or
+   permission error, wait 5 minutes and run the last line again.
+6. **Cleanup, once.** So old builds are deleted automatically (change the region if needed):
+   ```bash
+   firebase functions:artifacts:setpolicy --location europe-west1 --force --project YOUR_PROJECT_ID
    ```
 
 **Settings, Firebase** shows "Automatic processing is on" once the server has handled a first
