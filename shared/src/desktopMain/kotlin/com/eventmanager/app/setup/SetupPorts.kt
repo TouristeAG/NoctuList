@@ -17,6 +17,7 @@ interface SetupCli {
     suspend fun createWebApp(projectId: String, onLine: (String) -> Unit): String
     suspend fun sdkConfig(projectId: String, appId: String): WebConfig
     suspend fun deploy(projectId: String, dir: File, only: String, onLine: (String) -> Unit)
+    suspend fun createHostingSite(projectId: String, onLine: (String) -> Unit)
     suspend fun setSecret(projectId: String, dir: File, name: String, value: CharArray, onLine: (String) -> Unit)
     suspend fun npmInstall(dir: File, onLine: (String) -> Unit)
     suspend fun functionsList(projectId: String): List<FunctionInfo>

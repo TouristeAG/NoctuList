@@ -107,6 +107,11 @@ class FirebaseCli(
         )
     }
 
+    /** Default Hosting site named after the project (a project made in the console may have none). */
+    override suspend fun createHostingSite(projectId: String, onLine: (String) -> Unit) {
+        exec(listOf("hosting:sites:create", projectId, "--non-interactive") + project(projectId), SetupStepId.SITE, onLine = onLine)
+    }
+
     override suspend fun setSecret(projectId: String, dir: File, name: String, value: CharArray, onLine: (String) -> Unit) {
         require(SECRET_NAME.matches(name)) { "invalid secret name" }
         val bytes = String(value).encodeToByteArray()

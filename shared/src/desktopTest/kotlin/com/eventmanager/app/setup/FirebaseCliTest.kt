@@ -129,6 +129,13 @@ class FirebaseCliTest {
     }
 
     @Test
+    fun createHostingSiteUsesTheProjectIdAsSiteId(): Unit = runBlocking {
+        val runner = FakeProcessRunner()
+        cli(runner).createHostingSite(pid) {}
+        assertEquals(listOf(fb, js, "hosting:sites:create", pid, "--non-interactive", "--project", pid), runner.calls.single())
+    }
+
+    @Test
     fun loginListReturnsEmailsAndNeverLogsTokens() = runBlocking {
         val json = """{"status":"success","result":[{"user":{"email":"a@example.org"},"tokens":{"refresh_token":"SECRET_REFRESH"}}]}"""
         val runner = FakeProcessRunner { 0 to json }

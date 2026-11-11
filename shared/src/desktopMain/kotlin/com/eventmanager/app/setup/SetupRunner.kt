@@ -191,7 +191,7 @@ class SetupRunner(
             }
             SetupStepId.SITE -> {
                 deploy(step, "hosting")
-                _info.update { it.copy(siteUrl = "https://${projectId()}.web.app") }
+                if (_info.value.siteUrl.isBlank()) _info.update { it.copy(siteUrl = "https://${projectId()}.web.app") }
                 markDone(step)
             }
             SetupStepId.PHOTOS -> {
@@ -220,7 +220,7 @@ class SetupRunner(
         workspace.writeFunctionParams(dir, pid, gmail, region)
         c.setSecret(pid, dir, SECRET_NAME, password) { log(step, it) }
         c.npmInstall(dir.resolve("functions")) { log(step, it) }
-        withRetry(step) { c.deploy(pid, dir, "hosting,functions") { log(step, it) } }
+        deployTo(step, c, pid, dir, "hosting,functions")
         c.setArtifactPolicy(pid, region) { log(step, it) }
         markDone(step)
     }
@@ -229,7 +229,22 @@ class SetupRunner(
         val c = requireCli()
         val pid = projectId()
         val dir = workspace.prepare(pid, withStorage = storageOn() || step == SetupStepId.PHOTOS)
-        withRetry(step) { c.deploy(pid, dir, only) { log(step, it) } }
+        deployTo(step, c, pid, dir, only)
+    }
+
+    /** Deploys with retries; creates the Hosting site once if the project has none; reads the site URL. */
+    private suspend fun deployTo(step: SetupStepId, c: SetupCli, pid: String, dir: File, only: String) {
+        val onLine: (String) -> Unit = { line ->
+            log(step, line)
+            HOSTING_URL.find(line.replace(ANSI, ""))?.let { m -> _info.update { it.copy(siteUrl = m.groupValues[1]) } }
+        }
+        try {
+            withRetry(step) { c.deploy(pid, dir, only, onLine) }
+        } catch (e: CliException) {
+            if ("hosting" !in only || !NO_SITE.containsMatchIn(e.error.details)) throw e
+            c.createHostingSite(pid, onLine)
+            withRetry(step) { c.deploy(pid, dir, only, onLine) }
+        }
     }
 
     private suspend fun withRetry(step: SetupStepId, block: suspend () -> Unit) {
@@ -313,6 +328,9 @@ class SetupRunner(
         const val MAX_LOG_LINES = 200
         val SERVER_FUNCTIONS = listOf("onSignupWritten", "onPortalRequestWritten")
         val MACHINE_STEPS = setOf(SetupStepId.TOOLS, SetupStepId.LOGIN)
+        val HOSTING_URL = Regex("Hosting URL:\\s*(https://\\S+)")
+        val NO_SITE = Regex("no Hosting site", RegexOption.IGNORE_CASE)
+        val ANSI = Regex("\u001B\\[[0-9;]*m")
 
         fun initialStates(progress: SetupProgress): Map<SetupStepId, StepState> =
             SetupStepId.entries.associateWith { step ->

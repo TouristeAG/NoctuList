@@ -58,7 +58,9 @@ private class FakeCli : SetupCli {
         calls += "deploy $only"
         blockDeploy?.await()
         if (deployFailures.isNotEmpty()) fail(deployFailures.removeAt(0), SetupStepId.SERVER)
+        if ("hosting" in only) onLine("\u001B[1mHosting URL:\u001B[22m https://site-for-$projectId.web.app")
     }
+    override suspend fun createHostingSite(projectId: String, onLine: (String) -> Unit) { calls += "createHostingSite" }
     override suspend fun setSecret(projectId: String, dir: File, name: String, value: CharArray, onLine: (String) -> Unit) {
         calls += "setSecret $name"; passwordSeen = String(value)
     }
@@ -268,6 +270,16 @@ class SetupRunnerTest {
         val r = SetupRunner(scope, FakeTools(installed = true), { cli }, workspace, settings, sleep = {})
         r.refresh()
         assertEquals(listOf("europe-west6", "eur3", "nam5"), r.info.value.locations)
+    }
+
+    @Test
+    fun missingHostingSiteIsCreatedThenDeployedAndUrlRead(): Unit = runBlocking {
+        ready()
+        cli.deployFailures += "Error: Unable to deploy to Hosting as there is no Hosting site. Use firebase hosting:sites:create to create a site."
+        runner.run(SetupStepId.SITE)
+        awaitState(SetupStepId.SITE) { it == StepState.Done }
+        assertEquals(listOf("deploy hosting", "createHostingSite", "deploy hosting"), cli.calls)
+        assertEquals("https://site-for-demo-project.web.app", runner.info.value.siteUrl)
     }
 
     @Test
