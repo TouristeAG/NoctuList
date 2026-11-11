@@ -25,7 +25,8 @@ répète disparaît ; les explications passent derrière un « ? ».
 |---|---|
 | Découpage | « Sync & données » devient 4 catégories du menu de gauche (ordinateur) et 4 cartes repliables (Android) : Connexion, Équipe, Fonctions en ligne, Sauvegarde. En mode Sheets : Connexion et Synchronisation. |
 | Plateformes | Ordinateur et Android, mêmes composants partagés (`commonMain`). |
-| Aide | Un « ? » à côté du titre de chaque bloc ouvre une fenêtre d'explication. Le « ? » de Connexion ouvre le guide Firebase (assistant). Plus de bouton « Guide », plus de paragraphe dans la page. |
+| Aide | Un « ? » à côté du titre de chaque bloc ouvre une fenêtre d'explication. Plus de paragraphe dans la page. |
+| Guide Firebase | Reste bien visible : un bouton large « Guide de configuration Firebase » en haut de Connexion, qui ouvre l'assistant à sa taille actuelle (il sert à chaque mise à jour : règles, site, serveur). L'assistant lui-même ne change pas. |
 | Configuration du projet | Quitte la page. « Reconfigurer… » ouvre une fenêtre « Projet Firebase » (coller la configuration, identifiants, client Web, secret, lien vers le guide). |
 | Organisations | Restent dans Connexion : liste compacte + « Ajouter une organisation » (petite fenêtre avec validation). |
 | Ajouter une personne | Un bouton ouvre une fenêtre : QR en grand, puis « Pas de caméra ? » avec le code de configuration à copier. Le code d'invitation est créé automatiquement ; « Désactiver les anciens QR » est dans le menu de la fenêtre. |
@@ -73,8 +74,9 @@ Objectif : calme, aéré, lisible. Pas de décoration « carré + icône » sur 
   + validation existante : format, doublon) ; retirer avec confirmation.
 - **Fenêtre « Projet Firebase »** (via « Reconfigurer… ») : reprend `FirebaseAdminProjectConfigCard`
   (coller la config, Project ID, Application ID, clé API, client Web, secret, masquage des secrets
-  pour les non-admins) + lien « Ouvrir le guide ».
-- **Supprimé** : texte d'intro, étapes numérotées, liste à cocher, bouton « Guide » séparé.
+  pour les non-admins).
+- **Guide** : sous l'état, un bouton large « Guide de configuration Firebase » (même taille et même assistant qu'aujourd'hui), avec une ligne : « Pour la première installation et après chaque mise à jour de NoctuList ».
+- **Supprimé** : texte d'intro, étapes numérotées, liste à cocher.
 
 ### 4.2 Équipe
 - **Ajouter une personne** : bouton → fenêtre : QR (240 dp), « Pas de caméra ? Copie ce code dans
