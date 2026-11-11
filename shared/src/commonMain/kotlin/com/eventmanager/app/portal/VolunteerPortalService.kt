@@ -99,7 +99,7 @@ class VolunteerPortalService(
     private var latestSignupDocs: List<Pair<String, Map<String, Any?>>> = emptyList()
     private var latestRequestDocs: List<Pair<String, Map<String, Any?>>> = emptyList()
     private var latestClaimDocs: List<Pair<String, Map<String, Any?>>> = emptyList()
-    private var latestSnapshot: Snapshot? = null
+    @Volatile private var latestSnapshot: Snapshot? = null
     private var started = false
     private val _serverStatus = MutableStateFlow<PortalServerStatus?>(null)
 

@@ -714,7 +714,7 @@ private fun PortalGoogleAccountRow(viewModel: EventManagerViewModel, volunteer: 
     val scope = rememberCoroutineScope()
     var editing by remember(volunteer.id, volunteer.portalGoogleEmail) { mutableStateOf(volunteer.portalGoogleEmail.isBlank()) }
     var input by remember(volunteer.id, volunteer.portalGoogleEmail) { mutableStateOf(volunteer.portalGoogleEmail) }
-    var errorCode by remember { mutableStateOf<String?>(null) }
+    var errorCode by remember(volunteer.id) { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     var confirmRemove by remember { mutableStateOf(false) }
     val hasAccount = volunteer.portalGoogleEmail.isNotBlank()

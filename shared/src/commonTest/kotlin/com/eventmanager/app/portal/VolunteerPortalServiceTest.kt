@@ -767,5 +767,19 @@ class VolunteerPortalServiceTest {
         assertTrue((gateway.docs["volunteerPortal/$UID"]!!["payload"] as String).contains("\"googleLinkAvailable\":false"))
     }
 
+    @Test
+    fun republishPicksUpAnEmptiedDomainList() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(emptyList())
+        val svc = service(gateway, host)
+        svc.start(MutableStateFlow(emptyList()), MutableStateFlow(emptyList()),
+            MutableStateFlow(emptyList()), MutableStateFlow(emptyList()))
+        withTimeout(5_000) { while (gateway.docs["portalBranding/default"] == null) delay(20) }
+        assertEquals(true, gateway.docs["portalBranding/default"]!!["googleLogin"])
+        host.googleDomains = emptyList()
+        svc.republish()
+        assertEquals(false, gateway.docs["portalBranding/default"]!!["googleLogin"])
+    }
+
     // endregion
 }

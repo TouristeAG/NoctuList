@@ -2675,6 +2675,7 @@ class EventManagerViewModel(
         if (result == DomainCheck.GOOGLE) {
             settings.setVolunteerPortalGoogleDomains(settings.volunteerPortalGoogleDomains() + domain)
             publishVolunteerPortalSettings()
+            republishVolunteerPortal()
             backupInstitutionSettingsToSheets()
         }
         return result
@@ -2696,7 +2697,6 @@ class EventManagerViewModel(
         val service = volunteerPortalService
         settings.setVolunteerPortalEnabled(enabled)
         publishVolunteerPortalSettings()
-        republishVolunteerPortal()
         backupInstitutionSettingsToSheets()
         viewModelScope.launch {
             if (!enabled) runCatching { service?.unpublishAll() }
