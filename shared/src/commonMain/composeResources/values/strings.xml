@@ -2339,7 +2339,7 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="drive_import_noctulist_profile">NoctuList volunteer</string>
     <string name="drive_import_maps_to">matches</string>
     <string name="drive_import_people_count">%1$d people found</string>
-    <string name="profile_photo_request_button">Ask the person</string>
+    <string name="profile_photo_request_button">Ask the person for a profile picture</string>
     <string name="profile_photo_request_title">Profile photo request</string>
     <string name="profile_photo_request_body">Send this link to %1$s or let them scan the QR code. The photo is added to the profile automatically.</string>
     <string name="profile_photo_request_creating">Creating the link…</string>

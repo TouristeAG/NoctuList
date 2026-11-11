@@ -2337,7 +2337,7 @@
     <string name="drive_import_noctulist_profile">NoctuList 志愿者</string>
     <string name="drive_import_maps_to">对应</string>
     <string name="drive_import_people_count">找到 %1$d 人</string>
-    <string name="profile_photo_request_button">向本人索取</string>
+    <string name="profile_photo_request_button">向本人索取头像照片</string>
     <string name="profile_photo_request_title">头像照片请求</string>
     <string name="profile_photo_request_body">将此链接发送给 %1$s，或让对方扫描二维码。照片会自动添加到个人资料。</string>
     <string name="profile_photo_request_creating">正在创建链接…</string>

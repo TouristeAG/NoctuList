@@ -448,7 +448,7 @@ fun ProfilePhotoActionButtons(
     modifier: Modifier = Modifier,
     fillWidth: Boolean = true,
     sideBySide: Boolean = false,
-    /** "Ask the person": sends them a public upload link. Hidden when null. */
+    /** "Ask the person for a profile picture": sends them a public upload link. Hidden when null. */
     onRequestFromPerson: (() -> Unit)? = null,
 ) {
     if (!enabled) return

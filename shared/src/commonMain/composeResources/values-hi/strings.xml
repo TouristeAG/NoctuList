@@ -2342,7 +2342,7 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="drive_import_noctulist_profile">NoctuList स्वयंसेवक</string>
     <string name="drive_import_maps_to">मेल खाता है</string>
     <string name="drive_import_people_count">%1$d लोग मिले</string>
-    <string name="profile_photo_request_button">व्यक्ति से माँगें</string>
+    <string name="profile_photo_request_button">व्यक्ति से प्रोफ़ाइल फ़ोटो माँगें</string>
     <string name="profile_photo_request_title">प्रोफ़ाइल फ़ोटो अनुरोध</string>
     <string name="profile_photo_request_body">यह लिंक %1$s को भेजें या QR कोड स्कैन कराएँ। फ़ोटो अपने आप प्रोफ़ाइल में जुड़ जाएगी।</string>
     <string name="profile_photo_request_creating">लिंक बनाया जा रहा है…</string>

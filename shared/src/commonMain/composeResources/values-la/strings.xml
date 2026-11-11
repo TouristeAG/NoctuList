@@ -2342,7 +2342,7 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="drive_import_noctulist_profile">Voluntarius NoctuList</string>
     <string name="drive_import_maps_to">respondet</string>
     <string name="drive_import_people_count">%1$d personae inventae</string>
-    <string name="profile_photo_request_button">A persona petere</string>
+    <string name="profile_photo_request_button">Imaginem profilii a persona petere</string>
     <string name="profile_photo_request_title">Petitio photographematis</string>
     <string name="profile_photo_request_body">Hunc nexum ad %1$s mitte aut codicem QR legendum praebe. Photographema sponte profilo additur.</string>
     <string name="profile_photo_request_creating">Nexus creatur…</string>
