@@ -37,11 +37,12 @@ class FakeProcessRunner(private val answer: (List<String>) -> Pair<Int, String> 
 class FirebaseCliTest {
     private val tools = ToolPaths(
         node = File("/t/node/bin/node"),
-        npm = File("/t/node/bin/npm"),
-        firebase = File("/t/npm-global/bin/firebase"),
+        npm = File("/t/node/lib/node_modules/npm/bin/npm-cli.js"),
+        firebase = File("/t/npm-global/lib/node_modules/firebase-tools/lib/bin/firebase.js"),
         binDir = File("/t/node/bin"),
     )
-    private val fb = tools.firebase.path
+    private val fb = tools.node.path
+    private val js = tools.firebase.path
     private val pid = "noctuliste---lethal-tempo"
 
     private fun cli(runner: FakeProcessRunner, secrets: () -> List<String> = { emptyList() }) =
@@ -54,7 +55,7 @@ class FirebaseCliTest {
         val log = mutableListOf<String>()
         cli(runner) { listOf(password) }.setSecret(pid, File("/w s"), "GMAIL_APP_PASSWORD", password.toCharArray()) { log += it }
         assertEquals(
-            listOf(fb, "functions:secrets:set", "GMAIL_APP_PASSWORD", "--data-file", "-", "--force", "--project", pid),
+            listOf(fb, js, "functions:secrets:set", "GMAIL_APP_PASSWORD", "--data-file", "-", "--force", "--project", pid),
             runner.calls.single(),
         )
         assertContentEquals(password.encodeToByteArray(), runner.stdins.single())
@@ -78,7 +79,7 @@ class FirebaseCliTest {
         val runner = FakeProcessRunner()
         cli(runner).deploy(pid, File("/a b/site"), "hosting,functions") {}
         assertEquals(
-            listOf(fb, "deploy", "--only", "hosting,functions", "--non-interactive", "--force", "--project", pid),
+            listOf(fb, js, "deploy", "--only", "hosting,functions", "--non-interactive", "--force", "--project", pid),
             runner.calls.single(),
         )
         assertTrue(runner.envs.single().getValue("PATH").startsWith("/t/node/bin"))
@@ -115,14 +116,14 @@ class FirebaseCliTest {
         val challenge = cli(runner).loginStart()
         assertEquals("AB12C", challenge.sessionId)
         assertEquals("https://auth.firebase.tools/login?code_challenge=xyz&session=abc-123&attest=q", challenge.url)
-        assertEquals(listOf(fb, "login"), runner.calls.single())
+        assertEquals(listOf(fb, js, "login"), runner.calls.single())
     }
 
     @Test
     fun loginFinishPassesTheCodeAsOneArgument(): Unit = runBlocking {
         val runner = FakeProcessRunner { 0 to "Success! Logged in as a@example.org" }
         cli(runner).loginFinish("4/0AVMBsJ_x-y.z~Q12345")
-        assertEquals(listOf(fb, "login", "4/0AVMBsJ_x-y.z~Q12345"), runner.calls.single())
+        assertEquals(listOf(fb, js, "login", "4/0AVMBsJ_x-y.z~Q12345"), runner.calls.single())
         assertFailsWith<IllegalArgumentException> { cli(runner).loginFinish("code; rm -rf /") }
         assertEquals(1, runner.calls.size)
     }
@@ -132,20 +133,20 @@ class FirebaseCliTest {
         val json = """{"status":"success","result":[{"user":{"email":"a@example.org"},"tokens":{"refresh_token":"SECRET_REFRESH"}}]}"""
         val runner = FakeProcessRunner { 0 to json }
         assertEquals(listOf("a@example.org"), cli(runner).loginList())
-        assertEquals(listOf(fb, "login:list", "--json"), runner.calls.single())
+        assertEquals(listOf(fb, js, "login:list", "--json"), runner.calls.single())
     }
 
     @Test
     fun parsesProjectsDatabasesAppsFunctions() = runBlocking {
         val runner = FakeProcessRunner { cmd ->
-            0 to when (cmd[1]) {
+            0 to when (cmd[2]) {
                 "projects:list" -> """{"status":"success","result":[{"projectId":"$pid","displayName":"NoctuListe"}]}"""
                 "firestore:databases:list" -> """{"status":"success","result":[{"name":"projects/$pid/databases/(default)","locationId":"europe-west6"}]}"""
                 "firestore:locations" -> """{"status":"success","result":[{"locationId":"nam5"},{"locationId":"europe-west6"}]}"""
                 "apps:list" -> """{"status":"success","result":[{"appId":"1:568:web:bbc6","displayName":"Web"}]}"""
                 "apps:sdkconfig" -> """{"status":"success","result":{"fileName":"x","sdkConfig":{"projectId":"$pid","appId":"1:568:web:bbc6","apiKey":"AIzaTest"}}}"""
                 "functions:list" -> """{"status":"success","result":[{"id":"onSignupWritten","region":"europe-west6"}]}"""
-                else -> error("unexpected ${cmd[1]}")
+                else -> error("unexpected ${cmd[2]}")
             }
         }
         val c = cli(runner)
@@ -174,31 +175,46 @@ class FirebaseCliTest {
     fun npmInstallUsesBundledNpm() = runBlocking {
         val runner = FakeProcessRunner()
         cli(runner).npmInstall(File("/a b/site/functions")) {}
-        assertEquals(listOf(tools.npm.path, "install", "--no-audit", "--no-fund"), runner.calls.single())
+        assertEquals(listOf(tools.node.path, tools.npm.path, "install", "--no-audit", "--no-fund"), runner.calls.single())
     }
 }
 
 class ToolPathsTest {
     @Test
-    fun windowsNamesForBundledTools() {
-        val p = ToolPathsResolver.bundled(File("/a b/tools"), "Windows 11")
+    fun windowsRunsNodeWithScriptsNotCmdShims() {
+        val p = ToolPathsResolver.bundled(File("C:/Users/Jean Dupont/.noctulist/tools"), "Windows 11")
         assertTrue(p.node.path.endsWith("node.exe"))
-        assertTrue(p.npm.path.endsWith("npm.cmd"))
-        assertTrue(p.firebase.path.endsWith("firebase.cmd"))
+        assertEquals(File("C:/Users/Jean Dupont/.noctulist/tools/node/node_modules/npm/bin/npm-cli.js"), p.npm)
+        assertEquals(File("C:/Users/Jean Dupont/.noctulist/tools/npm-global/node_modules/firebase-tools/lib/bin/firebase.js"), p.firebase)
+        assertTrue(listOf(p.node, p.npm, p.firebase).none { it.name.endsWith(".cmd") })
     }
 
     @Test
-    fun unixNamesForBundledTools() {
+    fun unixBundledLayout() {
         val p = ToolPathsResolver.bundled(File("/a b/tools"), "Mac OS X")
         assertEquals(File("/a b/tools/node/bin/node"), p.node)
-        assertEquals(File("/a b/tools/npm-global/bin/firebase"), p.firebase)
+        assertEquals(File("/a b/tools/node/lib/node_modules/npm/bin/npm-cli.js"), p.npm)
+        assertEquals(File("/a b/tools/npm-global/lib/node_modules/firebase-tools/lib/bin/firebase.js"), p.firebase)
     }
 
     @Test
-    fun fromPathNeedsNodeAndFirebase() {
-        val have = setOf(File("/usr/local/bin/node"), File("/usr/local/bin/npm"), File("/usr/local/bin/firebase"))
-        val p = ToolPathsResolver.fromPath("/usr/bin:/usr/local/bin", "Mac OS X") { it in have }
-        assertEquals(File("/usr/local/bin/firebase"), p?.firebase)
-        assertNull(ToolPathsResolver.fromPath("/usr/local/bin", "Mac OS X") { it.name != "node" && it in have })
+    fun fromPathFollowsLinksToTheScripts() {
+        val root = java.nio.file.Files.createTempDirectory("path tools").toFile()
+        try {
+            val bin = root.resolve("bin").apply { mkdirs() }
+            val fbJs = root.resolve("lib/node_modules/firebase-tools/lib/bin/firebase.js").apply { parentFile.mkdirs(); writeText("") }
+            val npmJs = root.resolve("lib/node_modules/npm/bin/npm-cli.js").apply { parentFile.mkdirs(); writeText("") }
+            bin.resolve("node").writeText("")
+            java.nio.file.Files.createSymbolicLink(bin.resolve("firebase").toPath(), fbJs.toPath())
+            java.nio.file.Files.createSymbolicLink(bin.resolve("npm").toPath(), npmJs.toPath())
+            val p = ToolPathsResolver.fromPath(bin.path, "Mac OS X") { it.exists() }
+            assertEquals(fbJs.canonicalFile, p?.firebase)
+            assertEquals(npmJs.canonicalFile, p?.npm)
+            bin.resolve("firebase").delete()
+            bin.resolve("firebase").writeText("#!/bin/sh")
+            assertNull(ToolPathsResolver.fromPath(bin.path, "Mac OS X") { it.exists() })
+        } finally {
+            root.deleteRecursively()
+        }
     }
 }

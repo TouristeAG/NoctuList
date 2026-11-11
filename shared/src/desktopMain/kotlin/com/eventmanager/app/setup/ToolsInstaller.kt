@@ -107,7 +107,7 @@ class ToolsInstaller(
         val prefix = toolsDir.resolve("npm-global")
         val env = mapOf("PATH" to listOf(paths.binDir.path, System.getenv("PATH").orEmpty()).joinToString(File.pathSeparator))
         val code = runner.run(
-            listOf(paths.npm.path, "install", "--global", "--prefix", prefix.path, "--no-audit", "--no-fund", "firebase-tools"),
+            paths.npmCommand() + listOf("install", "--global", "--prefix", prefix.path, "--no-audit", "--no-fund", "firebase-tools"),
             null,
             env,
             null,

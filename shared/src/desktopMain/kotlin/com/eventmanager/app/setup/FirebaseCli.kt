@@ -125,7 +125,7 @@ class FirebaseCli(
 
     override suspend fun npmInstall(dir: File, onLine: (String) -> Unit) {
         val lines = StringBuilder()
-        val code = runner.run(listOf(tools.npm.path, "install", "--no-audit", "--no-fund"), dir, env(), null) {
+        val code = runner.run(tools.npmCommand() + listOf("install", "--no-audit", "--no-fund"), dir, env(), null) {
             val safe = redactor.redact(it)
             lines.appendLine(safe)
             onLine(safe)
@@ -170,7 +170,7 @@ class FirebaseCli(
         onLine: (String) -> Unit = {},
     ): String {
         val lines = StringBuilder()
-        val code = runner.run(listOf(tools.firebase.path) + args, workDir, env(), stdin) {
+        val code = runner.run(tools.firebaseCommand() + args, workDir, env(), stdin) {
             val safe = redactor.redact(it)
             lines.appendLine(safe)
             if (show) onLine(safe)

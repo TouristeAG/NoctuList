@@ -49,13 +49,14 @@ class ToolsInstallerTest {
                 val dest = File(cmd[cmd.indexOf("-C") + 1])
                 dest.resolve("node-$version-darwin-arm64/bin").mkdirs()
                 dest.resolve("node-$version-darwin-arm64/bin/node").writeText("node")
-                dest.resolve("node-$version-darwin-arm64/bin/npm").writeText("npm")
+                dest.resolve("node-$version-darwin-arm64/lib/node_modules/npm/bin").mkdirs()
+                dest.resolve("node-$version-darwin-arm64/lib/node_modules/npm/bin/npm-cli.js").writeText("npm")
                 0 to ""
             }
             cmd.contains("firebase-tools") -> {
                 val prefix = File(cmd[cmd.indexOf("--prefix") + 1])
-                prefix.resolve("bin").mkdirs()
-                prefix.resolve("bin/firebase").writeText("fb")
+                prefix.resolve("lib/node_modules/firebase-tools/lib/bin").mkdirs()
+                prefix.resolve("lib/node_modules/firebase-tools/lib/bin/firebase.js").writeText("fb")
                 0 to "added 600 packages"
             }
             cmd.last() == "-v" -> 0 to "v22.11.0"
@@ -76,7 +77,7 @@ class ToolsInstallerTest {
         assertEquals("-xf", tar[1])
         assertTrue(tar[2].endsWith(macArm))
         val npm = r.calls.first { it.contains("firebase-tools") }
-        assertEquals(paths.npm.path, npm.first())
+        assertEquals(listOf(paths.node.path, paths.npm.path), npm.take(2))
         assertFalse(toolsDir.listFiles()!!.any { it.name.startsWith(".tmp") })
     }
 
@@ -110,9 +111,13 @@ class ToolsInstallerTest {
     @Test
     fun reusesNode22OnPathButNotNode20(): Unit = runBlocking {
         val bin = base.resolve("usr bin").apply { mkdirs() }
-        listOf("node", "npm", "firebase").forEach { bin.resolve(it).writeText(it) }
+        bin.resolve("node").writeText("node")
+        val fbJs = base.resolve("lib/node_modules/firebase-tools/lib/bin/firebase.js").apply { parentFile.mkdirs(); writeText("") }
+        val npmJs = base.resolve("lib/node_modules/npm/bin/npm-cli.js").apply { parentFile.mkdirs(); writeText("") }
+        java.nio.file.Files.createSymbolicLink(bin.resolve("firebase").toPath(), fbJs.toPath())
+        java.nio.file.Files.createSymbolicLink(bin.resolve("npm").toPath(), npmJs.toPath())
         val ok = FakeProcessRunner { 0 to "v22.11.0" }
-        assertEquals(bin.resolve("firebase"), ToolsInstaller(toolsDir, ok, http(), "Mac OS X", "aarch64").detect(bin.path)?.firebase)
+        assertEquals(fbJs.canonicalFile, ToolsInstaller(toolsDir, ok, http(), "Mac OS X", "aarch64").detect(bin.path)?.firebase)
         val old = FakeProcessRunner { 0 to "v20.1.0" }
         assertNull(ToolsInstaller(toolsDir, old, http(), "Mac OS X", "aarch64").detect(bin.path))
     }
