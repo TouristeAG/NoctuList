@@ -22,6 +22,50 @@ service firebase.storage {
              .data.get('value', '') in ['true', true];
     }
 
+    function settingPath(orgId, key) {
+      return /databases/(default)/documents/orgs/$(orgId)/institutionSettings/$(key);
+    }
+
+    function googleAliasPath(orgId) {
+      return /databases/(default)/documents/orgs/$(orgId)/portalGoogleAccounts/$(request.auth.uid);
+    }
+
+    // Same checks as firestore.rules: Google option on, verified Google address from one of the
+    // association's domains, and an alias written by staff.
+    function isGoogleAccount() {
+      return request.auth != null
+        && request.auth.token.get('firebase', {}).get('sign_in_provider', '') == 'google.com'
+        && request.auth.token.get('email_verified', false) == true
+        && request.auth.token.get('email', '') is string;
+    }
+
+    function authEmailDomain() {
+      return request.auth.token.email.lower().split('@')[1];
+    }
+
+    function portalGoogleOn(orgId) {
+      return portalOn(orgId)
+        && firestore.exists(settingPath(orgId, 'volunteer_portal_google_enabled'))
+        && firestore.get(settingPath(orgId, 'volunteer_portal_google_enabled'))
+             .data.get('value', '') in ['true', true];
+    }
+
+    function portalGoogleDomainOk(orgId) {
+      return authEmailDomain().size() > 0
+        && firestore.exists(settingPath(orgId, 'volunteer_portal_google_domains'))
+        && firestore.get(settingPath(orgId, 'volunteer_portal_google_domains')).data.get('value', '') is string
+        && authEmailDomain()
+             in firestore.get(settingPath(orgId, 'volunteer_portal_google_domains')).data.value.split(',');
+    }
+
+    function isPortalGoogleUserFor(orgId, fileName) {
+      return isGoogleAccount()
+        && portalGoogleOn(orgId)
+        && portalGoogleDomainOk(orgId)
+        && firestore.exists(googleAliasPath(orgId))
+        && fileName == firestore.get(googleAliasPath(orgId)).data.volunteerUid + '.jpg';
+    }
+
     function profilePhotosOn(orgId) {
       return firestore.exists(/databases/(default)/documents/orgs/$(orgId)/institutionSettings/profile_photos_enabled)
         && firestore.get(/databases/(default)/documents/orgs/$(orgId)/institutionSettings/profile_photos_enabled)
@@ -104,7 +148,8 @@ service firebase.storage {
     // account id — never by the volunteer id, which doubles as the wallet QR code.
     match /orgs/{orgId}/portalPhotos/{fileName} {
       allow read: if isMember(orgId)
-        || (portalOn(orgId) && isPortalUser() && fileName == request.auth.uid + '.jpg');
+        || (portalOn(orgId) && isPortalUser() && fileName == request.auth.uid + '.jpg')
+        || isPortalGoogleUserFor(orgId, fileName);
       allow create, update: if isMember(orgId)
         && request.resource.size < 3 * 1024 * 1024
         && request.resource.contentType.matches('image/jpeg');

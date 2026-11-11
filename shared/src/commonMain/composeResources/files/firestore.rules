@@ -1,5 +1,5 @@
 rules_version = '2';
-// NoctuList Firestore rules — NOCTULIST_RULES_VERSION = 14
+// NoctuList Firestore rules — NOCTULIST_RULES_VERSION = 15
 // Republish this exact file in Firebase Console → Firestore → Rules after every app update,
 // otherwise members that already exist cannot re-join their organization.
 service cloud.firestore {
@@ -29,6 +29,57 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/orgs/$(orgId)/institutionSettings/volunteer_portal_enabled)
         && get(/databases/$(database)/documents/orgs/$(orgId)/institutionSettings/volunteer_portal_enabled)
              .data.get('value', '') in ['true', true];
+    }
+
+    function settingPath(orgId, key) {
+      return /databases/$(database)/documents/orgs/$(orgId)/institutionSettings/$(key);
+    }
+
+    function googleAliasPath(orgId) {
+      return /databases/$(database)/documents/orgs/$(orgId)/portalGoogleAccounts/$(request.auth.uid);
+    }
+
+    // Second switch, under the portal one: volunteers may also sign in with an association
+    // Google account.
+    function portalGoogleOn(orgId) {
+      let path = settingPath(orgId, 'volunteer_portal_google_enabled');
+      return portalOn(orgId)
+        && exists(path)
+        && get(path).data.get('value', '') in ['true', true];
+    }
+
+    // A Google sign-in with a verified address. This alone grants nothing: staff rights still
+    // need a members/{uid} document, portal rights an alias written by staff.
+    function isGoogleAccount() {
+      return request.auth != null
+        && request.auth.token.get('firebase', {}).get('sign_in_provider', '') == 'google.com'
+        && request.auth.token.get('email_verified', false) == true
+        && request.auth.token.get('email', '') is string;
+    }
+
+    // The address belongs to one of the association's verified domains (comma-separated list).
+    function portalGoogleDomainOk(orgId) {
+      let path = settingPath(orgId, 'volunteer_portal_google_domains');
+      let domain = authEmailDomain();
+      return domain.size() > 0
+        && exists(path)
+        && get(path).data.get('value', '') is string
+        && domain in get(path).data.value.split(',');
+    }
+
+    // A Google account that staff linked to one volunteer (portalGoogleAccounts/{googleUid}).
+    function isPortalGoogleUser(orgId) {
+      return isGoogleAccount()
+        && portalGoogleOn(orgId)
+        && portalGoogleDomainOk(orgId)
+        && exists(googleAliasPath(orgId));
+    }
+
+    // The portal account the session acts for: its own uid for a password session, the linked
+    // volunteer's portal uid for a Google session. Only call after isPortalUser() or
+    // isPortalGoogleUser(orgId) holds.
+    function portalUidOf(orgId) {
+      return isPortalUser() ? request.auth.uid : get(googleAliasPath(orgId)).data.volunteerUid;
     }
 
     function validPersonName(value) {
@@ -397,18 +448,25 @@ service cloud.firestore {
 
     // The filtered projection the app publishes for one volunteer. Only its owner may read it.
     match /orgs/{orgId}/volunteerPortal/{uid} {
-      allow get: if portalOn(orgId) && isPortalUser() && request.auth.uid == uid;
+      allow get: if portalOn(orgId)
+        && (
+          (isPortalUser() && request.auth.uid == uid)
+          || (isPortalGoogleUser(orgId) && portalUidOf(orgId) == uid)
+        );
     }
 
     function portalRequestDelayMinutes(type) {
       return type == 'QR_EMAIL' ? 10 : 1;
     }
 
-    function validPortalRequest(requestId) {
+    // Only call after isPortalUser() or isPortalGoogleUser(orgId) holds.
+    function validPortalRequest(orgId, requestId) {
       let d = request.resource.data;
-      return d.uid == request.auth.uid
-        && d.type in ['PROFILE', 'QR_EMAIL', 'CLAIM']
-        && requestId == request.auth.uid + '_' + d.type
+      return d.uid == portalUidOf(orgId)
+        && d.type in ['PROFILE', 'QR_EMAIL', 'CLAIM', 'GOOGLE_LINK', 'GOOGLE_UNLINK']
+        && requestId == d.uid + '_' + d.type
+        // Claiming a profile and linking a Google account need the password session.
+        && (!(d.type in ['CLAIM', 'GOOGLE_LINK']) || isPortalUser())
         && d.status == 'PENDING'
         && d.requestedAt == request.time
         && d.email == request.auth.token.get('email', '')
@@ -420,30 +478,81 @@ service cloud.firestore {
             && validPersonName(d.firstName)
             && validPersonName(d.lastName)
             && validPhone(d.phone))
-          || (d.type != 'PROFILE'
+          || (d.type == 'GOOGLE_LINK'
+            && d.keys().hasOnly(['uid', 'type', 'status', 'requestedAt', 'email', 'codeHash'])
+            && d.codeHash is string
+            && d.codeHash.matches('^[0-9a-f]{64}$'))
+          || (d.type in ['QR_EMAIL', 'CLAIM', 'GOOGLE_UNLINK']
             && d.keys().hasOnly(['uid', 'type', 'status', 'requestedAt', 'email']))
         );
     }
 
     // Requests from a portal account: one document per account and type, so a single request can
-    // be pending at a time, and renewals are throttled server-side.
+    // be pending at a time, and renewals are throttled server-side. A linked Google session acts
+    // for its volunteer's portal account and shares these documents.
     match /orgs/{orgId}/portalRequests/{requestId} {
-      allow get: if isPortalUser()
+      allow get: if (isPortalUser() || isPortalGoogleUser(orgId))
         && requestId in [
-          request.auth.uid + '_PROFILE',
-          request.auth.uid + '_QR_EMAIL',
-          request.auth.uid + '_CLAIM'
+          portalUidOf(orgId) + '_PROFILE',
+          portalUidOf(orgId) + '_QR_EMAIL',
+          portalUidOf(orgId) + '_CLAIM',
+          portalUidOf(orgId) + '_GOOGLE_LINK',
+          portalUidOf(orgId) + '_GOOGLE_UNLINK'
         ];
-      allow create: if portalOn(orgId) && isPortalUser() && validPortalRequest(requestId);
+      allow create: if portalOn(orgId)
+        && (isPortalUser() || isPortalGoogleUser(orgId))
+        && validPortalRequest(orgId, requestId);
       allow update: if portalOn(orgId)
-        && isPortalUser()
-        && resource.data.uid == request.auth.uid
+        && (isPortalUser() || isPortalGoogleUser(orgId))
+        && resource.data.uid == portalUidOf(orgId)
         // A claim older than 5 minutes was abandoned: the volunteer may send the request again.
         && (resource.data.status != 'PROCESSING'
              || request.time.toMillis() > resource.data.processingAt + 300000)
-        && validPortalRequest(requestId)
+        && validPortalRequest(orgId, requestId)
         && request.time > resource.data.requestedAt
              + duration.value(portalRequestDelayMinutes(request.resource.data.type), 'm');
+    }
+
+    function canSendGoogleClaim(orgId, googleUid) {
+      return isGoogleAccount()
+        && request.auth.uid == googleUid
+        && portalGoogleOn(orgId)
+        && portalGoogleDomainOk(orgId);
+    }
+
+    function validGoogleClaim() {
+      let d = request.resource.data;
+      return d.type in ['ADMIN_MATCH', 'LINK_CODE']
+        && d.status == 'PENDING'
+        && d.requestedAt == request.time
+        && d.email == request.auth.token.email
+        && (
+          (d.type == 'ADMIN_MATCH'
+            && d.keys().hasOnly(['type', 'status', 'requestedAt', 'email']))
+          || (d.type == 'LINK_CODE'
+            && d.keys().hasOnly(['type', 'status', 'requestedAt', 'email', 'code'])
+            && d.code is string
+            && d.code.matches('^[A-Za-z0-9_-]{32,64}$'))
+        );
+    }
+
+    // A Google account asking to be linked to a volunteer: by a one-time code from the
+    // volunteer's password session, or by staff matching its address. Keyed by the Google uid,
+    // one claim at a time; staff and the Functions process it (catch-all below).
+    match /orgs/{orgId}/portalGoogleClaims/{googleUid} {
+      allow get: if isGoogleAccount() && request.auth.uid == googleUid;
+      allow create: if canSendGoogleClaim(orgId, googleUid) && validGoogleClaim();
+      allow update: if canSendGoogleClaim(orgId, googleUid)
+        && (resource.data.status != 'PROCESSING'
+             || request.time.toMillis() > resource.data.processingAt + 300000)
+        && validGoogleClaim()
+        && request.time > resource.data.requestedAt + duration.value(1, 'm');
+    }
+
+    // Link from a Google account to a volunteer's portal account. Its owner may read it to know
+    // whether it is linked; only members (catch-all below) and the Functions write it.
+    match /orgs/{orgId}/portalGoogleAccounts/{googleUid} {
+      allow get: if isGoogleAccount() && request.auth.uid == googleUid;
     }
 
     // E-mail template the devices publish for the Cloud Functions that mail volunteers.
