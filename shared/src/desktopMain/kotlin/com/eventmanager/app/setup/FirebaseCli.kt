@@ -10,7 +10,6 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 
-data class ProjectInfo(val id: String, val displayName: String)
 data class DatabaseInfo(val name: String, val locationId: String)
 data class WebConfig(val apiKey: String, val appId: String, val projectId: String)
 data class FunctionInfo(val name: String, val region: String)
@@ -23,40 +22,40 @@ class FirebaseCli(
     private val runner: ProcessRunner,
     private val tools: ToolPaths,
     private val redactor: OutputRedactor,
-) {
-    suspend fun login(onLine: (String) -> Unit) {
+) : SetupCli {
+    override suspend fun login(onLine: (String) -> Unit) {
         exec(listOf("login"), step = SetupStepId.LOGIN, onLine = onLine)
     }
 
     /** E-mails of the signed-in accounts. The raw output holds tokens: it is never shown. */
-    suspend fun loginList(): List<String> =
+    override suspend fun loginList(): List<String> =
         result(readJson(listOf("login:list", "--json"), SetupStepId.LOGIN, show = false)).arr()
             .mapNotNull { it.obj()?.get("user")?.obj()?.str("email") }
 
-    suspend fun projectsList(): List<ProjectInfo> =
+    override suspend fun projectsList(): List<ProjectInfo> =
         result(readJson(listOf("projects:list", "--json"), SetupStepId.PROJECT)).arr().mapNotNull {
             val o = it.obj() ?: return@mapNotNull null
             ProjectInfo(o.str("projectId") ?: return@mapNotNull null, o.str("displayName").orEmpty())
         }
 
-    suspend fun projectsCreate(id: String, displayName: String, onLine: (String) -> Unit) {
+    override suspend fun projectsCreate(id: String, displayName: String, onLine: (String) -> Unit) {
         require(SetupValidators.projectId(id)) { "invalid project id" }
         require(SetupValidators.displayName(displayName)) { "invalid display name" }
         exec(listOf("projects:create", id, "--display-name", displayName), SetupStepId.PROJECT, onLine = onLine)
     }
 
-    suspend fun databases(projectId: String): List<DatabaseInfo> =
+    override suspend fun databases(projectId: String): List<DatabaseInfo> =
         result(readJson(listOf("firestore:databases:list") + project(projectId) + "--json", SetupStepId.DATABASE)).arr()
             .mapNotNull {
                 val o = it.obj() ?: return@mapNotNull null
                 DatabaseInfo(o.str("name")?.substringAfterLast('/') ?: return@mapNotNull null, o.str("locationId").orEmpty())
             }
 
-    suspend fun firestoreLocations(projectId: String): List<String> =
+    override suspend fun firestoreLocations(projectId: String): List<String> =
         result(readJson(listOf("firestore:locations") + project(projectId) + "--json", SetupStepId.DATABASE)).arr()
             .mapNotNull { it.obj()?.str("locationId") }
 
-    suspend fun createDatabase(projectId: String, location: String, allowed: List<String>, onLine: (String) -> Unit) {
+    override suspend fun createDatabase(projectId: String, location: String, allowed: List<String>, onLine: (String) -> Unit) {
         require(SetupValidators.location(location, allowed)) { "invalid location" }
         exec(
             listOf("firestore:databases:create", "(default)", "--location", location) + project(projectId),
@@ -65,16 +64,16 @@ class FirebaseCli(
         )
     }
 
-    suspend fun webApps(projectId: String): List<String> =
+    override suspend fun webApps(projectId: String): List<String> =
         result(readJson(listOf("apps:list", "WEB") + project(projectId) + "--json", SetupStepId.CONNECT)).arr()
             .mapNotNull { it.obj()?.str("appId") }
 
-    suspend fun createWebApp(projectId: String, onLine: (String) -> Unit): String {
+    override suspend fun createWebApp(projectId: String, onLine: (String) -> Unit): String {
         val out = readJson(listOf("apps:create", "WEB", "NoctuList") + project(projectId) + "--json", SetupStepId.CONNECT, onLine)
         return result(out).obj()?.str("appId") ?: throw CliException(CliErrorClassifier.classify(out.raw, SetupStepId.CONNECT))
     }
 
-    suspend fun sdkConfig(projectId: String, appId: String): WebConfig {
+    override suspend fun sdkConfig(projectId: String, appId: String): WebConfig {
         require(SetupValidators.webAppId(appId)) { "invalid app id" }
         val out = readJson(listOf("apps:sdkconfig", "WEB", appId) + project(projectId) + "--json", SetupStepId.CONNECT)
         val cfg = result(out).obj()?.get("sdkConfig")?.obj()
@@ -82,7 +81,7 @@ class FirebaseCli(
         return WebConfig(cfg.str("apiKey").orEmpty(), cfg.str("appId").orEmpty(), cfg.str("projectId").orEmpty())
     }
 
-    suspend fun deploy(projectId: String, dir: File, only: String, onLine: (String) -> Unit) {
+    override suspend fun deploy(projectId: String, dir: File, only: String, onLine: (String) -> Unit) {
         require(ONLY.matches(only)) { "invalid deploy target" }
         exec(
             listOf("deploy", "--only", only, "--non-interactive", "--force") + project(projectId),
@@ -92,7 +91,7 @@ class FirebaseCli(
         )
     }
 
-    suspend fun setSecret(projectId: String, dir: File, name: String, value: CharArray, onLine: (String) -> Unit) {
+    override suspend fun setSecret(projectId: String, dir: File, name: String, value: CharArray, onLine: (String) -> Unit) {
         require(SECRET_NAME.matches(name)) { "invalid secret name" }
         val bytes = String(value).encodeToByteArray()
         try {
@@ -108,7 +107,7 @@ class FirebaseCli(
         }
     }
 
-    suspend fun npmInstall(dir: File, onLine: (String) -> Unit) {
+    override suspend fun npmInstall(dir: File, onLine: (String) -> Unit) {
         val lines = StringBuilder()
         val code = runner.run(listOf(tools.npm.path, "install", "--no-audit", "--no-fund"), dir, env(), null) {
             val safe = redactor.redact(it)
@@ -118,14 +117,14 @@ class FirebaseCli(
         if (code != 0) throw CliException(CliErrorClassifier.classify(lines.toString(), SetupStepId.SERVER))
     }
 
-    suspend fun functionsList(projectId: String): List<FunctionInfo> =
+    override suspend fun functionsList(projectId: String): List<FunctionInfo> =
         result(readJson(listOf("functions:list") + project(projectId) + "--json", SetupStepId.SERVER)).arr()
             .mapNotNull {
                 val o = it.obj() ?: return@mapNotNull null
                 FunctionInfo(o.str("id") ?: return@mapNotNull null, o.str("region").orEmpty())
             }
 
-    suspend fun setArtifactPolicy(projectId: String, region: String, onLine: (String) -> Unit) {
+    override suspend fun setArtifactPolicy(projectId: String, region: String, onLine: (String) -> Unit) {
         require(REGION.matches(region)) { "invalid region" }
         exec(
             listOf("functions:artifacts:setpolicy", "--location", region, "--force") + project(projectId),
