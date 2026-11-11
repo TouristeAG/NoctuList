@@ -22,6 +22,7 @@ class SetupRunner(
     private val workspace: SiteWorkspace,
     private val settings: SetupSettings,
     private val sleep: suspend (Long) -> Unit = { delay(it) },
+    private val secrets: ActiveSecrets = ActiveSecrets(),
 ) : SetupAutomation {
     override val available = true
 
@@ -76,6 +77,7 @@ class SetupRunner(
             } catch (e: Exception) {
                 setState(step, StepState.Error(CliError(CliErrorKind.UNKNOWN, false, step, e.message.orEmpty())))
             } finally {
+                secrets.clear()
                 input.appPassword?.fill('\u0000')
             }
         }
@@ -181,6 +183,7 @@ class SetupRunner(
         require(SetupValidators.gmail(gmail)) { "invalid gmail address" }
         val password = input.appPassword ?: throw IllegalArgumentException("missing app password")
         require(password.isNotEmpty()) { "missing app password" }
+        secrets.add(String(password))
         val db = c.databases(pid).firstOrNull { it.name == DEFAULT_DB } ?: throw IllegalStateException("no database")
         val region = RegionMapper.functionsRegion(db.locationId)
         _info.update { it.copy(region = region) }

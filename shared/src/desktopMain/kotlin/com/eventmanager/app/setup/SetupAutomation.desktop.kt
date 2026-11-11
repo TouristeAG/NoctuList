@@ -10,13 +10,19 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 
+/** Where the assistant keeps its files: inside the app data folder, so "Remove all app data" removes them. */
+object SetupPaths {
+    fun tools(root: java.io.File) = root.resolve("tools")
+    fun site(root: java.io.File) = root.resolve("firebase-site")
+}
+
 @OptIn(ExperimentalResourceApi::class)
 actual fun createSetupAutomation(context: PlatformContext, settings: SettingsManager): SetupAutomation {
     val root = context.appDataDir
     val runner = RealProcessRunner()
     val os = System.getProperty("os.name").orEmpty()
     val installer = ToolsInstaller(
-        toolsDir = root.resolve("tools"),
+        toolsDir = SetupPaths.tools(root),
         runner = runner,
         http = JdkToolsHttp(),
         os = os,
@@ -26,12 +32,14 @@ actual fun createSetupAutomation(context: PlatformContext, settings: SettingsMan
         override suspend fun detect() = installer.detect(System.getenv("PATH").orEmpty())
         override suspend fun install(onProgress: (Float, String) -> Unit) = installer.install(onProgress)
     }
+    val secrets = ActiveSecrets()
     return SetupRunner(
         scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
         tools = tools,
-        cliFactory = { paths -> FirebaseCli(runner, paths, OutputRedactor { emptyList() }) },
-        workspace = SiteWorkspace(root.resolve("firebase-site"), GuestFormSiteBundle.files) { Res.readBytes(it) },
+        cliFactory = { paths -> FirebaseCli(runner, paths, OutputRedactor { secrets.current() }) },
+        workspace = SiteWorkspace(SetupPaths.site(root), GuestFormSiteBundle.files) { Res.readBytes(it) },
         settings = SettingsManagerSetupSettings(settings),
+        secrets = secrets,
     )
 }
 

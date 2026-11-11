@@ -9,3 +9,21 @@ class OutputRedactor(private val secrets: () -> List<String>) {
         const val MASK = "••••"
     }
 }
+
+/** Secrets in use right now (only while a step that handles one is running). */
+class ActiveSecrets {
+    private val values = mutableListOf<String>()
+
+    @Synchronized
+    fun current(): List<String> = values.toList()
+
+    @Synchronized
+    fun add(value: String) {
+        values += value
+    }
+
+    @Synchronized
+    fun clear() {
+        values.clear()
+    }
+}

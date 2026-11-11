@@ -119,6 +119,24 @@ class SetupRunnerTest {
     }
 
     @Test
+    fun passwordIsMaskedOnlyWhileTheServerStepRuns(): Unit = runBlocking {
+        val secrets = ActiveSecrets()
+        var seenDuringStep = emptyList<String>()
+        val probingCli = object : SetupCli by cli {
+            override suspend fun setSecret(projectId: String, dir: File, name: String, value: CharArray, onLine: (String) -> Unit) {
+                seenDuringStep = secrets.current()
+            }
+        }
+        val r = SetupRunner(scope, FakeTools(), { probingCli }, workspace, settings, sleep = {}, secrets = secrets)
+        r.run(SetupStepId.TOOLS)
+        withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] == StepState.Done } }
+        r.run(SetupStepId.SERVER, StepInput(gmailUser = "info@example.org", appPassword = "abcd efgh".toCharArray()))
+        withTimeout(5_000) { r.states.first { it[SetupStepId.SERVER] == StepState.Done } }
+        assertEquals(listOf("abcd efgh"), seenDuringStep)
+        assertEquals(emptyList(), secrets.current())
+    }
+
+    @Test
     fun passwordArrayIsWipedAfterTheStep(): Unit = runBlocking {
         ready()
         val password = "abcd efgh".toCharArray()
