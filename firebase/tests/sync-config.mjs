@@ -1,6 +1,7 @@
 // Regenerates firebase.json for the local emulators from the production Hosting config
 // (webform/firebase.json): same rewrites and headers, with the CSP widened to the emulator
-// ports on localhost and without upgrade-insecure-requests (emulators speak plain HTTP).
+// ports on localhost (frame-src too, for the Auth emulator's Google sign-in frame) and without
+// upgrade-insecure-requests (emulators speak plain HTTP).
 // Also writes the emulator-only parameters of the portal functions (.env.local, .secret.local),
 // both gitignored and never deployed.
 import { existsSync, lstatSync, readFileSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
@@ -33,6 +34,8 @@ for (const rule of hosting.headers) {
     header.value = header.value
       .replace("connect-src 'self'", `connect-src 'self' ${connect}`)
       .replace("img-src 'self' data: blob:", `img-src 'self' data: blob: ${img}`)
+      // The Auth emulator serves the Google sign-in frame from its own port.
+      .replace("frame-src 'self'", `frame-src 'self' ${LOCAL.map((h) => `http://${h}:9099`).join(" ")}`)
       .replace("; upgrade-insecure-requests", "");
   }
 }

@@ -1,12 +1,15 @@
 // Volunteer space: /v/{orgId}
 // Reads only the signed-in volunteer's own projection (orgs/{org}/volunteerPortal/{uid}); every
 // change goes through a request document that a NoctuList device validates and applies.
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { deleteApp, initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import {
   EmailAuthProvider,
+  GoogleAuthProvider,
   browserLocalPersistence,
+  browserPopupRedirectResolver,
   browserSessionPersistence,
   connectAuthEmulator,
+  inMemoryPersistence,
   initializeAuth,
   onAuthStateChanged,
   reauthenticateWithCredential,
@@ -14,6 +17,7 @@ import {
   sendPasswordResetEmail,
   setPersistence,
   signInWithEmailAndPassword,
+  signInWithPopup,
   signOut,
   updatePassword,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
@@ -34,7 +38,7 @@ import {
   uploadBytes,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 import { EMULATOR_PORTS, isLocalDev, loadConfig, parseOrgPath } from "./firebase-env.js?v=portal-2";
-import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=portal-3";
+import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=google-1";
 import {
   EMAIL_RE,
   authErrorKey,
@@ -48,20 +52,29 @@ import {
 } from "./portal-common.js?v=portal-2";
 
 const $ = (id) => document.getElementById(id);
-const VIEWS = ["view-loading", "view-disabled", "view-signin", "view-reset", "view-verify", "view-pending", "view-dash"];
+const VIEWS = ["view-loading", "view-disabled", "view-signin", "view-reset", "view-verify", "view-pending", "view-google", "view-dash"];
 const REMEMBER_KEY = "nl-portal-remember";
 const LAST_ORG_KEY = "nl-portal-org";
 const IDLE_LIMIT_MS = 30 * 60 * 1000;
-const DELAYS_MIN = { PROFILE: 1, QR_EMAIL: 10, CLAIM: 1 };
+const DELAYS_MIN = { PROFILE: 1, QR_EMAIL: 10, CLAIM: 1, GOOGLE_LINK: 1, GOOGLE_UNLINK: 1 };
+const REQUEST_TYPES = ["PROFILE", "QR_EMAIL", "CLAIM", "GOOGLE_LINK", "GOOGLE_UNLINK"];
+/** A device takes over a claim the Functions left alone after 2 minutes; past this the page stops waiting. */
+const LINK_WAIT_MS = 3 * 60_000;
+/** Messages for the answers to a Google claim (portalGoogleClaims). */
+const ADMIN_MATCH_KEYS = { NO_MATCH: "googleNoMatch", DOMAIN: "googleDomain" };
+const LINK_CODE_KEYS = { CODE: "googleCode", TAKEN: "googleTaken", ALREADY_LINKED: "googleAlreadyLinked", DOMAIN: "googleDomain" };
 /** Same as the rules: a PROCESSING claim this old was abandoned and the request can be sent again. */
 const PROCESSING_STALE_MS = 5 * 60_000;
 
 let path = null;
+let firebaseConfig = null;
 let auth = null;
 let db = null;
 let storage = null;
 let branding = null;
 let user = null;
+/** Portal account the page reads and writes for: the signed-in uid, or the volunteer a Google account is linked to. */
+let portalUid = "";
 let projection = null;
 let projectionUpdatedAt = 0;
 let photoUrl = "";
@@ -69,6 +82,12 @@ let photoVersionLoaded = "";
 let requests = {};
 let unsubscribers = [];
 let idleTimer = null;
+/** Google section of "My account": the node, the message of the last link attempt, a link in progress. */
+let googleBox = null;
+let googleMsg = null;
+let linking = false;
+/** Set when a Google session removes its own link: the page then loses access on purpose. */
+let unlinkSent = false;
 
 // ---------- Views ----------
 
@@ -158,6 +177,7 @@ function renderBranding() {
     signinLogo.src = safeLogo;
     signinLogo.classList.remove("hidden");
   }
+  $("google-signin").classList.toggle("hidden", branding?.googleLogin !== true);
   document.title = name ? `${t("portalTitle")} · ${name}` : t("portalTitle");
 }
 
@@ -166,6 +186,7 @@ function renderBranding() {
 async function onSignIn(event) {
   event.preventDefault();
   setError("signin-error");
+  $("signin-notice").classList.add("hidden");
   const email = $("signin-email").value.trim().toLowerCase();
   const password = $("signin-password").value;
   if (!EMAIL_RE.test(email)) return setError("signin-error", "errEmail");
@@ -208,9 +229,313 @@ async function onReset(event) {
   btn.disabled = false;
 }
 
+// ---------- Google ----------
+
+function googleProvider() {
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
+  return provider;
+}
+
+/** Signed in with Google only (not an e-mail + password account). */
+function isGoogleUser(u) {
+  const providers = (u?.providerData || []).map((p) => p.providerId);
+  return providers.includes("google.com") && !providers.includes("password");
+}
+
+/** Closing the popup or opening a second one is not an error worth showing. */
+function popupDismissed(error) {
+  const code = String(error?.code || "");
+  return code.includes("popup-closed-by-user") || code.includes("cancelled-popup-request");
+}
+
+function googleErrorKey(error) {
+  return String(error?.code || "").includes("popup-blocked") ? "googlePopupBlocked" : authErrorKey(error);
+}
+
+async function onGoogleSignIn() {
+  setError("signin-error");
+  $("signin-notice").classList.add("hidden");
+  const btn = $("google-btn");
+  btn.disabled = true;
+  try {
+    // No await before the popup: browsers only allow it right after the click.
+    // The persistence follows the "stay signed in" box as soon as it changes.
+    await signInWithPopup(auth, googleProvider());
+  } catch (error) {
+    if (!popupDismissed(error)) {
+      console.warn("google sign-in failed", error?.code);
+      setError("signin-error", googleErrorKey(error));
+    }
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/** The volunteer portal uid a Google account is linked to, or "" when there is no usable link. */
+async function googleAliasTarget(googleUid) {
+  try {
+    const snap = await getDoc(doc(db, "orgs", path.orgId, "portalGoogleAccounts", googleUid));
+    const target = snap.exists() ? String(snap.data().volunteerUid || "") : "";
+    return /^[A-Za-z0-9_-]{1,128}$/.test(target) ? target : "";
+  } catch (error) {
+    console.warn("google link unavailable", error?.code);
+    return "";
+  }
+}
+
+async function openGoogleSession(current) {
+  showView("view-google");
+  renderGoogleWait();
+  const target = await googleAliasTarget(current.uid);
+  if (user !== current) return;
+  if (target) {
+    portalUid = target;
+    return watchProjection();
+  }
+  await requestAdminMatch(current);
+}
+
+function renderGoogleWait() {
+  if (user?.email) $("google-wait-body").textContent = t("googleWaitBody", { email: user.email });
+}
+
+/** Not linked yet: ask the team to match this address with the one an admin entered on a volunteer. */
+async function requestAdminMatch(current) {
+  const ref = doc(db, "orgs", path.orgId, "portalGoogleClaims", current.uid);
+  let previous = null;
+  try {
+    const snap = await getDoc(ref);
+    previous = snap.exists() ? snap.data() : null;
+  } catch (error) {
+    console.warn("google claim unreadable", error?.code);
+  }
+  if (user !== current) return;
+  if (!(previous?.type === "ADMIN_MATCH" && isWaiting(previous))) {
+    try {
+      await setDoc(ref, { type: "ADMIN_MATCH", status: "PENDING", requestedAt: serverTimestamp(), email: current.email });
+    } catch (error) {
+      console.warn("google claim refused", error?.code);
+      if (user !== current) return;
+      // The rules refuse a new claim within a minute of the last one, and any claim from an
+      // address outside the association's domains.
+      const recent = previous && Date.now() - millisOf(previous.requestedAt) < 60_000;
+      if (recent && previous.status === "REJECTED" && previous.type === "ADMIN_MATCH") {
+        return doSignOut(ADMIN_MATCH_KEYS[previous.reason] || "googleFailed");
+      }
+      const denied = String(error?.code).includes("permission-denied");
+      return doSignOut(denied && !recent ? "googleDomain" : "googleFailed");
+    }
+  }
+  if (user !== current) return;
+  unsubscribers.push(onSnapshot(ref, async (snap) => {
+    const claim = snap.exists() ? snap.data() : null;
+    if (!claim || snap.metadata.hasPendingWrites || user !== current || portalUid) return;
+    if (claim.status === "REJECTED") {
+      doSignOut(ADMIN_MATCH_KEYS[claim.reason] || "googleFailed");
+    } else if (claim.status === "DONE") {
+      const target = await googleAliasTarget(current.uid);
+      if (user !== current || portalUid) return;
+      if (!target) return doSignOut("googleFailed");
+      stopListeners();
+      portalUid = target;
+      watchProjection();
+    }
+  }, (error) => {
+    console.warn("google claim unavailable", error?.code);
+    if (user === current && !portalUid) doSignOut("googleFailed");
+  }));
+}
+
+/** URL-safe one-time code: 32 random bytes in base64url (43 characters). */
+function randomCode() {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+async function sha256Hex(text) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** A separate Firebase app for the Google account being linked, so the portal session stays as it is. */
+function linkInstance() {
+  const app = initializeApp(firebaseConfig, `google-link-${Date.now()}`);
+  const linkAuth = initializeAuth(app, { persistence: inMemoryPersistence, popupRedirectResolver: browserPopupRedirectResolver });
+  const linkDb = getFirestore(app);
+  if (isLocalDev()) {
+    connectAuthEmulator(linkAuth, `http://${location.hostname}:${EMULATOR_PORTS.auth}`, { disableWarnings: true });
+    connectFirestoreEmulator(linkDb, location.hostname, EMULATOR_PORTS.firestore);
+  }
+  linkAuth.languageCode = currentLang();
+  return { app, auth: linkAuth, db: linkDb };
+}
+
+/** Resolves with the answered claim, or null when nobody answered in time. */
+function waitForClaim(ref) {
+  return new Promise((resolve, reject) => {
+    let unsubscribe = () => {};
+    const timer = setTimeout(() => {
+      unsubscribe();
+      resolve(null);
+    }, LINK_WAIT_MS);
+    unsubscribe = onSnapshot(ref, (snap) => {
+      const claim = snap.exists() ? snap.data() : null;
+      if (!claim || snap.metadata.hasPendingWrites || !["DONE", "REJECTED"].includes(claim.status)) return;
+      clearTimeout(timer);
+      unsubscribe();
+      resolve(claim);
+    }, (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+  });
+}
+
+/** Password session: link an association Google account with a one-time code (GOOGLE_LINK + LINK_CODE). */
+async function onLinkClick() {
+  if (linking) return;
+  // A GOOGLE_LINK request stays pending until a claim uses its code: only the rules' 1-minute
+  // throttle stops a new attempt.
+  if (requestCooldownMinutes("GOOGLE_LINK") > 0) {
+    googleMsg = { cls: "notice", key: "googleWait" };
+    return renderGoogleBox();
+  }
+  linking = true;
+  googleMsg = { cls: "notice", key: "googleLinking" };
+  renderGoogleBox();
+  const code = randomCode();
+  let second = null;
+  try {
+    second = linkInstance();
+    // The popup opens first, while the click still allows it; the request only has to exist
+    // before the claim that carries the code.
+    const [popup, sent] = await Promise.allSettled([
+      signInWithPopup(second.auth, googleProvider()),
+      sha256Hex(code).then((codeHash) => sendRequest("GOOGLE_LINK", { codeHash })),
+    ]);
+    if (popup.status === "rejected") throw popup.reason;
+    if (sent.status === "rejected") throw sent.reason;
+    const google = popup.value.user;
+    const ref = doc(second.db, "orgs", path.orgId, "portalGoogleClaims", google.uid);
+    try {
+      await setDoc(ref, { type: "LINK_CODE", status: "PENDING", requestedAt: serverTimestamp(), email: google.email, code });
+    } catch (error) {
+      console.warn("google link claim refused", error?.code);
+      const previous = await getDoc(ref).then((s) => (s.exists() ? s.data() : null)).catch(() => null);
+      const recent = previous && Date.now() - millisOf(previous.requestedAt) < 60_000;
+      googleMsg = { cls: "error", key: recent ? "googleWait" : "googleDomain" };
+      return;
+    }
+    const answer = await waitForClaim(ref);
+    if (!answer) googleMsg = { cls: "notice", key: "googleLinkLater" };
+    else if (answer.status === "DONE") googleMsg = { cls: "success", key: "googleLinkDone" };
+    else googleMsg = { cls: "error", key: LINK_CODE_KEYS[answer.reason] || "googleFailed" };
+  } catch (error) {
+    if (popupDismissed(error)) {
+      googleMsg = null;
+    } else {
+      console.warn("google link failed", error?.code);
+      googleMsg = { cls: "error", key: String(error?.code).includes("permission-denied") ? "googleWait" : googleErrorKey(error) };
+    }
+  } finally {
+    if (second) {
+      await signOut(second.auth).catch(() => {});
+      await deleteApp(second.app).catch(() => {});
+    }
+    linking = false;
+    renderGoogleBox();
+  }
+}
+
+async function onUnlinkClick() {
+  if (isWaiting(requests.GOOGLE_UNLINK) || requestCooldownMinutes("GOOGLE_UNLINK") > 0) {
+    googleMsg = { cls: "notice", key: "googleWait" };
+    return renderGoogleBox();
+  }
+  googleMsg = null;
+  // A Google session loses its access once the link is gone: say why instead of "turned off".
+  if (isGoogleUser(user)) unlinkSent = true;
+  try {
+    await sendRequest("GOOGLE_UNLINK");
+  } catch (error) {
+    console.warn("google unlink failed", error?.code);
+    unlinkSent = false;
+    googleMsg = { cls: "error", key: String(error?.code).includes("permission-denied") ? "googleWait" : "errGeneric" };
+  }
+  renderGoogleBox();
+}
+
+/** "My account": link an association Google account, or remove the one the volunteer linked. */
+function renderGoogleBox() {
+  const box = googleBox;
+  if (!box || !box.isConnected) return;
+  clear(box);
+  const p = projection || {};
+  const email = String(p.googleEmail || "").trim();
+  // Empty text node when there is nothing to say: Node.append would print "null".
+  const say = () => (googleMsg ? el("p", { class: googleMsg.cls, role: "status", text: t(googleMsg.key) }) : "");
+  if (email && p.googleLinkedBy === "VOLUNTEER") {
+    const unlink = requests.GOOGLE_UNLINK;
+    const waiting = isWaiting(unlink);
+    const btn = el("button", { type: "button", class: "ghost", onclick: onUnlinkClick, text: t("googleUnlink") });
+    btn.disabled = waiting;
+    box.append(
+      el("h3", { text: t("googleSection") }),
+      el("p", { class: "hint", text: t("googleLinked", { email }) }));
+    if (waiting) {
+      box.append(el("p", { class: "notice", text: t("googleUnlinkPending") }));
+    } else if (unlink?.status === "REJECTED" && millisOf(unlink.requestedAt) > Date.now() - 86_400_000) {
+      box.append(el("p", { class: "error", text: t(unlink.reason === "ADMIN_LINK" ? "googleUnlinkAdmin" : "errGeneric") }));
+    } else {
+      box.append(say());
+    }
+    box.append(btn);
+  } else if (!email && p.googleLinkAvailable === true && !isGoogleUser(user)) {
+    const btn = el("button", { type: "button", class: "google-btn", onclick: onLinkClick }, googleMark(), t("googleLinkButton"));
+    btn.disabled = linking;
+    box.append(
+      el("h3", { text: t("googleSection") }),
+      el("p", { class: "hint", text: t("googleLinkHint") }),
+      say(),
+      btn);
+  } else if (googleMsg?.cls === "success") {
+    // Linked while the window was open: keep the confirmation until the page catches up.
+    box.append(el("h3", { text: t("googleSection") }), say());
+  } else {
+    box.classList.add("hidden");
+    return;
+  }
+  box.classList.remove("hidden");
+}
+
+/** Google "G" mark, drawn with DOM nodes (no HTML strings). */
+function googleMark() {
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", "0 0 48 48");
+  svg.setAttribute("width", "18");
+  svg.setAttribute("height", "18");
+  svg.setAttribute("aria-hidden", "true");
+  [
+    ["#EA4335", "M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"],
+    ["#4285F4", "M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"],
+    ["#FBBC05", "M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"],
+    ["#34A853", "M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"],
+  ].forEach(([fill, d]) => {
+    const pathNode = document.createElementNS(ns, "path");
+    pathNode.setAttribute("fill", fill);
+    pathNode.setAttribute("d", d);
+    svg.append(pathNode);
+  });
+  return svg;
+}
+
 async function doSignOut(reasonKey) {
   if ($("account-dialog").open) $("account-dialog").close();
   stopListeners();
+  portalUid = "";
+  unlinkSent = false;
   projection = null;
   photoUrl = "";
   photoVersionLoaded = "";
@@ -243,22 +568,27 @@ async function onUser(next) {
   stopListeners();
   user = next;
   armIdleTimer();
+  portalUid = "";
   if (!user) {
     $("signin-email").value = $("signin-email").value || "";
     return showView("view-signin");
   }
+  // Google accounts are verified by Google; their access goes through the link to a volunteer.
+  if (isGoogleUser(user)) return openGoogleSession(user);
   if (!user.emailVerified) {
     $("verify-body").textContent = t("verifyBody", { email: user.email });
     return showView("view-verify");
   }
   // Make sure the ID token carries email_verified = true (verified in another tab).
   await user.getIdToken(true).catch(() => {});
+  if (user !== next) return;
+  portalUid = user.uid;
   watchProjection();
 }
 
 function watchProjection() {
   showView("view-loading");
-  const ref = doc(db, "orgs", path.orgId, "volunteerPortal", user.uid);
+  const ref = doc(db, "orgs", path.orgId, "volunteerPortal", portalUid);
   unsubscribers.push(onSnapshot(ref, (snap) => {
     if (!snap.exists()) {
       projection = null;
@@ -273,19 +603,24 @@ function watchProjection() {
     }
     projectionUpdatedAt = Number(snap.data().updatedAt || 0);
     renderDashboard();
+    renderGoogleBox();
     showView("view-dash");
   }, (error) => {
     console.warn("projection unavailable", error?.code);
-    if (String(error?.code).includes("permission-denied")) {
+    if (String(error?.code).includes("permission-denied") && isGoogleUser(user)) {
+      // The Google option, the domain or the link itself was removed.
+      doSignOut(unlinkSent ? "googleUnlinked" : "googleDisabled");
+    } else if (String(error?.code).includes("permission-denied")) {
       $("disabled-error").classList.add("hidden");
       showView("view-disabled");
     }
   }));
-  ["PROFILE", "QR_EMAIL", "CLAIM"].forEach((type) => {
-    const ref = doc(db, "orgs", path.orgId, "portalRequests", `${user.uid}_${type}`);
+  REQUEST_TYPES.forEach((type) => {
+    const ref = doc(db, "orgs", path.orgId, "portalRequests", `${portalUid}_${type}`);
     unsubscribers.push(onSnapshot(ref, (snap) => {
       requests[type] = snap.exists() ? snap.data() : null;
       if (type === "CLAIM") renderPending();
+      else if (type.startsWith("GOOGLE_")) renderGoogleBox();
       else if (projection) renderDashboard();
     }, () => {}));
   });
@@ -296,6 +631,8 @@ let claimSentAt = 0;
 async function showPending() {
   showView("view-pending");
   renderPending();
+  // Only an e-mail + password session may claim a profile.
+  if (isGoogleUser(user)) return;
   // Ask the team's devices to link this verified address to a volunteer profile.
   const claim = requests.CLAIM;
   const canAsk = !claim || (!isWaiting(claim) && Date.now() - millisOf(claim.requestedAt) > 60_000);
@@ -318,9 +655,10 @@ function renderPending() {
 }
 
 async function sendRequest(type, extra = {}) {
-  const ref = doc(db, "orgs", path.orgId, "portalRequests", `${user.uid}_${type}`);
+  // A Google session writes for the volunteer it is linked to, with its own (Google) address.
+  const ref = doc(db, "orgs", path.orgId, "portalRequests", `${portalUid}_${type}`);
   await setDoc(ref, {
-    uid: user.uid,
+    uid: portalUid,
     type,
     status: "PENDING",
     requestedAt: serverTimestamp(),
@@ -377,7 +715,7 @@ async function ensurePhoto() {
   }
   if (photoVersionLoaded === projection.photoVersion && photoUrl) return;
   try {
-    photoUrl = await getDownloadURL(storageRef(storage, `orgs/${path.orgId}/portalPhotos/${user.uid}.jpg`));
+    photoUrl = await getDownloadURL(storageRef(storage, `orgs/${path.orgId}/portalPhotos/${portalUid}.jpg`));
     photoVersionLoaded = projection.photoVersion;
     renderDashboard();
   } catch (error) {
@@ -777,7 +1115,7 @@ function profileForm(onDone) {
     const blob = photo?.picked() ?? null;
     if (blob) {
       try {
-        const upload = storageRef(storage, `orgs/${path.orgId}/portalPhotoUploads/${user.uid}.jpg`);
+        const upload = storageRef(storage, `orgs/${path.orgId}/portalPhotoUploads/${portalUid}.jpg`);
         await uploadBytes(upload, blob, { contentType: "image/jpeg" });
       } catch (error) {
         console.warn("photo upload failed", error?.code);
@@ -843,19 +1181,24 @@ function openAccountDialog() {
   const dialog = $("account-dialog");
   const body = $("account-body");
   clear(body);
-  body.append(
+  googleMsg = null;
+  googleBox = el("section", { class: "dialog-section hidden" });
+  body.append(...[
     el("section", { class: "dialog-section" },
       el("h3", { text: t("myInfo") }),
       el("p", { class: "hint", text: t(photosEnabled() ? "myInfoHintPhoto" : "myInfoHint") }),
       profileForm()),
-    el("details", { class: "dialog-section fold" },
+    // The password belongs to the e-mail sign-in; a Google session cannot change it.
+    isGoogleUser(user) ? null : el("details", { class: "dialog-section fold" },
       el("summary", {}, icon("shield", 16), el("span", { text: t("changePassword") })),
       passwordForm()),
+    googleBox,
     el("section", { class: "dialog-section quiet" },
       el("button", { type: "button", class: "link-btn", onclick: exportData }, t("exportData")),
       el("p", { class: "small-note", text: t("exportHint") }),
       el("p", { class: "small-note", text: t("signedInAs", { email: user.email }) })),
-  );
+  ].filter(Boolean));
+  renderGoogleBox();
   $("account-title").textContent = t("account");
   if (typeof dialog.showModal === "function") dialog.showModal();
   else dialog.setAttribute("open", "");
@@ -933,6 +1276,13 @@ function rememberDefault() {
 
 function bindStatic() {
   $("view-signin").addEventListener("submit", onSignIn);
+  $("google-btn").addEventListener("click", onGoogleSignIn);
+  // Applied right away, so the Google popup can open without waiting on anything after the click.
+  $("remember").addEventListener("change", () => {
+    const remember = $("remember").checked;
+    localStorage.setItem(REMEMBER_KEY, remember ? "1" : "0");
+    setPersistence(auth, remember ? browserLocalPersistence : browserSessionPersistence).catch(() => {});
+  });
   $("view-reset").addEventListener("submit", onReset);
   $("to-reset").addEventListener("click", () => {
     $("reset-email").value = $("signin-email").value;
@@ -993,7 +1343,9 @@ async function main() {
     if (user?.email) $("verify-body").textContent = t("verifyBody", { email: user.email });
     renderBranding();
     renderPending();
+    renderGoogleWait();
     renderDashboard();
+    renderGoogleBox();
   });
   path = parseOrgPath("v", false);
   if (!path) {
@@ -1005,15 +1357,22 @@ async function main() {
   localStorage.setItem(LAST_ORG_KEY, path.orgId);
   let app;
   try {
-    app = initializeApp(await loadConfig(t("hostingError")));
+    const config = await loadConfig(t("hostingError"));
+    // authDomain is this site: Hosting serves /__/auth/ itself, so the Google popup and its frame
+    // stay on this origin instead of firebaseapp.com. The emulator keeps its own handler.
+    firebaseConfig = isLocalDev() ? config : { ...config, authDomain: location.host };
+    app = initializeApp(firebaseConfig);
   } catch (error) {
     $("disabled-error").textContent = error.message;
     $("disabled-error").classList.remove("hidden");
     return showView("view-disabled");
   }
   const remember = rememberDefault();
-  // No popup/redirect resolver: e-mail + password only, no third-party iframe.
-  auth = initializeAuth(app, { persistence: remember ? browserLocalPersistence : browserSessionPersistence });
+  // The popup resolver is for "Sign in with Google"; its frame comes from authDomain (this site).
+  auth = initializeAuth(app, {
+    persistence: remember ? browserLocalPersistence : browserSessionPersistence,
+    popupRedirectResolver: browserPopupRedirectResolver,
+  });
   db = getFirestore(app);
   storage = getStorage(app);
   if (isLocalDev()) {
