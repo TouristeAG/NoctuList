@@ -53,7 +53,7 @@ private fun SQLiteConnection.query(sql: String): MigrationCursor =
         PendingRemoteWrite::class,
         GuestForm::class,
     ],
-    version = 52,
+    version = 53,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -1684,6 +1684,28 @@ abstract class EventManagerDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_52_53 = object : Migration(52, 53) {
+            override fun migrate(connection: SQLiteConnection) {
+                try {
+                    println("Starting migration 52→53: volunteer linked Google account")
+                    connection.execSQL(
+                        "ALTER TABLE volunteers ADD COLUMN portalGoogleEmail TEXT NOT NULL DEFAULT ''",
+                    )
+                    connection.execSQL(
+                        "ALTER TABLE volunteers ADD COLUMN portalGoogleUid TEXT NOT NULL DEFAULT ''",
+                    )
+                    connection.execSQL(
+                        "ALTER TABLE volunteers ADD COLUMN portalGoogleLinkedBy TEXT NOT NULL DEFAULT ''",
+                    )
+                    println("Migration 52→53 completed successfully")
+                } catch (e: Exception) {
+                    println("Migration 52→53 failed: ${e.message}")
+                    e.printStackTrace()
+                    throw e
+                }
+            }
+        }
+
         private val MIGRATION_50_51 = object : Migration(50, 51) {
             override fun migrate(connection: SQLiteConnection) {
                 try {
@@ -1751,7 +1773,8 @@ abstract class EventManagerDatabase : RoomDatabase() {
             MIGRATION_48_49,
             MIGRATION_49_50,
             MIGRATION_50_51,
-            MIGRATION_51_52
+            MIGRATION_51_52,
+            MIGRATION_52_53
         )
     }
 }

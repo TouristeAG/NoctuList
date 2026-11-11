@@ -384,6 +384,33 @@ class FirestoreSyncIntegrityTest {
     }
 
     @Test
+    fun volunteerMapCarriesLinkedGoogleAccountFields() {
+        val gateway = GitLiveFirestoreGateway()
+        val volunteer = com.eventmanager.app.data.models.Volunteer(
+            name = "Bea",
+            lastNameAbbreviation = "B",
+            email = "b@x.com",
+            phoneNumber = "1",
+            firebaseOrgId = "org-a",
+            portalGoogleEmail = "bea@assoc.org",
+            portalGoogleUid = "google-uid-1",
+            portalGoogleLinkedBy = com.eventmanager.app.data.models.Volunteer.GOOGLE_LINKED_BY_ADMIN,
+        )
+        val decrypted = com.eventmanager.app.data.security.crypto.SensitiveFieldCodec
+            .decryptVolunteerMap(gateway.volunteerToMap(volunteer), "org-a")
+        assertEquals("bea@assoc.org", decrypted["portalGoogleEmail"])
+        assertEquals("google-uid-1", decrypted["portalGoogleUid"])
+        assertEquals("ADMIN", decrypted["portalGoogleLinkedBy"])
+        assertEquals("VOLUNTEER", com.eventmanager.app.data.models.Volunteer.GOOGLE_LINKED_BY_VOLUNTEER)
+        val blank = com.eventmanager.app.data.models.Volunteer(
+            name = "C", lastNameAbbreviation = "C", email = "c@x.com", phoneNumber = "1", firebaseOrgId = "org-a",
+        )
+        assertEquals("", blank.portalGoogleEmail)
+        assertEquals("", blank.portalGoogleUid)
+        assertEquals("", blank.portalGoogleLinkedBy)
+    }
+
+    @Test
     fun volunteerMapOmitsBlankPhotoFieldsSoMergeCannotWipe() {
         val gateway = GitLiveFirestoreGateway()
         val volunteer = com.eventmanager.app.data.models.Volunteer(

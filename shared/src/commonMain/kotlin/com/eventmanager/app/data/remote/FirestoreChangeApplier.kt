@@ -275,6 +275,9 @@ object FirestoreChangeApplier {
             profilePhotoUrl = photos.url,
             portalEnabled = boolOf(decrypted["portalEnabled"]) ?: false,
             portalUid = stringOf(decrypted["portalUid"]).orEmpty(),
+            portalGoogleEmail = stringOf(decrypted["portalGoogleEmail"]).orEmpty(),
+            portalGoogleUid = stringOf(decrypted["portalGoogleUid"]).orEmpty(),
+            portalGoogleLinkedBy = stringOf(decrypted["portalGoogleLinkedBy"]).orEmpty(),
         )
         if (existing == null) repository.insertVolunteer(remote) else repository.updateVolunteer(remote)
     }
