@@ -338,6 +338,9 @@ class VolunteerPortalService(
                 val sent = host.sendQrEmail(owner!!)
                 complete(requestId, if (sent) PortalRequest.STATUS_DONE else PortalRequest.STATUS_REJECTED, if (sent) "" else "SEND_FAILED")
             }
+            // Handled once the Google sign-in lands.
+            PortalRequestType.GOOGLE_LINK, PortalRequestType.GOOGLE_UNLINK ->
+                complete(requestId, PortalRequest.STATUS_REJECTED, "INVALID")
         }
     }
 

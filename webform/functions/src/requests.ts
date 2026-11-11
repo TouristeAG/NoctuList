@@ -126,6 +126,9 @@ async function processClaimed(
       return handleClaim(db, orgId, requestId, request);
     case "QR_EMAIL":
       return sendQr(db, mail, orgId, request);
+    default:
+      // GOOGLE_LINK and GOOGLE_UNLINK are handled once the Google sign-in lands.
+      return rejected("INVALID");
   }
 }
 

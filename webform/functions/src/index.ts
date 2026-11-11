@@ -8,8 +8,8 @@ import { onRequestDocument } from "./requests";
 import { onSignupDocument } from "./signup";
 import { onOutboxDocument } from "./outbox";
 
-export { cleanName, cleanPhone, cleanEmail, parseSignup, parseRequest } from "./validate";
-export type { SignupSubmission, PortalRequest, PortalRequestType } from "./validate";
+export { cleanName, cleanPhone, cleanEmail, parseSignup, parseRequest, parseGoogleClaim } from "./validate";
+export type { SignupSubmission, PortalRequest, PortalRequestType, PortalGoogleClaim, PortalGoogleClaimType } from "./validate";
 export { buildQrMail, parseMailTemplate, safeRecipient, sendMail, sendRawMail, smtpOptions } from "./mail";
 export type { MailTemplate, MailTransport, OutgoingMail, QrMail, RawOutgoingMail, SmtpClient } from "./mail";
 export { parseOutbox, rewriteHeaders, MAX_RAW_LENGTH } from "./outbox";
