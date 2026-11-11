@@ -7,6 +7,7 @@ import { defineSecret, defineString } from "firebase-functions/params";
 import { onRequestDocument } from "./requests";
 import { onSignupDocument } from "./signup";
 import { onOutboxDocument } from "./outbox";
+import { onGoogleClaimDocument } from "./google";
 
 export { cleanName, cleanPhone, cleanEmail, parseSignup, parseRequest, parseGoogleClaim } from "./validate";
 export type { SignupSubmission, PortalRequest, PortalRequestType, PortalGoogleClaim, PortalGoogleClaimType } from "./validate";
@@ -70,5 +71,16 @@ export const onMailOutboxWritten = onDocumentWritten(
     const { db } = admin();
     const mail = { db, user: () => GMAIL_USER.value(), password: () => GMAIL_APP_PASSWORD.value() };
     await onOutboxDocument(db, mail, event.params.orgId, event.params.mailId, after.data());
+  },
+);
+
+/** Google account links claimed by the portal page after a Google sign-in. */
+export const onPortalGoogleClaimWritten = onDocumentWritten(
+  { document: "orgs/{orgId}/portalGoogleClaims/{googleUid}", region: REGION, retry: false },
+  async (event) => {
+    const after = event.data?.after;
+    if (!after?.exists) return;
+    const { db } = admin();
+    await onGoogleClaimDocument(db, event.params.orgId, event.params.googleUid, after.data());
   },
 );
