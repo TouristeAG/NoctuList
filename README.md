@@ -61,6 +61,8 @@ Data lives locally in **Room (SQLite)** and syncs across devices through either 
 - **POS accounting reports** — evening or date-range PDFs (sales, cash/card, internal credit)
 - **People counter & announcements** — venue-scoped headcount (with device priority) and staff messages
 - **Email & wallet passes** — send QR codes via Gmail API; optional Apple Wallet / Google Pay `.pkpass` attachments
+- **Volunteer space (Firebase, optional)**: each volunteer signs in on the association's form site to see their profile, upcoming shifts with the benefits each one brings, current benefits, wallet and history; registration by link or QR code; optional Cloud Functions handle requests and QR e-mails within seconds, even with no device on (see [FIREBASE_SETUP.md](FIREBASE_SETUP.md))
+- **Firebase setup page**: on the computer app, an Automatic tab runs each setup step with a Run button (tools, sign-in, project, database, rules, site, functions); a Manual tab lists the same steps with every command to copy
 - **Two sync backends** — Firestore realtime (with offline pending writes) or Google Sheets; in-app migration and optional Sheets mirror export
 - **Multi-organization** — several Firebase orgs on one project, switcher in the UI
 - **Appearance** — themes, color profiles, layout scale, desktop admin nav (bottom / left / right), background animations per mode, 7 languages

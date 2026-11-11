@@ -2223,7 +2223,7 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="guest_form_review_empty">इस जवाब में कोई नाम नहीं।</string>
     <string name="guest_form_person_n">व्यक्ति %1$d</string>
     <string name="guest_form_settings_title">कलाकार गेस्टलिस्ट फ़ॉर्म (वैकल्पिक)</string>
-    <string name="guest_form_settings_body">कलाकार अपनी गेस्टलिस्ट एक सार्वजनिक पेज पर भेजते हैं (Firebase Hosting, मुफ़्त)। साइट एक बार Firebase सेटअप गाइड से प्रकाशित करें।</string>
+    <string name="guest_form_settings_body">कलाकार अपनी गेस्टलिस्ट एक सार्वजनिक पेज पर भेजते हैं (Firebase Hosting, मुफ़्त)। Firebase सेटअप पेज से साइट एक बार प्रकाशित करें।</string>
     <string name="guest_form_enable">कलाकार गेस्टलिस्ट फ़ॉर्म चालू करें</string>
     <string name="guest_form_billeterie_validate">टिकट काउंटर को फ़ॉर्म सत्यापित करने दें</string>
     <string name="guest_form_site_url">साइट: %1$s</string>
@@ -2347,7 +2347,7 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="profile_photo_request_failed">लिंक नहीं बन सका। कनेक्शन जाँचें और नवीनतम Firestore और Storage नियम प्रकाशित करें।</string>
     <string name="profile_photo_request_hint">आप यह विंडो बंद कर सकते हैं: जब तक इस डिवाइस पर NoctuList खुला है, फ़ोटो आने पर जुड़ जाएगी।</string>
     <string name="portal_settings_title">स्वयंसेवक पोर्टल</string>
-    <string name="portal_settings_body">हर स्वयंसेवक को फ़ॉर्म साइट पर एक निजी वेब स्थान मिलता है: प्रोफ़ाइल, शिफ़्ट, लाभ और वॉलेट। चालू करने से पहले: Firebase Authentication में ईमेल/पासवर्ड साइन-इन सक्षम करें, Firestore और Storage नियम दोबारा प्रकाशित करें, और फ़ॉर्म साइट दोबारा डिप्लॉय करें।</string>
+    <string name="portal_settings_body">हर स्वयंसेवक को फ़ॉर्म साइट पर एक निजी वेब स्थान मिलता है: प्रोफ़ाइल, शिफ़्ट, लाभ और वॉलेट। पहले Firebase सेटअप पेज पर इसे तैयार करें (साइन-इन तरीके, नियम, फ़ॉर्म साइट), फिर यहाँ चालू करें। वैकल्पिक स्वचालित प्रोसेसिंग जोड़ें ताकि अनुरोध कुछ ही सेकंड में संभाले जाएँ।</string>
     <string name="portal_enable">स्वयंसेवक पोर्टल सक्षम करें</string>
     <string name="portal_sign_in_url">साइन-इन पेज: %1$s</string>
     <string name="portal_server_active">स्वचालित प्रोसेसिंग चालू है। आखिरी बार चला: %1$s</string>
@@ -2360,7 +2360,7 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="portal_signup_link_title">पंजीकरण फ़ॉर्म</string>
     <string name="portal_signup_link_body">यह एक बार इस्तेमाल होने वाला लिंक नए स्वयंसेवक को भेजें। यह 7 दिन तक मान्य है। जमा करते ही उनकी प्रोफ़ाइल यहाँ दिखेगी।</string>
     <string name="portal_signup_link_creating">लिंक बनाया जा रहा है…</string>
-    <string name="portal_signup_link_failed">लिंक नहीं बन सका। कनेक्शन जाँचें और सुनिश्चित करें कि नवीनतम Firestore नियम प्रकाशित हैं।</string>
+    <string name="portal_signup_link_failed">लिंक नहीं बन सका। कनेक्शन जाँचें और देखें कि नवीनतम नियम प्रकाशित हैं (Firebase सेटअप पेज, चरण 4)।</string>
     <string name="portal_signup_link_waiting">पंजीकरण की प्रतीक्षा…</string>
     <string name="portal_signup_link_received">पंजीकरण मिला। स्वयंसेवक जोड़ा जा रहा है…</string>
     <string name="portal_signup_link_done">नया स्वयंसेवक जोड़ दिया गया है।</string>

@@ -2217,7 +2217,7 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="guest_form_review_empty">Aucun nom dans cette réponse.</string>
     <string name="guest_form_person_n">Personne %1$d</string>
     <string name="guest_form_settings_title">Formulaires de guestlist artiste (facultatif)</string>
-    <string name="guest_form_settings_body">Les artistes envoient leur guestlist sur une page publique (Firebase Hosting, gratuit). Publiez le site une fois via le guide d'installation Firebase.</string>
+    <string name="guest_form_settings_body">Les artistes envoient leur guestlist sur une page publique (Firebase Hosting, gratuit). Publiez le site une fois depuis la page de configuration Firebase.</string>
     <string name="guest_form_enable">Activer les formulaires de guestlist</string>
     <string name="guest_form_billeterie_validate">Laisser la billetterie valider les formulaires</string>
     <string name="guest_form_site_url">Site : %1$s</string>
@@ -2341,7 +2341,7 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="profile_photo_request_failed">Impossible de créer le lien. Vérifiez la connexion et que les dernières règles Firestore et Storage sont publiées.</string>
     <string name="profile_photo_request_hint">Vous pouvez fermer cette fenêtre : la photo sera quand même ajoutée à son arrivée, tant que NoctuList est ouvert sur cet appareil.</string>
     <string name="portal_settings_title">Plateforme bénévole</string>
-    <string name="portal_settings_body">Chaque bénévole obtient un espace web personnel sur le site des formulaires : profil, shifts, avantages et porte-monnaie. Avant d\'activer : activez la connexion E-mail/Mot de passe dans Firebase Authentication, republiez les règles Firestore et Storage, puis redéployez le site des formulaires.</string>
+    <string name="portal_settings_body">Chaque bénévole obtient un espace web personnel sur le site des formulaires : profil, shifts, avantages et porte-monnaie. Préparez-le d\'abord sur la page de configuration Firebase (méthodes de connexion, règles, site des formulaires), puis activez-le ici. Ajoutez le traitement automatique facultatif pour que les demandes soient traitées en quelques secondes.</string>
     <string name="portal_enable">Activer la plateforme bénévole</string>
     <string name="portal_sign_in_url">Page de connexion : %1$s</string>
     <string name="portal_server_active">Le traitement automatique est actif. Dernière exécution : %1$s</string>
@@ -2354,7 +2354,7 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="portal_signup_link_title">Formulaire d\'inscription</string>
     <string name="portal_signup_link_body">Envoyez ce lien à usage unique au nouveau bénévole. Il reste valable 7 jours. Son profil apparaît ici dès qu\'il l\'a envoyé.</string>
     <string name="portal_signup_link_creating">Création du lien…</string>
-    <string name="portal_signup_link_failed">Le lien n\'a pas pu être créé. Vérifiez la connexion et que les dernières règles Firestore sont publiées.</string>
+    <string name="portal_signup_link_failed">Le lien n\'a pas pu être créé. Vérifiez la connexion et que les dernières règles sont publiées (page de configuration Firebase, étape 4).</string>
     <string name="portal_signup_link_waiting">En attente de l\'inscription…</string>
     <string name="portal_signup_link_received">Inscription reçue. Ajout du bénévole…</string>
     <string name="portal_signup_link_done">Le nouveau bénévole a été ajouté.</string>

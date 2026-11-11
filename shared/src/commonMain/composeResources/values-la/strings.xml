@@ -2223,7 +2223,7 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="guest_form_review_empty">Nulla nomina in hoc responso.</string>
     <string name="guest_form_person_n">Persona %1$d</string>
     <string name="guest_form_settings_title">Formulæ invitatorum (optio)</string>
-    <string name="guest_form_settings_body">Artifices album suum in pagina publica mittunt (Firebase Hosting, gratuitum). Situm semel per Firebase institutionis ducem prome.</string>
+    <string name="guest_form_settings_body">Artifices indicem invitatorum in pagina publica mittunt (Firebase Hosting, gratis). Situm semel ex pagina configurationis Firebase divulga.</string>
     <string name="guest_form_enable">Formulas invitatorum accendere</string>
     <string name="guest_form_billeterie_validate">Billetteriam formulas confirmare sinere</string>
     <string name="guest_form_site_url">Situs: %1$s</string>
@@ -2347,7 +2347,7 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="profile_photo_request_failed">Nexus creari non potuit. Conexionem et regulas Firestore Storageque recentissimas inspice.</string>
     <string name="profile_photo_request_hint">Hanc fenestram claudere potes: photographema tamen addetur cum advenerit, dum NoctuList in hoc instrumento apertum est.</string>
     <string name="portal_settings_title">Porta voluntariorum</string>
-    <string name="portal_settings_body">Quisque voluntarius spatium personale in situ formularum accipit: profilum, vices, commoda et crumenam. Antequam accendas: aditum per epistulam et tesseram in Firebase Authentication admitte, regulas Firestore et Storage iterum divulga, situmque formularum iterum explica.</string>
+    <string name="portal_settings_body">Quisque voluntarius spatium personale in situ formularum accipit: profilum, vices, commoda et crumenam. Primum in pagina configurationis Firebase para (modi aditus, regulae, situs formularum), deinde hic accende. Tractationem automaticam optionalem adde ut petitiones intra secundas tractentur.</string>
     <string name="portal_enable">Portam voluntariorum accende</string>
     <string name="portal_sign_in_url">Pagina aditus: %1$s</string>
     <string name="portal_server_active">Processus automaticus activus est. Ultimum cursum: %1$s</string>
@@ -2360,7 +2360,7 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="portal_signup_link_title">Formula inscriptionis</string>
     <string name="portal_signup_link_body">Hunc nexum semel utendum novo voluntario mitte. Septem dies valet. Profilum hic apparet simul ac miserit.</string>
     <string name="portal_signup_link_creating">Nexus creatur…</string>
-    <string name="portal_signup_link_failed">Nexus creari non potuit. Conexionem inspice et regulas Firestore novissimas divulgatas esse.</string>
+    <string name="portal_signup_link_failed">Nexus creari non potuit. Conexionem inspice et regulas novissimas divulgatas esse (pagina configurationis Firebase, gradus 4).</string>
     <string name="portal_signup_link_waiting">Inscriptionem exspectamus…</string>
     <string name="portal_signup_link_received">Inscriptio accepta. Voluntarius additur…</string>
     <string name="portal_signup_link_done">Novus voluntarius additus est.</string>

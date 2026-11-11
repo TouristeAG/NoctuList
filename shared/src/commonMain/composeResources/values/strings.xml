@@ -2220,7 +2220,7 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="guest_form_review_empty">No names in this answer.</string>
     <string name="guest_form_person_n">Person %1$d</string>
     <string name="guest_form_settings_title">Artist guest list forms (optional)</string>
-    <string name="guest_form_settings_body">Artists submit their guest list on a public page (Firebase Hosting, free). Publish the site once from the Firebase setup guide.</string>
+    <string name="guest_form_settings_body">Artists submit their guest list on a public page (Firebase Hosting, free). Publish the site once from the Firebase setup page.</string>
     <string name="guest_form_enable">Enable artist guest list forms</string>
     <string name="guest_form_billeterie_validate">Let the ticket desk validate forms</string>
     <string name="guest_form_site_url">Site: %1$s</string>
@@ -2344,7 +2344,7 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="profile_photo_request_failed">The link could not be created. Check the connection and that the latest Firestore and Storage rules are published.</string>
     <string name="profile_photo_request_hint">You can close this window: the photo is still added when it arrives, as long as NoctuList is open on this device.</string>
     <string name="portal_settings_title">Volunteer portal</string>
-    <string name="portal_settings_body">Each volunteer gets a personal web space on the form site: profile, shifts, benefits and wallet. Before turning it on: enable Email/Password sign-in in Firebase Authentication, republish the Firestore and Storage rules, and redeploy the form site.</string>
+    <string name="portal_settings_body">Each volunteer gets a personal web space on the form site: profile, shifts, benefits and wallet. Set it up first on the Firebase setup page (sign-in methods, rules, forms site), then turn it on here. Add the optional automatic processing so requests are handled in seconds.</string>
     <string name="portal_enable">Enable the volunteer portal</string>
     <string name="portal_sign_in_url">Sign-in page: %1$s</string>
     <string name="portal_server_active">Automatic processing is on. Last run: %1$s</string>
@@ -2357,7 +2357,7 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="portal_signup_link_title">Registration form</string>
     <string name="portal_signup_link_body">Send this single-use link to the new volunteer. It stays valid for 7 days. Their profile appears here as soon as they submit it.</string>
     <string name="portal_signup_link_creating">Creating the link…</string>
-    <string name="portal_signup_link_failed">The link could not be created. Check the connection and that the latest Firestore rules are published.</string>
+    <string name="portal_signup_link_failed">The link could not be created. Check the connection and that the latest rules are published (Firebase setup page, step 4).</string>
     <string name="portal_signup_link_waiting">Waiting for the registration…</string>
     <string name="portal_signup_link_received">Registration received. Adding the volunteer…</string>
     <string name="portal_signup_link_done">The new volunteer has been added.</string>

@@ -2218,7 +2218,7 @@
     <string name="guest_form_review_empty">這份回答裡沒有名字。</string>
     <string name="guest_form_person_n">第 %1$d 人</string>
     <string name="guest_form_settings_title">藝人嘉賓名單表單（選用）</string>
-    <string name="guest_form_settings_body">藝人在公開頁面提交嘉賓名單（Firebase Hosting，免費）。請透過 Firebase 安裝指南發布一次網站。</string>
+    <string name="guest_form_settings_body">藝人在公開頁面提交嘉賓名單（Firebase Hosting，免費）。在 Firebase 設定頁面中發布一次網站即可。</string>
     <string name="guest_form_enable">啟用藝人嘉賓名單表單</string>
     <string name="guest_form_billeterie_validate">允許票務處審核表單</string>
     <string name="guest_form_site_url">網站：%1$s</string>
@@ -2342,7 +2342,7 @@
     <string name="profile_photo_request_failed">無法建立連結。請檢查網路連線，並確認已發布最新的 Firestore 和 Storage 規則。</string>
     <string name="profile_photo_request_hint">可以關閉此視窗：只要此裝置上的 NoctuList 保持開啟，照片送達後仍會自動加入。</string>
     <string name="portal_settings_title">志工入口網站</string>
-    <string name="portal_settings_body">每位志工在表單網站上擁有個人空間：資料、班次、福利與錢包。開啟前：在 Firebase Authentication 中啟用電子郵件／密碼登入，重新發布 Firestore 與 Storage 規則，並重新部署表單網站。</string>
+    <string name="portal_settings_body">每位志工在表單網站上擁有個人空間：資料、班次、福利與錢包。請先在 Firebase 設定頁面中完成準備（登入方式、規則、表單網站），然後在這裡開啟。加上選用的自動處理，請求會在幾秒內處理。</string>
     <string name="portal_enable">啟用志工入口網站</string>
     <string name="portal_sign_in_url">登入頁面：%1$s</string>
     <string name="portal_server_active">自動處理已開啟。上次執行：%1$s</string>
@@ -2355,7 +2355,7 @@
     <string name="portal_signup_link_title">註冊表單</string>
     <string name="portal_signup_link_body">將此一次性連結傳送給新志工，7 天內有效。對方送出後，其資料會立即顯示在這裡。</string>
     <string name="portal_signup_link_creating">正在建立連結…</string>
-    <string name="portal_signup_link_failed">無法建立連結。請檢查網路連線，並確認已發布最新的 Firestore 規則。</string>
+    <string name="portal_signup_link_failed">無法建立連結。請檢查網路連線，並確認最新規則已發布（Firebase 設定頁面，第 4 步）。</string>
     <string name="portal_signup_link_waiting">等待註冊…</string>
     <string name="portal_signup_link_received">已收到註冊，正在新增志工…</string>
     <string name="portal_signup_link_done">新志工已新增。</string>

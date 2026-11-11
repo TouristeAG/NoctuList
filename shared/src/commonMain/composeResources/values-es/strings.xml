@@ -2218,7 +2218,7 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="guest_form_review_empty">Esta respuesta no tiene nombres.</string>
     <string name="guest_form_person_n">Persona %1$d</string>
     <string name="guest_form_settings_title">Formularios de guestlist de artista (opcional)</string>
-    <string name="guest_form_settings_body">Los artistas envían su guestlist en una página pública (Firebase Hosting, gratis). Publicad el sitio una vez desde la guía de instalación de Firebase.</string>
+    <string name="guest_form_settings_body">Los artistas envían su guestlist en una página pública (Firebase Hosting, gratis). Publique el sitio una vez desde la página de configuración de Firebase.</string>
     <string name="guest_form_enable">Activar los formularios de guestlist</string>
     <string name="guest_form_billeterie_validate">Permitir que taquilla valide los formularios</string>
     <string name="guest_form_site_url">Sitio: %1$s</string>
@@ -2342,7 +2342,7 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="profile_photo_request_failed">No se pudo crear el enlace. Comprueba la conexión y que las últimas reglas de Firestore y Storage estén publicadas.</string>
     <string name="profile_photo_request_hint">Puedes cerrar esta ventana: la foto se añadirá igualmente cuando llegue, mientras NoctuList esté abierto en este dispositivo.</string>
     <string name="portal_settings_title">Portal de voluntarios</string>
-    <string name="portal_settings_body">Cada voluntario obtiene un espacio web personal en el sitio de formularios: perfil, turnos, ventajas y monedero. Antes de activarlo: habilita el inicio de sesión con correo/contraseña en Firebase Authentication, vuelve a publicar las reglas de Firestore y Storage, y vuelve a desplegar el sitio de formularios.</string>
+    <string name="portal_settings_body">Cada voluntario obtiene un espacio web personal en el sitio de formularios: perfil, turnos, ventajas y monedero. Prepárelo primero en la página de configuración de Firebase (métodos de inicio de sesión, reglas, sitio de formularios) y actívelo aquí. Añada el procesamiento automático opcional para que las solicitudes se procesen en segundos.</string>
     <string name="portal_enable">Activar el portal de voluntarios</string>
     <string name="portal_sign_in_url">Página de acceso: %1$s</string>
     <string name="portal_server_active">El procesamiento automático está activo. Última ejecución: %1$s</string>
@@ -2355,7 +2355,7 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="portal_signup_link_title">Formulario de inscripción</string>
     <string name="portal_signup_link_body">Envía este enlace de un solo uso al nuevo voluntario. Es válido durante 7 días. Su perfil aparece aquí en cuanto lo envíe.</string>
     <string name="portal_signup_link_creating">Creando el enlace…</string>
-    <string name="portal_signup_link_failed">No se pudo crear el enlace. Comprueba la conexión y que las últimas reglas de Firestore estén publicadas.</string>
+    <string name="portal_signup_link_failed">No se pudo crear el enlace. Compruebe la conexión y que las últimas reglas estén publicadas (página de configuración de Firebase, paso 4).</string>
     <string name="portal_signup_link_waiting">Esperando la inscripción…</string>
     <string name="portal_signup_link_received">Inscripción recibida. Añadiendo al voluntario…</string>
     <string name="portal_signup_link_done">Se ha añadido el nuevo voluntario.</string>
