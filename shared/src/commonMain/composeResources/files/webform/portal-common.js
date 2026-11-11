@@ -30,7 +30,8 @@ export const PHONE_RE = /^[0-9+() .-]{4,32}$/;
 export const DATE_RE = /^(19|20)[0-9]{2}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/;
 export const EMAIL_RE = /^[^@\s]{1,64}@[^@\s]{1,190}\.[^@\s]{2,}$/;
 export const GENDERS = ["FEMALE", "MALE", "NON_BINARY", "OTHER", "PREFER_NOT_TO_DISCLOSE"];
-export const MIN_PASSWORD = 10;
+/** Same minimum as Firebase Authentication, so every page (including the e-mail reset page) agrees. */
+export const MIN_PASSWORD = 6;
 
 export function cleanName(value) {
   const v = String(value || "").trim().replace(/\s+/g, " ");
@@ -50,7 +51,7 @@ const COMMON = new Set([
   "doudou1234", "chocolat12", "1234567890a", "abcdefghij", "abcd123456", "abc1234567", "q1w2e3r4t5",
 ]);
 
-/** 0..4 — rough estimate, enough to steer people away from weak choices. */
+/** 0..4, a rough estimate shown by the meter to steer people away from weak choices. It never blocks. */
 export function passwordStrength(password, email = "") {
   const p = String(password || "");
   if (p.length < MIN_PASSWORD) return 0;
@@ -71,14 +72,13 @@ export function passwordStrength(password, email = "") {
   return Math.max(1, Math.min(4, score));
 }
 
-/** Returns an i18n error key, or null when the password is acceptable. */
-export function passwordProblem(password, email = "") {
+/**
+ * Returns an i18n error key, or null when the password is acceptable. Only Firebase's own rule
+ * blocks (length); the strength meter just advises.
+ */
+export function passwordProblem(password) {
   const p = String(password || "");
   if (p.length < MIN_PASSWORD) return "errPasswordShort";
-  if (COMMON.has(p.toLowerCase())) return "errPasswordCommon";
-  const local = String(email || "").split("@")[0].toLowerCase();
-  if (local.length >= 4 && p.toLowerCase().includes(local)) return "errPasswordEmail";
-  if (passwordStrength(p, email) < 2) return "errWeakPassword";
   return null;
 }
 
