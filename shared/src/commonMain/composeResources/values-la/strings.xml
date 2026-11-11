@@ -1603,125 +1603,12 @@
     <string name="sheets_migrate_card_body">Sync tempore reali velocius pro POS et porta. Data Sheets copiata, deinde alia instrumenta rogantur reconnectere.</string>
     <string name="firebase_tutorial_help_cd">Quomodo creare database Firebase</string>
     <string name="firebase_tutorial_title">Crea database Firebase tuum</string>
-    <string name="firebase_tutorial_close">Intellexi</string>
-    <string name="firebase_tutorial_intro">Elige unum walkthrough completum infra. Uterque finit cum eisdem valoribus in NoctuList. Praefere Firebase Console si novus es in Google Cloud.</string>
-    <string name="firebase_tutorial_oauth_note">OAuth Gmail/email (JSON Desktop developer) separatum est et non debet reuti pro Firebase Sign-In. Utere Web client ID + secret institutionis ex hoc projecto Firebase.</string>
-    <string name="firebase_tutorial_method_label">Methodus guide</string>
-    <string name="firebase_tutorial_method_firebase">Console Firebase</string>
-    <string name="firebase_tutorial_method_firebase_hint">Commendatum: console.firebase.google.com. Screens clariores pro Auth, Firestore et config web. Aperi breviter Cloud Console solum pro secret client Web et redirectionibus localhost.</string>
-    <string name="firebase_tutorial_method_cloud">Console Google Cloud</string>
-    <string name="firebase_tutorial_method_cloud_hint">Pro adminibus iam in console.cloud.google.com (idem projectum ac Sheets). Tamen aperi Firebase semel pro Auth Google et Application ID (appId).</string>
     <string name="firebase_tutorial_copy_rules">Copia firestore.rules in clipboard</string>
     <string name="firebase_tutorial_copy_rules_done">Copiatum. Incolla in Firestore → Rules, deinde Publish</string>
     <string name="firebase_tutorial_copy_rules_error">Non potui onerare regulas. Aperi firebase/firestore.rules in projecto</string>
-    <string name="firebase_tutorial_copy_redirect_uris">Copia URI redirectionis localhost</string>
-    <string name="firebase_tutorial_copy_redirect_uris_done">Copiatum. Singulas URI in Authorized redirect URIs incola, deinde Save</string>
-    <string name="firebase_tutorial_storage_optional_title">Facultativum: photogrammæ profili (Firebase Storage)</string>
-    <string name="firebase_tutorial_storage_optional_body">Omitte ut in plano gratuito Spark maneas. Storage activare planum Blaze (solvendum) exigere potest.\n\nPro photogrammatibus profili:\n1. Firebase Console → Build → Storage → Get started (idem projectum).\n2. Storage → Rules (URL debet /storage/rules continere, non Firestore).\n3. Regulas Storage NoctuList incolla (button infra) → Publish.\n4. In NoctuList Settings → Firebase, «Photogrammæ profili activare» accende (in omnibus institutionis machinis activatur).\n\nPostea facere potes. App sine Storage plene operatur.</string>
     <string name="firebase_tutorial_copy_storage_rules">Copia storage.rules in clipboard</string>
     <string name="firebase_tutorial_copy_storage_rules_done">Copiatum. Incolla in Storage → Rules, deinde Publish</string>
     <string name="firebase_tutorial_copy_storage_rules_error">Non potui onerare regulas. Aperi firebase/storage.rules in projecto</string>
-    <string name="firebase_tutorial_fb_step1_title">1. Creare vel aperire projectum Firebase</string>
-    <string name="firebase_tutorial_fb_step1_body">1. Aperi https://console.firebase.google.com et sign in cum ratione Google institutionis quae potest administrare projectum.
-2. Clicca Add project (vel selige existens).
-3. Si iam utaris Google Sheets in projecto Cloud: elige «Use an existing Google Cloud project» et idem projectum. Ne crea secundum projectum vacuum.
-4. Analytics est optionale. Fini wizard.
-5. Nota Project ID (Project settings → General). Incollabis in NoctuList.</string>
-    <string name="firebase_tutorial_fb_step2_title">2. Creare Firestore</string>
-    <string name="firebase_tutorial_fb_step2_body">In Firebase Console, idem projectum:
-1. Build → Firestore Database → Create database.
-2. Praefere production mode, regio prope loca tua (EU si requiritur), deinde create.
-3. Ne adde documenta manu. NoctuList creat sub orgs/{orgId}/…</string>
-    <string name="firebase_tutorial_fb_step3_title">3. Publicare regulas securitatis</string>
-    <string name="firebase_tutorial_fb_step3_body">Firebase Console → Build → Firestore → Rules (URL debet continere /firestore/rules, non Realtime Database).
-Selige omnia, incolla regulas NoctuList (button infra), deinde Publish. Sine his regulis instrumenta non possunt secure legere vel scribere.\nPost quamque renovationem NoctuList, regulas iterum divulga.</string>
-    <string name="firebase_tutorial_fb_step4_title">4. Activare Google Sign-In</string>
-    <string name="firebase_tutorial_fb_step4_body">1. Firebase Console → Build → Authentication → Get started (si opus).
-2. Sign-in method → Google → Enable → Save.
-3. In ea screen nota Web client ID quod Firebase monstrat pro Google provider. Hoc est Web client institutionis (non Gmail Desktop).
-4. Si Firebase creat automatice Web OAuth client, serva. Ne substitue cum JSON OAuth Gmail developer.</string>
-    <string name="firebase_tutorial_fb_step5_title">5. Copia valores in NoctuList</string>
-    <string name="firebase_tutorial_fb_step5_body">Serva hanc listam apertam.
-
-A) Config web (facillimum)
-• Project settings (gear) → General → Your apps → Web app.
-• Si nulla: Add app → Web (&lt;/&gt;), nickname «NoctuList», skip Hosting.
-• Aperi Config / SDK snippet et copia apiKey, appId, projectId. Vel incolla totum snippet in NoctuList «Incolla config web Firebase».
-
-B) Web client ID
-• Authentication → Sign-in method → Google → Web client ID
-  VEL Project settings → General → Your apps / sectio OAuth
-  VEL Cloud Console → APIs &amp; Services → Credentials → OAuth 2.0 Client IDs → type Web application.
-• Incolla in NoctuList → Web client ID.
-
-C) Web client secret (Desktop requiritur)
-• Aperi https://console.cloud.google.com → idem projectum → APIs &amp; Services → Credentials.
-• Aperi eundem Web application client supra.
-• Copia Client secret → NoctuList → Web client secret.
-• NON sub «Authorized JavaScript origins» (origines non possunt habere /Callback).
-Scroll ad «Authorized redirect URIs» et adde OMNIA haec exacte:
-  http://localhost:8889/Callback
-  http://localhost:8888/Callback
-  http://localhost:8765/Callback
-  http://localhost:9090/Callback
-Origines optionales (sine path): http://localhost:8889 etc.
-→ Save, expecta circiter unum minutum, deinde retry Sign-In.
-
-Perge ad gradum 6.</string>
-    <string name="firebase_tutorial_cloud_step1_title">1. Aperire projectum Cloud</string>
-    <string name="firebase_tutorial_cloud_step1_body">1. Aperi https://console.cloud.google.com
-2. Barra superior → project picker → selige projectum institutionis (idem ac Sheets si iam utaris).
-3. Confirma Project ID (chip projecti vel IAM &amp; Admin → Settings). Incollabis in NoctuList.
-
-Liga Firebase semel si opus: https://console.firebase.google.com → Add project → «Use an existing Google Cloud project» → idem projectum. Ne crea projectum vacuum novum.</string>
-    <string name="firebase_tutorial_cloud_step2_title">2. Activare Firestore</string>
-    <string name="firebase_tutorial_cloud_step2_body">Adhuc in Cloud Console, idem projectum:
-1. Menu ☰ → APIs &amp; Services → Library → «Cloud Firestore API» → Enable.
-2. Menu ☰ → Firestore → Create database si rogatur.
-3. Praefere Native / production, regio prope loca, deinde create.
-4. Ne adde documenta manu. NoctuList creat orgs/{orgId}/…</string>
-    <string name="firebase_tutorial_cloud_step3_title">3. Publicare regulas securitatis</string>
-    <string name="firebase_tutorial_cloud_step3_body">Cloud Console → Firestore → Rules (URL debet continere firestore et rules, non Realtime Database).
-Incolla regulas NoctuList (button infra) → Publish.
-Si nullus editor Rules in Cloud UI: Firebase Console → Build → Firestore → Rules → incolla → Publish.\nPost quamque renovationem NoctuList, regulas iterum divulga.</string>
-    <string name="firebase_tutorial_cloud_step4_title">4. Activare Google Sign-In + Web OAuth client</string>
-    <string name="firebase_tutorial_cloud_step4_body">A) Firebase Auth (semel requiritur)
-1. console.firebase.google.com → idem projectum → Authentication → Sign-in method → Google → Enable → Save.
-
-B) Web OAuth client institutionis (non Gmail Desktop)
-1. Cloud Console → APIs &amp; Services → Credentials.
-2. Sub OAuth 2.0 Client IDs aperi (vel crea) client type Web application usatus ab Firebase Auth.
-3. Ne utaris client JSON Gmail Desktop developer pro hoc.
-4. NON sub «Authorized JavaScript origins» (origines non possunt habere /Callback).
-Scroll ad «Authorized redirect URIs» et adde OMNIA haec exacte:
-  http://localhost:8889/Callback
-  http://localhost:8888/Callback
-  http://localhost:8765/Callback
-  http://localhost:9090/Callback
-Origines optionales (sine path): http://localhost:8889 etc.
-→ Save, expecta circiter unum minutum, deinde retry Sign-In.
-5. Copia Client ID et Client secret pro gradu 5.</string>
-    <string name="firebase_tutorial_cloud_step5_title">5. Copia valores in NoctuList</string>
-    <string name="firebase_tutorial_cloud_step5_body">A) Project ID: Cloud project picker / IAM &amp; Admin → Settings.
-
-B) API key: Credentials → API keys (Browser key existens, vel Create credentials → API key semel).
-
-C) Web client ID + secret: Credentials → OAuth 2.0 Client IDs → Web application (gradus 4). Incolla utrumque in NoctuList (secret = Desktop Sign-In).
-
-D) Application ID (appId)
-• Firebase Console → Project settings → General → Your apps → Web.
-• Si nulla: Add app → Web semel, nickname «NoctuList», skip Hosting; copia appId ex config snippet.
-• Vel incolla totam config web Firebase in NoctuList.
-
-Perge ad gradum 6.</string>
-    <string name="firebase_tutorial_step7_title">6. Imple NoctuList, deinde migra / connecte</string>
-    <string name="firebase_tutorial_step7_body">In Admin Firebase sync vel dialogo migrationis:
-• Organization ID: nomen breve commune (exemplum: noctulist-club). Idem in omni instrumento.
-• Project ID, Application ID, API key, Web client ID, et in Desktop Web client secret.
-• Vel incolla web config + imple Web client ID/secret, deinde utere join QR pro aliis instrumentis.
-Sign in cum Google (primus admin fit org admin). Solum post Sign-In felicem incipe migrationem si transis ex Sheets. Pares join per QR / follow. Non debent retypare secreta.</string>
-    <string name="firebase_tutorial_step8_title">7. Post configurationem</string>
-    <string name="firebase_tutorial_step8_body">In Firestore debes videre orgs/{yourOrgId}/… (guests, members, metadata, etc.). Serva Sheets ut backup donec POS, porta et secundum instrumentum verificata. Billing: mane in free Spark / free tier dum testas; upgrade solum si excedis quotas.</string>
     <string name="migration_wizard_to_firebase_title">Transire ad Firebase</string>
     <string name="migration_wizard_to_sheets_title">Transire ad Google Sheets</string>
     <string name="migration_wizard_intro">Solum admin. Copiamus data tua, mutamus hoc instrumentum, deinde annuntiamus mutationem ut alia reconnectant.</string>
@@ -2344,14 +2231,6 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="guest_form_export_done">Fasciculus servatus. Extrahe, deinde mandata infra exsequere.</string>
     <string name="guest_form_export_android">Promulgatio computatrum exigit. Hunc ducem in NoctuList in computatro aperi, fasciculum exporta, a gradu 3 perge.</string>
     <string name="guest_form_deploy_commands">npm install -g firebase-tools\nfirebase login\nfirebase deploy --only hosting --project YOUR_PROJECT_ID</string>
-    <string name="firebase_tutorial_forms_optional_title">Optio: formulæ publicæ (Firebase Hosting)</string>
-    <string name="firebase_tutorial_forms_optional_body">Situm formularum semel in hoc Firebase incepto prome (Hosting gratuitum). Postea quaeque formula in NoctuList nexus unicus est. Sine Terminale iterum.</string>
-    <string name="firebase_tutorial_portal_optional_title">Optio: porta voluntariorum</string>
-    <string name="firebase_tutorial_portal_optional_body">Hoc omitte nisi voluntarii spatium suum in rete habere debent. Situm formularum e parte superiore requirit.\n\n1. Firebase Console → Build → Authentication → Sign-in method → Add new provider → Email/Password → Enable. «Email link» exstinctum relinque, deinde Serva.\n2. Authentication → Settings → User actions: «Email enumeration protection» accensum tene.\n3. Regulas Firestore novissimas divulga (gradus 3) et, si imagines adhibes, regulas Storage.\n4. Situm formularum iterum exporta et explica (pars superior). Paginam inscriptionis et spatium voluntariorum addit.\n5. In NoctuList, Optiones → Firebase, «Portam voluntariorum accende» accende. Inscriptio aditus ibi ostenditur.\n\nPro «Mitte mihi codicem QR», epistula sponte mittitur cum tractatio automatica (pars sequens) parata est. Alioquin instrumentum NoctuList cum Gmail paratum eam mittit, cum in rete est.</string>
-    <string name="firebase_tutorial_server_optional_title">Optio: tractatio automatica (Cloud Functions)</string>
-    <string name="firebase_tutorial_server_optional_body">Hoc omitte nisi vis petitiones et epistulas codicis QR intra paucas secundas tractari, etiam nullo instrumento NoctuList accenso. Primum gradus situs formularum supra perfice (Node.js et firebase login).\n\n1. Ratio solvenda: in Firebase Console preme «Spark» infra sinistra, deinde Upgrade, deinde Blaze. Tum in Google Cloud Console aperi Billing, deinde Budgets &amp; alerts, et crea sumptum 5 € cum monitis per epistulam. Societas plerumque intra fines gratuitos manet.\n2. Gmail: in rationem Gmail societatis intra et verificationem duplicem accende. Deinde aperi https://myaccount.google.com/apppasswords, crea tesseram applicationis nomine NoctuList et 16 litteras ostensas serva.\n3. Regio: in Firebase Console aperi Firestore Database. Locus supra ostenditur. eur3 significat europe-west1, nam5 significat us-central1, europe-west6 (Turicum) manet europe-west6.\n4. Preme iterum «Situm formularum exportare» supra et archivum explica. Novum folder continet folder functions.\n5. Aperi Terminale in eo folder: scribe cd, spatium, trahe folder in fenestram, preme Enter. Deinde iussa infra copia, insere et preme Enter.</string>
-    <string name="firebase_tutorial_server_optional_prompts">Prima promulgatio tres quaestiones ponit:\n• GMAIL_USER: scribe inscriptionem Gmail societatis, preme Enter.\n• REGION: preme Enter ut europe-west1 serves, aut scribe regionem tuam e gradu 3.\n• GMAIL_APP_PASSWORD: insere tesseram applicationis 16 litterarum et preme Enter. Dum scribis nihil apparet, id solitum est.\nSi rogat ut officia Google Cloud accendantur, responde Y. Si errore Eventarc vel permissionis desinit, 5 minuta exspecta et ultimam lineam iterum insere.</string>
-    <string name="firebase_tutorial_server_optional_cleanup">6. Promulgatione perfecta, hanc lineam semel insere ut veteres versiones sponte deleantur. Si regio tua non est europe-west1, eam prius in linea muta.</string>
     <string name="firebase_tutorial_server_optional_status">Optiones → Firebase deinde «Processus automaticus activus est» ostendit, simul ac servitor primam inscriptionem aut petitionem tractavit.</string>
     <string name="guest_form_step1">1. In Optiones → Firebase → facultativa, formulas invitatorum artificum aut portam voluntariorum accende.</string>
     <string name="guest_form_step2">2. In computatro situm exporta, fasciculum serva et extrahe. Plica index.html et firebase.json continere debet.</string>
@@ -2573,4 +2452,19 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="setup_err_network">Nullus nexus cum Google. Interretem inspice et iterum conare.</string>
     <string name="setup_err_quota">Fines Google attacti sunt. Postea iterum conare.</string>
     <string name="setup_err_unknown">Aliquid erravit. Singula vide aut gradum manualem sequere.</string>
+    <string name="setup_manual_intro">Idem gradus, manu facti. Iussa in Terminale (Mac) aut PowerShell (Windows) inseruntur: copia, insere, preme Enter. ID projecti tui impletur cum NoctuList id novit.</string>
+    <string name="setup_manual_tools">1. Node.js 22 (LTS) ex https://nodejs.org institue. Deinde Terminale iterum aperi.\n2. Instrumentum Firebase hoc iusso institue.</string>
+    <string name="setup_manual_login">Navigatrum aperitur. Rationem Google elige quae projectum Firebase societatis possidet.</string>
+    <string name="setup_manual_project">Projectum exstans adhibe, aut novum crea in https://console.firebase.google.com (Add project), aut hoc iusso (ID muta: litterae minusculae, numeri, lineolae). Deinde ID projecti in NoctuList, Optiones, Firebase scribe.</string>
+    <string name="setup_manual_database">Firebase Console, Build, Firestore Database, Create database. Modum production et locum elige: europe-west6 (Turicum) data in Helvetia servat. Aut hoc iussum adhibe.</string>
+    <string name="setup_manual_rules">Firebase Console, Firestore Database, Rules. Omnia selige, regulas insere (globulus infra), deinde Publish. Post quamque renovationem NoctuList iterum fac.</string>
+    <string name="setup_manual_providers">Firebase Console, Authentication, Sign-in method. Google accende. Si portam voluntariorum adhibes, etiam Email/Password accende et «Email link» exstinctum relinque.</string>
+    <string name="setup_manual_connect">1. Hoc iussum configurationem web ostendit (apiKey, appId, projectId). Eam in NoctuList, Optiones, Firebase insere. Nulla adhuc applicatio web? Project settings, General, Your apps, primum Web app adde.\n2. Google Cloud Console, APIs &amp; Services, Credentials, OAuth 2.0 Client IDs, Web client: ID clientis et secretum in NoctuList copia.\n3. In Optiones, Firebase per Google intra.</string>
+    <string name="setup_manual_site">Situm exporta, archivum explica, Terminale in eo folder aperi (scribe cd, spatium, trahe folder in fenestram, preme Enter), deinde iussa insere.</string>
+    <string name="setup_manual_photos">1. Ad rationem Blaze transi: Firebase Console, Spark infra sinistra preme, Upgrade.\n2. Build, Storage, Get started.\n3. Storage, Rules: regulas Storage insere (globulus infra), deinde Publish.\n4. In NoctuList, Optiones, Firebase, imagines personales accende.</string>
+    <string name="setup_manual_server">1. Ratio Blaze, deinde monitum sumptus: Google Cloud Console, Billing, Budgets &amp; alerts, exempli gratia 5 €.\n2. In ratione Gmail societatis verificationem duplicem accende, deinde tesseram applicationis in https://myaccount.google.com/apppasswords crea.\n3. Regionem inveni: Firestore Database locum supra ostendit. eur3 significat europe-west1, nam5 significat us-central1, europe-west6 (Turicum) manet europe-west6.\n4. Situm iterum exporta et explica. Terminale in folder aperi et iussa infra insere.\n• Linea secreti tesseram applicationis rogat. Insere et preme Enter (dum scribis nihil apparet).\n• Promulgatio GMAIL_USER (inscriptio Gmail) et REGION (punctum 3) rogat.\nSi vides «Secret Manager API has not been used»: nexum nuntii aperi, Enable preme, 2 minuta exspecta, deinde duas ultimas lineas iterum insere.\nSi vides «Eventarc Service Agent»: Google adhuc se parat. 5 minuta exspecta et lineam promulgationis iterum insere.\nSi vides «Blaze» aut «billing»: projectum nondum in ratione Blaze est.</string>
+    <string name="setup_manual_server_cleanup">5. Promulgatione bene facta, hanc lineam semel insere ut veteres versiones sponte deleantur. europe-west1 muta si regio tua alia est.</string>
+    <string name="firebase_tutorial_copy_redirect_uris">Copia URI redirectionis localhost</string>
+    <string name="firebase_tutorial_copy_redirect_uris_done">Copiatum. Singulas URI in Authorized redirect URIs incola, deinde Save</string>
+    <string name="setup_redirect_note">In eo Web client, sub Authorized redirect URIs, inscriptiones infra adde (globulus copiandi), deinde Serva. Unum minutum exspecta antequam intres.</string>
 </resources>

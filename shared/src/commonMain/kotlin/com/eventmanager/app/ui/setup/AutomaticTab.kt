@@ -232,6 +232,7 @@ private fun StepControls(
                 var clientId by remember { mutableStateOf("") }
                 var clientSecret by remember { mutableStateOf("") }
                 OpenButton(Res.string.setup_btn_open, SetupLinks.credentials(projectId))
+                RedirectUris()
                 OutlinedTextField(clientId, { clientId = it.trim() }, label = { Text(stringResource(Res.string.setup_client_id)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(
                     clientSecret, { clientSecret = it.trim() },

@@ -1603,125 +1603,12 @@
     <string name="sheets_migrate_card_body">POS और द्वार के लिए तेज़ रीयलटाइम सिंक। आपका Sheets डेटा कॉपी होता है, फिर अन्य उपकरणों से पुनः कनेक्ट करने को कहा जाता है।</string>
     <string name="firebase_tutorial_help_cd">Firebase डेटाबेस कैसे बनाएँ</string>
     <string name="firebase_tutorial_title">अपना Firebase डेटाबेस बनाएँ</string>
-    <string name="firebase_tutorial_close">समझ गया</string>
-    <string name="firebase_tutorial_intro">नीचे एक पूर्ण वॉकथ्रू चुनें। दोनों NoctuList में समान मानों पर समाप्त होते हैं। Google Cloud में नए हों तो Firebase Console पसंद करें।</string>
-    <string name="firebase_tutorial_oauth_note">Gmail/ईमेल OAuth (डेवलपर Desktop JSON) अलग है और Firebase Sign-In के लिए पुनः उपयोग न करें। इस Firebase प्रोजेक्ट से संस्था Web client ID + secret उपयोग करें।</string>
-    <string name="firebase_tutorial_method_label">गाइड विधि</string>
-    <string name="firebase_tutorial_method_firebase">Firebase कंसोल</string>
-    <string name="firebase_tutorial_method_firebase_hint">अनुशंसित: console.firebase.google.com, Auth, Firestore और web config के लिए स्पष्ट स्क्रीन। Web client secret और localhost redirects के लिए केवल संक्षेप में Cloud Console खोलें।</string>
-    <string name="firebase_tutorial_method_cloud">Google Cloud कंसोल</string>
-    <string name="firebase_tutorial_method_cloud_hint">पहले से console.cloud.google.com में एडमिन के लिए (Sheets जैसा प्रोजेक्ट)। Auth Google और Application ID (appId) के लिए एक बार Firebase खोलना अभी भी ज़रूरी।</string>
     <string name="firebase_tutorial_copy_rules">firestore.rules क्लिपबोर्ड पर कॉपी करें</string>
     <string name="firebase_tutorial_copy_rules_done">कॉपी हुआ, Firestore → Rules में चिपकाएँ, फिर Publish</string>
     <string name="firebase_tutorial_copy_rules_error">नियम लोड नहीं हो सके, प्रोजेक्ट में firebase/firestore.rules खोलें</string>
-    <string name="firebase_tutorial_copy_redirect_uris">localhost redirect URI कॉपी करें</string>
-    <string name="firebase_tutorial_copy_redirect_uris_done">कॉपी हुआ, प्रत्येक URI Authorized redirect URIs में चिपकाएँ, फिर Save</string>
-    <string name="firebase_tutorial_storage_optional_title">वैकल्पिक: प्रोफ़ाइल फ़ोटो (Firebase Storage)</string>
-    <string name="firebase_tutorial_storage_optional_body">मुफ़्त Spark प्लान पर रहने के लिए इसे छोड़ दें। Storage सक्षम करने के लिए सशुल्क Blaze प्लान लग सकता है।\n\nप्रोफ़ाइल फ़ोटो के लिए:\n1. Firebase Console → Build → Storage → Get started (वही प्रोजेक्ट)।\n2. Storage → Rules (URL में /storage/rules होना चाहिए, Firestore नहीं)।\n3. NoctuList storage नियम चिपकाएँ (नीचे बटन) → Publish।\n4. NoctuList सेटिंग्स → Firebase में «प्रोफ़ाइल फ़ोटो सक्षम करें» चालू करें (संगठन के सभी डिवाइसों पर लागू होता है)।\n\nबाद में भी कर सकते हैं। Storage के बिना ऐप पूरी तरह चलती है।</string>
     <string name="firebase_tutorial_copy_storage_rules">storage.rules क्लिपबोर्ड पर कॉपी करें</string>
     <string name="firebase_tutorial_copy_storage_rules_done">कॉपी हो गया, Storage → Rules में चिपकाएँ, फिर Publish</string>
     <string name="firebase_tutorial_copy_storage_rules_error">नियम लोड नहीं हो सके, प्रोजेक्ट में firebase/storage.rules खोलें</string>
-    <string name="firebase_tutorial_fb_step1_title">1. Firebase प्रोजेक्ट बनाएँ या खोलें</string>
-    <string name="firebase_tutorial_fb_step1_body">1. https://console.firebase.google.com खोलें और संस्था Google खाते से साइन इन करें जो प्रोजेक्ट प्रबंधित कर सके।
-2. Add project पर क्लिक करें (या मौजूदा चुनें)।
-3. यदि Google Sheets पहले से Cloud प्रोजेक्ट पर है: «Use an existing Google Cloud project» चुनें और वही प्रोजेक्ट, दूसरा खाली प्रोजेक्ट न बनाएँ।
-4. Analytics वैकल्पिक। विज़ार्ड पूरा करें।
-5. Project ID नोट करें (Project settings → General)। NoctuList में चिपकाएँगे।</string>
-    <string name="firebase_tutorial_fb_step2_title">2. Firestore बनाएँ</string>
-    <string name="firebase_tutorial_fb_step2_body">Firebase Console में, वही प्रोजेक्ट:
-1. Build → Firestore Database → Create database।
-2. production mode, आपके venues के निकट क्षेत्र (EU यदि आवश्यक) पसंद करें, फिर create।
-3. दस्तावेज़ हाथ से न जोड़ें, NoctuList orgs/{orgId}/… के अंतर्गत बनाता है</string>
-    <string name="firebase_tutorial_fb_step3_title">3. सुरक्षा नियम प्रकाशित करें</string>
-    <string name="firebase_tutorial_fb_step3_body">Firebase Console → Build → Firestore → Rules (URL में /firestore/rules हो, Realtime Database नहीं)।
-सब चुनें, NoctuList नियम चिपकाएँ (नीचे बटन), फिर Publish। इन नियमों के बिना उपकरण सुरक्षित पढ़/लिख नहीं कर सकते।\nहर NoctuList अपडेट के बाद नियम फिर से प्रकाशित करें।</string>
-    <string name="firebase_tutorial_fb_step4_title">4. Google Sign-In सक्षम करें</string>
-    <string name="firebase_tutorial_fb_step4_body">1. Firebase Console → Build → Authentication → Get started (यदि ज़रूरत)।
-2. Sign-in method → Google → Enable → Save।
-3. उस स्क्रीन पर Web client ID नोट करें जो Firebase Google provider के लिए दिखाता है, यह संस्था Web client है (Gmail Desktop नहीं)।
-4. यदि Firebase स्वचालित Web OAuth client बनाता है, रखें। डेवलपर Gmail OAuth JSON से न बदलें।</string>
-    <string name="firebase_tutorial_fb_step5_title">5. NoctuList में मान कॉपी करें</string>
-    <string name="firebase_tutorial_fb_step5_body">यह सूची खुली रखें।
-
-A) Web config (सबसे आसान)
-• Project settings (gear) → General → Your apps → Web app।
-• यदि नहीं: Add app → Web (&lt;/&gt;), nickname «NoctuList», Hosting छोड़ें।
-• Config / SDK snippet खोलें और apiKey, appId, projectId कॉपी करें, या पूरा snippet NoctuList «Paste Firebase web config» में चिपकाएँ।
-
-B) Web client ID
-• Authentication → Sign-in method → Google → Web client ID
-  या Project settings → General → Your apps / OAuth section
-  या Cloud Console → APIs &amp; Services → Credentials → OAuth 2.0 Client IDs → Web application।
-• NoctuList → Web client ID में चिपकाएँ।
-
-C) Web client secret (Desktop आवश्यक)
-• https://console.cloud.google.com खोलें → वही प्रोजेक्ट → APIs &amp; Services → Credentials।
-• ऊपर वही Web application client खोलें।
-• Client secret कॉपी करें → NoctuList → Web client secret।
-• «Authorized JavaScript origins» में नहीं (origins में /Callback नहीं हो सकता)।
-«Authorized redirect URIs» तक स्क्रॉल करें और ये सभी ठीक जोड़ें:
-  http://localhost:8889/Callback
-  http://localhost:8888/Callback
-  http://localhost:8765/Callback
-  http://localhost:9090/Callback
-वैकल्पिक origins (बिना path): http://localhost:8889 आदि।
-→ Save, लगभग एक मिनट प्रतीक्षा, फिर Sign-In पुनः प्रयास।
-
-Android उपकरण → चरण 6। केवल Desktop → चरण 7।</string>
-    <string name="firebase_tutorial_cloud_step1_title">1. Cloud प्रोजेक्ट खोलें</string>
-    <string name="firebase_tutorial_cloud_step1_body">1. https://console.cloud.google.com खोलें
-2. ऊपर की पट्टी → project picker → संस्था प्रोजेक्ट (Sheets वाला यदि पहले से)।
-3. Project ID पुष्टि करें (project chip या IAM &amp; Admin → Settings)। NoctuList में चिपकाएँगे।
-
-यदि ज़रूरत हो Firebase लिंक करें: https://console.firebase.google.com → Add project → «Use an existing Google Cloud project» → यही प्रोजेक्ट। नया खाली प्रोजेक्ट न बनाएँ।</string>
-    <string name="firebase_tutorial_cloud_step2_title">2. Firestore सक्षम करें</string>
-    <string name="firebase_tutorial_cloud_step2_body">Cloud Console में, वही प्रोजेक्ट:
-1. मेनू ☰ → APIs &amp; Services → Library → «Cloud Firestore API» → Enable।
-2. मेनू ☰ → Firestore → Create database यदि संकेत मिले।
-3. Native / production, venues के निकट क्षेत्र, फिर create।
-4. दस्तावेज़ हाथ से न जोड़ें, NoctuList orgs/{orgId}/… बनाता है</string>
-    <string name="firebase_tutorial_cloud_step3_title">3. सुरक्षा नियम प्रकाशित करें</string>
-    <string name="firebase_tutorial_cloud_step3_body">Cloud Console → Firestore → Rules (URL में firestore और rules, Realtime Database नहीं)।
-NoctuList नियम चिपकाएँ (नीचे बटन) → Publish।
-Cloud UI में Rules editor न हो: Firebase Console → Build → Firestore → Rules → चिपकाएँ → Publish।\nहर NoctuList अपडेट के बाद नियम फिर से प्रकाशित करें।</string>
-    <string name="firebase_tutorial_cloud_step4_title">4. Google Sign-In + Web OAuth client सक्षम करें</string>
-    <string name="firebase_tutorial_cloud_step4_body">A) Firebase Auth (एक बार आवश्यक)
-1. console.firebase.google.com → वही प्रोजेक्ट → Authentication → Sign-in method → Google → Enable → Save।
-
-B) संस्था Web OAuth client (Gmail Desktop नहीं)
-1. Cloud Console → APIs &amp; Services → Credentials।
-2. OAuth 2.0 Client IDs के अंतर्गत Web application प्रकार का client खोलें या बनाएँ जो Firebase Auth उपयोग करता है।
-3. इसके लिए डेवलपर Gmail Desktop JSON client न उपयोग करें।
-4. «Authorized JavaScript origins» में नहीं (origins में /Callback नहीं)।
-«Authorized redirect URIs» तक स्क्रॉल और ये सभी ठीक जोड़ें:
-  http://localhost:8889/Callback
-  http://localhost:8888/Callback
-  http://localhost:8765/Callback
-  http://localhost:9090/Callback
-वैकल्पिक origins (बिना path): http://localhost:8889 आदि।
-→ Save, लगभग एक मिनट, फिर Sign-In पुनः प्रयास।
-5. चरण 5 के लिए Client ID और Client secret कॉपी करें।</string>
-    <string name="firebase_tutorial_cloud_step5_title">5. NoctuList में मान कॉपी करें</string>
-    <string name="firebase_tutorial_cloud_step5_body">A) Project ID: Cloud project picker / IAM &amp; Admin → Settings।
-
-B) API key: Credentials → API keys (मौजूदा Browser key, या Create credentials → API key एक बार)।
-
-C) Web client ID + secret: Credentials → OAuth 2.0 Client IDs → Web application (चरण 4)। दोनों NoctuList में (secret = Desktop Sign-In)।
-
-D) Application ID (appId)
-• Firebase Console → Project settings → General → Your apps → Web।
-• यदि नहीं: Add app → Web एक बार, nickname «NoctuList», Hosting छोड़ें; config snippet से appId कॉपी।
-• या पूरी Firebase web config NoctuList में चिपकाएँ।
-
-चरण 6 जारी रखें।</string>
-    <string name="firebase_tutorial_step7_title">6. NoctuList भरें, फिर माइग्रेट / कनेक्ट</string>
-    <string name="firebase_tutorial_step7_body">एडमिन Firebase sync या माइग्रेशन संवाद में:
-• Organization ID: छोटा साझा नाम (उदाहरण: noctulist-club)। हर उपकरण पर समान।
-• Project ID, Application ID, API key, Web client ID, Desktop पर Web client secret।
-• या web config + Web client ID/secret भरें, फिर अन्य उपकरणों के लिए join QR।
-Google से साइन इन (पहला एडमिन org admin बनता है)। सफल Sign-In के बाद ही Sheets से स्विच करते समय माइग्रेशन शुरू करें। साथी QR / follow से जुड़ें, secrets दोबारा न टाइप करें।</string>
-    <string name="firebase_tutorial_step8_title">7. सेटअप के बाद</string>
-    <string name="firebase_tutorial_step8_body">Firestore में orgs/{yourOrgId}/… (guests, members, metadata, आदि) दिखना चाहिए। POS, द्वार और दूसरे उपकरण की पुष्टि तक Sheets बैकअप रखें। बिलिंग: परीक्षण में मुफ़्त Spark / free tier पर रहें; कोटा पार होने पर ही अपग्रेड।</string>
     <string name="migration_wizard_to_firebase_title">Firebase पर स्विच करें</string>
     <string name="migration_wizard_to_sheets_title">Google Sheets पर स्विच करें</string>
     <string name="migration_wizard_intro">केवल एडमिन। हम आपका डेटा कॉपी करेंगे, इस उपकरण को स्विच करेंगे, फिर बदलाव की घोषणा ताकि अन्य पुनः कनेक्ट कर सकें।</string>
@@ -2344,14 +2231,6 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="guest_form_export_done">ज़िप सेव हो गया। अनज़िप करें, फिर नीचे की कमांड चलाएँ।</string>
     <string name="guest_form_export_android">प्रकाशित करने के लिए कंप्यूटर चाहिए। डेस्कटॉप पर NoctuList में यह गाइड खोलें, ज़िप एक्सपोर्ट करें, फिर चरण 3 से जारी रखें।</string>
     <string name="guest_form_deploy_commands">npm install -g firebase-tools\nfirebase login\nfirebase deploy --only hosting --project YOUR_PROJECT_ID</string>
-    <string name="firebase_tutorial_forms_optional_title">वैकल्पिक: सार्वजनिक गेस्टलिस्ट फ़ॉर्म (Firebase Hosting)</string>
-    <string name="firebase_tutorial_forms_optional_body">इस Firebase प्रोजेक्ट पर फ़ॉर्म साइट एक बार प्रकाशित करें (मुफ़्त Hosting)। फिर NoctuList में हर फ़ॉर्म एक अनूठा लिंक है, Terminal दोबारा नहीं।</string>
-    <string name="firebase_tutorial_portal_optional_title">वैकल्पिक: स्वयंसेवक पोर्टल</string>
-    <string name="firebase_tutorial_portal_optional_body">अगर स्वयंसेवकों को अपना वेब स्थान नहीं चाहिए तो इसे छोड़ दें। इसके लिए ऊपर वाले भाग की फ़ॉर्म साइट चाहिए।\n\n1. Firebase Console → Build → Authentication → Sign-in method → Add new provider → Email/Password → Enable। «Email link» बंद रखें, फिर Save करें।\n2. Authentication → Settings → User actions: «Email enumeration protection» चालू रखें।\n3. नवीनतम Firestore नियम प्रकाशित करें (चरण 3), और फ़ोटो इस्तेमाल करते हैं तो Storage नियम भी।\n4. फ़ॉर्म साइट दोबारा एक्सपोर्ट करके डिप्लॉय करें (ऊपर वाला भाग)। इससे पंजीकरण पेज और स्वयंसेवक स्थान जुड़ते हैं।\n5. NoctuList में सेटिंग्स → Firebase में «स्वयंसेवक पोर्टल सक्षम करें» चालू करें। लॉगिन पता वहीं दिखता है।\n\n«मेरा QR कोड भेजें» का ई-मेल स्वचालित प्रोसेसिंग (अगला भाग) सेट होने पर अपने आप भेजा जाता है। नहीं तो Gmail सेट किया हुआ NoctuList डिवाइस ऑनलाइन होने पर उसे भेजता है।</string>
-    <string name="firebase_tutorial_server_optional_title">वैकल्पिक: स्वचालित प्रोसेसिंग (Cloud Functions)</string>
-    <string name="firebase_tutorial_server_optional_body">इसे तभी करें जब आप चाहते हैं कि अनुरोध और QR कोड ई-मेल कुछ ही सेकंड में संभाले जाएँ, भले ही कोई NoctuList डिवाइस चालू न हो। पहले ऊपर दिए फ़ॉर्म साइट वाले चरण पूरे करें (Node.js और firebase login)।\n\n1. पेड प्लान: Firebase Console में नीचे बाईं ओर «Spark» पर क्लिक करें, फिर Upgrade, फिर Blaze। फिर Google Cloud Console में Billing, फिर Budgets &amp; alerts खोलें और ई-मेल अलर्ट के साथ 5 € का बजट बनाएँ। एक संस्था आम तौर पर मुफ़्त सीमा में ही रहती है।\n2. Gmail: संस्था के Gmail खाते में साइन इन करें और 2-step verification चालू करें। फिर https://myaccount.google.com/apppasswords खोलें, NoctuList नाम का app password बनाएँ और दिखे हुए 16 अक्षर संभालकर रखें।\n3. क्षेत्र: Firebase Console में Firestore Database खोलें। स्थान ऊपर दिखता है। eur3 का मतलब europe-west1, nam5 का मतलब us-central1, europe-west6 (ज़्यूरिख़) वैसा ही रहता है।\n4. ऊपर «फ़ॉर्म साइट एक्सपोर्ट करें» पर फिर से क्लिक करें और उसे unzip करें। नए फ़ोल्डर में functions नाम का फ़ोल्डर होगा।\n5. उस फ़ोल्डर में Terminal खोलें: cd टाइप करें, एक स्पेस दें, फ़ोल्डर को विंडो में खींचें, Enter दबाएँ। फिर नीचे के कमांड कॉपी करें, चिपकाएँ और Enter दबाएँ।</string>
-    <string name="firebase_tutorial_server_optional_prompts">पहला deploy तीन सवाल पूछता है:\n• GMAIL_USER: संस्था का Gmail पता टाइप करें, Enter दबाएँ।\n• REGION: europe-west1 रखने के लिए Enter दबाएँ, या चरण 3 वाला अपना क्षेत्र टाइप करें।\n• GMAIL_APP_PASSWORD: 16 अक्षरों वाला app password चिपकाएँ और Enter दबाएँ। टाइप करते समय कुछ नहीं दिखता, यह सामान्य है।\nअगर यह Google Cloud सेवाएँ चालू करने को पूछे, तो Y लिखें। अगर यह Eventarc या permission त्रुटि के साथ रुके, तो 5 मिनट रुकें और आख़िरी पंक्ति फिर से चिपकाएँ।</string>
-    <string name="firebase_tutorial_server_optional_cleanup">6. deploy पूरा होने के बाद यह पंक्ति एक बार चिपकाएँ, ताकि पुराने build अपने-आप हट जाएँ। अगर आपका क्षेत्र europe-west1 नहीं है, तो पहले पंक्ति में उसे बदलें।</string>
     <string name="firebase_tutorial_server_optional_status">इसके बाद सेटिंग्स → Firebase में «स्वचालित प्रोसेसिंग चालू है» दिखेगा, जैसे ही सर्वर पहला पंजीकरण या अनुरोध संभाल लेगा।</string>
     <string name="guest_form_step1">1. सेटिंग्स → Firebase → वैकल्पिक में कलाकार गेस्टलिस्ट फ़ॉर्म या स्वयंसेवक पोर्टल चालू करें।</string>
     <string name="guest_form_step2">2. कंप्यूटर पर “Export the form site” दबाएँ, ज़िप सेव करके अनज़िप करें। फ़ोल्डर में index.html और firebase.json होने चाहिए।</string>
@@ -2573,4 +2452,19 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="setup_err_network">Google से कनेक्शन नहीं है। इंटरनेट जाँचें और दोबारा कोशिश करें।</string>
     <string name="setup_err_quota">Google की सीमाएँ पूरी हो गईं। बाद में कोशिश करें।</string>
     <string name="setup_err_unknown">कुछ गड़बड़ हुई। विवरण देखें या मैनुअल चरण अपनाएँ।</string>
+    <string name="setup_manual_intro">वही चरण, हाथ से। कमांड Terminal (Mac) या PowerShell (Windows) में चिपकाएँ: कॉपी करें, चिपकाएँ, Enter दबाएँ। NoctuList को पता होने पर आपका प्रोजेक्ट ID अपने-आप भर जाता है।</string>
+    <string name="setup_manual_tools">1. https://nodejs.org से Node.js 22 (LTS) इंस्टॉल करें। फिर Terminal दोबारा खोलें।\n2. इस कमांड से Firebase टूल इंस्टॉल करें।</string>
+    <string name="setup_manual_login">आपका ब्राउज़र खुलेगा। संस्था के Firebase प्रोजेक्ट वाला Google खाता चुनें।</string>
+    <string name="setup_manual_project">मौजूदा प्रोजेक्ट इस्तेमाल करें, या https://console.firebase.google.com (Add project) में नया बनाएँ, या इस कमांड से (ID बदलें: छोटे अक्षर, अंक और डैश)। फिर NoctuList में सेटिंग्स, Firebase में प्रोजेक्ट ID लिखें।</string>
+    <string name="setup_manual_database">Firebase Console, Build, Firestore Database, Create database। production mode और एक स्थान चुनें: europe-west6 (ज़्यूरिख़) डेटा स्विट्ज़रलैंड में रखता है। या यह कमांड इस्तेमाल करें।</string>
+    <string name="setup_manual_rules">Firebase Console, Firestore Database, Rules। सब चुनें, नियम चिपकाएँ (नीचे बटन), फिर Publish। हर NoctuList अपडेट के बाद यह फिर करें।</string>
+    <string name="setup_manual_providers">Firebase Console, Authentication, Sign-in method। Google चालू करें। अगर आप स्वयंसेवक पोर्टल इस्तेमाल करते हैं, तो Email/Password भी चालू करें और «Email link» बंद रखें।</string>
+    <string name="setup_manual_connect">1. यह कमांड वेब सेटिंग्स (apiKey, appId, projectId) दिखाता है। इन्हें NoctuList में सेटिंग्स, Firebase में चिपकाएँ। अभी कोई वेब ऐप नहीं? Project settings, General, Your apps में पहले Web app जोड़ें।\n2. Google Cloud Console, APIs &amp; Services, Credentials, OAuth 2.0 Client IDs, Web client: उसका Client ID और Client secret NoctuList में कॉपी करें।\n3. सेटिंग्स, Firebase में Google से साइन इन करें।</string>
+    <string name="setup_manual_site">साइट एक्सपोर्ट करें, उसे unzip करें, उस फ़ोल्डर में Terminal खोलें (cd टाइप करें, एक स्पेस, फ़ोल्डर को विंडो में खींचें, Enter दबाएँ), फिर कमांड चिपकाएँ।</string>
+    <string name="setup_manual_photos">1. Blaze प्लान पर जाएँ: Firebase Console में नीचे बाईं ओर Spark, फिर Upgrade।\n2. Build, Storage, Get started।\n3. Storage, Rules: Storage नियम चिपकाएँ (नीचे बटन), फिर Publish।\n4. NoctuList में सेटिंग्स, Firebase में प्रोफ़ाइल फ़ोटो चालू करें।</string>
+    <string name="setup_manual_server">1. Blaze प्लान, फिर बजट अलर्ट: Google Cloud Console, Billing, Budgets &amp; alerts, जैसे 5 €।\n2. संस्था के Gmail खाते में 2-step verification चालू करें, फिर https://myaccount.google.com/apppasswords पर app password बनाएँ।\n3. क्षेत्र ढूँढें: Firestore Database ऊपर स्थान दिखाता है। eur3 का मतलब europe-west1, nam5 का मतलब us-central1, europe-west6 (ज़्यूरिख़) वैसा ही रहता है।\n4. साइट फिर से एक्सपोर्ट करें और unzip करें। फ़ोल्डर में Terminal खोलें और नीचे के कमांड चिपकाएँ।\n• secret वाली पंक्ति app password पूछती है। उसे चिपकाएँ और Enter दबाएँ (टाइप करते समय कुछ नहीं दिखता)।\n• deploy GMAIL_USER (Gmail पता) और REGION (बिंदु 3) पूछता है।\nअगर «Secret Manager API has not been used» दिखे: संदेश का लिंक खोलें, Enable दबाएँ, 2 मिनट रुकें, फिर आख़िरी दो पंक्तियाँ फिर से चिपकाएँ।\nअगर «Eventarc Service Agent» दिखे: Google अभी तैयार हो रहा है। 5 मिनट रुकें और deploy वाली पंक्ति फिर से चिपकाएँ।\nअगर «Blaze» या «billing» दिखे: प्रोजेक्ट अभी Blaze प्लान पर नहीं है।</string>
+    <string name="setup_manual_server_cleanup">5. deploy सफल होने के बाद यह पंक्ति एक बार चिपकाएँ, ताकि पुराने build अपने-आप हटें। अगर आपका क्षेत्र अलग है तो europe-west1 बदलें।</string>
+    <string name="firebase_tutorial_copy_redirect_uris">localhost redirect URI कॉपी करें</string>
+    <string name="firebase_tutorial_copy_redirect_uris_done">कॉपी हुआ, प्रत्येक URI Authorized redirect URIs में चिपकाएँ, फिर Save</string>
+    <string name="setup_redirect_note">उसी Web client में Authorized redirect URIs के नीचे नीचे दिए पते जोड़ें (कॉपी बटन), फिर Save करें। साइन इन से पहले एक मिनट रुकें।</string>
 </resources>

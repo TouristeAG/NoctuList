@@ -3,8 +3,24 @@
 Sheets remains the default backend. Firebase is additive: **one admin** configures the project,
 then other devices **join** (QR / follow) without typing API keys.
 
-In the app, open the **?** help on Firebase sync / migration for the same walkthrough with a
-choice of console.
+In the app, open the **?** help on Firebase sync / migration: the **Firebase setup** page.
+
+## Setup assistant (recommended, computer app)
+
+The setup page has two tabs:
+
+- **Automatic** (computer app only): step cards with a **Run** button. The app downloads Node.js
+  and the Firebase tool for this computer only when you ask (about 100 MB, once, into
+  `~/.noctulist/tools`), then signs in, picks or creates the project, creates the database,
+  publishes the rules, fetches the web settings, publishes the forms site, profile photo rules and
+  the automatic processing functions. It retries by itself while Google finishes setting up
+  (Eventarc), and saves the Gmail app password before deploying so Secret Manager is on in time.
+  What only a person can do (Blaze plan, budget alert, Gmail app password, turning on sign-in
+  methods, copying the Web client ID and secret) gets an **Open** button to the exact page.
+- **Manual**: the same steps 0 to 9 with every command to copy. The sections below are the same
+  instructions in more detail.
+
+The Gmail app password is never stored by NoctuList: it goes straight to Google Secret Manager.
 
 ## OAuth: two separate clients (by design)
 
@@ -144,12 +160,16 @@ volunteer portal above.
    cd functions
    npm install
    cd ..
+   firebase functions:secrets:set GMAIL_APP_PASSWORD --project YOUR_PROJECT_ID
    firebase deploy --only hosting,functions --project YOUR_PROJECT_ID
    ```
-   The first deploy asks three questions:
+   The secret line asks for the app password first (paste it, nothing shows while typing). It
+   also turns on Secret Manager, which the deploy needs. If it says the Secret Manager API is not
+   enabled, open the link it prints, click Enable, wait 2 minutes and run it again.
+
+   The first deploy then asks:
    - `GMAIL_USER`: the association's Gmail address.
    - `REGION`: press Enter to keep `europe-west1`, or type the region from step 3.
-   - `GMAIL_APP_PASSWORD`: paste the 16-letter app password (nothing shows while typing).
 
    Answer `Y` if it asks to enable Google Cloud services. If it ends with an Eventarc or
    permission error, wait 5 minutes and run the last line again.

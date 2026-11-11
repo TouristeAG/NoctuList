@@ -1465,125 +1465,12 @@
     <string name="sheets_migrate_card_body">为收银和门禁提供更快的实时同步。会复制 Sheets 数据，然后提示其他设备重新连接。</string>
     <string name="firebase_tutorial_help_cd">如何创建 Firebase 数据库</string>
     <string name="firebase_tutorial_title">创建 Firebase 数据库</string>
-    <string name="firebase_tutorial_close">知道了</string>
-    <string name="firebase_tutorial_intro">在下方选择完整教程。两种方式最终在 NoctuList 中填入相同值。若不熟悉 Google Cloud，建议使用 Firebase 控制台。</string>
-    <string name="firebase_tutorial_oauth_note">Gmail/邮件 OAuth（开发者桌面 JSON）是独立的，不可用于 Firebase 登录。请使用此 Firebase 项目中的机构 Web client ID + 密钥。</string>
-    <string name="firebase_tutorial_method_label">指南方式</string>
-    <string name="firebase_tutorial_method_firebase">Firebase 控制台</string>
-    <string name="firebase_tutorial_method_firebase_hint">推荐：console.firebase.google.com，Auth、Firestore 和 Web 配置界面更清晰。仅需短暂打开 Cloud 控制台获取 Web 客户端密钥和 localhost 重定向。</string>
-    <string name="firebase_tutorial_method_cloud">Google Cloud 控制台</string>
-    <string name="firebase_tutorial_method_cloud_hint">适用于已使用 console.cloud.google.com 的管理员（与 Sheets 同一项目）。仍需打开一次 Firebase 以配置 Google 登录和 Application ID（appId）。</string>
     <string name="firebase_tutorial_copy_rules">复制 firestore.rules 到剪贴板</string>
     <string name="firebase_tutorial_copy_rules_done">已复制，粘贴到 Firestore → Rules，然后发布</string>
     <string name="firebase_tutorial_copy_rules_error">无法加载规则，请打开项目中的 firebase/firestore.rules</string>
-    <string name="firebase_tutorial_copy_redirect_uris">复制 localhost 重定向 URI</string>
-    <string name="firebase_tutorial_copy_redirect_uris_done">已复制，将每个 URI 粘贴到 Authorized redirect URIs，然后保存</string>
-    <string name="firebase_tutorial_storage_optional_title">可选：个人资料照片（Firebase Storage）</string>
-    <string name="firebase_tutorial_storage_optional_body">跳过此步以留在免费 Spark 方案。启用 Storage 可能需要付费 Blaze 方案。\n\n如需个人资料照片：\n1. Firebase Console → Build → Storage → Get started（同一项目）。\n2. Storage → Rules（网址须包含 /storage/rules，不是 Firestore）。\n3. 粘贴 NoctuList 的 Storage 规则（下方按钮）→ Publish。\n4. 在 NoctuList 设置 → Firebase 中打开「启用个人资料照片」（机构内所有设备都会开启）。\n\n可以稍后完成。没有 Storage，应用仍可完整使用。</string>
     <string name="firebase_tutorial_copy_storage_rules">复制 storage.rules 到剪贴板</string>
     <string name="firebase_tutorial_copy_storage_rules_done">已复制，粘贴到 Storage → Rules，然后发布</string>
     <string name="firebase_tutorial_copy_storage_rules_error">无法加载规则，请打开项目中的 firebase/storage.rules</string>
-    <string name="firebase_tutorial_fb_step1_title">1. 创建或打开 Firebase 项目</string>
-    <string name="firebase_tutorial_fb_step1_body">1. 打开 https://console.firebase.google.com，使用可管理项目的机构 Google 账号登录。
-2. 点击添加项目（或选择现有项目）。
-3. 若已在 Cloud 项目上使用 Google Sheets：选择「使用现有 Google Cloud 项目」并选择同一项目，勿创建第二个空项目。
-4. Analytics 可选。完成向导。
-5. 记下 Project ID（项目设置 → 常规）。将粘贴到 NoctuList。</string>
-    <string name="firebase_tutorial_fb_step2_title">2. 创建 Firestore</string>
-    <string name="firebase_tutorial_fb_step2_body">在 Firebase 控制台，同一项目：
-1. Build → Firestore Database → 创建数据库。
-2. 建议选择生产模式、靠近场地的区域（如需则选 EU），然后创建。
-3. 请勿手动添加文档，NoctuList 会在 orgs/{orgId}/… 下创建</string>
-    <string name="firebase_tutorial_fb_step3_title">3. 发布安全规则</string>
-    <string name="firebase_tutorial_fb_step3_body">Firebase 控制台 → Build → Firestore → Rules（URL 须包含 /firestore/rules，不是 Realtime Database）。
-全选，粘贴 NoctuList 规则（下方按钮），然后发布。无这些规则，设备无法安全读写。\n每次 NoctuList 更新后，请重新发布规则。</string>
-    <string name="firebase_tutorial_fb_step4_title">4. 启用 Google 登录</string>
-    <string name="firebase_tutorial_fb_step4_body">1. Firebase 控制台 → Build → Authentication → 开始使用（如需要）。
-2. 登录方式 → Google → 启用 → 保存。
-3. 在该界面记下 Firebase 为 Google 提供商显示的 Web client ID，这是机构 Web 客户端（非 Gmail 桌面）。
-4. 若 Firebase 自动创建 Web OAuth 客户端，请保留。勿替换为开发者 Gmail OAuth JSON。</string>
-    <string name="firebase_tutorial_fb_step5_title">5. 将值复制到 NoctuList</string>
-    <string name="firebase_tutorial_fb_step5_body">保持此清单打开。
-
-A) Web 配置（最简单）
-• 项目设置（齿轮）→ 常规 → 您的应用 → Web 应用。
-• 若无：添加应用 → Web (&lt;/&gt;)，昵称「NoctuList」，跳过 Hosting。
-• 打开 Config / SDK 片段，复制 apiKey、appId、projectId：或将整段粘贴到 NoctuList「粘贴 Firebase Web 配置」。
-
-B) Web client ID
-• Authentication → 登录方式 → Google → Web client ID
-  或 项目设置 → 常规 → 您的应用 / OAuth 部分
-  或 Cloud 控制台 → APIs &amp; Services → Credentials → OAuth 2.0 Client IDs → Web application 类型。
-• 粘贴到 NoctuList → Web client ID。
-
-C) Web client secret（桌面端必需）
-• 打开 https://console.cloud.google.com → 同一项目 → APIs &amp; Services → Credentials。
-• 打开上方同一 Web application 客户端。
-• 复制 Client secret → NoctuList → Web client secret。
-• 不要填在「Authorized JavaScript origins」（来源不能包含 /Callback）。
-滚动到「Authorized redirect URIs」并精确添加以下全部：
-  http://localhost:8889/Callback
-  http://localhost:8888/Callback
-  http://localhost:8765/Callback
-  http://localhost:9090/Callback
-可选来源（无路径）：http://localhost:8889 等。
-→ 保存，等待约一分钟，然后重试登录。
-
-继续第 6 步。</string>
-    <string name="firebase_tutorial_cloud_step1_title">1. 打开 Cloud 项目</string>
-    <string name="firebase_tutorial_cloud_step1_body">1. 打开 https://console.cloud.google.com
-2. 顶部栏 → 项目选择器 → 选择机构项目（若已用 Sheets 则选同一项目）。
-3. 确认 Project ID（项目芯片或 IAM &amp; Admin → Settings）。将粘贴到 NoctuList。
-
-如需要可链接 Firebase：https://console.firebase.google.com → 添加项目 →「使用现有 Google Cloud 项目」→ 同一项目。勿创建全新空项目。</string>
-    <string name="firebase_tutorial_cloud_step2_title">2. 启用 Firestore</string>
-    <string name="firebase_tutorial_cloud_step2_body">仍在 Cloud 控制台，同一项目：
-1. 菜单 ☰ → APIs &amp; Services → Library →「Cloud Firestore API」→ Enable。
-2. 菜单 ☰ → Firestore → 如提示则创建数据库。
-3. 建议选择 Native / 生产、靠近场地的区域，然后创建。
-4. 请勿手动添加文档，NoctuList 创建 orgs/{orgId}/…</string>
-    <string name="firebase_tutorial_cloud_step3_title">3. 发布安全规则</string>
-    <string name="firebase_tutorial_cloud_step3_body">Cloud 控制台 → Firestore → Rules（URL 须包含 firestore 和 rules，不是 Realtime Database）。
-粘贴 NoctuList 规则（下方按钮）→ 发布。
-若 Cloud UI 无 Rules 编辑器：Firebase 控制台 → Build → Firestore → Rules → 粘贴 → 发布。\n每次 NoctuList 更新后，请重新发布规则。</string>
-    <string name="firebase_tutorial_cloud_step4_title">4. 启用 Google 登录 + Web OAuth 客户端</string>
-    <string name="firebase_tutorial_cloud_step4_body">A) Firebase Auth（需完成一次）
-1. console.firebase.google.com → 同一项目 → Authentication → 登录方式 → Google → 启用 → 保存。
-
-B) 机构 Web OAuth 客户端（非 Gmail 桌面）
-1. Cloud 控制台 → APIs &amp; Services → Credentials。
-2. 在 OAuth 2.0 Client IDs 下打开（或创建）Firebase Auth 使用的 Web application 类型客户端。
-3. 勿使用开发者 Gmail 桌面 JSON 客户端。
-4. 不要填在「Authorized JavaScript origins」（来源不能包含 /Callback）。
-滚动到「Authorized redirect URIs」并精确添加以下全部：
-  http://localhost:8889/Callback
-  http://localhost:8888/Callback
-  http://localhost:8765/Callback
-  http://localhost:9090/Callback
-可选来源（无路径）：http://localhost:8889 等。
-→ 保存，等待约一分钟，然后重试登录。
-5. 复制 Client ID 和 Client secret 供第 5 步使用。</string>
-    <string name="firebase_tutorial_cloud_step5_title">5. 将值复制到 NoctuList</string>
-    <string name="firebase_tutorial_cloud_step5_body">A) Project ID：Cloud 项目选择器 / IAM &amp; Admin → Settings。
-
-B) API key：Credentials → API keys（现有浏览器密钥，或 Create credentials → API key 一次）。
-
-C) Web client ID + secret：Credentials → OAuth 2.0 Client IDs → Web application（第 4 步）。两者粘贴到 NoctuList（secret = 桌面登录）。
-
-D) Application ID（appId）
-• Firebase 控制台 → 项目设置 → 常规 → 您的应用 → Web。
-• 若无：添加应用 → Web 一次，昵称「NoctuList」，跳过 Hosting；从配置片段复制 appId。
-• 或将完整 Firebase Web 配置粘贴到 NoctuList。
-
-继续第 6 步。</string>
-    <string name="firebase_tutorial_step7_title">6. 填写 NoctuList，然后迁移 / 连接</string>
-    <string name="firebase_tutorial_step7_body">在管理员 Firebase 同步或迁移对话框中：
-• 组织 ID：简短共享名称（例如：noctulist-club）。每台设备相同。
-• Project ID、Application ID、API key、Web client ID，桌面端还需 Web client secret。
-• 或粘贴 Web 配置 + 填写 Web client ID/secret，然后为其他设备使用加入二维码。
-使用 Google 登录（首位管理员成为组织管理员）。仅在登录成功后再开始从 Sheets 迁移。其他设备通过二维码 / follow 加入，不应重新输入密钥。</string>
-    <string name="firebase_tutorial_step8_title">7. 设置完成后</string>
-    <string name="firebase_tutorial_step8_body">Firestore 中应看到 orgs/{yourOrgId}/…（guests、members、metadata 等）。在验证收银、门禁和第二台设备前请保留 Sheets 备份。计费：测试期间保持免费 Spark / 免费层；仅超出配额时升级。</string>
     <string name="migration_wizard_to_firebase_title">切换到 Firebase</string>
     <string name="migration_wizard_to_sheets_title">切换到 Google Sheets</string>
     <string name="migration_wizard_intro">仅管理员。我们将复制数据、切换此设备，然后公告变更以便其他设备重新连接。</string>
@@ -2339,14 +2226,6 @@ D) Application ID（appId）
     <string name="guest_form_export_done">压缩包已保存。解压后运行下方命令。</string>
     <string name="guest_form_export_android">发布需在电脑上完成。在桌面版 NoctuList 打开本指南，导出压缩包，然后从第 3 步继续。</string>
     <string name="guest_form_deploy_commands">npm install -g firebase-tools\nfirebase login\nfirebase deploy --only hosting --project YOUR_PROJECT_ID</string>
-    <string name="firebase_tutorial_forms_optional_title">可选：公开嘉宾名单表单（Firebase Hosting）</string>
-    <string name="firebase_tutorial_forms_optional_body">在本 Firebase 项目上发布一次表单站点（免费 Hosting）。之后 NoctuList 里每个表单只是一个唯一链接，无需再开终端。</string>
-    <string name="firebase_tutorial_portal_optional_title">可选：志愿者门户</string>
-    <string name="firebase_tutorial_portal_optional_body">如果志愿者不需要自己的网页空间，可跳过此部分。它需要上方的表单网站。\n\n1. Firebase 控制台 → Build → Authentication → Sign-in method → Add new provider → Email/Password → Enable。保持「Email link」关闭，然后保存。\n2. Authentication → Settings → User actions：保持「Email enumeration protection」开启。\n3. 发布最新的 Firestore 规则（第 3 步）；如使用照片，也发布 Storage 规则。\n4. 重新导出表单网站并部署（见上方）。这会添加注册页面和志愿者空间。\n5. 在 NoctuList 设置 → Firebase 中开启「启用志愿者门户」。登录地址会显示在那里。\n\n「发送我的二维码」的邮件会在设置好自动处理（见下一部分）后自动发送。否则，由已配置 Gmail 且在线的 NoctuList 设备发送。</string>
-    <string name="firebase_tutorial_server_optional_title">可选：自动处理（Cloud Functions）</string>
-    <string name="firebase_tutorial_server_optional_body">除非您希望在没有任何 NoctuList 设备在线时，请求和二维码邮件也能在几秒内处理，否则可跳过此部分。请先完成上方表单网站的步骤（Node.js 和 firebase login）。\n\n1. 付费方案：在 Firebase 控制台左下角点击「Spark」，然后 Upgrade，再选 Blaze。然后在 Google Cloud Console 中打开 Billing，再打开 Budgets &amp; alerts，创建一个 5 € 的预算并开启邮件提醒。协会通常不会超出免费额度。\n2. Gmail：登录协会的 Gmail 账户并开启两步验证。然后打开 https://myaccount.google.com/apppasswords，创建名为 NoctuList 的应用专用密码，并保存显示的 16 个字母。\n3. 区域：在 Firebase 控制台打开 Firestore Database，顶部会显示位置。eur3 对应 europe-west1，nam5 对应 us-central1，europe-west6（苏黎世）保持 europe-west6。\n4. 再次点击上方的「导出表单站点」并解压。新文件夹中包含一个 functions 文件夹。\n5. 在该文件夹中打开终端：输入 cd 和一个空格，把文件夹拖进窗口，按回车。然后复制下方命令，粘贴并按回车。</string>
-    <string name="firebase_tutorial_server_optional_prompts">首次部署会问三个问题：\n• GMAIL_USER：输入协会的 Gmail 地址，按回车。\n• REGION：按回车保留 europe-west1，或输入第 3 步中的区域。\n• GMAIL_APP_PASSWORD：粘贴 16 个字母的应用专用密码，按回车。输入时不会显示任何内容，这是正常的。\n如果提示启用 Google Cloud 服务，请输入 Y。如果以 Eventarc 或权限错误结束，请等 5 分钟后再次粘贴最后一行。</string>
-    <string name="firebase_tutorial_server_optional_cleanup">6. 部署完成后，粘贴此行一次，旧版本会被自动删除。如果您的区域不是 europe-west1，请先在该行中修改。</string>
     <string name="firebase_tutorial_server_optional_status">之后，只要服务器处理了第一次注册或请求，设置 → Firebase 就会显示「自动处理已开启」。</string>
     <string name="guest_form_step1">1. 在设置 → Firebase → 可选功能中，开启艺人嘉宾名单表单或志愿者门户。</string>
     <string name="guest_form_step2">2. 在电脑上点“导出表单站点”，保存并解压。文件夹中须有 index.html 和 firebase.json。</string>
@@ -2568,4 +2447,19 @@ D) Application ID（appId）
     <string name="setup_err_network">无法连接到 Google。请检查网络后再试。</string>
     <string name="setup_err_quota">已达到 Google 的限制。请稍后再试。</string>
     <string name="setup_err_unknown">出现问题。请查看详情或按手动步骤操作。</string>
+    <string name="setup_manual_intro">同样的步骤，手动完成。命令粘贴到终端（Mac）或 PowerShell（Windows）中：复制、粘贴、按回车。NoctuList 知道项目 ID 时会自动填入。</string>
+    <string name="setup_manual_tools">1. 从 https://nodejs.org 安装 Node.js 22（LTS）。然后重新打开终端。\n2. 用这条命令安装 Firebase 工具。</string>
+    <string name="setup_manual_login">浏览器会打开。请选择拥有协会 Firebase 项目的 Google 账户。</string>
+    <string name="setup_manual_project">使用现有项目，或在 https://console.firebase.google.com（Add project）中新建，或使用这条命令（替换 ID：小写字母、数字和连字符）。然后在 NoctuList 设置 → Firebase 中输入项目 ID。</string>
+    <string name="setup_manual_database">Firebase 控制台 → Build → Firestore Database → Create database。选择 production 模式和位置：europe-west6（苏黎世）会把数据保存在瑞士。或使用这条命令。</string>
+    <string name="setup_manual_rules">Firebase 控制台 → Firestore Database → Rules。全选，粘贴规则（下方按钮），然后发布。每次 NoctuList 更新后都要重新发布。</string>
+    <string name="setup_manual_providers">Firebase 控制台 → Authentication → Sign-in method。开启 Google。如果使用志愿者门户，也开启 Email/Password，并保持「Email link」关闭。</string>
+    <string name="setup_manual_connect">1. 这条命令会显示网页配置（apiKey、appId、projectId）。把它们粘贴到 NoctuList 设置 → Firebase。还没有网页应用？先在 Project settings → General → Your apps 中添加一个 Web 应用。\n2. Google Cloud Console → APIs &amp; Services → Credentials → OAuth 2.0 Client IDs → Web 客户端：把它的 Client ID 和 Client secret 复制到 NoctuList。\n3. 在 设置 → Firebase 中用 Google 登录。</string>
+    <string name="setup_manual_site">导出网站并解压，在该文件夹中打开终端（输入 cd 和一个空格，把文件夹拖进窗口，按回车），然后粘贴命令。</string>
+    <string name="setup_manual_photos">1. 升级到 Blaze 方案：Firebase 控制台左下角点击 Spark → Upgrade。\n2. Build → Storage → Get started。\n3. Storage → Rules：粘贴 Storage 规则（下方按钮），然后发布。\n4. 在 NoctuList 设置 → Firebase 中开启头像照片。</string>
+    <string name="setup_manual_server">1. Blaze 方案，然后设置预算提醒：Google Cloud Console → Billing → Budgets &amp; alerts，例如 5 €。\n2. 在协会的 Gmail 账户中开启两步验证，然后在 https://myaccount.google.com/apppasswords 创建应用专用密码。\n3. 查找区域：Firestore Database 顶部会显示位置。eur3 对应 europe-west1，nam5 对应 us-central1，europe-west6（苏黎世）保持 europe-west6。\n4. 重新导出网站并解压。在该文件夹中打开终端，粘贴下方命令。\n• 密钥那一行会要求输入应用专用密码。粘贴后按回车（输入时不会显示任何内容）。\n• 部署会问 GMAIL_USER（Gmail 地址）和 REGION（第 3 点）。\n如果看到「Secret Manager API has not been used」：打开消息中的链接，点击启用，等 2 分钟，再粘贴最后两行。\n如果看到「Eventarc Service Agent」：Google 仍在准备。等 5 分钟后再粘贴部署那一行。\n如果看到「Blaze」或「billing」：项目还没有升级到 Blaze 方案。</string>
+    <string name="setup_manual_server_cleanup">5. 部署成功后，粘贴此行一次，旧版本会被自动删除。如果您的区域不同，请替换 europe-west1。</string>
+    <string name="firebase_tutorial_copy_redirect_uris">复制 localhost 重定向 URI</string>
+    <string name="firebase_tutorial_copy_redirect_uris_done">已复制，将每个 URI 粘贴到 Authorized redirect URIs，然后保存</string>
+    <string name="setup_redirect_note">在该 Web 客户端的「已获授权的重定向 URI」中添加下方地址（复制按钮），然后保存。登录前请等一分钟。</string>
 </resources>

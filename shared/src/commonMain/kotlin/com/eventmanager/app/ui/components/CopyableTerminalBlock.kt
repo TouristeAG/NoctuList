@@ -54,13 +54,14 @@ fun guestFormHostingCommands(projectId: String): String {
     }
 }
 
-/** Installs the portal functions and deploys them with the site, run from the exported folder. */
+/** Installs the portal functions, saves the Gmail app password (this also turns on Secret Manager), then deploys. */
 fun portalServerDeployCommands(projectId: String): String {
     val id = projectId.trim().ifBlank { "YOUR_PROJECT_ID" }
     return buildString {
         appendLine("cd functions")
         appendLine("npm install")
         appendLine("cd ..")
+        appendLine("firebase functions:secrets:set GMAIL_APP_PASSWORD --project $id")
         append("firebase deploy --only hosting,functions --project $id")
     }
 }
@@ -157,4 +158,20 @@ fun CopyableTerminalBlock(
             )
         }
     }
+}
+
+/** Manual tab commands for the first steps. */
+object ManualSetupCommands {
+    private fun id(projectId: String) = projectId.trim().ifBlank { "YOUR_PROJECT_ID" }
+
+    const val TOOLS = "npm install -g firebase-tools"
+    const val LOGIN = "firebase login"
+
+    fun createProject(projectId: String) =
+        "firebase projects:create ${id(projectId)} --display-name \"NoctuList\""
+
+    fun createDatabase(projectId: String) =
+        "firebase firestore:databases:create \"(default)\" --location europe-west6 --project ${id(projectId)}"
+
+    fun webConfig(projectId: String) = "firebase apps:sdkconfig WEB --project ${id(projectId)}"
 }

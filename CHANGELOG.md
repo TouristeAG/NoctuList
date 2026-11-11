@@ -10,6 +10,8 @@ New, optional: a personal web space for volunteers, and a refreshed look for eve
 
 ### Features
 
+- **Firebase setup assistant.** The Firebase help is now one page with two tabs. Automatic (computer app): the app runs every step it can with a Run button, from installing its tools on request to deploying the volunteer functions, and retries by itself while Google gets ready. Manual: the same steps with every command to copy. The published site no longer includes the functions folder.
+
 - **Volunteer portal (Firebase only, off by default).** Settings, Firebase, "Volunteer portal". Each volunteer signs in on the form site (`/v/{orgId}`) and sees their profile, status, shifts (past and upcoming), current benefits, unique entries left, wallet balance and their 5 latest transfers. They can change their first name, last name, phone number and password, ask for their QR code by e-mail and download their data. Works on phones, tablets and computers (1, 2 or 3 columns).
 - **Registration links.** "Add volunteer" offers "Send a registration form": a single-use link and QR code valid 7 days. The volunteer picks an e-mail and password, fills in their details and an optional photo; the profile appears in NoctuList on its own.
 - **Portal access for existing volunteers.** New "Volunteer portal" card on each profile: create access (a password shown once plus a "choose your password" e-mail), send a password reset link, or remove access. "Add volunteer" can open the access at the same time.
