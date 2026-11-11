@@ -77,7 +77,6 @@ import com.eventmanager.app.data.remote.FirebaseJoinImportProblem
 import com.eventmanager.app.data.remote.FirebaseJoinImportResult
 import com.eventmanager.app.ui.components.FirebaseConnectionFields
 import com.eventmanager.app.ui.components.FirebaseJoinImportSection
-import com.eventmanager.app.ui.components.FirebaseSetupTutorialDialog
 import com.eventmanager.app.ui.components.GuidedStatusBanner
 import com.eventmanager.app.ui.components.GuidedStepCard
 import com.eventmanager.app.ui.components.RawPayloadQrScannerDialog
@@ -571,7 +570,7 @@ fun BackendMigrationWizardScreen(
                 }
             }
             if (showFirebaseTutorial) {
-                com.eventmanager.app.ui.components.FirebaseSetupTutorialDialog(
+                com.eventmanager.app.ui.setup.FirebaseSetupAssistant(
                     onDismiss = { showFirebaseTutorial = false },
                     projectId = settingsManager.getFirebaseProjectId(),
                 )

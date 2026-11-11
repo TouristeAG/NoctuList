@@ -481,7 +481,7 @@ fun SheetsMigrateToFirebaseButton(
         }
     }
     if (showTutorial) {
-        FirebaseSetupTutorialDialog(
+        com.eventmanager.app.ui.setup.FirebaseSetupAssistant(
             onDismiss = { showTutorial = false },
             projectId = projectId,
         )

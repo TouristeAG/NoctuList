@@ -43,7 +43,6 @@ import com.eventmanager.app.ui.components.ColorThemePicker
 import com.eventmanager.app.ui.components.FirebaseAdminProjectConfigCard
 import com.eventmanager.app.ui.components.FirebaseConfigReceivedBanner
 import com.eventmanager.app.ui.components.FirebaseJoinImportSection
-import com.eventmanager.app.ui.components.FirebaseSetupTutorialDialog
 import com.eventmanager.app.ui.components.FirebaseSignInStep
 import com.eventmanager.app.ui.components.GuidedChecklistItem
 import com.eventmanager.app.ui.components.GuidedStepCard
@@ -762,7 +761,7 @@ fun SetupWizardScreen(
     }
 
     if (showFirebaseTutorial) {
-        FirebaseSetupTutorialDialog(
+        com.eventmanager.app.ui.setup.FirebaseSetupAssistant(
             onDismiss = { showFirebaseTutorial = false },
             projectId = settingsManager.getFirebaseProjectId(),
         )

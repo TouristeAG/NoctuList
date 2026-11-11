@@ -4924,7 +4924,7 @@ actual fun SettingsScreen(
     if (showInstructions) {
         when (settingsManager.getBackendType()) {
             com.eventmanager.app.data.remote.BackendType.FIREBASE ->
-                com.eventmanager.app.ui.components.FirebaseSetupTutorialDialog(
+                com.eventmanager.app.ui.setup.FirebaseSetupAssistant(
                     onDismiss = { showInstructions = false },
                     projectId = settingsManager.getFirebaseProjectId(),
                 )
