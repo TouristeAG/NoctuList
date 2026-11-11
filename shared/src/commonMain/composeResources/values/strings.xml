@@ -2468,4 +2468,5 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="setup_login_open">Open the sign-in page</string>
     <string name="setup_login_code">Code from the sign-in page</string>
     <string name="setup_login_finish">Finish sign-in</string>
+    <string name="setup_btn_run_again">Run again</string>
 </resources>

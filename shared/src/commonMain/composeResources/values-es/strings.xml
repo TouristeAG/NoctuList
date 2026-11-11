@@ -2466,4 +2466,5 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="setup_login_open">Abrir la página de inicio de sesión</string>
     <string name="setup_login_code">Código de la página de inicio de sesión</string>
     <string name="setup_login_finish">Terminar el inicio de sesión</string>
+    <string name="setup_btn_run_again">Ejecutar de nuevo</string>
 </resources>

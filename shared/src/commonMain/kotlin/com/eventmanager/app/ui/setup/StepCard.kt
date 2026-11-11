@@ -36,6 +36,7 @@ import com.eventmanager.app.resources.Res
 import com.eventmanager.app.resources.setup_btn_details
 import com.eventmanager.app.resources.setup_btn_hide_details
 import com.eventmanager.app.resources.setup_btn_manual
+import com.eventmanager.app.resources.setup_btn_run_again
 import com.eventmanager.app.resources.setup_state_done
 import com.eventmanager.app.resources.setup_state_error
 import com.eventmanager.app.resources.setup_state_running
@@ -54,9 +55,11 @@ fun StepCard(
     purpose: String,
     onShowManual: (SetupStepId) -> Unit,
     modifier: Modifier = Modifier,
+    rerunnable: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val done = state == StepState.Done
+    var reopened by remember(done) { mutableStateOf(false) }
     Card(
         modifier = modifier.fillMaxWidth().animateContentSize(),
         shape = RoundedCornerShape(18.dp),
@@ -75,7 +78,11 @@ fun StepCard(
                 StateChip(state)
             }
             Text(purpose, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (!done) content()
+            if (!done || reopened) {
+                content()
+            } else if (rerunnable) {
+                TextButton(onClick = { reopened = true }) { Text(stringResource(Res.string.setup_btn_run_again)) }
+            }
             when (state) {
                 is StepState.Running -> LogArea(state.log)
                 is StepState.Error -> ErrorBox(state, onShowManual = { onShowManual(step) })

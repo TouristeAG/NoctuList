@@ -2466,4 +2466,5 @@
     <string name="setup_login_open">打开登录页面</string>
     <string name="setup_login_code">登录页面上的代码</string>
     <string name="setup_login_finish">完成登录</string>
+    <string name="setup_btn_run_again">重新运行</string>
 </resources>

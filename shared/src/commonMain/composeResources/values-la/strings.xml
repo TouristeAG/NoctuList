@@ -2471,4 +2471,5 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="setup_login_open">Paginam aditus aperi</string>
     <string name="setup_login_code">Codex paginae aditus</string>
     <string name="setup_login_finish">Aditum perfice</string>
+    <string name="setup_btn_run_again">Iterum exsequere</string>
 </resources>

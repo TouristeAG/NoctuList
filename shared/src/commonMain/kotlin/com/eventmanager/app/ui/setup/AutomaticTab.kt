@@ -49,6 +49,9 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 internal val requiredSteps = SetupStepId.entries.filterNot { it.optional }
+
+/** Steps worth running again later: rules and site change with NoctuList updates. */
+private val RERUNNABLE = setOf(SetupStepId.PROJECT, SetupStepId.RULES, SetupStepId.SITE, SetupStepId.PHOTOS, SetupStepId.SERVER)
 internal val optionalSteps = SetupStepId.entries.filter { it.optional }
 
 internal fun stepTitle(step: SetupStepId): StringResource = when (step) {
@@ -157,6 +160,7 @@ private fun Card(step: SetupStepId, state: StepState, onShowManual: (SetupStepId
         title = stringResource(stepTitle(step)),
         purpose = stringResource(stepPurpose(step)),
         onShowManual = onShowManual,
+        rerunnable = step in RERUNNABLE,
         content = content,
     )
 }

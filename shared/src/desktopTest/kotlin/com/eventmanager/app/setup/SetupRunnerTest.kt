@@ -283,6 +283,16 @@ class SetupRunnerTest {
     }
 
     @Test
+    fun aDoneStepCanRunAgain(): Unit = runBlocking {
+        ready()
+        runner.run(SetupStepId.RULES)
+        awaitState(SetupStepId.RULES) { it == StepState.Done }
+        runner.run(SetupStepId.RULES)
+        withTimeout(5_000) { while (cli.calls.count { it == "deploy firestore:rules" } < 2) kotlinx.coroutines.delay(10) }
+        awaitState(SetupStepId.RULES) { it == StepState.Done }
+    }
+
+    @Test
     fun connectCreatesAWebAppAndFillsSettings(): Unit = runBlocking {
         ready()
         runner.run(SetupStepId.CONNECT, StepInput(webClientId = "123.apps.googleusercontent.com", webClientSecret = "GOCSPX-s"))

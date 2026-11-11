@@ -2465,4 +2465,5 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="setup_login_open">Ouvrir la page de connexion</string>
     <string name="setup_login_code">Code de la page de connexion</string>
     <string name="setup_login_finish">Terminer la connexion</string>
+    <string name="setup_btn_run_again">Relancer</string>
 </resources>

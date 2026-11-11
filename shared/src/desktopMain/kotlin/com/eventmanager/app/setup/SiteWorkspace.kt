@@ -32,7 +32,7 @@ class SiteWorkspace(
 
         val bundled = Json.parseToJsonElement(readResource("files/webform/$FIREBASE_JSON").decodeToString()).jsonObject
         val config = JsonObject(
-            bundled + buildMap {
+            bundled + mapOf("hosting" to hostingWithoutRules(bundled["hosting"])) + buildMap {
                 put("firestore", buildJsonObject { put("rules", FIRESTORE_RULES) })
                 if (withStorage) put("storage", buildJsonObject { put("rules", STORAGE_RULES) })
             },
@@ -41,6 +41,14 @@ class SiteWorkspace(
         val rc = buildJsonObject { put("projects", buildJsonObject { put("default", JsonPrimitive(projectId)) }) }
         dir.resolve(".firebaserc").writeText(prettyJson.encodeToString(JsonObject.serializer(), rc))
         return dir
+    }
+
+    /** The rules files sit in the public folder for the deploy; they must not be served. */
+    private fun hostingWithoutRules(hosting: kotlinx.serialization.json.JsonElement?): JsonObject {
+        val h = hosting?.jsonObject ?: JsonObject(emptyMap())
+        val ignore = (h["ignore"] as? kotlinx.serialization.json.JsonArray)?.toList().orEmpty()
+        val extra = listOf(FIRESTORE_RULES, STORAGE_RULES).map(::JsonPrimitive).filterNot { it in ignore }
+        return JsonObject(h + ("ignore" to kotlinx.serialization.json.JsonArray(ignore + extra)))
     }
 
     /** Non-secret function parameters, so the deploy never stops to ask. */

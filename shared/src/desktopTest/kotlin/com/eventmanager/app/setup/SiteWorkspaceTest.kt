@@ -49,6 +49,8 @@ class SiteWorkspaceTest {
         val c = config(dir)
         val ignore = c.getValue("hosting").jsonObject.getValue("ignore").jsonArray.map { it.jsonPrimitive.content }
         assertTrue("functions/**" in ignore)
+        assertTrue("firestore.rules" in ignore, "rules must not be served on the public site")
+        assertTrue("storage.rules" in ignore)
         assertEquals("firestore.rules", c.getValue("firestore").jsonObject.getValue("rules").jsonPrimitive.content)
         assertFalse("storage" in c)
         assertTrue(dir.resolve("firestore.rules").readText().contains("cloud.firestore"))
