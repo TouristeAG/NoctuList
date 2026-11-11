@@ -2818,6 +2818,8 @@ class EventManagerViewModel(
         override fun dateOffsetHours(): Int = settingsManagerCached?.getDateChangeOffsetHours() ?: 0
         override fun institutionLogoPng(): String = settingsManagerCached?.getInstitutionLogoPng().orEmpty()
         override fun profilePhotosEnabled(): Boolean = isProfilePhotoUploadEnabled()
+        override fun portalGoogleEnabled(): Boolean = settingsManagerCached?.isVolunteerPortalGoogleEnabled() == true
+        override fun portalGoogleDomains(): List<String> = settingsManagerCached?.volunteerPortalGoogleDomains().orEmpty()
 
         override suspend fun volunteers(): List<Volunteer> = repository.getAllVolunteersOnce()
 

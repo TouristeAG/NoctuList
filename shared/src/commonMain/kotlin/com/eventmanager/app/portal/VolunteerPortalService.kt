@@ -34,6 +34,10 @@ interface VolunteerPortalHost {
     /** Base64 PNG of the institution logo, or empty. */
     fun institutionLogoPng(): String
     fun profilePhotosEnabled(): Boolean
+    /** Volunteers may also sign in with an association Google account. */
+    fun portalGoogleEnabled(): Boolean
+    /** Verified Google Workspace domains, lowercase. */
+    fun portalGoogleDomains(): List<String>
 
     suspend fun volunteers(): List<Volunteer>
     /** Inserts a new volunteer through the normal save + sync pipeline (with its optional photo). */
@@ -74,6 +78,7 @@ sealed class PortalGrantResult {
  * portal is on:
  *  - turns submitted registration links into volunteers,
  *  - processes portal requests (profile edits, QR by e-mail, account linking),
+ *  - links association Google accounts (`portalGoogleClaims`) to volunteers,
  *  - publishes each linked volunteer's filtered projection and photo copy.
  *
  * Every request is claimed with a Firestore transaction first, so two devices never act twice.
@@ -93,6 +98,7 @@ class VolunteerPortalService(
     private var publisherJob: CoroutineJob? = null
     private var latestSignupDocs: List<Pair<String, Map<String, Any?>>> = emptyList()
     private var latestRequestDocs: List<Pair<String, Map<String, Any?>>> = emptyList()
+    private var latestClaimDocs: List<Pair<String, Map<String, Any?>>> = emptyList()
     private var started = false
     private val _serverStatus = MutableStateFlow<PortalServerStatus?>(null)
 
@@ -115,6 +121,10 @@ class VolunteerPortalService(
             latestRequestDocs = docs
             processRequests(docs)
         }?.let { listeners += it }
+        gateway.listenCollection(orgId, PortalGoogleClaim.COLLECTION) { docs ->
+            latestClaimDocs = docs
+            processClaims(docs)
+        }?.let { listeners += it }
         gateway.listenCollection(orgId, PortalServerStatus.COLLECTION) { docs ->
             _serverStatus.value = docs.firstOrNull { it.first == PortalServerStatus.DOC }
                 ?.let { PortalServerStatus.fromMap(it.second) }
@@ -133,6 +143,7 @@ class VolunteerPortalService(
                 runCatchingLogged("retry") {
                     processSignups(latestSignupDocs)
                     processRequests(latestRequestDocs)
+                    processClaims(latestClaimDocs)
                     cleanupExpiredForms()
                 }
             }
@@ -289,6 +300,8 @@ class VolunteerPortalService(
             if (status != PortalRequest.STATUS_PENDING && !isStaleProcessing(data)) continue
             if (isFreshForServer(data["requestedAt"])) continue
             val type = data["type"]?.toString()
+            // A GOOGLE_LINK request only waits for the Google claim that carries its code.
+            if (type == PortalRequestType.GOOGLE_LINK.name) continue
             // Only a device that can actually send mail takes a QR request; others leave it waiting.
             if (type == PortalRequestType.QR_EMAIL.name && !host.canSendQrEmail()) continue
             mutex.withLock { runCatchingLogged("request $requestId") { processRequest(requestId) } }
@@ -307,7 +320,10 @@ class VolunteerPortalService(
             orgId,
             PortalRequest.COLLECTION,
             requestId,
-            claimable = { it["status"] == PortalRequest.STATUS_PENDING || isStaleProcessing(it) },
+            claimable = {
+                (it["status"] == PortalRequest.STATUS_PENDING || isStaleProcessing(it)) &&
+                    it["type"] != PortalRequestType.GOOGLE_LINK.name
+            },
             claimFields = processingFields(now),
         ) ?: return
         val request = PortalInputValidator.parseRequest(requestId, claimed)
@@ -338,9 +354,14 @@ class VolunteerPortalService(
                 val sent = host.sendQrEmail(owner!!)
                 complete(requestId, if (sent) PortalRequest.STATUS_DONE else PortalRequest.STATUS_REJECTED, if (sent) "" else "SEND_FAILED")
             }
-            // Handled once the Google sign-in lands.
-            PortalRequestType.GOOGLE_LINK, PortalRequestType.GOOGLE_UNLINK ->
-                complete(requestId, PortalRequest.STATUS_REJECTED, "INVALID")
+            PortalRequestType.GOOGLE_UNLINK -> {
+                val reason = PortalGoogleLinkProcessor.canUnlink(owner)
+                if (reason != null) return complete(requestId, PortalRequest.STATUS_REJECTED, reason)
+                val ok = clearGoogleLink(owner!!)
+                complete(requestId, if (ok) PortalRequest.STATUS_DONE else PortalRequest.STATUS_REJECTED, if (ok) "" else "SAVE_FAILED")
+            }
+            // Never claimed (see processRequests): it is answered through its Google claim.
+            PortalRequestType.GOOGLE_LINK -> Unit
         }
     }
 
@@ -406,6 +427,170 @@ class VolunteerPortalService(
 
     // endregion
 
+    // region Google account links
+
+    private suspend fun processClaims(docs: List<Pair<String, Map<String, Any?>>>) {
+        // Option off: claims wait, as in the Cloud Functions; turning it back on resumes them.
+        if (docs.isEmpty() || !host.portalGoogleEnabled()) return
+        for ((googleUid, data) in docs) {
+            val status = data["status"]?.toString().orEmpty()
+            if (status != PortalRequest.STATUS_PENDING && !isStaleProcessing(data)) continue
+            if (isFreshForServer(data["requestedAt"])) continue
+            mutex.withLock { runCatchingLogged("google claim") { processClaim(googleUid) } }
+        }
+    }
+
+    private suspend fun processClaim(googleUid: String) {
+        val now = clock()
+        val claimed = gateway.claimDocument(
+            orgId,
+            PortalGoogleClaim.COLLECTION,
+            googleUid,
+            claimable = { it["status"] == PortalRequest.STATUS_PENDING || isStaleProcessing(it) },
+            claimFields = processingFields(now),
+        ) ?: return
+        val claim = PortalInputValidator.parseGoogleClaim(googleUid, claimed)
+            ?: return completeClaim(googleUid, PortalRequest.STATUS_REJECTED, "INVALID")
+        val volunteers = host.volunteers().filter { it.firebaseOrgId.isBlank() || it.firebaseOrgId == orgId }
+        val domains = host.portalGoogleDomains()
+        var aliasTarget = gateway.getDocumentFromServer(orgId, PortalGoogleAccount.COLLECTION, googleUid)
+            ?.get("volunteerUid") as? String
+        if (aliasTarget != null && !PortalGoogleLinkProcessor.isAliasValid(googleUid, aliasTarget, volunteers)) {
+            // Revoked, deleted or relinked volunteer: the alias must not keep answering for them.
+            gateway.deleteDocument(orgId, PortalGoogleAccount.COLLECTION, googleUid)
+            aliasTarget = null
+        }
+        var linkRequestId: String? = null
+        val decision = when (claim.type) {
+            PortalGoogleClaimType.ADMIN_MATCH ->
+                PortalGoogleLinkProcessor.adminMatch(claim, volunteers, domains, aliasTarget)
+            PortalGoogleClaimType.LINK_CODE -> {
+                val hash = PortalProjectionBuilder.sha256(claim.code)
+                val found = latestRequestDocs.firstOrNull { (_, data) ->
+                    data["type"] == PortalRequestType.GOOGLE_LINK.name && data["codeHash"] == hash
+                }
+                linkRequestId = found?.first
+                val data = found?.let { (id, snapshot) ->
+                    gateway.getDocumentFromServer(orgId, PortalRequest.COLLECTION, id) ?: snapshot
+                }
+                val request = if (found != null && data != null) PortalInputValidator.parseRequest(found.first, data) else null
+                PortalGoogleLinkProcessor.linkCode(
+                    claim, request, data?.let { firestoreMillisOf(it["requestedAt"]) }, now, volunteers, domains, aliasTarget,
+                )
+            }
+        }
+        when (decision) {
+            is GoogleLinkDecision.Reject -> completeClaim(googleUid, PortalRequest.STATUS_REJECTED, decision.reason)
+            GoogleLinkDecision.AlreadyLinked -> {
+                completeClaim(googleUid, PortalRequest.STATUS_DONE, "")
+                linkRequestId?.let { complete(it, PortalRequest.STATUS_DONE, "") }
+            }
+            is GoogleLinkDecision.Link -> {
+                val ok = writeGoogleLink(decision.volunteer, googleUid, claim.email, decision.linkedBy, now)
+                completeClaim(googleUid, if (ok) PortalRequest.STATUS_DONE else PortalRequest.STATUS_REJECTED, if (ok) "" else "SAVE_FAILED")
+                if (ok) linkRequestId?.let { complete(it, PortalRequest.STATUS_DONE, "") }
+            }
+        }
+    }
+
+    /** Alias first, then the volunteer: a failed save leaves no alias behind. Republished by the volunteers flow. */
+    private suspend fun writeGoogleLink(volunteer: Volunteer, googleUid: String, email: String, linkedBy: String, now: Long): Boolean {
+        gateway.setPlainDocument(
+            orgId,
+            PortalGoogleAccount.COLLECTION,
+            googleUid,
+            mapOf("volunteerUid" to volunteer.portalUid, "email" to email, "linkedBy" to linkedBy, "linkedAt" to now),
+            merge = false,
+        )
+        val saved = host.saveVolunteer(
+            volunteer.copy(
+                portalGoogleEmail = volunteer.portalGoogleEmail.trim().ifBlank { email },
+                portalGoogleUid = googleUid,
+                portalGoogleLinkedBy = linkedBy,
+                lastModified = maxOf(now, volunteer.lastModified + 1),
+            ),
+        )
+        if (!saved) runCatching { gateway.deleteDocument(orgId, PortalGoogleAccount.COLLECTION, googleUid) }
+        return saved
+    }
+
+    /** Answers the claim and blanks the one-time code, whatever the outcome. */
+    private suspend fun completeClaim(googleUid: String, status: String, reason: String) {
+        gateway.setPlainDocument(
+            orgId,
+            PortalGoogleClaim.COLLECTION,
+            googleUid,
+            mapOf("status" to status, "reason" to reason, "processedAt" to clock(), "code" to ""),
+            merge = true,
+        )
+    }
+
+    /** Deletes the alias (so the Google account loses access first), then blanks the three fields. */
+    private suspend fun clearGoogleLink(volunteer: Volunteer): Boolean {
+        if (volunteer.portalGoogleUid.isNotBlank()) {
+            gateway.deleteDocument(orgId, PortalGoogleAccount.COLLECTION, volunteer.portalGoogleUid)
+        }
+        val cleared = volunteer.copy(
+            portalGoogleEmail = "",
+            portalGoogleUid = "",
+            portalGoogleLinkedBy = "",
+            lastModified = maxOf(clock(), volunteer.lastModified + 1),
+        )
+        return cleared == volunteer || host.saveVolunteer(cleared)
+    }
+
+    /**
+     * Admin types the volunteer's association Google address. Null when saved, else INVALID,
+     * DOMAIN, TAKEN or SAVE_FAILED. A different address drops the previous link.
+     */
+    suspend fun assignGoogleAccount(volunteer: Volunteer, email: String): String? {
+        val clean = PortalInputValidator.cleanEmail(email) ?: return "INVALID"
+        if (!PortalGoogleLinkProcessor.domainAllowed(clean, host.portalGoogleDomains())) return "DOMAIN"
+        val all = host.volunteers().filter { it.firebaseOrgId.isBlank() || it.firebaseOrgId == orgId }
+        if (all.any { it.id != volunteer.id && PortalGoogleLinkProcessor.sameAddress(it.portalGoogleEmail, clean) }) return "TAKEN"
+        val current = all.firstOrNull { it.id == volunteer.id } ?: volunteer
+        val sameAddress = PortalGoogleLinkProcessor.sameAddress(current.portalGoogleEmail, clean)
+        return try {
+            val keptUid = if (sameAddress) current.portalGoogleUid else ""
+            if (!sameAddress && current.portalGoogleUid.isNotBlank()) {
+                gateway.deleteDocument(orgId, PortalGoogleAccount.COLLECTION, current.portalGoogleUid)
+            } else if (keptUid.isNotBlank() && current.portalGoogleLinkedBy != Volunteer.GOOGLE_LINKED_BY_ADMIN) {
+                // Same account, now held by the admin: the volunteer can no longer remove it.
+                gateway.setPlainDocument(
+                    orgId, PortalGoogleAccount.COLLECTION, keptUid,
+                    mapOf("linkedBy" to Volunteer.GOOGLE_LINKED_BY_ADMIN), merge = true,
+                )
+            }
+            val updated = current.copy(
+                portalGoogleEmail = clean,
+                portalGoogleUid = keptUid,
+                portalGoogleLinkedBy = Volunteer.GOOGLE_LINKED_BY_ADMIN,
+                lastModified = maxOf(clock(), current.lastModified + 1),
+            )
+            if (updated == current || host.saveVolunteer(updated)) null else "SAVE_FAILED"
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            println("Portal: Google address save failed: ${e.message}")
+            "SAVE_FAILED"
+        }
+    }
+
+    /** Admin "Remove": drops the link whoever made it. */
+    suspend fun removeGoogleAccount(volunteer: Volunteer): Boolean {
+        val current = host.volunteers().firstOrNull { it.id == volunteer.id } ?: volunteer
+        return try {
+            clearGoogleLink(current)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            println("Portal: Google account removal failed: ${e.message}")
+            false
+        }
+    }
+
+    // endregion
+
     // region Admin actions
 
     suspend fun grantAccess(volunteer: Volunteer, languageCode: String): PortalGrantResult {
@@ -440,7 +625,20 @@ class VolunteerPortalService(
 
     suspend fun revokeAccess(volunteer: Volunteer): Boolean {
         val uid = volunteer.portalUid
-        val saved = host.saveVolunteer(volunteer.copy(portalEnabled = false, portalUid = "", lastModified = clock()))
+        val googleUid = volunteer.portalGoogleUid
+        if (googleUid.isNotBlank()) runCatching { gateway.deleteDocument(orgId, PortalGoogleAccount.COLLECTION, googleUid) }
+        // An address the admin typed stays, so reopening the access links the same account again.
+        val volunteerLink = volunteer.portalGoogleLinkedBy == Volunteer.GOOGLE_LINKED_BY_VOLUNTEER
+        val saved = host.saveVolunteer(
+            volunteer.copy(
+                portalEnabled = false,
+                portalUid = "",
+                portalGoogleUid = "",
+                portalGoogleEmail = if (volunteerLink) "" else volunteer.portalGoogleEmail,
+                portalGoogleLinkedBy = if (volunteerLink) "" else volunteer.portalGoogleLinkedBy,
+                lastModified = clock(),
+            ),
+        )
         if (uid.isNotBlank()) unpublish(uid)
         return saved
     }
@@ -474,6 +672,7 @@ class VolunteerPortalService(
         val hashes = host.loadPublishedHashes().toMutableMap()
         publishBranding(hashes)
         publishMailTemplate(hashes)
+        val googleLinkAllowed = googleLoginOn()
         val linked = snapshot.volunteers.filter {
             it.portalEnabled && it.portalUid.isNotBlank() &&
                 (it.firebaseOrgId.isBlank() || it.firebaseOrgId == orgId)
@@ -502,6 +701,7 @@ class VolunteerPortalService(
                     hasPhoto = (hashes[photoKey] ?: "").isNotBlank(),
                     photoVersion = hashes[photoKey] ?: "",
                     mustSetPassword = false,
+                    googleLinkAllowed = googleLinkAllowed,
                     now = now,
                     offsetHours = host.dateOffsetHours(),
                 ),
@@ -546,6 +746,8 @@ class VolunteerPortalService(
             "photosEnabled" to host.profilePhotosEnabled(),
             // The rules cap nothing here, so keep the public document small.
             "logoDataUri" to if (logo.isNotBlank() && logo.length < 300_000) "data:image/png;base64,$logo" else "",
+            // Shows "Sign in with Google"; the domains themselves are never published.
+            "googleLogin" to googleLoginOn(),
         )
         val hash = PortalProjectionBuilder.sha256(data.toString())
         if (hashes[brandingKey] == hash) return
@@ -558,6 +760,8 @@ class VolunteerPortalService(
             println("Portal: branding publish failed: ${e.message}")
         }
     }
+
+    private fun googleLoginOn(): Boolean = host.portalGoogleEnabled() && host.portalGoogleDomains().isNotEmpty()
 
     private val mailKey get() = "$orgId#mail"
 
