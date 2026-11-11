@@ -80,6 +80,7 @@ import com.eventmanager.app.resources.portal_access_google_pending
 import com.eventmanager.app.resources.portal_access_google_linked
 import com.eventmanager.app.resources.portal_access_google_by_volunteer
 import com.eventmanager.app.resources.portal_access_google_err_domain
+import com.eventmanager.app.resources.portal_access_google_err_same_as_email
 import com.eventmanager.app.resources.portal_access_google_err_taken
 import com.eventmanager.app.resources.portal_access_google_err_invalid
 import com.eventmanager.app.resources.portal_access_google_err_save
@@ -715,13 +716,14 @@ private fun PortalGoogleAccountRow(viewModel: EventManagerViewModel, volunteer: 
     var editing by remember(volunteer.id, volunteer.portalGoogleEmail) { mutableStateOf(volunteer.portalGoogleEmail.isBlank()) }
     var input by remember(volunteer.id, volunteer.portalGoogleEmail) { mutableStateOf(volunteer.portalGoogleEmail) }
     var errorCode by remember(volunteer.id) { mutableStateOf<String?>(null) }
-    var busy by remember { mutableStateOf(false) }
-    var confirmRemove by remember { mutableStateOf(false) }
+    var busy by remember(volunteer.id) { mutableStateOf(false) }
+    var confirmRemove by remember(volunteer.id) { mutableStateOf(false) }
     val hasAccount = volunteer.portalGoogleEmail.isNotBlank()
     val errorText = when (errorCode) {
         null -> null
         "DOMAIN" -> stringResource(Res.string.portal_access_google_err_domain)
         "TAKEN" -> stringResource(Res.string.portal_access_google_err_taken)
+        "SAME_AS_EMAIL" -> stringResource(Res.string.portal_access_google_err_same_as_email)
         "INVALID" -> stringResource(Res.string.portal_access_google_err_invalid)
         else -> stringResource(Res.string.portal_access_google_err_save)
     }

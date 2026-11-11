@@ -2494,6 +2494,7 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="portal_access_google_by_volunteer">स्वयंसेवक द्वारा</string>
     <string name="portal_access_google_err_domain">यह पता अनुमत डोमेन में नहीं है</string>
     <string name="portal_access_google_err_taken">यह पता पहले से किसी अन्य स्वयंसेवक से जुड़ा है</string>
+    <string name="portal_access_google_err_same_as_email">संस्था का पता इस्तेमाल करें, स्वयंसेवक का निजी पता नहीं</string>
     <string name="portal_access_google_err_invalid">अमान्य पता</string>
     <string name="portal_access_google_err_save">सहेजना विफल रहा, कृपया फिर से प्रयास करें।</string>
     <string name="portal_access_google_remove_title">Google खाता हटाएं?</string>

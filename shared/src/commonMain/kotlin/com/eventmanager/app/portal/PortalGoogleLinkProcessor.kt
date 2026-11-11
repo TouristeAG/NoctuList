@@ -34,7 +34,15 @@ object PortalGoogleLinkProcessor {
         }
         return when (candidates.size) {
             0 -> GoogleLinkDecision.Reject("NO_MATCH")
-            1 -> GoogleLinkDecision.Link(candidates.single(), Volunteer.GOOGLE_LINKED_BY_ADMIN)
+            // A match the volunteer linked earlier keeps VOLUNTEER, so they can still remove it.
+            1 -> candidates.single().let { match ->
+                val linkedBy = if (match.portalGoogleLinkedBy == Volunteer.GOOGLE_LINKED_BY_VOLUNTEER) {
+                    Volunteer.GOOGLE_LINKED_BY_VOLUNTEER
+                } else {
+                    Volunteer.GOOGLE_LINKED_BY_ADMIN
+                }
+                GoogleLinkDecision.Link(match, linkedBy)
+            }
             else -> GoogleLinkDecision.Reject("AMBIGUOUS")
         }
     }
@@ -84,9 +92,16 @@ object PortalGoogleLinkProcessor {
         !aliasTarget.isNullOrBlank() &&
             volunteers.any { it.portalUid == aliasTarget && it.portalGoogleUid == googleUid }
 
+    /** Consumer Google addresses, never an association domain (rules and Cloud Functions agree). */
+    private val CONSUMER_DOMAINS = setOf("gmail.com", "googlemail.com")
+
+    /** [domains] without gmail.com and googlemail.com. */
+    fun usableDomains(domains: List<String>): List<String> =
+        domains.filter { it.trim().lowercase() !in CONSUMER_DOMAINS }
+
     fun domainAllowed(email: String, domains: List<String>): Boolean {
         val domain = email.trim().lowercase().substringAfterLast('@', "")
-        return domain.isNotEmpty() && domains.any { it.trim().lowercase() == domain }
+        return domain.isNotEmpty() && domain !in CONSUMER_DOMAINS && domains.any { it.trim().lowercase() == domain }
     }
 
     fun sameAddress(a: String, b: String): Boolean {

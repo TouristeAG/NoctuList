@@ -54,6 +54,23 @@ class PortalGoogleLinkProcessorTest {
     }
 
     @Test
+    fun adminMatchKeepsAVolunteerLinkAsVolunteer() {
+        // Linked by the volunteer earlier; the alias is gone (deleted, or a new Google account).
+        val v = volunteer("V1", googleEmail = "jean@asso.ch", googleUid = "OldGoogleUid000000000001", linkedBy = Volunteer.GOOGLE_LINKED_BY_VOLUNTEER)
+        val decision = PortalGoogleLinkProcessor.adminMatch(adminClaim(), listOf(v), domains, null)
+        assertEquals(GoogleLinkDecision.Link(v, "VOLUNTEER"), decision)
+    }
+
+    @Test
+    fun gmailIsNeverAnAllowedDomain() {
+        val consumer = listOf("gmail.com", "googlemail.com", "asso.ch")
+        assertEquals(false, PortalGoogleLinkProcessor.domainAllowed("jean@gmail.com", consumer))
+        assertEquals(false, PortalGoogleLinkProcessor.domainAllowed("Jean@GoogleMail.com", consumer))
+        assertEquals(true, PortalGoogleLinkProcessor.domainAllowed("jean@asso.ch", consumer))
+        assertEquals(listOf("asso.ch"), PortalGoogleLinkProcessor.usableDomains(consumer))
+    }
+
+    @Test
     fun adminMatchNeedsOpenPortalAccess() {
         val noUid = volunteer("V1", uid = "", googleEmail = "jean@asso.ch")
         val closed = volunteer("V2", enabled = false, googleEmail = "jean@asso.ch")

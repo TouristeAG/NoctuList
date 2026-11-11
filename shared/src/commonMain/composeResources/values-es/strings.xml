@@ -2489,6 +2489,7 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="portal_access_google_by_volunteer">por el voluntario</string>
     <string name="portal_access_google_err_domain">Esta dirección no está en los dominios permitidos</string>
     <string name="portal_access_google_err_taken">Esta dirección ya está asociada a otro voluntario</string>
+    <string name="portal_access_google_err_same_as_email">Usa la dirección de la asociación, no la dirección personal del voluntario</string>
     <string name="portal_access_google_err_invalid">Dirección no válida</string>
     <string name="portal_access_google_err_save">No se pudo guardar, inténtalo de nuevo.</string>
     <string name="portal_access_google_remove_title">¿Quitar la cuenta de Google?</string>

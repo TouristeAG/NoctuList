@@ -503,8 +503,17 @@ class VolunteerPortalService(
         }
     }
 
-    /** Alias first, then the volunteer: a failed save leaves no alias behind. Republished by the volunteers flow. */
+    /**
+     * Alias first, then the volunteer: a failed save leaves no alias behind. A previous Google
+     * account of the volunteer loses its alias. Republished by the volunteers flow.
+     */
     private suspend fun writeGoogleLink(volunteer: Volunteer, googleUid: String, email: String, linkedBy: String, now: Long): Boolean {
+        val previousUid = volunteer.portalGoogleUid
+        if (previousUid.isNotBlank() && previousUid != googleUid) {
+            val previousTarget = gateway.getDocumentFromServer(orgId, PortalGoogleAccount.COLLECTION, previousUid)
+                ?.get("volunteerUid") as? String
+            if (previousTarget == volunteer.portalUid) gateway.deleteDocument(orgId, PortalGoogleAccount.COLLECTION, previousUid)
+        }
         gateway.setPlainDocument(
             orgId,
             PortalGoogleAccount.COLLECTION,
@@ -551,14 +560,16 @@ class VolunteerPortalService(
 
     /**
      * Admin types the volunteer's association Google address. Null when saved, else INVALID,
-     * DOMAIN, TAKEN or SAVE_FAILED. A different address drops the previous link.
+     * DOMAIN, SAME_AS_EMAIL, TAKEN or SAVE_FAILED. A different address drops the previous link.
      */
     suspend fun assignGoogleAccount(volunteer: Volunteer, email: String): String? {
         val clean = PortalInputValidator.cleanEmail(email) ?: return "INVALID"
         if (!PortalGoogleLinkProcessor.domainAllowed(clean, host.portalGoogleDomains())) return "DOMAIN"
         val all = host.volunteers().filter { it.firebaseOrgId.isBlank() || it.firebaseOrgId == orgId }
-        if (all.any { it.id != volunteer.id && PortalGoogleLinkProcessor.sameAddress(it.portalGoogleEmail, clean) }) return "TAKEN"
         val current = all.firstOrNull { it.id == volunteer.id } ?: volunteer
+        // The roster address already signs in with a password; the Google one must be the association's.
+        if (PortalGoogleLinkProcessor.sameAddress(current.email, clean)) return "SAME_AS_EMAIL"
+        if (all.any { it.id != volunteer.id && PortalGoogleLinkProcessor.sameAddress(it.portalGoogleEmail, clean) }) return "TAKEN"
         val sameAddress = PortalGoogleLinkProcessor.sameAddress(current.portalGoogleEmail, clean)
         return try {
             val keptUid = if (sameAddress) current.portalGoogleUid else ""
@@ -583,6 +594,19 @@ class VolunteerPortalService(
         } catch (e: Exception) {
             println("Portal: Google address save failed: ${e.message}")
             "SAVE_FAILED"
+        }
+    }
+
+    /** The volunteer was deleted: its Google account loses access. Best effort. */
+    suspend fun forgetGoogleAlias(volunteer: Volunteer) {
+        val googleUid = volunteer.portalGoogleUid
+        if (googleUid.isBlank()) return
+        try {
+            gateway.deleteDocument(orgId, PortalGoogleAccount.COLLECTION, googleUid)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            println("Portal: Google alias not deleted: ${e.message}")
         }
     }
 
@@ -771,7 +795,8 @@ class VolunteerPortalService(
         }
     }
 
-    private fun googleLoginOn(): Boolean = host.portalGoogleEnabled() && host.portalGoogleDomains().isNotEmpty()
+    private fun googleLoginOn(): Boolean =
+        host.portalGoogleEnabled() && PortalGoogleLinkProcessor.usableDomains(host.portalGoogleDomains()).isNotEmpty()
 
     private val mailKey get() = "$orgId#mail"
 

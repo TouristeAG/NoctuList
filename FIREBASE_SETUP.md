@@ -146,6 +146,13 @@ and password sign-in stays available.
 1. **Authentication, Sign-in method:** the **Google** provider is already enabled for the team, so
    there is nothing to add. If the portal is served from a custom domain, add that domain under
    **Authentication, Settings, Authorized domains**.
+   The portal signs in through its own site (`authDomain` is the site's host), so Google must
+   accept that site as a redirect. In [Google Cloud Console, APIs and Services,
+   Credentials](https://console.cloud.google.com/apis/credentials), open the **Web application**
+   OAuth client used by Firebase and add under **Authorized redirect URIs**:
+   - `https://<project>.web.app/__/auth/handler`
+   - `https://<project>.firebaseapp.com/__/auth/handler`
+   - `https://<custom portal domain>/__/auth/handler` for each custom domain, if any
 2. **Firestore, Rules** and **Storage, Rules:** publish the new files (version 15). Both change.
 3. **Hosting and functions:** export the form site again and redeploy it (`firebase deploy --only
    hosting,functions` from the exported folder). The site gets new security headers and the
@@ -164,8 +171,10 @@ The Google account stays a separate Firebase account, linked to the volunteer th
 `portalGoogleAccounts`. A staff member who is also a volunteer keeps their staff rights.
 
 Security headers: portal pages (`/v/**` and `/portal.html`) use
-`Cross-Origin-Opener-Policy: same-origin-allow-popups` so the Google window can talk back. Firebase's
-reserved `/__/` paths may be framed by the site itself only. Every other page is unchanged.
+`Cross-Origin-Opener-Policy: same-origin-allow-popups` so the Google window can talk back, and their
+Content-Security-Policy also allows `https://apis.google.com` and frames from the site itself.
+Firebase's reserved `/__/` paths may be framed by the site itself only. Every other page keeps the
+strict policy.
 
 Known limits:
 
@@ -180,7 +189,8 @@ Known limits:
 emulators): open `https://<site>/v/<orgId>` and try **Se connecter avec Google** with an association
 account, then **Associer mon compte Google** from **Mon compte**. Do it on a computer and on an
 iPhone. If the Google window fails to open or stays blank, the headers on Firebase's `/__/auth/`
-paths are the first place to look.
+paths are the first place to look. If Google shows `redirect_uri_mismatch`, the redirect URI of
+step 1 is missing for that site.
 
 ### Optional: automatic processing (Cloud Functions)
 

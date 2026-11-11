@@ -117,6 +117,13 @@ describe("volunteerPortal through a Google account", () => {
     await assertSucceeds(getDoc(doc(google("g1", "g1@asso-prod.example").firestore(), path("volunteerPortal/vol1"))));
   });
 
+  test("gmail.com and googlemail.com are refused even when listed", async () => {
+    await setSetting("volunteer_portal_google_domains", "gmail.com,googlemail.com");
+    await assertFails(getDoc(doc(google("g1", "g1@gmail.com").firestore(), path("volunteerPortal/vol1"))));
+    await assertFails(getDoc(doc(google("g1", "g1@googlemail.com").firestore(), path("volunteerPortal/vol1"))));
+    await assertFails(setDoc(doc(google("g9", "g9@gmail.com").firestore(), path("portalGoogleClaims/g9")), claim("ADMIN_MATCH", "g9@gmail.com")));
+  });
+
   test("an empty domain list refuses everyone", async () => {
     await setSetting("volunteer_portal_google_domains", "");
     await assertFails(getDoc(doc(google("g1").firestore(), path("volunteerPortal/vol1"))));

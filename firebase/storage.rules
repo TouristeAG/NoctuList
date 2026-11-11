@@ -41,7 +41,8 @@ service firebase.storage {
     // rules still close the page and the PROFILE request that would use an upload.
     // A missing alias makes .data an error, which refuses the request.
     function googleAliasPhoto(orgId) {
-      return firestore.get(googleAliasPath(orgId)).data.get('volunteerUid', '') + '.jpg';
+      // Strict read: no alias or no volunteerUid is an error, and an error denies.
+      return firestore.get(googleAliasPath(orgId)).data.volunteerUid + '.jpg';
     }
 
     function profilePhotosOn(orgId) {

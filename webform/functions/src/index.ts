@@ -14,6 +14,7 @@ export type { SignupSubmission, PortalRequest, PortalRequestType, PortalGoogleCl
 export { buildQrMail, parseMailTemplate, safeRecipient, sendMail, sendRawMail, smtpOptions } from "./mail";
 export type { MailTemplate, MailTransport, OutgoingMail, QrMail, RawOutgoingMail, SmtpClient } from "./mail";
 export { parseOutbox, rewriteHeaders, MAX_RAW_LENGTH } from "./outbox";
+export { domainAllowed, parseDomains } from "./google";
 
 const REGION = defineString("REGION", { default: "europe-west1" });
 /** The association's Gmail address that sends the QR e-mails. */

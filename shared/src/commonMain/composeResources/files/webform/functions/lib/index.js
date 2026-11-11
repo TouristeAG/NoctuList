@@ -227,13 +227,16 @@ function googleVolunteerOf(id, d) {
     portalGoogleLinkedBy: stringOf(d.get("portalGoogleLinkedBy"))
   };
 }
+var CONSUMER_DOMAINS = ["gmail.com", "googlemail.com"];
 function parseDomains(raw) {
   const out = [];
   for (const part of raw.split(/[,;\n\r]/)) {
     let domain = kotlinTrim(part).toLowerCase();
     if (domain.startsWith("@")) domain = domain.slice(1);
     domain = kotlinTrim(domain).replace(/\.+$/, "");
-    if (domain !== "" && domain.includes(".") && !out.includes(domain)) out.push(domain);
+    if (domain !== "" && domain.includes(".") && !out.includes(domain) && !CONSUMER_DOMAINS.includes(domain)) {
+      out.push(domain);
+    }
   }
   return out;
 }
@@ -241,7 +244,7 @@ function domainAllowed(email, domains) {
   const clean = kotlinTrim(email).toLowerCase();
   const at = clean.lastIndexOf("@");
   const domain = at < 0 ? "" : clean.slice(at + 1);
-  return domain !== "" && domains.some((d) => kotlinTrim(d).toLowerCase() === domain);
+  return domain !== "" && !CONSUMER_DOMAINS.includes(domain) && domains.some((d) => kotlinTrim(d).toLowerCase() === domain);
 }
 function sameAddress(a, b) {
   const left = kotlinTrim(a).toLowerCase();
@@ -385,12 +388,22 @@ async function writeLink(db, orgId, c, decided, linkedBy, aliasTarget) {
       const ref = volunteersOf(db, orgId).doc(decided.id);
       const alias = aliasRef(db, orgId, c.googleUid);
       const page = projectionRef(db, orgId, decided.portalUid);
-      const [snap, aliasSnap, pageSnap] = await Promise.all([tx.get(ref), tx.get(alias), tx.get(page)]);
+      const previousUid = decided.portalGoogleUid;
+      const previous = !isBlank(previousUid) && previousUid !== c.googleUid ? aliasRef(db, orgId, previousUid) : null;
+      const [snap, aliasSnap, pageSnap, previousSnap] = await Promise.all([
+        tx.get(ref),
+        tx.get(alias),
+        tx.get(page),
+        previous !== null ? tx.get(previous) : Promise.resolve(null)
+      ]);
       if (!snap.exists || !sameGoogleFields(googleVolunteerOf(snap.id, snap), decided)) return rejected("SAVE_FAILED");
       const target = aliasSnap.exists ? aliasSnap.get("volunteerUid") : void 0;
       if ((typeof target === "string" ? target : null) !== aliasTarget) return rejected("SAVE_FAILED");
       const now = Date.now();
       const email = isBlank(decided.portalGoogleEmail) ? c.email : kotlinTrim(decided.portalGoogleEmail);
+      if (previous !== null && previousSnap?.exists && previousSnap.get("volunteerUid") === decided.portalUid) {
+        tx.delete(previous);
+      }
       tx.set(alias, { volunteerUid: decided.portalUid, email: c.email, linkedBy, linkedAt: now });
       tx.update(ref, {
         portalGoogleEmail: email,
@@ -1125,10 +1138,12 @@ export {
   cleanEmail,
   cleanName,
   cleanPhone,
+  domainAllowed,
   onMailOutboxWritten,
   onPortalGoogleClaimWritten,
   onPortalRequestWritten,
   onSignupWritten,
+  parseDomains,
   parseGoogleClaim,
   parseMailTemplate,
   parseOutbox,

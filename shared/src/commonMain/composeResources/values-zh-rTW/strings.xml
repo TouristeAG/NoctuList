@@ -2489,6 +2489,7 @@
     <string name="portal_access_google_by_volunteer">由志工綁定</string>
     <string name="portal_access_google_err_domain">此地址不在允許的網域內</string>
     <string name="portal_access_google_err_taken">此地址已綁定到另一位志工</string>
+    <string name="portal_access_google_err_same_as_email">請使用協會的地址，而不是志工的個人地址</string>
     <string name="portal_access_google_err_invalid">地址無效</string>
     <string name="portal_access_google_err_save">儲存失敗，請重試。</string>
     <string name="portal_access_google_remove_title">移除 Google 帳號？</string>

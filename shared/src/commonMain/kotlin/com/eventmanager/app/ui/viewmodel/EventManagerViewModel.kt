@@ -2822,6 +2822,14 @@ class EventManagerViewModel(
         return service.removeGoogleAccount(tagVolunteerWithActiveOrg(volunteer))
     }
 
+    /** A deleted volunteer's Google account must lose portal access. No portal service: nothing to do. */
+    private suspend fun forgetPortalGoogleAlias(volunteer: Volunteer) {
+        val current = repository.getVolunteerById(volunteer.id) ?: volunteer
+        if (current.portalGoogleUid.isBlank()) return
+        ensureVolunteerPortalService()
+        volunteerPortalService?.forgetGoogleAlias(current)
+    }
+
     suspend fun revokeVolunteerPortalAccess(volunteer: Volunteer): Boolean {
         if (rejectIfCrudSoftLocked("updating volunteers")) return false
         val service = requirePortalService() ?: return false
@@ -2972,6 +2980,7 @@ class EventManagerViewModel(
                 
                 // Track the deletion
                 deletionTracker?.trackVolunteerDeletion(volunteer.id, volunteer.sheetsId)
+                forgetPortalGoogleAlias(volunteer)
                 
                 // Delete from local database
                 repository.deleteVolunteer(volunteer)
@@ -6954,6 +6963,7 @@ class EventManagerViewModel(
                         )
                         
                         deletionTracker?.trackVolunteerDeletion(volunteer.id, volunteer.sheetsId)
+                        forgetPortalGoogleAlias(volunteer)
                         repository.deleteVolunteer(volunteer)
                         volunteersDeleted++
                         

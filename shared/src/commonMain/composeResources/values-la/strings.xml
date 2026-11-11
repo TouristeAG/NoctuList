@@ -2494,6 +2494,7 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="portal_access_google_by_volunteer">a voluntario</string>
     <string name="portal_access_google_err_domain">Haec inscriptio non est in dominiis permissis</string>
     <string name="portal_access_google_err_taken">Haec inscriptio iam alii voluntario adiuncta est</string>
+    <string name="portal_access_google_err_same_as_email">Inscriptione societatis utere, non privata voluntarii</string>
     <string name="portal_access_google_err_invalid">Inscriptio non valida</string>
     <string name="portal_access_google_err_save">Servare non potuit, iterum conare.</string>
     <string name="portal_access_google_remove_title">Rationem Google removere?</string>

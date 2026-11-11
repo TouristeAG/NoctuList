@@ -2488,6 +2488,7 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="portal_access_google_by_volunteer">par le bénévole</string>
     <string name="portal_access_google_err_domain">Cette adresse n\'est pas dans les domaines autorisés</string>
     <string name="portal_access_google_err_taken">Cette adresse est déjà associée à un autre bénévole</string>
+    <string name="portal_access_google_err_same_as_email">Utilise l\'adresse de l\'association, pas l\'adresse personnelle du bénévole.</string>
     <string name="portal_access_google_err_invalid">Adresse invalide</string>
     <string name="portal_access_google_err_save">L\'enregistrement a échoué, réessayez.</string>
     <string name="portal_access_google_remove_title">Retirer le compte Google ?</string>

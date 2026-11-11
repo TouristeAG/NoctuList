@@ -161,8 +161,9 @@ Couper l'accès portail d'un bénévole ou le supprimer supprime aussi son lien 
   code, attendre la réponse, se déconnecter de la seconde instance. Le code n'est jamais stocké en clair hors du claim.
 - `authDomain` du portail = l'hôte du site (Firebase Hosting sert `/__/auth/` nativement), pour
   éviter un cadre vers `firebaseapp.com`.
-- CSP : `frame-src 'self'` ; ajout de `https://apis.google.com` dans `script-src` et `connect-src`.
-  Rien d'autre.
+- CSP des pages du portail (`/v/**`, `/portal.html`) seulement : `frame-src 'self'` ; ajout de
+  `https://apis.google.com` dans `script-src` et `connect-src`. Les autres pages gardent la CSP
+  stricte (`frame-src 'none'`, sans `apis.google.com`).
 - Textes en 5 langues web, sans tirets longs ni tournures artificielles.
 
 ## 8. Composants
@@ -200,7 +201,7 @@ Couper l'accès portail d'un bénévole ou le supprimer supprime aussi son lien 
 - ADMIN_MATCH traite un alias dont la cible n'est plus un bénévole portant ce `portalGoogleUid` comme périmé : il le supprime et poursuit la recherche.
 - Les règles Storage ne peuvent lire que 2 documents. Tant qu'un lien existe, le compte Google lié peut donc encore voir et modifier la photo de son propre bénévole, même après la désactivation de l'option ou le retrait de son domaine.
 - Désactiver l'option ne déconnecte une session Google déjà ouverte que lorsque sa page se rafraîchit depuis le serveur.
-- La fenêtre de connexion Google n'a été vérifiée que sur les émulateurs : à contrôler une fois sur le vrai site après le déploiement (« Se connecter avec Google » et « Associer mon compte Google »), y compris sur iPhone.
+- La fenêtre de connexion Google n'a été vérifiée que sur les émulateurs : à contrôler une fois sur le vrai site après le déploiement (« Se connecter avec Google » et « Associer mon compte Google »), y compris sur iPhone. Avant cela, ajouter `https://<projet>.web.app/__/auth/handler`, `https://<projet>.firebaseapp.com/__/auth/handler` et le même chemin sur chaque domaine personnalisé aux URI de redirection autorisées du client OAuth Web utilisé par Firebase (Google Cloud Console, API et services, Identifiants). `redirect_uri_mismatch` signifie qu'il en manque une.
 
 - La vérification MX prouve que les e-mails du domaine passent par Google, pas l'abonnement
   Workspace lui-même. C'est suffisant ici : la barrière réelle est le domaine du compte Google.

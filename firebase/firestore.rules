@@ -61,7 +61,10 @@ service cloud.firestore {
     function portalGoogleDomainOk(orgId) {
       let path = settingPath(orgId, 'volunteer_portal_google_domains');
       let domain = authEmailDomain();
+      // Consumer Google addresses are never an association domain, even when listed.
       return domain.size() > 0
+        && domain != 'gmail.com'
+        && domain != 'googlemail.com'
         && exists(path)
         && get(path).data.get('value', '') is string
         && domain in get(path).data.value.split(',');

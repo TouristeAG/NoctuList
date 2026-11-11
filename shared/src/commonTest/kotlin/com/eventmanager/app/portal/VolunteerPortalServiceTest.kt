@@ -529,6 +529,27 @@ class VolunteerPortalServiceTest {
     }
 
     @Test
+    fun adminMatchClaimDropsThePreviousAlias() = runBlocking {
+        val oldUid = "OldGoogleUid000000000001"
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(
+            volunteer("V1", "lea@example.org", enabled = true, uid = UID)
+                .copy(portalGoogleEmail = "jean@asso.ch", portalGoogleUid = oldUid, portalGoogleLinkedBy = "VOLUNTEER"),
+        ))
+        gateway.docs["portalGoogleAccounts/$oldUid"] = mapOf("volunteerUid" to UID)
+        startedService(gateway, host)
+        gateway.docs["portalGoogleClaims/$GOOGLE_UID"] = adminMatchClaim()
+        gateway.push("portalGoogleClaims")
+
+        assertEquals("DONE", gateway.docs["portalGoogleClaims/$GOOGLE_UID"]!!["status"])
+        assertNull(gateway.docs["portalGoogleAccounts/$oldUid"], "the previous Google account loses access")
+        assertEquals("VOLUNTEER", gateway.docs["portalGoogleAccounts/$GOOGLE_UID"]!!["linkedBy"])
+        val v = host.volunteers.single()
+        assertEquals(GOOGLE_UID, v.portalGoogleUid)
+        assertEquals("VOLUNTEER", v.portalGoogleLinkedBy)
+    }
+
+    @Test
     fun freshClaimIsLeftToServer() = runBlocking {
         val gateway = FakeGateway()
         val host = FakeHost(listOf(
@@ -692,6 +713,27 @@ class VolunteerPortalServiceTest {
         val saved = host.volunteers.first { it.id == "V1" }
         assertEquals("lea@asso.ch", saved.portalGoogleEmail)
         assertEquals("ADMIN", saved.portalGoogleLinkedBy)
+    }
+
+    @Test
+    fun assigningTheRosterAddressIsRefused() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(volunteer("V1", "lea@asso.ch", enabled = true, uid = UID)))
+        val lea = host.volunteers.single()
+        assertEquals("SAME_AS_EMAIL", service(gateway, host).assignGoogleAccount(lea, " Lea@Asso.ch "))
+        assertEquals("", host.volunteers.single().portalGoogleEmail)
+    }
+
+    @Test
+    fun forgettingADeletedVolunteerDeletesItsGoogleAlias() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(
+            volunteer("V1", "lea@example.org", enabled = true, uid = UID)
+                .copy(portalGoogleEmail = "jean@asso.ch", portalGoogleUid = GOOGLE_UID, portalGoogleLinkedBy = "ADMIN"),
+        ))
+        gateway.docs["portalGoogleAccounts/$GOOGLE_UID"] = mapOf("volunteerUid" to UID)
+        service(gateway, host).forgetGoogleAlias(host.volunteers.single())
+        assertNull(gateway.docs["portalGoogleAccounts/$GOOGLE_UID"])
     }
 
     @Test

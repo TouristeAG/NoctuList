@@ -216,6 +216,29 @@ describe("onPortalGoogleClaimWritten: ADMIN_MATCH", () => {
     assert.equal(after.portalGoogleLinkedBy, "VOLUNTEER");
   });
 
+  test("admin match drops the previous alias of the volunteer", async () => {
+    const org = await newOrg();
+    const oldUid = newUid("oldGoogle");
+    const v = await addVolunteer(org, {
+      portalGoogleEmail: `lea@${DOMAIN}`, portalGoogleUid: oldUid, portalGoogleLinkedBy: "ADMIN",
+    });
+    await db.doc(`orgs/${org}/portalGoogleAccounts/${oldUid}`).set({ volunteerUid: v.portalUid, email: `lea@${DOMAIN}`, linkedBy: "ADMIN", linkedAt: 1 });
+    const googleUid = newUid("google");
+    assertResult(await waitResult(await sendClaim(org, googleUid, "ADMIN_MATCH", `lea@${DOMAIN}`)), "DONE", "");
+    assert.equal(await alias(org, oldUid), null, "the previous Google account loses access");
+    assert.equal((await alias(org, googleUid)).volunteerUid, v.portalUid);
+    assert.equal((await volunteer(org, v.id)).portalGoogleUid, googleUid);
+  });
+
+  test("gmail.com in the domain list is ignored", async () => {
+    const org = await newOrg({ domains: "gmail.com" });
+    const v = await addVolunteer(org, { portalGoogleEmail: "lea@gmail.com", portalGoogleLinkedBy: "ADMIN" });
+    const googleUid = newUid("google");
+    assertResult(await waitResult(await sendClaim(org, googleUid, "ADMIN_MATCH", "lea@gmail.com")), "REJECTED", "DOMAIN");
+    assert.equal(await alias(org, googleUid), null);
+    assert.deepEqual(await volunteer(org, v.id), v);
+  });
+
   test("admin match with a valid alias is done without writing", async () => {
     const org = await newOrg();
     const googleUid = newUid("google");

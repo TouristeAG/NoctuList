@@ -2491,6 +2491,7 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="portal_access_google_by_volunteer">linked by the volunteer</string>
     <string name="portal_access_google_err_domain">This address is not in the allowed domains</string>
     <string name="portal_access_google_err_taken">This address is already linked to another volunteer</string>
+    <string name="portal_access_google_err_same_as_email">Use the association address, not the volunteer\'s personal address</string>
     <string name="portal_access_google_err_invalid">Invalid address</string>
     <string name="portal_access_google_err_save">Saving failed, please try again.</string>
     <string name="portal_access_google_remove_title">Remove the Google account?</string>

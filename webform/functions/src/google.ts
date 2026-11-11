@@ -74,7 +74,13 @@ export function googleVolunteerOf(id: string, d: Fields): GoogleVolunteer {
   };
 }
 
-/** FirebaseEmailDomainPolicy.parseStoredList: lowercase, trimmed, with a dot, no duplicates. */
+/** Consumer Google addresses, never an association domain (PortalGoogleLinkProcessor, rules). */
+const CONSUMER_DOMAINS = ["gmail.com", "googlemail.com"];
+
+/**
+ * FirebaseEmailDomainPolicy.parseStoredList: lowercase, trimmed, with a dot, no duplicates; then
+ * PortalGoogleLinkProcessor.usableDomains: gmail.com and googlemail.com dropped.
+ */
 export function parseDomains(raw: string): string[] {
   const out: string[] = [];
   for (const part of raw.split(/[,;\n\r]/)) {
@@ -82,7 +88,9 @@ export function parseDomains(raw: string): string[] {
     let domain = kotlinTrim(part).toLowerCase();
     if (domain.startsWith("@")) domain = domain.slice(1);
     domain = kotlinTrim(domain).replace(/\.+$/, "");
-    if (domain !== "" && domain.includes(".") && !out.includes(domain)) out.push(domain);
+    if (domain !== "" && domain.includes(".") && !out.includes(domain) && !CONSUMER_DOMAINS.includes(domain)) {
+      out.push(domain);
+    }
   }
   return out;
 }
@@ -91,7 +99,7 @@ export function domainAllowed(email: string, domains: readonly string[]): boolea
   const clean = kotlinTrim(email).toLowerCase();
   const at = clean.lastIndexOf("@");
   const domain = at < 0 ? "" : clean.slice(at + 1);
-  return domain !== "" && domains.some((d) => kotlinTrim(d).toLowerCase() === domain);
+  return domain !== "" && !CONSUMER_DOMAINS.includes(domain) && domains.some((d) => kotlinTrim(d).toLowerCase() === domain);
 }
 
 export function sameAddress(a: string, b: string): boolean {
@@ -208,7 +216,8 @@ export function googleProjectionFields(portalGoogleEmail: string, linkedBy: stri
 /**
  * Handles one write of `orgs/{orgId}/portalGoogleClaims/{googleUid}`. Anything but a pending claim
  * is ignored before reading or writing anything; with the portal or the Google option off the claim
- * waits, and turning the option back on resumes it.
+ * waits. Turning the option back on does not wake it: a device (after its grace period) or a new
+ * write of the claim by the page resumes it.
  */
 export async function onGoogleClaimDocument(
   db: Firestore,
@@ -307,8 +316,9 @@ const sameGoogleFields = (a: GoogleVolunteer, b: GoogleVolunteer): boolean =>
 
 /**
  * writeGoogleLink (Kotlin), in one transaction: the alias, the three volunteer fields and
- * `lastModified`, and the published page. Re-reads the volunteer and the alias: if either changed
- * since the decision, nothing is written and the claim is answered SAVE_FAILED.
+ * `lastModified`, and the published page. A previous Google account of the volunteer loses its
+ * alias. Re-reads the volunteer and the alias: if either changed since the decision, nothing is
+ * written and the claim is answered SAVE_FAILED.
  */
 async function writeLink(
   db: Firestore,
@@ -324,13 +334,24 @@ async function writeLink(
       const ref = volunteersOf(db, orgId).doc(decided.id);
       const alias = aliasRef(db, orgId, c.googleUid);
       const page = projectionRef(db, orgId, decided.portalUid);
-      const [snap, aliasSnap, pageSnap] = await Promise.all([tx.get(ref), tx.get(alias), tx.get(page)]);
+      const previousUid = decided.portalGoogleUid;
+      const previous = !isBlank(previousUid) && previousUid !== c.googleUid ? aliasRef(db, orgId, previousUid) : null;
+      const [snap, aliasSnap, pageSnap, previousSnap] = await Promise.all([
+        tx.get(ref),
+        tx.get(alias),
+        tx.get(page),
+        previous !== null ? tx.get(previous) : Promise.resolve(null),
+      ]);
       if (!snap.exists || !sameGoogleFields(googleVolunteerOf(snap.id, snap), decided)) return rejected("SAVE_FAILED");
       const target = aliasSnap.exists ? aliasSnap.get("volunteerUid") : undefined;
       if ((typeof target === "string" ? target : null) !== aliasTarget) return rejected("SAVE_FAILED");
       const now = Date.now();
       // `portalGoogleEmail.trim().ifBlank { email }` (Kotlin): the address an admin typed is kept.
       const email = isBlank(decided.portalGoogleEmail) ? c.email : kotlinTrim(decided.portalGoogleEmail);
+      // Only an alias that still answers for this volunteer.
+      if (previous !== null && previousSnap?.exists && previousSnap.get("volunteerUid") === decided.portalUid) {
+        tx.delete(previous);
+      }
       tx.set(alias, { volunteerUid: decided.portalUid, email: c.email, linkedBy, linkedAt: now });
       tx.update(ref, {
         portalGoogleEmail: email,

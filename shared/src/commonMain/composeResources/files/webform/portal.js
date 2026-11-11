@@ -38,7 +38,7 @@ import {
   uploadBytes,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 import { EMULATOR_PORTS, isLocalDev, loadConfig, parseOrgPath } from "./firebase-env.js?v=portal-2";
-import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=google-1";
+import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=google-2";
 import {
   EMAIL_RE,
   authErrorKey,
@@ -237,10 +237,25 @@ function googleProvider() {
   return provider;
 }
 
-/** Signed in with Google only (not an e-mail + password account). */
+/** Sign-in method of the current user's ID token, read in onUser: true for a Google session. */
+let googleSession = false;
+
+/**
+ * A Google session as the rules see it (`firebase.sign_in_provider` of the ID token), not from
+ * providerData: an account can hold both a password and Google.
+ */
 function isGoogleUser(u) {
-  const providers = (u?.providerData || []).map((p) => p.providerId);
-  return providers.includes("google.com") && !providers.includes("password");
+  return Boolean(u) && u === user && googleSession;
+}
+
+async function readGoogleSession(u) {
+  try {
+    return (await u.getIdTokenResult()).signInProvider === "google.com";
+  } catch {
+    // No token yet (offline): fall back to the providers of the account.
+    const providers = (u?.providerData || []).map((p) => p.providerId);
+    return providers.includes("google.com") && !providers.includes("password");
+  }
 }
 
 /** Closing the popup or opening a second one is not an error worth showing. */
@@ -250,7 +265,10 @@ function popupDismissed(error) {
 }
 
 function googleErrorKey(error) {
-  return String(error?.code || "").includes("popup-blocked") ? "googlePopupBlocked" : authErrorKey(error);
+  const code = String(error?.code || "");
+  if (code.includes("popup-blocked")) return "googlePopupBlocked";
+  if (code.includes("account-exists-with-different-credential")) return "googleAccountExists";
+  return authErrorKey(error);
 }
 
 async function onGoogleSignIn() {
@@ -611,12 +629,17 @@ function armIdleTimer() {
 async function onUser(next) {
   stopListeners();
   user = next;
+  googleSession = false;
   armIdleTimer();
   portalUid = "";
   if (!user) {
     $("signin-email").value = $("signin-email").value || "";
     return showView("view-signin");
   }
+  // Read again for every new sign-in: the token says how this session signed in.
+  const google = await readGoogleSession(next);
+  if (user !== next) return;
+  googleSession = google;
   // Google accounts are verified by Google; their access goes through the link to a volunteer.
   if (isGoogleUser(user)) return openGoogleSession(user);
   if (!user.emailVerified) {

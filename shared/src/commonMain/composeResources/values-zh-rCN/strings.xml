@@ -2489,6 +2489,7 @@
     <string name="portal_access_google_by_volunteer">由志愿者绑定</string>
     <string name="portal_access_google_err_domain">此地址不在允许的域名内</string>
     <string name="portal_access_google_err_taken">此地址已绑定到另一位志愿者</string>
+    <string name="portal_access_google_err_same_as_email">请使用协会的地址，而不是志愿者的个人地址</string>
     <string name="portal_access_google_err_invalid">地址无效</string>
     <string name="portal_access_google_err_save">保存失败，请重试。</string>
     <string name="portal_access_google_remove_title">移除 Google 账号？</string>
