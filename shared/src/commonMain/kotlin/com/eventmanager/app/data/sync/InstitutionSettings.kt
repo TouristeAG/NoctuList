@@ -93,6 +93,13 @@ object InstitutionSettingsKeys {
      */
     const val VOLUNTEER_PORTAL_ENABLED = "volunteer_portal_enabled"
 
+    /**
+     * Lets volunteers sign in with an association Google account. The Firestore rules read both
+     * documents; the domains value is only ever the comma-joined list of VERIFIED domains.
+     */
+    const val VOLUNTEER_PORTAL_GOOGLE_ENABLED = "volunteer_portal_google_enabled"
+    const val VOLUNTEER_PORTAL_GOOGLE_DOMAINS = "volunteer_portal_google_domains"
+
     /** Everything driving the Firebase-only artist guest list forms. */
     val GUEST_FORM_KEYS: List<String> = listOf(
         GUEST_FORMS_ENABLED,
@@ -180,6 +187,8 @@ object InstitutionSettingsKeys {
         POS_SUBCATEGORIES,
         DRIVE_IMPORT_ENABLED,
         VOLUNTEER_PORTAL_ENABLED,
+        VOLUNTEER_PORTAL_GOOGLE_ENABLED,
+        VOLUNTEER_PORTAL_GOOGLE_DOMAINS,
     ) + TEMP_GUEST_KEYS + GUEST_FORM_KEYS + BACKEND_KEYS + SHEETS_MIRROR_KEYS
 
     /**
@@ -191,6 +200,8 @@ object InstitutionSettingsKeys {
         POS_SUBCATEGORIES,
         DRIVE_IMPORT_ENABLED,
         VOLUNTEER_PORTAL_ENABLED,
+        VOLUNTEER_PORTAL_GOOGLE_ENABLED,
+        VOLUNTEER_PORTAL_GOOGLE_DOMAINS,
     ) + TEMP_GUEST_KEYS + GUEST_FORM_KEYS
 
     fun isSyncedToSheets(key: String): Boolean = key !in FIREBASE_ONLY_KEYS

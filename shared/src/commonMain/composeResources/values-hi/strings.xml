@@ -2354,6 +2354,16 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="portal_settings_title">स्वयंसेवक पोर्टल</string>
     <string name="portal_settings_body">हर स्वयंसेवक को फ़ॉर्म साइट पर एक निजी वेब स्थान मिलता है: प्रोफ़ाइल, शिफ़्ट, लाभ और वॉलेट। पहले Firebase सेटअप पेज पर इसे तैयार करें (साइन-इन तरीके, नियम, फ़ॉर्म साइट), फिर यहाँ चालू करें। वैकल्पिक स्वचालित प्रोसेसिंग जोड़ें ताकि अनुरोध कुछ ही सेकंड में संभाले जाएँ।</string>
     <string name="portal_enable">स्वयंसेवक पोर्टल सक्षम करें</string>
+    <string name="portal_google_title">Google खाते से साइन-इन</string>
+    <string name="portal_google_domains_label">स्वयंसेवकों के Google Workspace डोमेन</string>
+    <string name="portal_google_domain_hint">डोमेन (उदा. association.ch)</string>
+    <string name="portal_google_verify_add">जाँचें और जोड़ें</string>
+    <string name="portal_google_domain_remove">डोमेन हटाएँ</string>
+    <string name="portal_google_other">यह डोमेन Google Workspace का उपयोग नहीं करता</string>
+    <string name="portal_google_not_found">डोमेन नहीं मिला</string>
+    <string name="portal_google_error">जाँच नहीं हो सकी, फिर से कोशिश करें</string>
+    <string name="portal_google_enable">स्वयंसेवकों को Google खाते से साइन-इन करने दें</string>
+    <string name="portal_google_needs_domain">इस विकल्प को चालू करने के लिए Google Workspace द्वारा प्रबंधित डोमेन जोड़ें</string>
     <string name="portal_sign_in_url">साइन-इन पेज: %1$s</string>
     <string name="portal_server_active">स्वचालित प्रोसेसिंग चालू है। आखिरी बार चला: %1$s</string>
     <string name="portal_server_inactive">अभी तक कोई स्वचालित प्रोसेसिंग नहीं देखी गई। NoctuList डिवाइस ऑनलाइन होने पर अनुरोधों को संभालता है।</string>

@@ -2349,6 +2349,16 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="portal_settings_title">Portal de voluntarios</string>
     <string name="portal_settings_body">Cada voluntario obtiene un espacio web personal en el sitio de formularios: perfil, turnos, ventajas y monedero. Prepárelo primero en la página de configuración de Firebase (métodos de inicio de sesión, reglas, sitio de formularios) y actívelo aquí. Añada el procesamiento automático opcional para que las solicitudes se procesen en segundos.</string>
     <string name="portal_enable">Activar el portal de voluntarios</string>
+    <string name="portal_google_title">Inicio de sesión con una cuenta de Google</string>
+    <string name="portal_google_domains_label">Dominios de Google Workspace de los voluntarios</string>
+    <string name="portal_google_domain_hint">Dominio (p. ej. asociacion.ch)</string>
+    <string name="portal_google_verify_add">Verificar y añadir</string>
+    <string name="portal_google_domain_remove">Quitar el dominio</string>
+    <string name="portal_google_other">Este dominio no usa Google Workspace</string>
+    <string name="portal_google_not_found">Dominio no encontrado</string>
+    <string name="portal_google_error">No se pudo verificar, inténtelo de nuevo</string>
+    <string name="portal_google_enable">Permitir a los voluntarios iniciar sesión con una cuenta de Google</string>
+    <string name="portal_google_needs_domain">Añada un dominio gestionado por Google Workspace para activar esta opción</string>
     <string name="portal_sign_in_url">Página de acceso: %1$s</string>
     <string name="portal_server_active">El procesamiento automático está activo. Última ejecución: %1$s</string>
     <string name="portal_server_inactive">Todavía no se ha visto ningún procesamiento automático. Un dispositivo NoctuList atiende las solicitudes cuando está en línea.</string>

@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Language
@@ -32,6 +33,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -60,6 +63,7 @@ import androidx.compose.ui.unit.sp
 import com.eventmanager.app.data.models.Volunteer
 import com.eventmanager.app.data.sync.DateFormatUtils
 import com.eventmanager.app.platform.LocalPlatformContext
+import com.eventmanager.app.portal.DomainCheck
 import com.eventmanager.app.portal.PortalGrantResult
 import com.eventmanager.app.portal.PortalServerStatus
 import com.eventmanager.app.portal.SignupFormState
@@ -93,6 +97,16 @@ import com.eventmanager.app.resources.portal_add_choice_title
 import com.eventmanager.app.resources.portal_create_access_toggle
 import com.eventmanager.app.resources.portal_create_access_toggle_desc
 import com.eventmanager.app.resources.portal_enable
+import com.eventmanager.app.resources.portal_google_domain_hint
+import com.eventmanager.app.resources.portal_google_domain_remove
+import com.eventmanager.app.resources.portal_google_domains_label
+import com.eventmanager.app.resources.portal_google_enable
+import com.eventmanager.app.resources.portal_google_error
+import com.eventmanager.app.resources.portal_google_needs_domain
+import com.eventmanager.app.resources.portal_google_not_found
+import com.eventmanager.app.resources.portal_google_other
+import com.eventmanager.app.resources.portal_google_title
+import com.eventmanager.app.resources.portal_google_verify_add
 import com.eventmanager.app.resources.portal_password_body
 import com.eventmanager.app.resources.portal_password_copied
 import com.eventmanager.app.resources.portal_password_copy
@@ -141,6 +155,12 @@ fun VolunteerPortalSettingsCard(
     portalUrl: String,
     canEdit: Boolean,
     serverStatus: PortalServerStatus? = null,
+    googleEnabled: Boolean = false,
+    onGoogleEnabledChange: (Boolean) -> Unit = {},
+    googleDomains: List<String> = emptyList(),
+    onAddGoogleDomain: suspend (String) -> DomainCheck = { DomainCheck.ERROR },
+    onRemoveGoogleDomain: (String) -> Unit = {},
+    suggestedGoogleDomain: String = "",
 ) {
     GuidedStepCard(
         title = stringResource(Res.string.portal_settings_title),
@@ -175,6 +195,133 @@ fun VolunteerPortalSettingsCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             CopyableUrlBox(url = portalUrl)
+        }
+        if (enabled) {
+            VolunteerPortalGoogleSection(
+                googleEnabled = googleEnabled,
+                onGoogleEnabledChange = onGoogleEnabledChange,
+                domains = googleDomains,
+                onAddDomain = onAddGoogleDomain,
+                onRemoveDomain = onRemoveGoogleDomain,
+                suggestedDomain = suggestedGoogleDomain,
+                canEdit = canEdit,
+            )
+        }
+    }
+}
+
+/** Verified Workspace domains plus the switch that lets volunteers sign in with Google. */
+@Composable
+private fun VolunteerPortalGoogleSection(
+    googleEnabled: Boolean,
+    onGoogleEnabledChange: (Boolean) -> Unit,
+    domains: List<String>,
+    onAddDomain: suspend (String) -> DomainCheck,
+    onRemoveDomain: (String) -> Unit,
+    suggestedDomain: String,
+    canEdit: Boolean,
+) {
+    val scope = rememberCoroutineScope()
+    // Proposed once, while nothing is verified yet. It is only added after a successful check.
+    var input by remember { mutableStateOf(if (domains.isEmpty()) suggestedDomain else "") }
+    var checking by remember { mutableStateOf(false) }
+    var result by remember { mutableStateOf<DomainCheck?>(null) }
+    LaunchedEffect(suggestedDomain) {
+        if (input.isBlank() && domains.isEmpty()) input = suggestedDomain
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            stringResource(Res.string.portal_google_title),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            stringResource(Res.string.portal_google_domains_label),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        domains.forEach { domain ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Icon(
+                    Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp),
+                )
+                Text(
+                    domain,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f).padding(start = 8.dp),
+                )
+                IconButton(onClick = { onRemoveDomain(domain) }, enabled = canEdit) {
+                    Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.portal_google_domain_remove))
+                }
+            }
+        }
+        if (canEdit) {
+            OutlinedTextField(
+                value = input,
+                onValueChange = { input = it; result = null },
+                label = { Text(stringResource(Res.string.portal_google_domain_hint)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedButton(
+                onClick = {
+                    val typed = input
+                    checking = true
+                    result = null
+                    scope.launch {
+                        val outcome = onAddDomain(typed)
+                        checking = false
+                        result = outcome
+                        if (outcome == DomainCheck.GOOGLE) input = ""
+                    }
+                },
+                enabled = !checking && input.isNotBlank(),
+            ) {
+                if (checking) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(8.dp))
+                }
+                Text(stringResource(Res.string.portal_google_verify_add))
+            }
+            val message = when (result) {
+                DomainCheck.OTHER -> stringResource(Res.string.portal_google_other)
+                DomainCheck.NOT_FOUND -> stringResource(Res.string.portal_google_not_found)
+                DomainCheck.ERROR -> stringResource(Res.string.portal_google_error)
+                else -> null
+            }
+            if (message != null) {
+                Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                stringResource(Res.string.portal_google_enable),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f).padding(end = 8.dp),
+            )
+            Switch(
+                checked = googleEnabled && domains.isNotEmpty(),
+                onCheckedChange = onGoogleEnabledChange,
+                enabled = canEdit && domains.isNotEmpty(),
+            )
+        }
+        if (domains.isEmpty()) {
+            Text(
+                stringResource(Res.string.portal_google_needs_domain),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

@@ -54,6 +54,7 @@ import com.eventmanager.app.data.remote.PendingRemoteWriteQueue
 import com.eventmanager.app.data.remote.createFirestoreGateway
 import com.eventmanager.app.data.remote.FirestoreGateway
 import com.eventmanager.app.data.remote.downloadProfilePhotoBytes
+import com.eventmanager.app.portal.DomainCheck
 import com.eventmanager.app.portal.PortalGrantResult
 import com.eventmanager.app.portal.PortalMailTemplate
 import com.eventmanager.app.portal.PortalQrMailer
@@ -62,6 +63,7 @@ import com.eventmanager.app.portal.SignupFormState
 import com.eventmanager.app.portal.VolunteerPortalHost
 import com.eventmanager.app.portal.VolunteerPortalService
 import com.eventmanager.app.portal.VolunteerSignupForm
+import com.eventmanager.app.portal.WorkspaceDomainVerifier
 import com.eventmanager.app.data.remote.createFirebaseAuthService
 import com.eventmanager.app.data.remote.GitLiveProfilePhotoStorageGateway
 import com.eventmanager.app.data.remote.FirestoreApplyPolicy
@@ -2615,6 +2617,16 @@ class EventManagerViewModel(
     /** Firebase backend and the institution turned the volunteer portal on. */
     val volunteerPortalEnabled: StateFlow<Boolean> = _volunteerPortalEnabled.asStateFlow()
 
+    private val _volunteerPortalGoogleEnabled = MutableStateFlow(false)
+
+    /** Volunteers may sign in with an association Google account (needs a verified domain). */
+    val volunteerPortalGoogleEnabled: StateFlow<Boolean> = _volunteerPortalGoogleEnabled.asStateFlow()
+
+    private val _volunteerPortalGoogleDomains = MutableStateFlow<List<String>>(emptyList())
+
+    /** Verified Google Workspace domains. Unverified ones are never stored. */
+    val volunteerPortalGoogleDomains: StateFlow<List<String>> = _volunteerPortalGoogleDomains.asStateFlow()
+
     private val _portalServerStatus = MutableStateFlow<PortalServerStatus?>(null)
 
     /** Last run of the portal Cloud Functions, null when they never ran or the portal is off. */
@@ -2630,6 +2642,45 @@ class EventManagerViewModel(
 
     private fun publishVolunteerPortalSettings() {
         _volunteerPortalEnabled.value = isVolunteerPortalFeatureEnabled()
+        _volunteerPortalGoogleEnabled.value = settingsManagerCached?.isVolunteerPortalGoogleEnabled() == true
+        _volunteerPortalGoogleDomains.value = settingsManagerCached?.volunteerPortalGoogleDomains().orEmpty()
+    }
+
+    fun setVolunteerPortalGoogleEnabled(enabled: Boolean) {
+        val settings = settingsManagerCached ?: return
+        if (getActiveBackendType() != BackendType.FIREBASE) return
+        // The option needs at least one verified domain behind it.
+        val allowed = enabled && settings.volunteerPortalGoogleDomains().isNotEmpty()
+        settings.setVolunteerPortalGoogleEnabled(allowed)
+        publishVolunteerPortalSettings()
+        backupInstitutionSettingsToSheets()
+    }
+
+    /**
+     * Checks [raw] against Google Workspace and stores it only when it passes. Returns OTHER for
+     * domains that can never be Workspace ones (gmail.com, bare names) without any network call.
+     */
+    suspend fun addVolunteerPortalGoogleDomain(raw: String): DomainCheck {
+        val settings = settingsManagerCached ?: return DomainCheck.ERROR
+        if (getActiveBackendType() != BackendType.FIREBASE) return DomainCheck.ERROR
+        val domain = com.eventmanager.app.data.remote.FirebaseEmailDomainPolicy.normalizeDomain(raw)
+        if (!WorkspaceDomainVerifier.isAcceptedDomain(domain)) return DomainCheck.OTHER
+        val result = WorkspaceDomainVerifier.check(domain)
+        if (result == DomainCheck.GOOGLE) {
+            settings.setVolunteerPortalGoogleDomains(settings.volunteerPortalGoogleDomains() + domain)
+            publishVolunteerPortalSettings()
+            backupInstitutionSettingsToSheets()
+        }
+        return result
+    }
+
+    fun removeVolunteerPortalGoogleDomain(domain: String) {
+        val settings = settingsManagerCached ?: return
+        if (getActiveBackendType() != BackendType.FIREBASE) return
+        val target = com.eventmanager.app.data.remote.FirebaseEmailDomainPolicy.normalizeDomain(domain)
+        settings.setVolunteerPortalGoogleDomains(settings.volunteerPortalGoogleDomains().filter { it != target })
+        publishVolunteerPortalSettings()
+        backupInstitutionSettingsToSheets()
     }
 
     fun setVolunteerPortalEnabled(enabled: Boolean) {

@@ -1840,6 +1840,8 @@ actual fun SettingsScreen(
     var driveImportEnabled by remember { mutableStateOf(viewModel.isDriveImportEnabled()) }
     val guestFormsEnabled by viewModel.guestFormsEnabled.collectAsState()
     val volunteerPortalEnabled by viewModel.volunteerPortalEnabled.collectAsState()
+    val volunteerPortalGoogleEnabled by viewModel.volunteerPortalGoogleEnabled.collectAsState()
+    val volunteerPortalGoogleDomains by viewModel.volunteerPortalGoogleDomains.collectAsState()
     val portalServerStatus by viewModel.portalServerStatus.collectAsState()
     val guestFormsBilleterieValidateEnabled by viewModel.guestFormsBilleterieValidateEnabled.collectAsState()
     val billeterieSendEnabled by viewModel.announcementsBilleterieSendEnabled.collectAsState()
@@ -2082,6 +2084,11 @@ actual fun SettingsScreen(
                     portalServerStatus = portalServerStatus,
                     onVolunteerPortalEnabledChange = { viewModel.setVolunteerPortalEnabled(it) },
                     volunteerPortalUrl = viewModel.volunteerPortalUrl(),
+                    volunteerPortalGoogleEnabled = volunteerPortalGoogleEnabled,
+                    onVolunteerPortalGoogleEnabledChange = { viewModel.setVolunteerPortalGoogleEnabled(it) },
+                    volunteerPortalGoogleDomains = volunteerPortalGoogleDomains,
+                    onAddVolunteerPortalGoogleDomain = { viewModel.addVolunteerPortalGoogleDomain(it) },
+                    onRemoveVolunteerPortalGoogleDomain = { viewModel.removeVolunteerPortalGoogleDomain(it) },
                     projectId = settingsManager.getFirebaseProjectId(),
                     apiKey = settingsManager.getFirebaseApiKey(),
                     applicationId = settingsManager.getFirebaseApplicationId(),

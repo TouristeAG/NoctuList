@@ -151,6 +151,12 @@ fun FirebaseSyncSettingsSection(
     portalServerStatus: PortalServerStatus? = null,
     onVolunteerPortalEnabledChange: (Boolean) -> Unit = {},
     volunteerPortalUrl: String = "",
+    volunteerPortalGoogleEnabled: Boolean = false,
+    onVolunteerPortalGoogleEnabledChange: (Boolean) -> Unit = {},
+    volunteerPortalGoogleDomains: List<String> = emptyList(),
+    onAddVolunteerPortalGoogleDomain: suspend (String) -> com.eventmanager.app.portal.DomainCheck =
+        { com.eventmanager.app.portal.DomainCheck.ERROR },
+    onRemoveVolunteerPortalGoogleDomain: (String) -> Unit = {},
 ) {
     val ready = firebaseConnectionReady(configuredOrgs, projectId, applicationId, apiKey, authEmail)
     val projectReady = projectId.isNotBlank() && applicationId.isNotBlank() && apiKey.isNotBlank()
@@ -335,6 +341,12 @@ fun FirebaseSyncSettingsSection(
                     portalUrl = volunteerPortalUrl,
                     canEdit = isFirebaseOrgAdmin,
                     serverStatus = portalServerStatus,
+                    googleEnabled = volunteerPortalGoogleEnabled,
+                    onGoogleEnabledChange = onVolunteerPortalGoogleEnabledChange,
+                    googleDomains = volunteerPortalGoogleDomains,
+                    onAddGoogleDomain = onAddVolunteerPortalGoogleDomain,
+                    onRemoveGoogleDomain = onRemoveVolunteerPortalGoogleDomain,
+                    suggestedGoogleDomain = allowedEmailDomains.firstOrNull().orEmpty(),
                 )
                 GuidedStepCard(
                     title = stringResource(Res.string.profile_photos_settings_title),
