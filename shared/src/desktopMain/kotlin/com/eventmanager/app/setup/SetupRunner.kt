@@ -40,26 +40,33 @@ class SetupRunner(
     private val jobs = mutableListOf<Job>()
     private var cli: SetupCli? = null
 
+    /** Re-checks the steps it can see from here; a tick that is no longer true goes away. */
     override suspend fun refresh() {
-        val paths = tools.detect() ?: return
+        val paths = tools.detect() ?: return unmark(SetupStepId.TOOLS)
         markDone(SetupStepId.TOOLS)
         val c = cliFactory(paths).also { cli = it }
-        val account = runCatching { c.loginList().firstOrNull() }.getOrNull() ?: return
+        val account = runCatching { c.loginList().firstOrNull() }.getOrNull() ?: return unmark(SetupStepId.LOGIN)
         _info.update { it.copy(account = account) }
         markDone(SetupStepId.LOGIN)
         val projects = runCatching { c.projectsList() }.getOrDefault(emptyList())
         _info.update { it.copy(projects = projects) }
         val pid = settings.projectId
-        if (pid.isBlank() || projects.none { it.id == pid }) return
+        if (pid.isBlank() || projects.none { it.id == pid }) return unmark(SetupStepId.PROJECT)
         markDone(SetupStepId.PROJECT)
         val db = runCatching { c.databases(pid) }.getOrDefault(emptyList()).firstOrNull { it.name == DEFAULT_DB }
         if (db != null) {
             markDone(SetupStepId.DATABASE)
             _info.update { it.copy(region = RegionMapper.functionsRegion(db.locationId)) }
+        } else {
+            unmark(SetupStepId.DATABASE)
+            val locations = runCatching { c.firestoreLocations(pid) }.getOrDefault(emptyList())
+            _info.update { it.copy(locations = RegionMapper.orderLocations(locations)) }
         }
-        if (settings.hasWebClient()) markDone(SetupStepId.CONNECT)
-        val functions = runCatching { c.functionsList(pid) }.getOrDefault(emptyList()).map { it.name }
-        if (functions.containsAll(SERVER_FUNCTIONS)) markDone(SetupStepId.SERVER)
+        if (settings.hasWebClient()) markDone(SetupStepId.CONNECT) else unmark(SetupStepId.CONNECT)
+        val functions = runCatching { c.functionsList(pid) }.getOrNull()?.map { it.name }
+        if (functions != null) {
+            if (functions.containsAll(SERVER_FUNCTIONS)) markDone(SetupStepId.SERVER) else unmark(SetupStepId.SERVER)
+        }
     }
 
     override fun run(step: SetupStepId, input: StepInput) {
@@ -146,8 +153,8 @@ class SetupRunner(
                 val projects = c.projectsList()
                 _info.update { it.copy(projects = projects) }
                 require(projects.any { it.id == id }) { "project not found" }
+                if (id != _progress.value.projectId) switchProject(id)
                 settings.projectId = id
-                saveProgress { it.copy(projectId = id) }
                 markDone(step)
             }
             SetupStepId.DATABASE -> {
@@ -248,9 +255,26 @@ class SetupRunner(
         return SetupStepId.PHOTOS in p.done || SetupStepId.PHOTOS in p.confirmed
     }
 
-    private fun requireCli(): SetupCli = cli ?: throw CliException(
-        CliError(CliErrorKind.UNKNOWN, false, SetupStepId.TOOLS, "tools not ready"),
-    )
+    private suspend fun requireCli(): SetupCli = cli
+        ?: tools.detect()?.let { paths -> cliFactory(paths).also { cli = it } }
+        ?: throw CliException(CliError(CliErrorKind.UNKNOWN, false, SetupStepId.TOOLS, "tools not ready"))
+
+    /** Ticks belong to one project: choosing another keeps only the computer-wide steps. */
+    private fun switchProject(id: String) {
+        saveProgress { it.copy(projectId = id, done = it.done.filter { s -> s in MACHINE_STEPS }.toSet(), confirmed = emptySet()) }
+        _states.update { states ->
+            states.mapValues { (step, state) ->
+                if (step in MACHINE_STEPS || state is StepState.Running || state is StepState.WaitingRetry) state else StepState.Todo
+            }
+        }
+    }
+
+    private fun unmark(step: SetupStepId) {
+        val state = _states.value[step]
+        if (state is StepState.Running || state is StepState.WaitingRetry) return
+        if (state == StepState.Done) setState(step, StepState.Todo)
+        if (step in _progress.value.done) saveProgress { it.copy(done = it.done - step) }
+    }
 
     private fun projectId(): String = settings.projectId.also {
         require(SetupValidators.projectId(it)) { "no project selected" }
@@ -288,6 +312,7 @@ class SetupRunner(
         const val RETRY_SECONDS = 120
         const val MAX_LOG_LINES = 200
         val SERVER_FUNCTIONS = listOf("onSignupWritten", "onPortalRequestWritten")
+        val MACHINE_STEPS = setOf(SetupStepId.TOOLS, SetupStepId.LOGIN)
 
         fun initialStates(progress: SetupProgress): Map<SetupStepId, StepState> =
             SetupStepId.entries.associateWith { step ->

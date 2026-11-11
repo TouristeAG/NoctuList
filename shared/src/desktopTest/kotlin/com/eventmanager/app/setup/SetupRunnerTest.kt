@@ -45,7 +45,8 @@ private class FakeCli : SetupCli {
     override suspend fun loginStart(): LoginChallenge { calls += "loginStart"; return LoginChallenge("AB12C", "https://auth.firebase.tools/login?x") }
     override suspend fun loginFinish(code: String) { calls += "loginFinish $code"; accounts = listOf("admin@example.org") }
     override suspend fun loginList() = accounts
-    override suspend fun projectsList() = listOf(ProjectInfo("demo-project", "Demo"))
+    var projects = listOf(ProjectInfo("demo-project", "Demo"), ProjectInfo("other-project", "Other"))
+    override suspend fun projectsList() = projects
     override suspend fun projectsCreate(id: String, displayName: String, onLine: (String) -> Unit) { calls += "create $id" }
     override suspend fun databases(projectId: String) = databases.also { calls += "databases" }
     override suspend fun firestoreLocations(projectId: String) = listOf("nam5", "eur3", "europe-west6")
@@ -66,8 +67,8 @@ private class FakeCli : SetupCli {
     override suspend fun setArtifactPolicy(projectId: String, region: String, onLine: (String) -> Unit) { calls += "setpolicy $region" }
 }
 
-private class FakeTools : SetupTools {
-    override suspend fun detect(): ToolPaths? = null
+private class FakeTools(var installed: Boolean = false) : SetupTools {
+    override suspend fun detect(): ToolPaths? = if (installed) ToolPaths(File("/n"), File("/npm"), File("/fb"), File("/bin")) else null
     override suspend fun install(onProgress: (Float, String) -> Unit): ToolPaths =
         ToolPaths(File("/n"), File("/npm"), File("/fb"), File("/bin"))
 }
@@ -223,6 +224,50 @@ class SetupRunnerTest {
         runner.run(SetupStepId.LOGIN)
         awaitState(SetupStepId.LOGIN) { it == StepState.Done }
         assertTrue(cli.calls.none { it.startsWith("login") })
+    }
+
+    @Test
+    fun switchingProjectClearsTheOtherProjectsTicks(): Unit = runBlocking {
+        settings.progressJson = SetupProgress(
+            projectId = "demo-project",
+            done = setOf(SetupStepId.TOOLS, SetupStepId.LOGIN, SetupStepId.PROJECT, SetupStepId.DATABASE, SetupStepId.RULES, SetupStepId.SITE),
+            confirmed = setOf(SetupStepId.PROVIDERS),
+        ).encode()
+        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, workspace, settings, sleep = {})
+        r.run(SetupStepId.PROJECT, StepInput(projectId = "other-project"))
+        withTimeout(5_000) { r.states.first { it[SetupStepId.PROJECT] == StepState.Done } }
+        val p = r.progress.value
+        assertEquals("other-project", p.projectId)
+        assertEquals(setOf(SetupStepId.TOOLS, SetupStepId.LOGIN, SetupStepId.PROJECT), p.done)
+        assertTrue(p.confirmed.isEmpty())
+        assertEquals(StepState.Todo, r.states.value[SetupStepId.DATABASE])
+        assertEquals(StepState.Todo, r.states.value[SetupStepId.SITE])
+    }
+
+    @Test
+    fun refreshRemovesTicksThatAreNoLongerTrue(): Unit = runBlocking {
+        settings.progressJson = SetupProgress(projectId = "demo-project", done = setOf(SetupStepId.TOOLS, SetupStepId.LOGIN)).encode()
+        cli.accounts = emptyList()
+        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, workspace, settings, sleep = {})
+        r.refresh()
+        assertEquals(StepState.Done, r.states.value[SetupStepId.TOOLS])
+        assertEquals(StepState.Todo, r.states.value[SetupStepId.LOGIN])
+        assertTrue(SetupStepId.LOGIN !in r.progress.value.done)
+    }
+
+    @Test
+    fun stepsWorkWithoutRunningToolsAgainWhenToolsExist(): Unit = runBlocking {
+        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, workspace, settings, sleep = {})
+        r.run(SetupStepId.LOGIN)
+        withTimeout(5_000) { r.states.first { it[SetupStepId.LOGIN] == StepState.Done } }
+    }
+
+    @Test
+    fun refreshListsLocationsWhenTheDatabaseIsMissing(): Unit = runBlocking {
+        cli.databases = emptyList()
+        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, workspace, settings, sleep = {})
+        r.refresh()
+        assertEquals(listOf("europe-west6", "eur3", "nam5"), r.info.value.locations)
     }
 
     @Test
