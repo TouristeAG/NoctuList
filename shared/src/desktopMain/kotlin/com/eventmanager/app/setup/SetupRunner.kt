@@ -3,6 +3,7 @@ package com.eventmanager.app.setup
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -36,6 +37,7 @@ class SetupRunner(
     override val info: StateFlow<SetupInfo> = _info.asStateFlow()
 
     private var job: Job? = null
+    private val jobs = mutableListOf<Job>()
     private var cli: SetupCli? = null
 
     override suspend fun refresh() {
@@ -64,7 +66,7 @@ class SetupRunner(
         if (_states.value[step] is StepState.Running || _states.value[step] is StepState.WaitingRetry) return
         // Steps run one after the other: a step started while the previous one is finishing waits for it.
         val previous = job
-        job = scope.launch {
+        val next = scope.launch {
             previous?.join()
             setState(step, StepState.Running(emptyList()))
             try {
@@ -81,6 +83,11 @@ class SetupRunner(
                 input.appPassword?.fill('\u0000')
             }
         }
+        job = next
+        synchronized(jobs) {
+            jobs.removeAll { !it.isActive }
+            jobs += next
+        }
     }
 
     override fun confirm(step: SetupStepId) {
@@ -93,8 +100,15 @@ class SetupRunner(
         saveProgress { it.copy(extras = if (enabled) it.extras + step else it.extras - step) }
     }
 
+    /** Stops the running step (its process is destroyed) and drops the queued ones. */
     override fun cancel() {
-        job?.cancel()
+        val all = synchronized(jobs) { jobs.toList().also { jobs.clear() } }
+        all.forEach { it.cancel() }
+    }
+
+    override fun close() {
+        cancel()
+        scope.cancel()
     }
 
     private suspend fun execute(step: SetupStepId, input: StepInput) {

@@ -1,11 +1,11 @@
 package com.eventmanager.app.setup
 
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.runInterruptible
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.future.await
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import kotlin.coroutines.coroutineContext
 
 /** Runs one command given as an argument array (never through a shell). */
 interface ProcessRunner {
@@ -25,23 +25,25 @@ class RealProcessRunner : ProcessRunner {
         env: Map<String, String>,
         stdin: ByteArray?,
         onLine: (String) -> Unit,
-    ): Int = withContext(Dispatchers.IO) {
+    ): Int = coroutineScope {
         val builder = ProcessBuilder(cmd).redirectErrorStream(true)
         if (workDir != null) builder.directory(workDir)
         builder.environment().putAll(env)
-        val process = builder.start()
+        val process = withContext(Dispatchers.IO) { builder.start() }
         try {
-            process.outputStream.use { out -> if (stdin != null) out.write(stdin) }
-            runInterruptible {
+            withContext(Dispatchers.IO) { process.outputStream.use { out -> if (stdin != null) out.write(stdin) } }
+            // Output is read on its own thread; waiting on the exit future is what gets cancelled.
+            val reader = launch(Dispatchers.IO) {
                 process.inputStream.bufferedReader().useLines { lines -> lines.forEach(onLine) }
-                process.waitFor()
             }
+            val code = process.onExit().await().exitValue()
+            reader.join()
+            code
         } finally {
             if (process.isAlive) {
                 process.descendants().forEach { it.destroyForcibly() }
                 process.destroyForcibly()
             }
-            coroutineContext.ensureActive()
         }
     }
 }

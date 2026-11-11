@@ -29,6 +29,9 @@ interface SetupAutomation {
     fun setExtra(step: SetupStepId, enabled: Boolean)
     fun cancel()
 
+    /** Stops everything; called when the setup page closes. */
+    fun close()
+
     /** Values the UI shows, such as the signed-in account or the project list. */
     val info: StateFlow<SetupInfo>
 }

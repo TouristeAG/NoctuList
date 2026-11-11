@@ -17,6 +17,7 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,6 +58,8 @@ fun FirebaseSetupAssistant(onDismiss: () -> Unit, projectId: String = "") {
     val counted = requiredSteps + optionalSteps.filter { it in progress.extras }
     val doneCount = counted.count { states[it] == StepState.Done }
     val autoList = rememberLazyListState()
+    // Closing the page in any way (button, Esc, click outside) stops running commands.
+    DisposableEffect(automation) { onDispose { automation.close() } }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
@@ -72,7 +75,7 @@ fun FirebaseSetupAssistant(onDismiss: () -> Unit, projectId: String = "") {
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f),
                     )
-                    TextButton(onClick = { automation.cancel(); onDismiss() }) { Text(stringResource(Res.string.setup_close)) }
+                    TextButton(onClick = onDismiss) { Text(stringResource(Res.string.setup_close)) }
                 }
                 if (automation.available) {
                     Text(

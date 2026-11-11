@@ -187,6 +187,20 @@ class SetupRunnerTest {
     }
 
     @Test
+    fun cancelStopsTheRunningStepAndDropsQueuedOnes(): Unit = runBlocking {
+        ready()
+        cli.blockDeploy = CompletableDeferred()
+        runner.run(SetupStepId.SITE)
+        withTimeout(5_000) { while (cli.calls.none { it == "deploy hosting" }) kotlinx.coroutines.delay(10) }
+        runner.run(SetupStepId.RULES)
+        runner.cancel()
+        awaitState(SetupStepId.SITE) { it == StepState.Todo }
+        kotlinx.coroutines.delay(200)
+        assertTrue(cli.calls.none { it == "deploy firestore:rules" })
+        assertEquals(StepState.Todo, runner.states.value[SetupStepId.RULES])
+    }
+
+    @Test
     fun connectCreatesAWebAppAndFillsSettings(): Unit = runBlocking {
         ready()
         runner.run(SetupStepId.CONNECT, StepInput(webClientId = "123.apps.googleusercontent.com", webClientSecret = "GOCSPX-s"))
