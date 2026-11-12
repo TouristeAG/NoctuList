@@ -433,6 +433,14 @@ class GitLiveFirestoreGateway(
         }
     }
 
+    internal suspend fun listMemberRecords(orgId: String): List<FirestoreMemberRecord> {
+        val firestore = db() ?: error("Firestore is not initialized")
+        if (orgId.isBlank() || isFirebaseOrgAllSentinel(orgId)) return emptyList()
+        val query = firestore.collection("orgs").document(orgId).collection("members")
+        val snap = runCatching { query.get(source = Source.SERVER) }.getOrElse { query.get() }
+        return snap.documents.map { doc -> memberRecordFromSnapshot(doc) }
+    }
+
     private fun memberListingFromSnapshot(
         doc: dev.gitlive.firebase.firestore.DocumentSnapshot,
     ): FirebaseTeamMemberListing {
