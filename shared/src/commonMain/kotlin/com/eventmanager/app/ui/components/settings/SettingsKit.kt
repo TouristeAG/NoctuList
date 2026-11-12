@@ -11,6 +11,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -45,7 +46,6 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -61,12 +61,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -117,6 +119,21 @@ object SettingsKitDefaults {
     internal const val DisabledAlpha = 0.6f
 }
 
+/**
+ * The current time, refreshed every 30 seconds while the caller is on screen, so texts such as
+ * "il y a 3 min" stay true while the page is open.
+ */
+@Composable
+fun rememberMinuteClock(): Long {
+    val now by produceState(System.currentTimeMillis()) {
+        while (true) {
+            delay(30_000L)
+            value = System.currentTimeMillis()
+        }
+    }
+    return now
+}
+
 data class HelpContent(val title: String, val body: String)
 
 data class ChoiceOption(val title: String, val subtitle: String)
@@ -127,12 +144,16 @@ enum class PillTone { OK, ATTENTION, NEUTRAL }
  * A settings page: title, one muted subtitle line, an optional read-only notice, then the blocks
  * spaced by 28 dp. Content is limited to 720 dp and aligned to the start. The page does not scroll
  * by itself: the hosting settings screen owns the scroll container.
+ *
+ * Pass [showTitle] false when the host already shows the page title (the desktop detail header,
+ * the Android category card), so it does not appear twice.
  */
 @Composable
 fun SettingsPage(
     title: String,
     subtitle: String,
     readOnlyNotice: String? = null,
+    showTitle: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
@@ -141,14 +162,16 @@ fun SettingsPage(
             .widthIn(max = SettingsKitDefaults.PageMaxWidth)
             .fillMaxWidth(),
     ) {
-        Text(
-            title,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
+        if (showTitle) {
+            Text(
+                title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
         if (subtitle.isNotBlank()) {
-            Spacer(Modifier.height(4.dp))
+            if (showTitle) Spacer(Modifier.height(4.dp))
             Text(
                 subtitle,
                 style = MaterialTheme.typography.bodyMedium,
@@ -156,7 +179,7 @@ fun SettingsPage(
             )
         }
         if (!readOnlyNotice.isNullOrBlank()) {
-            Spacer(Modifier.height(16.dp))
+            if (showTitle || subtitle.isNotBlank()) Spacer(Modifier.height(16.dp))
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
@@ -495,7 +518,8 @@ private fun ChoiceCard(
             modifier = Modifier.padding(inset),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // Same height with or without the check, so both cards' titles sit on one line.
+            Row(modifier = Modifier.heightIn(min = 20.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     option.title,
                     style = MaterialTheme.typography.titleSmall,
@@ -588,13 +612,7 @@ fun DomainChips(
                 )
             }
             if (enabled && !adding) {
-                AssistChip(
-                    onClick = { adding = true },
-                    label = { Text(stringResource(Res.string.add)) },
-                    leadingIcon = {
-                        Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                    },
-                )
+                AddChip(onClick = { adding = true })
             }
         }
         AnimatedVisibility(
@@ -647,6 +665,37 @@ fun DomainChips(
     }
 }
 
+/** "Ajouter" in the same shape and height as [DomainChip], so the row of chips lines up. */
+@Composable
+private fun AddChip(onClick: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = Color.Transparent,
+        border = BorderStroke(1.dp, scheme.outlineVariant),
+        contentColor = scheme.onSurface,
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(role = Role.Button, onClick = onClick),
+    ) {
+        Row(
+            modifier = Modifier.height(DomainChipHeight).padding(start = 8.dp, end = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Filled.Add,
+                contentDescription = null,
+                tint = scheme.primary,
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(stringResource(Res.string.add), style = MaterialTheme.typography.labelLarge)
+        }
+    }
+}
+
+private val DomainChipHeight = 32.dp
+
 /**
  * One domain: an inert label, and when [onRemove] is set, an × that is its own control. The chip
  * itself is not clickable, so a stray tap on the label never removes a domain.
@@ -660,7 +709,7 @@ private fun DomainChip(domain: String, removeDescription: String, onRemove: (() 
         border = BorderStroke(1.dp, scheme.outlineVariant),
         contentColor = scheme.onSurfaceVariant,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(modifier = Modifier.height(DomainChipHeight), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 "@$domain",
                 style = MaterialTheme.typography.labelLarge,
@@ -669,8 +718,6 @@ private fun DomainChip(domain: String, removeDescription: String, onRemove: (() 
                 modifier = Modifier.padding(
                     start = 12.dp,
                     end = if (onRemove != null) 0.dp else 12.dp,
-                    top = 6.dp,
-                    bottom = 6.dp,
                 ),
             )
             if (onRemove != null) {
@@ -736,14 +783,17 @@ fun CopyField(value: String) {
                 .padding(start = 14.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SelectionContainer(modifier = Modifier.weight(1f).padding(vertical = 10.dp)) {
-                Text(
-                    value,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontFamily = FontFamily.Monospace,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
+            // The weight sits on a plain Box: long values wrap there and never squeeze the button.
+            Box(modifier = Modifier.weight(1f).padding(vertical = 10.dp)) {
+                SelectionContainer {
+                    Text(
+                        value,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontFamily = FontFamily.Monospace,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
             IconButton(
                 onClick = {

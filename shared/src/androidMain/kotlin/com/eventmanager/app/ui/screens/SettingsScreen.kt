@@ -98,6 +98,8 @@ import androidx.compose.runtime.collectAsState
 import kotlin.math.roundToInt
 import com.eventmanager.app.R
 import com.eventmanager.app.resources.Res
+import com.eventmanager.app.resources.save
+import com.eventmanager.app.resources.setup_signed_in_as
 import com.eventmanager.app.resources.sync_backup_page_title
 import com.eventmanager.app.resources.sync_connection_page_title
 import com.eventmanager.app.resources.sync_online_page_title
@@ -1733,6 +1735,9 @@ actual fun SettingsScreen(
     var showActiveVolunteersDialog by remember { mutableStateOf(false) }
     var showCleanupDialog by remember { mutableStateOf(false) }
     var uploadStatus by remember { mutableStateOf<String?>(null) }
+    // Resolved here so the sign-in callbacks below can fill in the account.
+    val signedInAsTemplate = stringResource(Res.string.setup_signed_in_as, "%1\$s")
+    fun firebaseSignedInAs(account: String): String = signedInAsTemplate.replace("%1\$s", account)
     val coroutineScope = rememberCoroutineScope()
     var selectedFileUri by remember { mutableStateOf<Uri?>(null) }
     var syncInterval by remember { mutableStateOf(settingsManager.getSyncInterval()) }
@@ -1792,7 +1797,7 @@ actual fun SettingsScreen(
                             uploadStatus = e.message
                         }
                     }
-                    uploadStatus = "Firebase signed in as ${result.email ?: result.uid}"
+                    uploadStatus = firebaseSignedInAs(result.email ?: result.uid)
                     pendingMigrationSignInResult?.invoke(result)
                     pendingMigrationSignInResult = null
                 }
@@ -1830,7 +1835,7 @@ actual fun SettingsScreen(
                             firebaseAuthEmail = result.email.orEmpty()
                             settingsManager.setFirebaseAuthEmail(result.email.orEmpty())
                             firebaseSignInFeedback = null
-                            uploadStatus = "Firebase signed in as ${result.email ?: result.uid}"
+                            uploadStatus = firebaseSignedInAs(result.email ?: result.uid)
                         }
                         is com.eventmanager.app.data.remote.FirebaseAuthResult.Error -> {
                             firebaseSignInFeedback = result.message
@@ -1901,8 +1906,9 @@ actual fun SettingsScreen(
     // Check if JSON key file exists on first load
     LaunchedEffect(Unit) {
         if (fileManager.hasServiceAccountKey()) {
-            // Try to extract info from existing file
-            jsonKeyInfo = JsonKeyInfo(context.getString(R.string.key_file_found), context.getString(R.string.unknown))
+            // Show the stored key's account; a key that cannot be read still counts as present,
+            // and the row then reads "Clé de compte de service trouvée" with no details.
+            jsonKeyInfo = fileManager.readStoredKeyInfo() ?: JsonKeyInfo("", "")
         }
     }
     
@@ -2067,15 +2073,17 @@ actual fun SettingsScreen(
             }
         ) {
             if (isFirebaseBackend) {
-                com.eventmanager.app.ui.components.settings.SyncConnectionPage(syncBindings)
+                com.eventmanager.app.ui.components.settings.SyncConnectionPage(syncBindings, showTitle = false)
             } else {
                 com.eventmanager.app.ui.components.settings.SheetsConnectionPage(
                     spreadsheetId = spreadsheetId,
                     onSpreadsheetIdChange = { spreadsheetId = it },
                     keyReady = jsonKeyInfo != null,
-                    keyDetails = jsonKeyInfo?.let { info ->
-                        context.getString(R.string.email_colon, info.clientEmail) + "\n" +
-                            context.getString(R.string.project_colon, info.projectId)
+                    keyDetails = jsonKeyInfo?.takeIf { it.clientEmail.isNotBlank() }?.let { info ->
+                        listOfNotNull(
+                            context.getString(R.string.email_colon, info.clientEmail),
+                            info.projectId.takeIf { it.isNotBlank() }?.let { context.getString(R.string.project_colon, it) },
+                        ).joinToString("\n")
                     },
                     onSave = {
                         settingsManager.saveSpreadsheetId(spreadsheetId)
@@ -2147,7 +2155,7 @@ actual fun SettingsScreen(
                     settingsManager.setCategorySyncTeamExpanded(showSyncTeamSettings)
                 }
             ) {
-                com.eventmanager.app.ui.components.settings.SyncTeamPage(syncBindings)
+                com.eventmanager.app.ui.components.settings.SyncTeamPage(syncBindings, showTitle = false)
             }
             Spacer(modifier = Modifier.height(16.dp))
             ExpandableSettingsCategory(
@@ -2159,7 +2167,7 @@ actual fun SettingsScreen(
                     settingsManager.setCategorySyncOnlineExpanded(showSyncOnlineSettings)
                 }
             ) {
-                com.eventmanager.app.ui.components.settings.SyncOnlinePage(syncBindings)
+                com.eventmanager.app.ui.components.settings.SyncOnlinePage(syncBindings, showTitle = false)
             }
             Spacer(modifier = Modifier.height(16.dp))
             ExpandableSettingsCategory(
@@ -2171,7 +2179,7 @@ actual fun SettingsScreen(
                     settingsManager.setCategorySyncBackupExpanded(showSyncBackupSettings)
                 }
             ) {
-                com.eventmanager.app.ui.components.settings.SyncBackupPage(syncBindings)
+                com.eventmanager.app.ui.components.settings.SyncBackupPage(syncBindings, showTitle = false)
             }
         } else {
             Spacer(modifier = Modifier.height(16.dp))
@@ -2194,6 +2202,7 @@ actual fun SettingsScreen(
                         viewModel.updateSyncInterval()
                     },
                     onTestSyncStatus = { viewModel.testSyncStatus() },
+                    showTitle = false,
                 )
             }
         }

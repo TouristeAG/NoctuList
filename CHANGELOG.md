@@ -24,6 +24,7 @@ New, optional: a personal web space for volunteers, and a refreshed look for eve
 - **Today's benefits** are shown in the volunteer space even when no NoctuList device is online.
 - **Rank removed from the volunteer space.** Volunteers no longer see their rank.
 - **Sign in with an association Google account (optional).** Associations with Google Workspace list their domains in Settings, Firebase, Volunteer portal (each checked by a DNS lookup; gmail.com is refused), then turn on "Connexion avec un compte Google". The admin sets the "Compte Google associatif" on the volunteer record and the volunteer links it at first sign-in, or, if none is set, links it themselves from "Mon compte" with "Associer mon compte Google" and can remove only a link they made. The Google account stays a separate Firebase account, so staff who are also volunteers keep their staff rights. E-mail and password sign-in still works.
+- **Sync settings in four pages.** Settings, sync is now split into Connexion, Équipe, Fonctions en ligne and Sauvegarde (Connexion and Synchronisation with Google Sheets). Each page shows its title once, each block keeps its explanation behind a "?", the "last sync" and "last export" times stay current while the page is open, and "Enregistrer" on the Google Sheets page confirms in place. A Sheets sync interval that is not in the menu (for example 10 minutes) is shown as it is.
 
 ### Security
 

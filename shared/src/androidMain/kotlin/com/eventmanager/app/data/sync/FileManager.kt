@@ -73,6 +73,20 @@ class FileManager(private val context: Context) {
     }
     
     /**
+     * The e-mail and project of the stored service account key, or null when there is no key or it
+     * cannot be read. Used to show the key status after a restart.
+     */
+    suspend fun readStoredKeyInfo(): JsonKeyInfo? = withContext(Dispatchers.IO) {
+        val path = getServiceAccountKeyPath() ?: return@withContext null
+        runCatching {
+            val json = File(path).readText()
+            val clientEmail = "\"client_email\"\\s*:\\s*\"([^\"]+)\"".toRegex().find(json)?.groupValues?.get(1)
+            val projectId = "\"project_id\"\\s*:\\s*\"([^\"]+)\"".toRegex().find(json)?.groupValues?.get(1)
+            if (clientEmail.isNullOrBlank()) null else JsonKeyInfo(clientEmail, projectId.orEmpty())
+        }.getOrNull()
+    }
+
+    /**
      * Validate JSON key file content
      */
     suspend fun validateJsonKeyFile(uri: Uri): Result<JsonKeyInfo> = withContext(Dispatchers.IO) {

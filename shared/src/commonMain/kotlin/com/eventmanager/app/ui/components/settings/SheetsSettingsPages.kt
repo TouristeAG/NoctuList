@@ -6,7 +6,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -15,6 +20,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -24,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import com.eventmanager.app.data.remote.MigrationDirection
 import com.eventmanager.app.resources.*
 import com.eventmanager.app.ui.setup.FirebaseSetupAssistant
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -43,8 +50,10 @@ fun SheetsConnectionPage(
     onOpenGuide: () -> Unit,
     keyActions: @Composable ColumnScope.() -> Unit,
     sheetNameFields: @Composable ColumnScope.() -> Unit,
+    showTitle: Boolean = true,
 ) {
     SettingsPage(
+        showTitle = showTitle,
         title = stringResource(Res.string.sync_connection_page_title),
         subtitle = stringResource(Res.string.sync_sheets_connection_subtitle),
     ) {
@@ -97,9 +106,7 @@ fun SheetsConnectionPage(
                         bottom = SettingsKitDefaults.RowVerticalPadding,
                     ),
             ) {
-                Button(onClick = onSave, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(Res.string.save))
-                }
+                SaveButton(onSave)
             }
             SettingsDivider()
             SettingsRow(
@@ -144,8 +151,8 @@ fun SheetsConnectionPage(
  * test, the automatic sync frequency, and the switch to Firebase. Sheets sync runs on a timer, so
  * these manual controls exist only in this mode.
  *
- * [syncIntervalMinutes] is the stored value; the menu shows its nearest option and
- * [onSyncIntervalChange] runs only when the user picks one.
+ * [syncIntervalMinutes] is the stored value; the menu shows it as it is (even when it is not one
+ * of the options) and [onSyncIntervalChange] runs only when the user picks one.
  */
 @Composable
 fun SheetsSyncPage(
@@ -154,15 +161,17 @@ fun SheetsSyncPage(
     syncIntervalMinutes: Int,
     onSyncIntervalChange: (Int) -> Unit,
     onTestSyncStatus: () -> Unit,
+    showTitle: Boolean = true,
 ) {
     SettingsPage(
+        showTitle = showTitle,
         title = stringResource(Res.string.sync_sheets_page_title),
         subtitle = stringResource(Res.string.sync_sheets_sync_subtitle),
     ) {
         SettingsBlock(title = stringResource(Res.string.sync_connection_status_title)) {
             SettingsRow(
                 title = stringResource(Res.string.sync_sheets_sync_now),
-                subtitle = lastSyncText(b.lastSyncAt),
+                subtitle = lastSyncText(b.lastSyncAt, rememberMinuteClock()),
                 enabled = !isSyncing,
                 onClick = b.onSyncNow,
                 trailing = if (isSyncing) {
@@ -213,10 +222,37 @@ fun SheetsSyncPage(
     }
 }
 
+/** "Enregistrer", which confirms in place ("Enregistré" with a check) for two seconds. */
 @Composable
-private fun lastSyncText(lastSyncAt: Long): String {
+private fun SaveButton(onSave: () -> Unit) {
+    var saved by remember { mutableStateOf(false) }
+    LaunchedEffect(saved) {
+        if (saved) {
+            delay(2000)
+            saved = false
+        }
+    }
+    Button(
+        onClick = {
+            onSave()
+            saved = true
+        },
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        if (saved) {
+            Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(Res.string.sync_sheets_saved))
+        } else {
+            Text(stringResource(Res.string.save))
+        }
+    }
+}
+
+@Composable
+private fun lastSyncText(lastSyncAt: Long, nowMillis: Long): String {
     if (lastSyncAt <= 0L) return stringResource(Res.string.sync_sheets_never_synced)
-    val age = exportAge(lastSyncAt, System.currentTimeMillis())
+    val age = exportAge(lastSyncAt, nowMillis)
     return when (age.unit) {
         ExportAgeUnit.NOW -> stringResource(Res.string.sync_sheets_last_sync_now)
         ExportAgeUnit.MINUTES -> stringResource(Res.string.sync_sheets_last_sync_minutes, age.count)
@@ -228,7 +264,7 @@ private fun lastSyncText(lastSyncAt: Long): String {
 @Composable
 private fun SheetsFrequencyRow(stored: Int, onPick: (Int) -> Unit) {
     var open by remember { mutableStateOf(false) }
-    val current = nearestSheetsSyncMinutes(stored)
+    val current = sheetsSyncMinutesShown(stored)
     SettingsRow(
         title = stringResource(Res.string.sync_backup_frequency),
         trailing = {

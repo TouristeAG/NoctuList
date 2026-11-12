@@ -2537,4 +2537,5 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="sync_sheets_auto_title">Synchronizatio sponte</string>
     <string name="sync_sheets_every_minute">Singulis minutis</string>
     <string name="sync_sheets_every_minutes">Singulis %1$d minutis</string>
+    <string name="sync_sheets_saved">Servatum</string>
 </resources>

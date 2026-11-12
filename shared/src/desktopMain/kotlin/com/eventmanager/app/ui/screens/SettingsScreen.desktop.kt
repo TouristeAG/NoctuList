@@ -283,7 +283,6 @@ actual fun SettingsScreen(
     val guestFormsEnabled by viewModel.guestFormsEnabled.collectAsState()
     val billeterieSendEnabled by viewModel.announcementsBilleterieSendEnabled.collectAsState()
 
-    val saveLabel = stringResource(Res.string.save)
     val gmailAuthSuccessMsg = stringResource(Res.string.email_gmail_auth_success)
     val gmailNotSignedInMsg = stringResource(Res.string.email_gmail_not_signed_in)
     val gmailRevokedMsg = stringResource(Res.string.email_gmail_auth_revoked)
@@ -315,7 +314,6 @@ actual fun SettingsScreen(
         settingsManager.saveTransfersSheet(transfersSheet.trim())
         settingsManager.saveTempGuestListSheet(tempGuestListSheet.trim())
         settingsManager.saveSettingsSheet(settingsSheet.trim())
-        showPlatformToast(platformContext, saveLabel)
     }
 
     LaunchedEffect(selectedSection) {
@@ -381,7 +379,7 @@ actual fun SettingsScreen(
                 icon = Icons.Default.CloudSync,
             ) {
                 if (isFirebaseBackend) {
-                    com.eventmanager.app.ui.components.settings.SyncConnectionPage(syncBindings)
+                    com.eventmanager.app.ui.components.settings.SyncConnectionPage(syncBindings, showTitle = false)
                 } else {
                     com.eventmanager.app.ui.components.settings.SheetsConnectionPage(
                         spreadsheetId = spreadsheetId,
@@ -426,7 +424,7 @@ actual fun SettingsScreen(
                     title = stringResource(Res.string.sync_team_page_title),
                     icon = Icons.Default.Group,
                 ) {
-                    com.eventmanager.app.ui.components.settings.SyncTeamPage(syncBindings)
+                    com.eventmanager.app.ui.components.settings.SyncTeamPage(syncBindings, showTitle = false)
                 }
                 DesktopSettingsCategory(
                     section = DesktopSettingsNav.SyncOnline,
@@ -434,7 +432,7 @@ actual fun SettingsScreen(
                     title = stringResource(Res.string.sync_online_page_title),
                     icon = Icons.Default.Public,
                 ) {
-                    com.eventmanager.app.ui.components.settings.SyncOnlinePage(syncBindings)
+                    com.eventmanager.app.ui.components.settings.SyncOnlinePage(syncBindings, showTitle = false)
                 }
                 DesktopSettingsCategory(
                     section = DesktopSettingsNav.SyncBackup,
@@ -442,7 +440,7 @@ actual fun SettingsScreen(
                     title = stringResource(Res.string.sync_backup_page_title),
                     icon = Icons.Default.Backup,
                 ) {
-                    com.eventmanager.app.ui.components.settings.SyncBackupPage(syncBindings)
+                    com.eventmanager.app.ui.components.settings.SyncBackupPage(syncBindings, showTitle = false)
                 }
             } else {
                 DesktopSettingsCategory(
@@ -461,6 +459,7 @@ actual fun SettingsScreen(
                             viewModel.updateSyncInterval()
                         },
                         onTestSyncStatus = { viewModel.testSyncStatus() },
+                        showTitle = false,
                     )
                 }
             }

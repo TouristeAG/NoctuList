@@ -34,9 +34,10 @@ import org.jetbrains.compose.resources.stringResource
  * level, so only org admins can use them; others see a read-only notice.
  */
 @Composable
-fun SyncBackupPage(b: SyncSettingsBindings) {
+fun SyncBackupPage(b: SyncSettingsBindings, showTitle: Boolean = true) {
     val signedIn = !b.authEmail.isNullOrBlank()
     SettingsPage(
+        showTitle = showTitle,
         title = stringResource(Res.string.sync_backup_page_title),
         subtitle = stringResource(Res.string.sync_backup_page_subtitle),
         readOnlyNotice = if (!b.isOrgAdmin && signedIn) stringResource(Res.string.sync_read_only_notice) else null,
@@ -77,7 +78,7 @@ private fun MirrorBlock(b: SyncSettingsBindings, canEdit: Boolean) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(end = SettingsKitDefaults.RowHorizontalPadding),
+                        .padding(horizontal = SettingsKitDefaults.RowHorizontalPadding),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     SaveOnBlurField(
@@ -102,7 +103,7 @@ private fun MirrorBlock(b: SyncSettingsBindings, canEdit: Boolean) {
                 )
                 SettingsRow(
                     title = stringResource(Res.string.sync_backup_export_now),
-                    subtitle = lastExportText(lastExportAt),
+                    subtitle = lastExportText(lastExportAt, rememberMinuteClock()),
                     enabled = canEdit && keyReady && spreadsheetId.isNotBlank() && !exporting,
                     onClick = {
                         exporting = true
@@ -122,7 +123,7 @@ private fun MirrorBlock(b: SyncSettingsBindings, canEdit: Boolean) {
                     },
                 )
                 SettingsRow(
-                    title = stringResource(Res.string.setup_json_key_description),
+                    title = stringResource(Res.string.sync_sheets_key_title),
                     subtitle = if (keyReady) {
                         stringResource(Res.string.migration_service_account_ok)
                     } else {
@@ -133,6 +134,7 @@ private fun MirrorBlock(b: SyncSettingsBindings, canEdit: Boolean) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(
+                            start = SettingsKitDefaults.RowHorizontalPadding,
                             end = SettingsKitDefaults.RowHorizontalPadding,
                             bottom = SettingsKitDefaults.RowVerticalPadding,
                         ),
@@ -157,9 +159,9 @@ private fun MirrorBlock(b: SyncSettingsBindings, canEdit: Boolean) {
 }
 
 @Composable
-private fun lastExportText(lastExportAt: Long): String? {
+private fun lastExportText(lastExportAt: Long, nowMillis: Long): String? {
     if (lastExportAt <= 0L) return null
-    val age = exportAge(lastExportAt, System.currentTimeMillis())
+    val age = exportAge(lastExportAt, nowMillis)
     return when (age.unit) {
         ExportAgeUnit.NOW -> stringResource(Res.string.sync_backup_last_export_now)
         ExportAgeUnit.MINUTES -> stringResource(Res.string.sync_backup_last_export_minutes, age.count)
@@ -229,6 +231,7 @@ private fun SheetNames(b: SyncSettingsBindings, canEdit: Boolean) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(
+                    start = SettingsKitDefaults.RowHorizontalPadding,
                     end = SettingsKitDefaults.RowHorizontalPadding,
                     bottom = SettingsKitDefaults.RowVerticalPadding,
                 ),

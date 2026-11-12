@@ -11,7 +11,6 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,9 +32,10 @@ import org.jetbrains.compose.resources.stringResource
  * setting of the whole organization, so only org admins can use them; others see a read-only notice.
  */
 @Composable
-fun SyncOnlinePage(b: SyncSettingsBindings) {
+fun SyncOnlinePage(b: SyncSettingsBindings, showTitle: Boolean = true) {
     val signedIn = !b.authEmail.isNullOrBlank()
     SettingsPage(
+        showTitle = showTitle,
         title = stringResource(Res.string.sync_online_page_title),
         subtitle = stringResource(Res.string.sync_online_page_subtitle),
         readOnlyNotice = if (!b.isOrgAdmin && signedIn) stringResource(Res.string.sync_read_only_notice) else null,
@@ -52,23 +52,21 @@ private fun PublicSiteBlock(b: SyncSettingsBindings) {
         title = title,
         help = HelpContent(title = title, body = stringResource(Res.string.sync_online_site_help)),
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(
-                horizontal = SettingsKitDefaults.RowHorizontalPadding,
-                vertical = SettingsKitDefaults.RowVerticalPadding,
-            ),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            if (b.guestFormSiteOrigin.isBlank()) {
-                Text(
-                    stringResource(Res.string.sync_online_site_not_published),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                TextButton(onClick = b.onOpenFirebaseGuide) {
-                    Text(stringResource(Res.string.sync_firebase_guide_title))
-                }
-            } else {
+        if (b.guestFormSiteOrigin.isBlank()) {
+            SettingsRow(title = stringResource(Res.string.sync_online_site_not_published))
+            SettingsDivider()
+            SettingsRow(
+                title = stringResource(Res.string.sync_firebase_guide_title),
+                onClick = b.onOpenFirebaseGuide,
+            )
+        } else {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(
+                    horizontal = SettingsKitDefaults.RowHorizontalPadding,
+                    vertical = SettingsKitDefaults.RowVerticalPadding,
+                ),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 CopyField(b.guestFormSiteOrigin)
                 val lastRun = portalServerLastRun(b.portalServerStatus)
                 if (lastRun != null) {

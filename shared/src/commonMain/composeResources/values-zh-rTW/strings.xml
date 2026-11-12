@@ -2532,4 +2532,5 @@
     <string name="sync_sheets_auto_title">自動同步</string>
     <string name="sync_sheets_every_minute">每分鐘</string>
     <string name="sync_sheets_every_minutes">每 %1$d 分鐘</string>
+    <string name="sync_sheets_saved">已儲存</string>
 </resources>

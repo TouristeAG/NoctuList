@@ -94,7 +94,7 @@ import org.jetbrains.compose.resources.stringResource
  * and the organisations of this device. The project settings open in [FirebaseProjectDialog].
  */
 @Composable
-fun SyncConnectionPage(b: SyncSettingsBindings) {
+fun SyncConnectionPage(b: SyncSettingsBindings, showTitle: Boolean = true) {
     val projectReady = b.projectId.isNotBlank() && b.applicationId.isNotBlank() && b.apiKey.isNotBlank()
     val orgReady = firebaseConfiguredOrgsReady(b.configuredOrgs)
     val signedIn = !b.authEmail.isNullOrBlank()
@@ -104,6 +104,7 @@ fun SyncConnectionPage(b: SyncSettingsBindings) {
     var showAddOrgDialog by remember { mutableStateOf(false) }
 
     SettingsPage(
+        showTitle = showTitle,
         title = stringResource(Res.string.sync_connection_page_title),
         subtitle = stringResource(Res.string.sync_connection_page_subtitle),
     ) {
@@ -226,6 +227,8 @@ private fun FirebaseGuideButton(onClick: () -> Unit) {
     OutlinedButton(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp),
+        // Same corners as the blocks around it.
+        shape = SettingsKitDefaults.BlockShape,
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
     ) {
         Icon(

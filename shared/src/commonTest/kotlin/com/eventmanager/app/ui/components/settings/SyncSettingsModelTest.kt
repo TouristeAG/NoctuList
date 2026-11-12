@@ -151,4 +151,13 @@ class SyncSettingsModelTest {
         assertEquals(30, nearestSheetsSyncMinutes(45))
         assertEquals(60, nearestSheetsSyncMinutes(90))
     }
+
+    @Test
+    fun sheetsSyncMenuShowsTheStoredValueItself() {
+        assertEquals(5, sheetsSyncMinutesShown(5))
+        assertEquals(10, sheetsSyncMinutesShown(10))
+        assertEquals(90, sheetsSyncMinutesShown(90))
+        assertEquals(1, sheetsSyncMinutesShown(0))
+        assertEquals(1, sheetsSyncMinutesShown(-3))
+    }
 }

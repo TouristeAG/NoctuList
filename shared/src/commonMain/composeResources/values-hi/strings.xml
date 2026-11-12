@@ -2537,4 +2537,5 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="sync_sheets_auto_title">स्वचालित सिंक</string>
     <string name="sync_sheets_every_minute">हर मिनट</string>
     <string name="sync_sheets_every_minutes">हर %1$d मिनट</string>
+    <string name="sync_sheets_saved">सहेजा गया</string>
 </resources>

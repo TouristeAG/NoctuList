@@ -36,6 +36,13 @@ val SHEETS_SYNC_MINUTES: List<Int> = listOf(1, 5, 15, 30, 60)
  */
 fun nearestSheetsSyncMinutes(stored: Int): Int = SHEETS_SYNC_MINUTES.minBy { abs(it - stored) }
 
+/**
+ * The interval the Sheets frequency menu shows for a stored value: the stored value itself when it
+ * is a real interval (an odd value such as 10 reads "Toutes les 10 minutes"), the nearest option
+ * otherwise. Nothing is written until the user picks.
+ */
+fun sheetsSyncMinutesShown(stored: Int): Int = if (stored > 0) stored else nearestSheetsSyncMinutes(stored)
+
 enum class SyncConnectionState { READY, NEEDS_SIGN_IN, NEEDS_CONFIG }
 
 fun syncConnectionState(orgReady: Boolean, projectReady: Boolean, signedIn: Boolean): SyncConnectionState =

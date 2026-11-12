@@ -71,12 +71,13 @@ import org.jetbrains.compose.resources.stringResource
  * Firestore rules stay the real barrier. Network actions run in [SyncSettingsBindings.scope].
  */
 @Composable
-fun SyncTeamPage(b: SyncSettingsBindings) {
+fun SyncTeamPage(b: SyncSettingsBindings, showTitle: Boolean = true) {
     val signedIn = !b.authEmail.isNullOrBlank()
     var showAddPerson by remember { mutableStateOf(false) }
     val invitation = remember(b.settingsManager) { InvitationCodeState(b.settingsManager.getFirebaseBootstrapCode()) }
 
     SettingsPage(
+        showTitle = showTitle,
         title = stringResource(Res.string.sync_team_page_title),
         subtitle = stringResource(Res.string.sync_team_page_subtitle),
         readOnlyNotice = if (!b.isOrgAdmin && signedIn) stringResource(Res.string.sync_read_only_notice) else null,
