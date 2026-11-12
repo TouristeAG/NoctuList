@@ -77,10 +77,12 @@ class PortalGoogleLinkProcessorTest {
             GoogleLinkDecision.Link(v, "ADMIN"),
             PortalGoogleLinkProcessor.adminMatch(adminClaim("jean@gmail.com"), listOf(v), emptyList(), null, anyAccount = true),
         )
+        // One instance: two volunteer() calls can get different lastModified values.
+        val v2 = volunteer("V2")
         assertEquals(
-            GoogleLinkDecision.Link(volunteer("V2"), "VOLUNTEER"),
+            GoogleLinkDecision.Link(v2, "VOLUNTEER"),
             PortalGoogleLinkProcessor.linkCode(
-                codeClaim("jean@other.ch"), linkRequest("PortalUidV2"), now - 1_000, now, listOf(volunteer("V2")), emptyList(), null,
+                codeClaim("jean@other.ch"), linkRequest("PortalUidV2"), now - 1_000, now, listOf(v2), emptyList(), null,
                 anyAccount = true,
             ),
         )
