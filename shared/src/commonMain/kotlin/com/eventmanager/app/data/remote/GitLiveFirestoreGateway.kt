@@ -437,7 +437,8 @@ class GitLiveFirestoreGateway(
         val firestore = db() ?: error("Firestore is not initialized")
         if (orgId.isBlank() || isFirebaseOrgAllSentinel(orgId)) return emptyList()
         val query = firestore.collection("orgs").document(orgId).collection("members")
-        val snap = runCatching { query.get(source = Source.SERVER) }.getOrElse { query.get() }
+        // Server only: mutations must never act on a cached member list.
+        val snap = query.get(source = Source.SERVER)
         return snap.documents.map { doc -> memberRecordFromSnapshot(doc) }
     }
 

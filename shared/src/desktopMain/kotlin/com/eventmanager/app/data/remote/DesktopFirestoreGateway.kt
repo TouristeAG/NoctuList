@@ -462,6 +462,39 @@ internal class DesktopFirestoreGateway(
             }
         }
 
+    /** Server-only member rows including document ids (data layer only). */
+    internal suspend fun listMemberRecords(orgId: String): List<FirestoreMemberRecord> =
+        withContext(Dispatchers.IO) {
+            if (orgId.isBlank() || isFirebaseOrgAllSentinel(orgId)) return@withContext emptyList()
+            val fromGitLive = if (transport == Transport.REST) {
+                null
+            } else {
+                try {
+                    withTimeoutOrNull(READ_TIMEOUT_MS) { gitlive.listMemberRecords(orgId) }
+                } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+                    throw e
+                } catch (e: Throwable) {
+                    markRestFallback("listMemberRecords failed: ${e.message}")
+                    null
+                }
+            }
+            if (fromGitLive != null) {
+                noteServerReachable(true)
+                return@withContext fromGitLive
+            }
+            val client = rest ?: error("NOT_READY")
+            markRestFallback("listMemberRecords")
+            client.listCollection(orgId, "members")
+                .map { (docId, data) ->
+                    FirestoreMemberRecord(
+                        uid = docId,
+                        email = data["email"]?.toString()?.trim()?.ifBlank { null },
+                        role = data["role"]?.toString()?.trim()?.ifBlank { null },
+                    )
+                }
+                .also { noteServerReachable(true) }
+        }
+
     override suspend fun writeBackendAnnouncement(
         orgId: String,
         announcement: InstitutionBackendAnnouncement,

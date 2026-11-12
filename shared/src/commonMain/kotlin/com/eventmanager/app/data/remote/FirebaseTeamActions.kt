@@ -45,7 +45,13 @@ internal fun resolveMemberUid(
     records: List<FirestoreMemberRecord>,
     email: String,
     selfUid: String?,
-): Result<String> {
+): Result<String> = resolveMemberRecord(records, email, selfUid).map { it.uid }
+
+internal fun resolveMemberRecord(
+    records: List<FirestoreMemberRecord>,
+    email: String,
+    selfUid: String?,
+): Result<FirestoreMemberRecord> {
     val wanted = email.trim().lowercase()
     if (wanted.isEmpty()) return Result.failure(IllegalStateException("NOT_FOUND"))
     val matches = records.filter { it.email?.trim()?.lowercase() == wanted }
@@ -53,21 +59,52 @@ internal fun resolveMemberUid(
         matches.isEmpty() -> Result.failure(IllegalStateException("NOT_FOUND"))
         matches.size > 1 -> Result.failure(IllegalStateException("AMBIGUOUS"))
         matches[0].uid == selfUid -> Result.failure(IllegalStateException("SELF"))
-        else -> Result.success(matches[0].uid)
+        else -> Result.success(matches[0])
     }
 }
 
-private suspend fun memberRecordsOf(gateway: FirestoreGateway, org: String): List<FirestoreMemberRecord> =
-    (gateway as? GitLiveFirestoreGateway)?.listMemberRecords(org) ?: emptyList()
+/** Like [resolveMemberRecord] but fails closed (NOT_READY) when the signed-in uid is unknown. */
+internal fun resolveMemberRecordForActor(
+    records: List<FirestoreMemberRecord>,
+    email: String,
+    selfUid: String?,
+): Result<FirestoreMemberRecord> {
+    if (selfUid.isNullOrBlank()) return Result.failure(IllegalStateException("NOT_READY"))
+    return resolveMemberRecord(records, email, selfUid)
+}
 
-private suspend fun resolveUidForEmail(
-    platformContext: PlatformContext?,
+/** Server-only member rows; NOT_READY when this gateway cannot provide them. */
+internal suspend fun serverMemberRecords(gateway: FirestoreGateway, org: String): List<FirestoreMemberRecord> =
+    platformMemberRecords(gateway, org) ?: error("NOT_READY")
+
+internal suspend fun resolveServerMember(
     gateway: FirestoreGateway,
     org: String,
     email: String,
-): String {
-    val selfUid = createFirebaseAuthService(platformContext).currentUserId()
-    return resolveMemberUid(memberRecordsOf(gateway, org), email, selfUid).getOrThrow()
+    selfUid: String?,
+): FirestoreMemberRecord {
+    if (selfUid.isNullOrBlank()) error("NOT_READY")
+    val records = try {
+        serverMemberRecords(gateway, org)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        if (isFirestorePermissionDenied(e)) error("PERMISSION")
+        if (e.message == "NOT_READY") throw e
+        error("NOT_READY")
+    }
+    return resolveMemberRecordForActor(records, email, selfUid).getOrThrow()
+}
+
+private suspend fun gatewayForMutation(
+    platformContext: PlatformContext?,
+    settings: SettingsManager,
+): Pair<String, FirestoreGateway> {
+    val org = settings.resolveWritableFirebaseOrgId()
+    if (org.isBlank()) error("NO_ORG")
+    val gateway = createFirestoreGateway(platformContext, settings)
+    if (!gateway.isAvailable()) error("NOT_READY")
+    return org to gateway
 }
 
 suspend fun FirebaseTeamActions.setRoleByEmail(
@@ -76,24 +113,25 @@ suspend fun FirebaseTeamActions.setRoleByEmail(
     email: String,
     role: MemberRole,
 ): Result<Unit> = runCatchingExceptCancellation {
-    val org = settings.resolveWritableFirebaseOrgId()
-    if (org.isBlank()) error("NO_ORG")
-    val gateway = createFirestoreGateway(platformContext, settings)
-    if (!gateway.isAvailable()) error("NOT_READY")
-    val uid = try {
-        resolveUidForEmail(platformContext, gateway, org, email)
+    val (org, gateway) = gatewayForMutation(platformContext, settings)
+    val selfUid = createFirebaseAuthService(platformContext).currentUserId()
+    val member = resolveServerMember(gateway, org, email, selfUid)
+    // Only update: never re-create a member removed in the meantime.
+    val stillThere = try {
+        gateway.readMemberRoleFromServer(org, member.uid)
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
         if (isFirestorePermissionDenied(e)) error("PERMISSION")
-        throw e
+        error("NOT_READY")
     }
+    if (stillThere == null) error("NOT_FOUND")
     MemberRoleAdmin.assignTeamMember(
         gateway = gateway,
         orgId = org,
-        uid = uid,
+        uid = member.uid,
         role = role,
-        email = email.trim(),
+        email = member.email ?: email.trim(),
         allowedEmailDomains = settings.getAllowedEmailDomains(),
     )
 }
@@ -103,13 +141,11 @@ suspend fun FirebaseTeamActions.removeMemberByEmail(
     settings: SettingsManager,
     email: String,
 ): Result<Unit> = runCatchingExceptCancellation {
-    val org = settings.resolveWritableFirebaseOrgId()
-    if (org.isBlank()) error("NO_ORG")
-    val gateway = createFirestoreGateway(platformContext, settings)
-    if (!gateway.isAvailable()) error("NOT_READY")
+    val (org, gateway) = gatewayForMutation(platformContext, settings)
+    val selfUid = createFirebaseAuthService(platformContext).currentUserId()
+    val member = resolveServerMember(gateway, org, email, selfUid)
     try {
-        val uid = resolveUidForEmail(platformContext, gateway, org, email)
-        gateway.deleteDocument(org, "members", uid)
+        gateway.deleteDocument(org, "members", member.uid)
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
