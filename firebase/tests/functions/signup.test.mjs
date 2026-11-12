@@ -206,6 +206,29 @@ describe("onSignupWritten", () => {
     assert.ok(status.lastRunAt >= before);
   });
 
+  test("signupWritesQrDoc", async () => {
+    const org = await newOrg();
+    const uid = "qrUid0000001";
+    const ref = await submit(org, newFormId(), submission(uid, { lastName: "Martin" }));
+    await waitProcessed(ref);
+    const [v] = await volunteers(org);
+    const qr = (await db.doc(`orgs/${org}/volunteerPortalQr/${uid}`).get()).data();
+    assert.ok(qr, "QR document written");
+    assert.equal(qr.schema, 1);
+    assert.equal(qr.payload, v.id);
+    assert.equal(qr.name, "Léa MARTIN");
+  });
+
+  test("signupSkipsQrDocWhenSettingOff", async () => {
+    const org = await newOrg();
+    await db.doc(`orgs/${org}/institutionSettings/volunteer_portal_qr_enabled`).set({ value: "false", lastModified: Date.now() });
+    const uid = "qrOffUid0001";
+    const ref = await submit(org, newFormId(), submission(uid));
+    await waitProcessed(ref);
+    assert.equal((await db.doc(`orgs/${org}/volunteerPortal/${uid}`).get()).exists, true);
+    assert.equal((await db.doc(`orgs/${org}/volunteerPortalQr/${uid}`).get()).exists, false);
+  });
+
   test("projectionUsesInstitutionCurrencyAndAssociationFallback", async () => {
     const org = await newOrg({ association: null });
     await db.doc(`orgs/${org}/institutionSettings/currency_code`).set({ value: " eur ", lastModified: Date.now() });
