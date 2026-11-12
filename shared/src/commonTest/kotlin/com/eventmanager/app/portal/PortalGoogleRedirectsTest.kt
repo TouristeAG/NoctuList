@@ -39,4 +39,28 @@ class PortalGoogleRedirectsTest {
         )
         assertEquals("", PortalGoogleRedirects.credentialsUrl(""))
     }
+
+    @Test
+    fun typedCustomDomainBecomesAnOriginUnlessItIsADefaultSite() {
+        assertEquals("https://benevoles.asso.ch", PortalGoogleRedirects.customOrigin("asso-prod", " Benevoles.asso.ch "))
+        assertEquals("https://benevoles.asso.ch", PortalGoogleRedirects.customOrigin("asso-prod", "https://benevoles.asso.ch/v/org1"))
+        assertEquals(null, PortalGoogleRedirects.customOrigin("asso-prod", "asso-prod.web.app"))
+        assertEquals(null, PortalGoogleRedirects.customOrigin("asso-prod", "http://benevoles.asso.ch"))
+        assertEquals(null, PortalGoogleRedirects.customOrigin("asso-prod", "pas un domaine"))
+        assertEquals(null, PortalGoogleRedirects.customOrigin("asso-prod", ""))
+    }
+
+    @Test
+    fun consoleLinksNeedValidIds() {
+        assertEquals(
+            "https://console.cloud.google.com/apis/credentials/oauthclient/123-abc.apps.googleusercontent.com?project=asso-prod",
+            PortalGoogleRedirects.oauthClientUrl("asso-prod", "123-abc.apps.googleusercontent.com"),
+        )
+        assertEquals("", PortalGoogleRedirects.oauthClientUrl("asso-prod", "not-a-client"))
+        assertEquals(
+            "https://console.firebase.google.com/project/asso-prod/authentication/settings",
+            PortalGoogleRedirects.authorizedDomainsUrl("asso-prod"),
+        )
+        assertEquals("", PortalGoogleRedirects.authorizedDomainsUrl(""))
+    }
 }

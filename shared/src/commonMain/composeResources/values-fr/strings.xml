@@ -2055,6 +2055,11 @@
     <string name="desktop_qr_opening_camera">Ouverture de la caméra…</string>
     <string name="desktop_qr_point_at_code">Présentez le code QR devant la caméra</string>
     <string name="desktop_qr_opening_file_picker">Choisissez un fichier image…</string>
+    <string name="desktop_qr_dialog_title">Scanner un code QR</string>
+    <string name="desktop_qr_option_camera_title">Utiliser la caméra</string>
+    <string name="desktop_qr_option_image_title">Importer une image</string>
+    <string name="desktop_qr_reader_hint">Vous pouvez aussi passer une carte sur le lecteur externe.</string>
+    <string name="desktop_qr_other_method">Choisir une autre méthode</string>
 
     <!-- Hardcoded / desktop / POS message strings (i18n) -->
     <string name="account_reversal_description">Annulation : %1$s</string>
@@ -2357,7 +2362,9 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="portal_google_not_found">Domaine introuvable</string>
     <string name="portal_google_error">Vérification impossible, réessayez</string>
     <string name="portal_google_enable">Permettre aux bénévoles de se connecter avec un compte Google</string>
-    <string name="portal_google_needs_domain">Ajoutez un domaine géré par Google Workspace pour activer cette option</string>
+    <string name="portal_google_needs_domain">Ajoutez au moins un domaine pour que les bénévoles puissent se connecter avec Google</string>
+    <string name="portal_google_scope_all">Tous les comptes Google</string>
+    <string name="portal_google_scope_internal">Comptes Google de l\'association uniquement</string>
     <string name="portal_show_logo">Afficher le logo de l\'association</string>
     <string name="portal_show_logo_hint">À côté du nom de l\'association, en haut de la plateforme bénévole. C\'est le logo défini dans Réglages, E-mail.</string>
     <string name="setup_google_redirects">URI de redirection autorisés</string>
@@ -2479,9 +2486,16 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="setup_manual_server">1. Forfait Blaze, puis une alerte de budget : Google Cloud Console, Billing, Budgets &amp; alerts, par exemple 5 €.\n2. Sur le compte Gmail de l\'association, activez la validation en deux étapes, puis créez un mot de passe d\'application sur https://myaccount.google.com/apppasswords.\n3. Trouvez la région : Firestore Database affiche l\'emplacement en haut. eur3 correspond à europe-west1, nam5 à us-central1, europe-west6 (Zurich) reste europe-west6.\n4. Exportez à nouveau le site et décompressez-le. Ouvrez le Terminal dans le dossier et collez les commandes ci-dessous.\n• La ligne du secret demande le mot de passe d\'application. Collez-le et appuyez sur Entrée (rien ne s\'affiche pendant la saisie).\n• Le déploiement demande GMAIL_USER (l\'adresse Gmail) et REGION (point 3).\nSi vous voyez « Secret Manager API has not been used » : ouvrez le lien du message, cliquez sur Activer, attendez 2 minutes, puis collez à nouveau les deux dernières lignes.\nSi vous voyez « Eventarc Service Agent » : Google se prépare encore. Attendez 5 minutes et collez à nouveau la ligne du déploiement.\nSi vous voyez « Blaze » ou « billing » : le projet n\'est pas encore au forfait Blaze.</string>
     <string name="setup_manual_server_cleanup">5. Une fois le déploiement réussi, collez cette ligne une seule fois pour que les anciennes versions soient supprimées automatiquement. Remplacez europe-west1 si votre région est différente.</string>
     <string name="setup_step_google_title">Connexion Google des bénévoles</string>
-    <string name="setup_step_google_purpose">Seulement si les bénévoles se connectent à leur espace avec un compte Google de l\'association. Ouvrez la page Identifiants, ajoutez les adresses ci-dessous au client OAuth utilisé par Firebase, enregistrez, puis appuyez sur C\'est fait.</string>
-    <string name="setup_manual_google">Seulement si les bénévoles se connectent à leur espace avec un compte Google de l\'association. 1. Console Firebase, Authentication, Sign-in method, Google : ouvrez Configuration du SDK Web et notez l\'ID client Web. 2. Google Cloud, API et services, Identifiants : ouvrez le client OAuth qui a cet ID. Ajoutez les adresses ci-dessous dans URI de redirection autorisés et dans Origines JavaScript autorisées, puis enregistrez. Si la plateforme bénévole utilise votre propre domaine, ajoutez aussi https://votre-domaine/__/auth/handler et https://votre-domaine. Sans cette étape, Google affiche redirect_uri_mismatch. Le changement peut prendre quelques minutes.</string>
+    <string name="setup_step_google_purpose">Seulement si les bénévoles se connectent à leur espace avec un compte Google de l\'association. Ajoutez les adresses ci-dessous au client OAuth utilisé par Firebase, enregistrez, puis appuyez sur C\'est fait.</string>
+    <string name="setup_manual_google">Seulement si les bénévoles se connectent à leur espace avec un compte Google de l\'association. Sans cette étape, Google affiche redirect_uri_mismatch. Le changement peut prendre quelques minutes.</string>
     <string name="setup_google_secret">Si Google répond ensuite auth/invalid-credential, le secret enregistré dans Firebase ne correspond pas à ce client. Dans Google Cloud, ouvrez le client et cliquez sur Ajouter un secret, sans supprimer l\'ancien : les appareils de l\'équipe l\'utilisent encore. Collez le nouveau secret dans Firebase, Authentication, Google, Configuration du SDK Web, Code secret du client Web, puis enregistrez.</string>
+    <string name="setup_google_open_domains">Ouvrir les domaines autorisés</string>
+    <string name="setup_google_domain_step">2. Firebase : ajoutez ce domaine aux domaines autorisés</string>
+    <string name="setup_google_open_provider">Ouvrir Google dans Firebase</string>
+    <string name="setup_google_find_client">L\'ID client Web se trouve dans Firebase, Authentication, Google, Configuration du SDK Web. Dans Google Cloud, ouvrez le client OAuth qui a cet ID.</string>
+    <string name="setup_google_open_client">Ouvrir le client OAuth</string>
+    <string name="setup_google_client_step">1. Client OAuth : ajoutez chaque adresse, puis enregistrez</string>
+    <string name="setup_google_domain_field">Domaine propre de l\'espace bénévole (facultatif)</string>
     <string name="firebase_tutorial_copy_redirect_uris">Copier les URI localhost</string>
     <string name="firebase_tutorial_copy_redirect_uris_done">Copié. Collez chaque URI dans « URI de redirection autorisées », puis Enregistrer</string>
     <string name="setup_redirect_note">Dans ce client Web, sous « URI de redirection autorisés », ajoutez les adresses ci-dessous (bouton copier), puis Enregistrer. Attendez une minute avant de vous connecter.</string>
@@ -2491,6 +2505,7 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="setup_login_finish">Terminer la connexion</string>
     <string name="setup_btn_run_again">Relancer</string>
     <string name="portal_access_google_title">Compte Google associatif</string>
+    <string name="portal_access_google_title_any">Compte Google</string>
     <string name="portal_access_google_hint">Adresse Google</string>
     <string name="portal_access_google_pending">En attente de la première connexion</string>
     <string name="portal_access_google_linked">Lié</string>
@@ -2498,6 +2513,7 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="portal_access_google_err_domain">Cette adresse n\'est pas dans les domaines autorisés</string>
     <string name="portal_access_google_err_taken">Cette adresse est déjà associée à un autre bénévole</string>
     <string name="portal_access_google_err_same_as_email">Utilise l\'adresse de l\'association, pas l\'adresse personnelle du bénévole.</string>
+    <string name="portal_access_google_err_same_as_email_any">Cette adresse sert déjà à la connexion par mot de passe. Indique un autre compte Google.</string>
     <string name="portal_access_google_err_invalid">Adresse invalide</string>
     <string name="portal_access_google_err_save">L\'enregistrement a échoué, réessayez.</string>
     <string name="portal_access_google_remove_title">Retirer le compte Google ?</string>

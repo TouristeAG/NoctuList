@@ -100,6 +100,12 @@ object InstitutionSettingsKeys {
     const val VOLUNTEER_PORTAL_GOOGLE_ENABLED = "volunteer_portal_google_enabled"
     const val VOLUNTEER_PORTAL_GOOGLE_DOMAINS = "volunteer_portal_google_domains"
 
+    /**
+     * `"true"`: every Google account may sign in (personal ones too), the domain list is ignored.
+     * Missing or `"false"`: only the verified domains above. The Firestore rules read it too.
+     */
+    const val VOLUNTEER_PORTAL_GOOGLE_ANY_ACCOUNT = "volunteer_portal_google_any_account"
+
     /** Show the association logo next to its name at the top of the volunteer portal. On by default. */
     const val VOLUNTEER_PORTAL_SHOW_LOGO = "volunteer_portal_show_logo"
 
@@ -193,6 +199,7 @@ object InstitutionSettingsKeys {
         VOLUNTEER_PORTAL_GOOGLE_ENABLED,
         VOLUNTEER_PORTAL_SHOW_LOGO,
         VOLUNTEER_PORTAL_GOOGLE_DOMAINS,
+        VOLUNTEER_PORTAL_GOOGLE_ANY_ACCOUNT,
     ) + TEMP_GUEST_KEYS + GUEST_FORM_KEYS + BACKEND_KEYS + SHEETS_MIRROR_KEYS
 
     /**
@@ -207,6 +214,7 @@ object InstitutionSettingsKeys {
         VOLUNTEER_PORTAL_GOOGLE_ENABLED,
         VOLUNTEER_PORTAL_SHOW_LOGO,
         VOLUNTEER_PORTAL_GOOGLE_DOMAINS,
+        VOLUNTEER_PORTAL_GOOGLE_ANY_ACCOUNT,
     ) + TEMP_GUEST_KEYS + GUEST_FORM_KEYS
 
     fun isSyncedToSheets(key: String): Boolean = key !in FIREBASE_ONLY_KEYS

@@ -912,7 +912,6 @@ function portalView(payload, now) {
     // Past shifts left out of the list by the 60 cap still count in the total.
     const older = Math.max(0, Number(payload.olderShifts) || 0);
     return {
-      active: Boolean(step?.active),
       totalShifts: past.length + older,
       lastShiftAt: lastShiftAt(payload, now),
       entries: Number(step?.uniqueEntriesRemaining) || 0,
@@ -925,7 +924,6 @@ function portalView(payload, now) {
   }
   const list = Array.isArray(payload.benefits) ? payload.benefits : [];
   return {
-    active: Boolean(payload.active),
     totalShifts: Number(payload.totalShifts) || 0,
     lastShiftAt: Number(payload.lastShiftAt) || 0,
     entries: Number(payload.uniqueEntriesRemaining) || 0,
@@ -935,17 +933,6 @@ function portalView(payload, now) {
     past: Array.isArray(payload.shifts) ? payload.shifts : [],
     moreShifts: Math.max(0, (Number(payload.shiftsTotal) || 0) - (Array.isArray(payload.shifts) ? payload.shifts.length : 0)),
   };
-}
-
-function infoTile(view) {
-  const card = tile("info", t("volunteerInfo"), "star", { alt: true });
-  const status = el("span", { class: `status-dot${view.active ? " on" : ""}`, text: view.active ? t("active") : t("inactive") });
-  card.append(kv([
-    [t("status"), status],
-    [t("totalShifts"), String(view.totalShifts)],
-    [t("lastShift"), view.lastShiftAt ? fmtDate(view.lastShiftAt) : "-"],
-  ]));
-  return card;
 }
 
 /** Schema 1: the combined benefits as the door and bar apply them, or a merge of the list. */
@@ -963,36 +950,36 @@ function benefitSummary(list, payload) {
   }), { freeEntry: false, friendInvitation: false, inviteCount: 0, drinkTokens: 0, barDiscount: 0, guestListAccess: false, validUntil: 0 });
 }
 
-/** One line of "Right now": what the volunteer gets, then how much. */
-function perkRow(label, value) {
-  return el("li", {}, el("span", { class: "perk-name", text: label }), el("span", { class: "perk-amount", text: value }));
+/** One line of "Right now": what the volunteer gets, then how much when it is counted. */
+function perkRow(label, value = "") {
+  return el("li", {},
+    el("span", { class: "perk-name", text: label }),
+    value ? el("span", { class: "perk-amount", text: value }) : null);
 }
 
 function benefitsTile(view) {
   const card = tile("benefits", t("benefits"), "gift");
   const list = view.benefits;
   const entries = view.entries;
+  const s = view.summary;
+  // Invitations come with the unique entries: shown together, not as a separate perk.
+  const invites = s ? Number(s.inviteCount) || (s.friendInvitation ? 1 : 0) : 0;
   if (entries > 0) {
+    const title = invites > 0 ? `${t("uniqueEntries")} (${t("withInvites", { n: invites })})` : t("uniqueEntries");
     card.append(el("div", { class: "entries-banner" },
       el("div", { class: "entries-count", text: String(entries) }),
       el("div", {},
-        el("div", { class: "entries-title", text: t("uniqueEntries") }),
+        el("div", { class: "entries-title", text: title }),
         el("div", { class: "entries-hint", text: t("uniqueEntriesHint") }))));
   }
-  if (!list.length) {
-    if (!entries) card.append(el("p", { class: "empty", text: t("noBenefits") }));
-    return card;
-  }
-  const s = view.summary;
+  // Drink tokens stay out: the bar applies them, the volunteer has nothing to do with the number.
   const perks = [];
-  if (s) {
-    if (s.freeEntry) perks.push(perkRow(t("perkFreeEntry"), t("included")));
-    const invites = Number(s.inviteCount) || (s.friendInvitation ? 1 : 0);
-    if (invites > 0) perks.push(perkRow(t("perkInvites"), `+${invites}`));
-    if (Number(s.drinkTokens) > 0) perks.push(perkRow(t("perkDrinks"), String(s.drinkTokens)));
+  if (s && list.length) {
+    if (s.freeEntry) perks.push(perkRow(t("perkFreeEntry")));
+    if (invites > 0 && entries <= 0) perks.push(perkRow(t("perkInvites"), `+${invites}`));
     if (Number(s.barDiscount) > 0) perks.push(perkRow(t("perkBarDiscount"), `${s.barDiscount} %`));
     // Free entry already gets you in: the guest list only matters without it.
-    if (s.guestListAccess && !s.freeEntry) perks.push(perkRow(t("perkGuestList"), t("included")));
+    if (s.guestListAccess && !s.freeEntry) perks.push(perkRow(t("perkGuestList")));
   }
   if (perks.length) {
     const until = Number(s.validUntil) || Math.max(0, ...list.map((b) => Number(b.validUntil) || 0));
@@ -1000,34 +987,19 @@ function benefitsTile(view) {
       el("h3", { class: "list-title", text: t("nowTitle") }),
       until ? el("span", { class: "until", text: t("untilShort", { date: fmtDate(until) }) }) : null));
     card.append(el("ul", { class: "perk-list" }, perks));
+  } else if (!entries) {
+    card.append(el("p", { class: "empty", text: t("noBenefits") }));
   }
-  const ul = el("ul", { class: "list benefit-list" });
-  list.forEach((b) => {
-    ul.append(el("li", {},
-      el("span", { class: "grow meta-line", text: benefitLine(b) }),
-      b.validUntil ? el("span", { class: "until", text: t("untilShort", { date: fmtDate(b.validUntil) }) }) : null));
-  });
-  card.append(ul);
   return card;
-}
-
-/**
- * A benefit in the visitor's language. The app's own `description` is English and stays unused:
- * the structured fields say the same thing.
- */
-function benefitLine(b) {
-  const text = gainsText(b);
-  const entries = Number(b.futureEntriesRemaining) || 0;
-  const extra = entries > 0 ? `${entries} ${t("perkSingleEntries")}` : "";
-  return [text, extra].filter(Boolean).join(" · ") || t("perkSpecial");
 }
 
 /** Compact one-line wording of a benefit, using the same labels as "Right now". */
 function gainsText(b) {
   const parts = [];
-  if (b.freeEntry) parts.push(t("perkFreeEntry"));
   const invites = Number(b.inviteCount) || (b.friendInvitation ? 1 : 0);
-  if (invites > 0) parts.push(`+${invites} ${t("perkInvites")}`);
+  // The +n guests come in with the free entry: "Free entry (+2)".
+  if (b.freeEntry) parts.push(invites > 0 ? `${t("perkFreeEntry")} (+${invites})` : t("perkFreeEntry"));
+  else if (invites > 0) parts.push(`+${invites} ${t("perkInvites")}`);
   if (Number(b.drinkTokens) > 0) parts.push(`${b.drinkTokens} ${t("perkDrinks")}`);
   if (Number(b.barDiscount) > 0) parts.push(`${b.barDiscount} % ${t("perkBarDiscount")}`);
   if (b.guestListAccess && !b.freeEntry) parts.push(t("perkGuestList"));
@@ -1108,6 +1080,15 @@ function upcomingTile(view) {
 function historyTile(view) {
   const list = view.past;
   const card = tile("history", t("history"), "clock", { alt: true });
+  if (view.totalShifts > 0 || view.lastShiftAt) {
+    card.append(el("div", { class: "stat-row" },
+      el("div", { class: "stat" },
+        el("div", { class: "value", text: String(view.totalShifts) }),
+        el("div", { class: "label", text: t("totalShifts") })),
+      el("div", { class: "stat" },
+        el("div", { class: "value", text: view.lastShiftAt ? fmtDate(view.lastShiftAt) : "-" }),
+        el("div", { class: "label", text: t("lastShift") }))));
+  }
   if (!list.length) {
     card.append(el("p", { class: "empty", text: t("noShifts") }));
     return card;
@@ -1320,7 +1301,6 @@ function renderDashboard() {
   clear(dash);
   const tiles = {
     profile: profileTile(),
-    info: infoTile(view),
     benefits: benefitsTile(view),
     wallet: walletTile(),
     upcoming: upcomingTile(view),
@@ -1330,13 +1310,13 @@ function renderDashboard() {
   dash.className = `dash cols-${columns}`;
   const col = (...names) => el("div", { class: "col" }, names.map((n) => tiles[n]).filter(Boolean));
   if (columns === 1) {
-    dash.append(col("profile", "info", "benefits", "wallet", "upcoming", "history"));
+    dash.append(col("profile", "benefits", "wallet", "upcoming", "history"));
   } else if (columns === 2) {
-    dash.append(col("profile", "info", "upcoming"), col("benefits", "wallet"));
+    dash.append(col("profile", "upcoming"), col("benefits", "wallet"));
     tiles.history.classList.add("full");
     dash.append(tiles.history);
   } else {
-    dash.append(col("profile", "info", "upcoming"), col("benefits", "wallet"), col("history"));
+    dash.append(col("profile", "upcoming"), col("benefits", "wallet"), col("history"));
   }
   ensurePhoto();
 }

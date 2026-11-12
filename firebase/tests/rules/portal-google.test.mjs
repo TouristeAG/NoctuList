@@ -124,6 +124,27 @@ describe("volunteerPortal through a Google account", () => {
     await assertFails(setDoc(doc(google("g9", "g9@gmail.com").firestore(), path("portalGoogleClaims/g9")), claim("ADMIN_MATCH", "g9@gmail.com")));
   });
 
+  test("any-account mode accepts every verified Google account, gmail.com included", async () => {
+    await setSetting("volunteer_portal_google_domains", "");
+    await setSetting("volunteer_portal_google_any_account", "true");
+    await assertSucceeds(getDoc(doc(google("g1", "g1@gmail.com").firestore(), path("volunteerPortal/vol1"))));
+    await assertSucceeds(getDoc(doc(google("g1", "g1@other.example").firestore(), path("volunteerPortal/vol1"))));
+    await assertSucceeds(setDoc(doc(google("g9", "g9@gmail.com").firestore(), path("portalGoogleClaims/g9")), claim("ADMIN_MATCH", "g9@gmail.com")));
+    // Still needs the main switch and a verified address.
+    const unverified = env.authenticatedContext("g1", {
+      email: "g1@gmail.com", email_verified: false, firebase: { sign_in_provider: "google.com" },
+    });
+    await assertFails(getDoc(doc(unverified.firestore(), path("volunteerPortal/vol1"))));
+    await setSetting("volunteer_portal_google_enabled", "false");
+    await assertFails(getDoc(doc(google("g1", "g1@gmail.com").firestore(), path("volunteerPortal/vol1"))));
+  });
+
+  test("any-account switched back off returns to the domain list", async () => {
+    await setSetting("volunteer_portal_google_any_account", "false");
+    await assertFails(getDoc(doc(google("g1", "g1@gmail.com").firestore(), path("volunteerPortal/vol1"))));
+    await assertSucceeds(getDoc(doc(google("g1").firestore(), path("volunteerPortal/vol1"))));
+  });
+
   test("an empty domain list refuses everyone", async () => {
     await setSetting("volunteer_portal_google_domains", "");
     await assertFails(getDoc(doc(google("g1").firestore(), path("volunteerPortal/vol1"))));

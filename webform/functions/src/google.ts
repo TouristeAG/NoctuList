@@ -95,6 +95,14 @@ export function parseDomains(raw: string): string[] {
   return out;
 }
 
+/** PortalGoogleLinkProcessor.accountAllowed: any address with a domain when [anyAccount], else domainAllowed. */
+export function accountAllowed(email: string, domains: readonly string[], anyAccount: boolean): boolean {
+  if (!anyAccount) return domainAllowed(email, domains);
+  const clean = kotlinTrim(email);
+  const at = clean.lastIndexOf("@");
+  return at >= 0 && clean.slice(at + 1) !== "";
+}
+
 export function domainAllowed(email: string, domains: readonly string[]): boolean {
   const clean = kotlinTrim(email).toLowerCase();
   const at = clean.lastIndexOf("@");
@@ -127,8 +135,9 @@ export function adminMatch(
   volunteers: readonly GoogleVolunteer[],
   domains: readonly string[],
   aliasTarget: string | null,
+  anyAccount = false,
 ): GoogleDecision {
-  if (!domainAllowed(c.email, domains)) return { kind: "REJECT", reason: "DOMAIN" };
+  if (!accountAllowed(c.email, domains, anyAccount)) return { kind: "REJECT", reason: "DOMAIN" };
   if (isAliasValid(c.googleUid, aliasTarget, volunteers)) return { kind: "ALREADY_LINKED" };
   const candidates = volunteers.filter((v) => hasPortal(v) && sameAddress(v.portalGoogleEmail, c.email));
   if (candidates.length === 0) return { kind: "REJECT", reason: "NO_MATCH" };
@@ -147,6 +156,7 @@ export function linkCode(
   volunteers: readonly GoogleVolunteer[],
   domains: readonly string[],
   aliasTarget: string | null,
+  anyAccount = false,
 ): GoogleDecision {
   const codeOk =
     request !== null &&
@@ -162,7 +172,7 @@ export function linkCode(
   // Retry after the link was already written (stopped before answering).
   if (aliasTarget === owner.portalUid && owner.portalGoogleUid === c.googleUid) return { kind: "ALREADY_LINKED" };
   if (!isBlank(owner.portalGoogleEmail)) return { kind: "REJECT", reason: "ALREADY_LINKED" };
-  if (!domainAllowed(c.email, domains)) return { kind: "REJECT", reason: "DOMAIN" };
+  if (!accountAllowed(c.email, domains, anyAccount)) return { kind: "REJECT", reason: "DOMAIN" };
   const others = volunteers.filter((v) => v.id !== owner.id);
   if (others.some((v) => v.portalGoogleUid === c.googleUid)) return { kind: "REJECT", reason: "TAKEN" };
   if (others.some((v) => sameAddress(v.portalGoogleEmail, c.email))) return { kind: "REJECT", reason: "TAKEN" };
@@ -194,13 +204,19 @@ async function googleOn(db: Firestore, orgId: string): Promise<boolean> {
   return (await institutionSetting(db, orgId, "volunteer_portal_google_enabled")) === "true";
 }
 
+/** `volunteer_portal_google_any_account`: every Google account may sign in, the domain list is ignored. */
+async function anyAccountOn(db: Firestore, orgId: string): Promise<boolean> {
+  return (await institutionSetting(db, orgId, "volunteer_portal_google_any_account")) === "true";
+}
+
 /** googleLoginOn (Kotlin): what the published page calls `googleLinkAvailable` before the address check. */
 export async function googleLinkAllowed(db: Firestore, orgId: string): Promise<boolean> {
-  const [on, domains] = await Promise.all([
+  const [on, any, domains] = await Promise.all([
     googleOn(db, orgId),
+    anyAccountOn(db, orgId),
     institutionSetting(db, orgId, "volunteer_portal_google_domains"),
   ]);
-  return on && parseDomains(domains).length > 0;
+  return on && (any || parseDomains(domains).length > 0);
 }
 
 /** The projection fields of PortalProjectionBuilder for the Google link. */
@@ -259,9 +275,10 @@ async function processClaim(db: Firestore, orgId: string, googleUid: string, cla
   const c = parseGoogleClaim(googleUid, claimed);
   if (c === null) return rejected("INVALID");
   const now = Date.now();
-  const [all, domainSetting, aliasSnap] = await Promise.all([
+  const [all, domainSetting, anyAccount, aliasSnap] = await Promise.all([
     volunteersOf(db, orgId).select(...GOOGLE_FIELDS).get(),
     institutionSetting(db, orgId, "volunteer_portal_google_domains"),
+    anyAccountOn(db, orgId),
     aliasRef(db, orgId, googleUid).get(),
   ]);
   const volunteers = all.docs.map((d) => googleVolunteerOf(d.id, d));
@@ -276,7 +293,7 @@ async function processClaim(db: Firestore, orgId: string, googleUid: string, cla
   let linkRequest: DocumentReference | null = null;
   let decision: GoogleDecision;
   if (c.type === "ADMIN_MATCH") {
-    decision = adminMatch(c, volunteers, domains, aliasTarget);
+    decision = adminMatch(c, volunteers, domains, aliasTarget, anyAccount);
   } else {
     const found = await db
       .collection(`orgs/${orgId}/portalRequests`)
@@ -288,7 +305,7 @@ async function processClaim(db: Firestore, orgId: string, googleUid: string, cla
     linkRequest = doc?.ref ?? null;
     const request = doc !== undefined ? parseRequest(doc.id, doc.data()) : null;
     const requestedAt = doc !== undefined ? millisOf(doc.get("requestedAt")) : null;
-    decision = linkCode(c, request, requestedAt, now, volunteers, domains, aliasTarget);
+    decision = linkCode(c, request, requestedAt, now, volunteers, domains, aliasTarget, anyAccount);
   }
   let result: GoogleResult;
   switch (decision.kind) {

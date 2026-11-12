@@ -1835,6 +1835,11 @@
     <string name="desktop_qr_opening_camera">Aperiens cameram…</string>
     <string name="desktop_qr_point_at_code">Ostende QR code in fronte de camera</string>
     <string name="desktop_qr_opening_file_picker">Elige imaginem file…</string>
+    <string name="desktop_qr_dialog_title">Codicem QR lege</string>
+    <string name="desktop_qr_option_camera_title">Camera utere</string>
+    <string name="desktop_qr_option_image_title">Imaginem importa</string>
+    <string name="desktop_qr_reader_hint">Chartam quoque ad lectorem externum admovere potes.</string>
+    <string name="desktop_qr_other_method">Aliam rationem elige</string>
     <string name="desktop_qr_no_webcam_mac">Nulla webcam deprehenditur. Da aditum ad cameram in Optiones Systematis, seu imaginem QR aperire.</string>
     <string name="desktop_qr_no_webcam_linux">Nulla webcam deprehenditur. Perscriptio camera permissionum (V4L2/PipeWire) et membra coetus video vel imaginem QR aperi.</string>
     <string name="desktop_qr_no_webcam_generic">Nulla webcam deprehenditur. Reprehendo camera permissiones, vel imaginem QR aperi.</string>
@@ -2363,7 +2368,9 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="portal_google_not_found">Dominium non inventum</string>
     <string name="portal_google_error">Probatio fieri non potuit, iterum conare</string>
     <string name="portal_google_enable">Voluntariis permitte ut per rationem Google introeant</string>
-    <string name="portal_google_needs_domain">Adde dominium a Google Workspace administratum ut haec optio accendatur</string>
+    <string name="portal_google_needs_domain">Adde saltem unum dominium ut voluntarii per Google introire possint</string>
+    <string name="portal_google_scope_all">Omnes rationes Google</string>
+    <string name="portal_google_scope_internal">Rationes Google consociationis tantum</string>
     <string name="portal_show_logo">Monstra signum societatis</string>
     <string name="portal_show_logo_hint">Iuxta nomen societatis, in summa parte suggestus voluntariorum. Signum est quod in Optionibus, Epistula positum est.</string>
     <string name="setup_google_redirects">URI redirectionis permissae</string>
@@ -2485,9 +2492,16 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="setup_manual_server">1. Ratio Blaze, deinde monitum sumptus: Google Cloud Console, Billing, Budgets &amp; alerts, exempli gratia 5 €.\n2. In ratione Gmail societatis verificationem duplicem accende, deinde tesseram applicationis in https://myaccount.google.com/apppasswords crea.\n3. Regionem inveni: Firestore Database locum supra ostendit. eur3 significat europe-west1, nam5 significat us-central1, europe-west6 (Turicum) manet europe-west6.\n4. Situm iterum exporta et explica. Terminale in folder aperi et iussa infra insere.\n• Linea secreti tesseram applicationis rogat. Insere et preme Enter (dum scribis nihil apparet).\n• Promulgatio GMAIL_USER (inscriptio Gmail) et REGION (punctum 3) rogat.\nSi vides «Secret Manager API has not been used»: nexum nuntii aperi, Enable preme, 2 minuta exspecta, deinde duas ultimas lineas iterum insere.\nSi vides «Eventarc Service Agent»: Google adhuc se parat. 5 minuta exspecta et lineam promulgationis iterum insere.\nSi vides «Blaze» aut «billing»: projectum nondum in ratione Blaze est.</string>
     <string name="setup_manual_server_cleanup">5. Promulgatione bene facta, hanc lineam semel insere ut veteres versiones sponte deleantur. europe-west1 muta si regio tua alia est.</string>
     <string name="setup_step_google_title">Introitus Google voluntariorum</string>
-    <string name="setup_step_google_purpose">Tantum si voluntarii ratione Google societatis in spatium suum intrant. Aperi paginam Credentials, adde inscriptiones infra clienti OAuth quo Firebase utitur, serva, deinde preme Feci.</string>
-    <string name="setup_manual_google">Tantum si voluntarii ratione Google societatis in spatium suum intrant. 1. Firebase Console, Authentication, Sign-in method, Google: aperi Web SDK configuration et nota Web client ID. 2. Google Cloud, APIs and Services, Credentials: aperi clientem OAuth cum eo ID. Adde inscriptiones infra in Authorized redirect URIs et Authorized JavaScript origins, deinde serva. Si spatium voluntariorum tuo dominio utitur, adde etiam https://tuum-dominium/__/auth/handler et https://tuum-dominium. Sine hoc gradu Google redirect_uri_mismatch ostendit. Mutatio aliquot minuta postulare potest.</string>
+    <string name="setup_step_google_purpose">Tantum si voluntarii ratione Google societatis in spatium suum intrant. Adde inscriptiones infra clienti OAuth quo Firebase utitur, serva, deinde preme Feci.</string>
+    <string name="setup_manual_google">Tantum si voluntarii ratione Google societatis in spatium suum intrant. Sine hoc gradu Google redirect_uri_mismatch ostendit. Mutatio aliquot minuta postulare potest.</string>
     <string name="setup_google_secret">Si Google deinde auth/invalid-credential respondet, secretum in Firebase servatum huic clienti non congruit. In Google Cloud aperi clientem et preme Add secret, vetere non deleto: instrumenta turmae eo adhuc utuntur. Novum secretum in Firebase, Authentication, Google, Web SDK configuration, Web client secret insere et serva.</string>
+    <string name="setup_google_open_domains">Aperi dominia permissa</string>
+    <string name="setup_google_domain_step">2. Firebase: adde hoc dominium dominiis permissis</string>
+    <string name="setup_google_open_provider">Aperi Google in Firebase</string>
+    <string name="setup_google_find_client">Web client ID est in Firebase, Authentication, Google, Web SDK configuration. In Google Cloud aperi clientem OAuth cum eo ID.</string>
+    <string name="setup_google_open_client">Aperi clientem OAuth</string>
+    <string name="setup_google_client_step">1. Cliens OAuth: adde singulas inscriptiones, deinde serva</string>
+    <string name="setup_google_domain_field">Dominium proprium spatii voluntariorum (ad libitum)</string>
     <string name="firebase_tutorial_copy_redirect_uris">Copia URI redirectionis localhost</string>
     <string name="firebase_tutorial_copy_redirect_uris_done">Copiatum. Singulas URI in Authorized redirect URIs incola, deinde Save</string>
     <string name="setup_redirect_note">In eo Web client, sub Authorized redirect URIs, inscriptiones infra adde (globulus copiandi), deinde Serva. Unum minutum exspecta antequam intres.</string>
@@ -2497,6 +2511,7 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="setup_login_finish">Aditum perfice</string>
     <string name="setup_btn_run_again">Iterum exsequere</string>
     <string name="portal_access_google_title">Ratio Google consociationis</string>
+    <string name="portal_access_google_title_any">Ratio Google</string>
     <string name="portal_access_google_hint">Inscriptio Google</string>
     <string name="portal_access_google_pending">Primum aditum exspectat</string>
     <string name="portal_access_google_linked">Coniuncta</string>
@@ -2504,6 +2519,7 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="portal_access_google_err_domain">Haec inscriptio non est in dominiis permissis</string>
     <string name="portal_access_google_err_taken">Haec inscriptio iam alii voluntario adiuncta est</string>
     <string name="portal_access_google_err_same_as_email">Inscriptione societatis utere, non privata voluntarii</string>
+    <string name="portal_access_google_err_same_as_email_any">Haec inscriptio iam cum tessera adhibetur. Aliam rationem Google inscribe.</string>
     <string name="portal_access_google_err_invalid">Inscriptio non valida</string>
     <string name="portal_access_google_err_save">Servare non potuit, iterum conare.</string>
     <string name="portal_access_google_remove_title">Rationem Google removere?</string>

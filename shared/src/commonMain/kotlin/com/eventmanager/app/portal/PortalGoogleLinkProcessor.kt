@@ -20,14 +20,18 @@ object PortalGoogleLinkProcessor {
     /** A link code is accepted this long after the GOOGLE_LINK request's `requestedAt`. */
     const val LINK_CODE_VALIDITY_MS = 10L * 60 * 1000
 
-    /** The volunteer stored the address an admin typed; the Google account with that address claims it. */
+    /**
+     * The volunteer stored the address an admin typed; the Google account with that address claims it.
+     * [anyAccount]: every Google account is accepted, [domains] is ignored.
+     */
     fun adminMatch(
         claim: PortalGoogleClaim,
         volunteers: List<Volunteer>,
         domains: List<String>,
         aliasTarget: String?,
+        anyAccount: Boolean = false,
     ): GoogleLinkDecision {
-        if (!domainAllowed(claim.email, domains)) return GoogleLinkDecision.Reject("DOMAIN")
+        if (!accountAllowed(claim.email, domains, anyAccount)) return GoogleLinkDecision.Reject("DOMAIN")
         if (isAliasValid(claim.googleUid, aliasTarget, volunteers)) return GoogleLinkDecision.AlreadyLinked
         val candidates = volunteers.filter {
             it.portalEnabled && it.portalUid.isNotBlank() && sameAddress(it.portalGoogleEmail, claim.email)
@@ -59,6 +63,7 @@ object PortalGoogleLinkProcessor {
         volunteers: List<Volunteer>,
         domains: List<String>,
         aliasTarget: String?,
+        anyAccount: Boolean = false,
     ): GoogleLinkDecision {
         val codeOk = request != null &&
             request.type == PortalRequestType.GOOGLE_LINK &&
@@ -73,7 +78,7 @@ object PortalGoogleLinkProcessor {
         // Retry after the link was already written (device stopped before answering).
         if (aliasTarget == owner.portalUid && owner.portalGoogleUid == claim.googleUid) return GoogleLinkDecision.AlreadyLinked
         if (owner.portalGoogleEmail.isNotBlank()) return GoogleLinkDecision.Reject("ALREADY_LINKED")
-        if (!domainAllowed(claim.email, domains)) return GoogleLinkDecision.Reject("DOMAIN")
+        if (!accountAllowed(claim.email, domains, anyAccount)) return GoogleLinkDecision.Reject("DOMAIN")
         val others = volunteers.filter { it.id != owner.id }
         if (others.any { it.portalGoogleUid == claim.googleUid }) return GoogleLinkDecision.Reject("TAKEN")
         if (others.any { sameAddress(it.portalGoogleEmail, claim.email) }) return GoogleLinkDecision.Reject("TAKEN")
@@ -98,6 +103,14 @@ object PortalGoogleLinkProcessor {
     /** [domains] without gmail.com and googlemail.com. */
     fun usableDomains(domains: List<String>): List<String> =
         domains.filter { it.trim().lowercase() !in CONSUMER_DOMAINS }
+
+    /** Any address with a domain when [anyAccount], else [domainAllowed]. */
+    fun accountAllowed(email: String, domains: List<String>, anyAccount: Boolean): Boolean =
+        if (anyAccount) email.trim().substringAfterLast('@', "").isNotEmpty() else domainAllowed(email, domains)
+
+    /** True when Google sign-in is usable: switched on and either open to all accounts or with a domain left. */
+    fun loginOn(enabled: Boolean, anyAccount: Boolean, domains: List<String>): Boolean =
+        enabled && (anyAccount || usableDomains(domains).isNotEmpty())
 
     fun domainAllowed(email: String, domains: List<String>): Boolean {
         val domain = email.trim().lowercase().substringAfterLast('@', "")

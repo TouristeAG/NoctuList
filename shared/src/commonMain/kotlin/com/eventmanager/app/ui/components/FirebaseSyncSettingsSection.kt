@@ -159,6 +159,8 @@ fun FirebaseSyncSettingsSection(
     onAddVolunteerPortalGoogleDomain: suspend (String) -> com.eventmanager.app.portal.DomainCheck =
         { com.eventmanager.app.portal.DomainCheck.ERROR },
     onRemoveVolunteerPortalGoogleDomain: (String) -> Unit = {},
+    volunteerPortalGoogleAnyAccount: Boolean = false,
+    onVolunteerPortalGoogleAnyAccountChange: (Boolean) -> Unit = {},
 ) {
     val ready = firebaseConnectionReady(configuredOrgs, projectId, applicationId, apiKey, authEmail)
     val projectReady = projectId.isNotBlank() && applicationId.isNotBlank() && apiKey.isNotBlank()
@@ -348,6 +350,8 @@ fun FirebaseSyncSettingsSection(
                     googleDomains = volunteerPortalGoogleDomains,
                     onAddGoogleDomain = onAddVolunteerPortalGoogleDomain,
                     onRemoveGoogleDomain = onRemoveVolunteerPortalGoogleDomain,
+                    googleAnyAccount = volunteerPortalGoogleAnyAccount,
+                    onGoogleAnyAccountChange = onVolunteerPortalGoogleAnyAccountChange,
                     suggestedGoogleDomain = allowedEmailDomains.firstOrNull().orEmpty(),
                     showLogo = volunteerPortalShowLogo,
                     onShowLogoChange = onVolunteerPortalShowLogoChange,

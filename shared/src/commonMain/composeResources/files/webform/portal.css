@@ -256,17 +256,6 @@ body.portal .auth-page { max-width: 460px; margin: 0 auto; }
 .kv dd { font-weight: 700; text-align: right; word-break: break-word; }
 .kv > :nth-child(1), .kv > :nth-child(2) { border-top: 0; }
 
-.status-dot { display: inline-flex; align-items: center; gap: 8px; }
-.status-dot::before {
-  content: "";
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--subtle);
-}
-.status-dot.on { color: var(--success); }
-.status-dot.on::before { background: var(--success); box-shadow: 0 0 0 4px var(--success-container); }
-
 .stat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
 .stat {
   padding: 14px;
@@ -299,15 +288,14 @@ body.portal .auth-page { max-width: 460px; margin: 0 auto; }
 .until { font-size: 0.78rem; font-weight: 700; color: var(--subtle); }
 
 .balance-box {
-  padding: 18px;
-  border-radius: 18px;
-  background: var(--primary);
-  background: linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 55%, var(--secondary)));
-  color: var(--on-primary);
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--container);
+  color: var(--on);
   margin-bottom: 14px;
 }
-.balance-box .label { font-size: 0.8rem; font-weight: 800; opacity: 0.85; text-transform: uppercase; letter-spacing: 0.06em; }
-.balance-box .value { font-size: clamp(2rem, 4vw, 2.6rem); font-weight: 800; line-height: 1.1; margin-top: 4px; }
+.balance-box .label { font-size: 0.78rem; font-weight: 700; color: var(--muted); }
+.balance-box .value { font-size: 1.6rem; font-weight: 800; line-height: 1.1; margin-top: 4px; }
 .balance-box .value small { font-size: 0.5em; font-weight: 800; opacity: 0.85; margin-left: 6px; }
 
 .list { list-style: none; margin: 0; padding: 0; }
@@ -348,12 +336,15 @@ body.portal .auth-page { max-width: 460px; margin: 0 auto; }
 .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
 .btn-row > button { flex: 1 1 180px; }
 
-.upcoming-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.upcoming-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
 .gains-label { margin-top: 6px; font-size: 0.78rem; font-weight: 800; color: var(--primary); }
 .gains-line { font-size: 0.8rem; font-weight: 600; color: var(--muted); }
+.upcoming-card .grow { min-width: 0; }
+.upcoming-card .title { font-weight: 800; font-size: 0.92rem; }
+.upcoming-card .meta-line { color: var(--muted); font-weight: 600; font-size: 0.8rem; margin-top: 2px; line-height: 1.35; }
 .upcoming-card {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   padding: 12px;
   border-radius: 16px;
@@ -436,8 +427,6 @@ body.portal .auth-page { max-width: 460px; margin: 0 auto; }
 .perk-list li:first-child { border-top: 0; }
 .perk-name { font-weight: 700; }
 .perk-amount { font-weight: 800; color: var(--primary); white-space: nowrap; }
-.benefit-list li { gap: 10px; }
-.benefit-list .meta-line { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* "My account" window */
 dialog.sheet {

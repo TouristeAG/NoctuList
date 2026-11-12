@@ -2629,6 +2629,11 @@ class EventManagerViewModel(
     /** Verified Google Workspace domains. Unverified ones are never stored. */
     val volunteerPortalGoogleDomains: StateFlow<List<String>> = _volunteerPortalGoogleDomains.asStateFlow()
 
+    private val _volunteerPortalGoogleAnyAccount = MutableStateFlow(false)
+
+    /** Every Google account may sign in (personal ones too), not only the verified domains. */
+    val volunteerPortalGoogleAnyAccount: StateFlow<Boolean> = _volunteerPortalGoogleAnyAccount.asStateFlow()
+
     private val _portalServerStatus = MutableStateFlow<PortalServerStatus?>(null)
 
     /** Last run of the portal Cloud Functions, null when they never ran or the portal is off. */
@@ -2647,6 +2652,7 @@ class EventManagerViewModel(
         _volunteerPortalGoogleEnabled.value = settingsManagerCached?.isVolunteerPortalGoogleEnabled() == true
         _volunteerPortalShowLogo.value = settingsManagerCached?.isVolunteerPortalShowLogo() != false
         _volunteerPortalGoogleDomains.value = settingsManagerCached?.volunteerPortalGoogleDomains().orEmpty()
+        _volunteerPortalGoogleAnyAccount.value = settingsManagerCached?.isVolunteerPortalGoogleAnyAccount() == true
     }
 
     private fun republishVolunteerPortal() {
@@ -2666,9 +2672,17 @@ class EventManagerViewModel(
     fun setVolunteerPortalGoogleEnabled(enabled: Boolean) {
         val settings = settingsManagerCached ?: return
         if (getActiveBackendType() != BackendType.FIREBASE) return
-        // The option needs at least one verified domain behind it.
-        val allowed = enabled && settings.volunteerPortalGoogleDomains().isNotEmpty()
-        settings.setVolunteerPortalGoogleEnabled(allowed)
+        // Association-only mode without a verified domain stays closed: rules and server check the list.
+        settings.setVolunteerPortalGoogleEnabled(enabled)
+        publishVolunteerPortalSettings()
+        republishVolunteerPortal()
+        backupInstitutionSettingsToSheets()
+    }
+
+    fun setVolunteerPortalGoogleAnyAccount(any: Boolean) {
+        val settings = settingsManagerCached ?: return
+        if (getActiveBackendType() != BackendType.FIREBASE) return
+        settings.setVolunteerPortalGoogleAnyAccount(any)
         publishVolunteerPortalSettings()
         republishVolunteerPortal()
         backupInstitutionSettingsToSheets()
@@ -2861,6 +2875,7 @@ class EventManagerViewModel(
         override fun profilePhotosEnabled(): Boolean = isProfilePhotoUploadEnabled()
         override fun portalGoogleEnabled(): Boolean = settingsManagerCached?.isVolunteerPortalGoogleEnabled() == true
         override fun portalGoogleDomains(): List<String> = settingsManagerCached?.volunteerPortalGoogleDomains().orEmpty()
+        override fun portalGoogleAnyAccount(): Boolean = settingsManagerCached?.isVolunteerPortalGoogleAnyAccount() == true
 
         override suspend fun volunteers(): List<Volunteer> = repository.getAllVolunteersOnce()
 

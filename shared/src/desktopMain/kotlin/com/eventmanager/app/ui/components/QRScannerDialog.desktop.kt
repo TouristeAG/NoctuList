@@ -1,11 +1,27 @@
 package com.eventmanager.app.ui.components
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Nfc
+import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -62,10 +78,8 @@ actual fun QRScannerDialog(
 
     val multipleMatchesTitle = stringResource(Res.string.nfc_uid_multiple_matches_title)
     val readFailedMsg = stringResource(Res.string.nfc_uid_read_failed)
-    val readyMsg = stringResource(Res.string.billeterie_scanner_ready)
     val cancelLabel = stringResource(Res.string.cancel)
 
-    val scanWithReaderLabel = stringResource(Res.string.scan_with_usb_reader)
     val waitingCardMsg = stringResource(Res.string.usb_reader_waiting_card_short)
 
     fun handlePayload(raw: String) {
@@ -176,33 +190,57 @@ actual fun QRScannerDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            tonalElevation = 6.dp,
-            modifier = Modifier.widthIn(min = 320.dp, max = 520.dp)
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            modifier = Modifier.widthIn(min = 360.dp, max = 520.dp)
         ) {
             Column(
-                Modifier.padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                Modifier.padding(24.dp).animateContentSize(),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                Text(
-                    stringResource(Res.string.billeterie_button_scanner),
-                    style = MaterialTheme.typography.titleLarge
+                QrDialogHeader(
+                    title = stringResource(Res.string.desktop_qr_dialog_title),
+                    onClose = onDismiss,
+                    closeLabel = cancelLabel,
                 )
+
+                status?.let { QrStatusBanner(it) }
 
                 when (mode) {
                     QrDialogMode.Choose -> {
-                        Text(
-                            text = when {
-                                status != null -> status!!
-                                isExternalReaderBusy -> waitingCardMsg
-                                hasExternalReader -> scanWithReaderLabel
-                                else -> readyMsg
-                            },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (status != null) MaterialTheme.colorScheme.error
-                            else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            QrOptionCard(
+                                icon = Icons.Default.Videocam,
+                                title = stringResource(Res.string.desktop_qr_option_camera_title),
+                                emphasized = true,
+                                onClick = {
+                                    status = null
+                                    mode = QrDialogMode.Webcam
+                                },
+                            )
+                            QrOptionCard(
+                                icon = Icons.Default.Image,
+                                title = stringResource(Res.string.desktop_qr_option_image_title),
+                                emphasized = false,
+                                onClick = {
+                                    status = null
+                                    mode = QrDialogMode.ImageLoading
+                                    scope.launch {
+                                        handleScanResult(qrScanner.scanFromImageFile())
+                                    }
+                                },
+                            )
+                        }
+
+                        if (hasExternalReader) {
+                            QrReaderHint(
+                                text = if (isExternalReaderBusy) waitingCardMsg
+                                else stringResource(Res.string.desktop_qr_reader_hint),
+                                active = isExternalReaderBusy,
+                            )
+                        }
                         if (DesktopExternalNfcReader.isBleConfigured(settingsManager)) {
                             BleReaderScannerStatusFooter(
                                 platformContext = platformContext,
@@ -213,30 +251,6 @@ actual fun QRScannerDialog(
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
-                        Button(
-                            onClick = {
-                                status = null
-                                mode = QrDialogMode.Webcam
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(stringResource(Res.string.desktop_qr_start_webcam))
-                        }
-                        OutlinedButton(
-                            onClick = {
-                                mode = QrDialogMode.ImageLoading
-                                scope.launch {
-                                    handleScanResult(qrScanner.scanFromImageFile())
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(stringResource(Res.string.desktop_qr_open_image))
-                        }
-                        TextButton(
-                            onClick = onDismiss,
-                            modifier = Modifier.align(Alignment.End)
-                        ) { Text(cancelLabel) }
                     }
 
                     QrDialogMode.Webcam -> {
@@ -246,21 +260,180 @@ actual fun QRScannerDialog(
                                 status = msg
                                 mode = QrDialogMode.Choose
                             },
-                            onCancel = { mode = QrDialogMode.Choose }
+                            onCancel = { mode = QrDialogMode.Choose },
+                            showControls = false,
                         )
+                        OutlinedButton(
+                            onClick = { mode = QrDialogMode.Choose },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(Res.string.desktop_qr_other_method))
+                        }
                     }
 
                     QrDialogMode.ImageLoading -> {
-                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator()
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                                .padding(20.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.5.dp,
+                            )
+                            Text(
+                                stringResource(Res.string.desktop_qr_opening_file_picker),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
-                        Text(
-                            stringResource(Res.string.desktop_qr_opening_file_picker),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun QrDialogHeader(
+    title: String,
+    onClose: () -> Unit,
+    closeLabel: String,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                Icons.Default.QrCodeScanner,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(26.dp),
+            )
+        }
+        Text(
+            title,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f),
+        )
+        IconButton(onClick = onClose) {
+            Icon(Icons.Default.Close, contentDescription = closeLabel)
+        }
+    }
+}
+
+@Composable
+private fun QrOptionCard(
+    icon: ImageVector,
+    title: String,
+    emphasized: Boolean,
+    onClick: () -> Unit,
+) {
+    val container = if (emphasized) MaterialTheme.colorScheme.primaryContainer
+    else MaterialTheme.colorScheme.surfaceContainerHigh
+    val content = if (emphasized) MaterialTheme.colorScheme.onPrimaryContainer
+    else MaterialTheme.colorScheme.onSurface
+    val badge = if (emphasized) MaterialTheme.colorScheme.primary
+    else MaterialTheme.colorScheme.secondaryContainer
+    val badgeIcon = if (emphasized) MaterialTheme.colorScheme.onPrimary
+    else MaterialTheme.colorScheme.onSecondaryContainer
+
+    Card(
+        onClick = onClick,
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Box(
+                modifier = Modifier.size(44.dp).clip(CircleShape).background(badge),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(icon, contentDescription = null, tint = badgeIcon, modifier = Modifier.size(22.dp))
+            }
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f),
+            )
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = content.copy(alpha = 0.6f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun QrStatusBanner(message: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.errorContainer)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Icon(
+            Icons.Default.ErrorOutline,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onErrorContainer,
+            modifier = Modifier.size(20.dp),
+        )
+        Text(
+            message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onErrorContainer,
+        )
+    }
+}
+
+@Composable
+private fun QrReaderHint(text: String, active: Boolean) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(14.dp))
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Icon(
+            Icons.Default.Nfc,
+            contentDescription = null,
+            tint = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp),
+        )
+        Text(
+            text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }

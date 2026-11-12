@@ -1,6 +1,9 @@
 package com.eventmanager.app.platform.hardware
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -9,7 +12,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.asComposeImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -52,7 +61,8 @@ fun DesktopWebcamQrScanView(
     onQrDetected: (String) -> Unit,
     onError: (String) -> Unit,
     onCancel: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showControls: Boolean = true,
 ) {
     var preview by remember { mutableStateOf<ImageBitmap?>(null) }
     var status by remember { mutableStateOf<String?>(null) }
@@ -190,7 +200,9 @@ fun DesktopWebcamQrScanView(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = 200.dp, max = 360.dp)
-                .aspectRatio(4f / 3f),
+                .aspectRatio(4f / 3f)
+                .clip(RoundedCornerShape(18.dp))
+                .background(Color(0xFF101114)),
             contentAlignment = Alignment.Center
         ) {
             if (preview != null) {
@@ -198,20 +210,55 @@ fun DesktopWebcamQrScanView(
                     bitmap = preview!!,
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit
+                    contentScale = ContentScale.Crop
+                )
+                QrViewfinder(
+                    color = Color.White.copy(alpha = 0.9f),
+                    modifier = Modifier.fillMaxHeight(0.62f).aspectRatio(1f),
                 )
             } else {
-                CircularProgressIndicator()
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    CircularProgressIndicator(color = Color.White, strokeWidth = 3.dp)
+                    Text(
+                        text = openingMsg,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.8f),
+                    )
+                }
             }
         }
-        Text(
-            text = status ?: openingMsg,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        TextButton(onClick = onCancel) {
-            Text(cancelLabel)
+        if (showControls) {
+            Text(
+                text = status ?: openingMsg,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            TextButton(onClick = onCancel) {
+                Text(cancelLabel)
+            }
         }
+    }
+}
+
+/** Four rounded corner brackets that frame where the code should sit. */
+@Composable
+private fun QrViewfinder(color: Color, modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val stroke = 4.dp.toPx()
+        val arm = size.minDimension * 0.18f
+        val inset = stroke / 2f
+        val w = size.width
+        val h = size.height
+        val path = Path().apply {
+            moveTo(inset, inset + arm); lineTo(inset, inset); lineTo(inset + arm, inset)
+            moveTo(w - inset - arm, inset); lineTo(w - inset, inset); lineTo(w - inset, inset + arm)
+            moveTo(w - inset, h - inset - arm); lineTo(w - inset, h - inset); lineTo(w - inset - arm, h - inset)
+            moveTo(inset + arm, h - inset); lineTo(inset, h - inset); lineTo(inset, h - inset - arm)
+        }
+        drawPath(path, color, style = Stroke(width = stroke, cap = StrokeCap.Round, join = StrokeJoin.Round))
     }
 }
 

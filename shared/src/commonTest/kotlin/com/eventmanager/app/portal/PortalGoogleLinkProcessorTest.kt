@@ -71,6 +71,31 @@ class PortalGoogleLinkProcessorTest {
     }
 
     @Test
+    fun anyAccountModeAcceptsPersonalAccounts() {
+        val v = volunteer("V1", googleEmail = "jean@gmail.com")
+        assertEquals(
+            GoogleLinkDecision.Link(v, "ADMIN"),
+            PortalGoogleLinkProcessor.adminMatch(adminClaim("jean@gmail.com"), listOf(v), emptyList(), null, anyAccount = true),
+        )
+        assertEquals(
+            GoogleLinkDecision.Link(volunteer("V2"), "VOLUNTEER"),
+            PortalGoogleLinkProcessor.linkCode(
+                codeClaim("jean@other.ch"), linkRequest("PortalUidV2"), now - 1_000, now, listOf(volunteer("V2")), emptyList(), null,
+                anyAccount = true,
+            ),
+        )
+        assertEquals(false, PortalGoogleLinkProcessor.accountAllowed("no-domain", emptyList(), anyAccount = true))
+    }
+
+    @Test
+    fun loginNeedsADomainOnlyInAssociationMode() {
+        assertEquals(true, PortalGoogleLinkProcessor.loginOn(enabled = true, anyAccount = true, domains = emptyList()))
+        assertEquals(false, PortalGoogleLinkProcessor.loginOn(enabled = true, anyAccount = false, domains = emptyList()))
+        assertEquals(true, PortalGoogleLinkProcessor.loginOn(enabled = true, anyAccount = false, domains = listOf("asso.ch")))
+        assertEquals(false, PortalGoogleLinkProcessor.loginOn(enabled = false, anyAccount = true, domains = listOf("asso.ch")))
+    }
+
+    @Test
     fun adminMatchNeedsOpenPortalAccess() {
         val noUid = volunteer("V1", uid = "", googleEmail = "jean@asso.ch")
         val closed = volunteer("V2", enabled = false, googleEmail = "jean@asso.ch")

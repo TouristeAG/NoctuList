@@ -1951,6 +1951,11 @@
     <string name="desktop_qr_open_image">開啟 QR 圖片…</string>
     <string name="desktop_qr_opening_camera">正在開啟相機…</string>
     <string name="desktop_qr_opening_file_picker">選擇圖片檔案…</string>
+    <string name="desktop_qr_dialog_title">掃描 QR 碼</string>
+    <string name="desktop_qr_option_camera_title">使用攝影機</string>
+    <string name="desktop_qr_option_image_title">匯入圖片</string>
+    <string name="desktop_qr_reader_hint">你也可以在外接讀卡機上刷卡。</string>
+    <string name="desktop_qr_other_method">選擇其他方式</string>
     <string name="desktop_qr_point_at_code">將 QR 碼對準相機</string>
     <string name="desktop_qr_start_webcam">啟動網路攝影機</string>
     <string name="desktop_usb_reader_test_button">測試 USB 讀卡機</string>
@@ -2358,7 +2363,9 @@
     <string name="portal_google_not_found">找不到該網域</string>
     <string name="portal_google_error">無法驗證，請再試一次</string>
     <string name="portal_google_enable">允許志工使用 Google 帳號登入</string>
-    <string name="portal_google_needs_domain">請先新增由 Google Workspace 管理的網域，才能啟用此選項</string>
+    <string name="portal_google_needs_domain">至少新增一個網域，志工才能使用 Google 登入</string>
+    <string name="portal_google_scope_all">所有 Google 帳號</string>
+    <string name="portal_google_scope_internal">僅限協會 Google 帳號</string>
     <string name="portal_show_logo">顯示協會標誌</string>
     <string name="portal_show_logo_hint">顯示在志工平台頂端的協會名稱旁邊。使用的是「設定 > 電子郵件」中設定的標誌。</string>
     <string name="setup_google_redirects">已授權的重新導向 URI</string>
@@ -2480,9 +2487,16 @@
     <string name="setup_manual_server">1. Blaze 方案，然後設定預算提醒：Google Cloud Console → Billing → Budgets &amp; alerts，例如 5 €。\n2. 在協會的 Gmail 帳戶中開啟兩步驟驗證，然後在 https://myaccount.google.com/apppasswords 建立應用程式密碼。\n3. 查找區域：Firestore Database 頂部會顯示位置。eur3 對應 europe-west1，nam5 對應 us-central1，europe-west6（蘇黎世）維持 europe-west6。\n4. 重新匯出網站並解壓縮。在該資料夾中開啟終端機，貼上下方指令。\n• 密鑰那一行會要求輸入應用程式密碼。貼上後按 Enter（輸入時不會顯示任何內容）。\n• 部署會問 GMAIL_USER（Gmail 地址）和 REGION（第 3 點）。\n如果看到「Secret Manager API has not been used」：開啟訊息中的連結，點選啟用，等 2 分鐘，再貼上最後兩行。\n如果看到「Eventarc Service Agent」：Google 仍在準備。等 5 分鐘後再貼上部署那一行。\n如果看到「Blaze」或「billing」：專案還沒有升級到 Blaze 方案。</string>
     <string name="setup_manual_server_cleanup">5. 部署成功後，貼上此行一次，舊版本會被自動刪除。如果您的區域不同，請替換 europe-west1。</string>
     <string name="setup_step_google_title">志工 Google 登入</string>
-    <string name="setup_step_google_purpose">僅在志工使用協會的 Google 帳號登入自己的空間時需要。開啟「憑證」頁面，把下方網址加入 Firebase 使用的 OAuth 用戶端，儲存後按「已完成」。</string>
-    <string name="setup_manual_google">僅在志工使用協會的 Google 帳號登入自己的空間時需要。1. Firebase 主控台 > Authentication > Sign-in method > Google：開啟「Web SDK 設定」，記下網頁用戶端 ID。2. Google Cloud > API 和服務 > 憑證：開啟具有該 ID 的 OAuth 用戶端。把下方網址加入「已授權的重新導向 URI」和「已授權的 JavaScript 來源」，然後儲存。如果志工空間使用您自己的網域，也要加入 https://您的網域/__/auth/handler 和 https://您的網域。少了這一步，Google 會顯示 redirect_uri_mismatch。變更可能需要幾分鐘才會生效。</string>
+    <string name="setup_step_google_purpose">僅在志工使用協會的 Google 帳號登入自己的空間時需要。把下方網址加入 Firebase 使用的 OAuth 用戶端，儲存後按「已完成」。</string>
+    <string name="setup_manual_google">僅在志工使用協會的 Google 帳號登入自己的空間時需要。少了這一步，Google 會顯示 redirect_uri_mismatch。變更可能需要幾分鐘才會生效。</string>
     <string name="setup_google_secret">如果之後 Google 回應 auth/invalid-credential，表示 Firebase 中儲存的密鑰與此用戶端不符。在 Google Cloud 開啟該用戶端並按「新增密鑰」，不要刪除舊的：團隊裝置仍在使用。把新密鑰貼到 Firebase > Authentication > Google > Web SDK 設定 > 網頁用戶端密鑰，然後儲存。</string>
+    <string name="setup_google_open_domains">開啟已授權網域</string>
+    <string name="setup_google_domain_step">2. Firebase：把此網域加入已授權網域</string>
+    <string name="setup_google_open_provider">在 Firebase 中開啟 Google</string>
+    <string name="setup_google_find_client">網頁用戶端 ID 位於 Firebase > Authentication > Google > Web SDK 設定。在 Google Cloud 開啟具有該 ID 的 OAuth 用戶端。</string>
+    <string name="setup_google_open_client">開啟 OAuth 用戶端</string>
+    <string name="setup_google_client_step">1. OAuth 用戶端：逐一加入網址，然後儲存</string>
+    <string name="setup_google_domain_field">志工空間的自有網域（選填）</string>
     <string name="firebase_tutorial_copy_redirect_uris">複製 localhost 重新導向 URI</string>
     <string name="firebase_tutorial_copy_redirect_uris_done">已複製，將每個 URI 貼到 Authorized redirect URIs，然後儲存</string>
     <string name="setup_redirect_note">在該 Web 用戶端的「已授權的重新導向 URI」中新增下方位址（複製按鈕），然後儲存。登入前請等一分鐘。</string>
@@ -2492,6 +2506,7 @@
     <string name="setup_login_finish">完成登入</string>
     <string name="setup_btn_run_again">重新執行</string>
     <string name="portal_access_google_title">協會 Google 帳號</string>
+    <string name="portal_access_google_title_any">Google 帳號</string>
     <string name="portal_access_google_hint">Google 電子郵件地址</string>
     <string name="portal_access_google_pending">等待首次登入</string>
     <string name="portal_access_google_linked">已綁定</string>
@@ -2499,6 +2514,7 @@
     <string name="portal_access_google_err_domain">此地址不在允許的網域內</string>
     <string name="portal_access_google_err_taken">此地址已綁定到另一位志工</string>
     <string name="portal_access_google_err_same_as_email">請使用協會的地址，而不是志工的個人地址</string>
+    <string name="portal_access_google_err_same_as_email_any">此地址已用於密碼登入，請填寫另一個 Google 帳號。</string>
     <string name="portal_access_google_err_invalid">地址無效</string>
     <string name="portal_access_google_err_save">儲存失敗，請重試。</string>
     <string name="portal_access_google_remove_title">移除 Google 帳號？</string>

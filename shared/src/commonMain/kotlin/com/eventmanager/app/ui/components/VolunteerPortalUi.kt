@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -34,6 +36,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -54,6 +57,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -123,6 +127,10 @@ import com.eventmanager.app.resources.portal_show_logo_hint
 import com.eventmanager.app.resources.portal_google_not_found
 import com.eventmanager.app.resources.portal_google_other
 import com.eventmanager.app.resources.portal_google_title
+import com.eventmanager.app.resources.portal_google_scope_all
+import com.eventmanager.app.resources.portal_google_scope_internal
+import com.eventmanager.app.resources.portal_access_google_title_any
+import com.eventmanager.app.resources.portal_access_google_err_same_as_email_any
 import com.eventmanager.app.resources.portal_google_verify_add
 import com.eventmanager.app.resources.portal_password_body
 import com.eventmanager.app.resources.portal_password_copied
@@ -178,6 +186,8 @@ fun VolunteerPortalSettingsCard(
     onAddGoogleDomain: suspend (String) -> DomainCheck = { DomainCheck.ERROR },
     onRemoveGoogleDomain: (String) -> Unit = {},
     suggestedGoogleDomain: String = "",
+    googleAnyAccount: Boolean = false,
+    onGoogleAnyAccountChange: (Boolean) -> Unit = {},
     showLogo: Boolean = true,
     onShowLogoChange: (Boolean) -> Unit = {},
 ) {
@@ -236,6 +246,8 @@ fun VolunteerPortalSettingsCard(
             VolunteerPortalGoogleSection(
                 googleEnabled = googleEnabled,
                 onGoogleEnabledChange = onGoogleEnabledChange,
+                anyAccount = googleAnyAccount,
+                onAnyAccountChange = onGoogleAnyAccountChange,
                 domains = googleDomains,
                 onAddDomain = onAddGoogleDomain,
                 onRemoveDomain = onRemoveGoogleDomain,
@@ -246,11 +258,78 @@ fun VolunteerPortalSettingsCard(
     }
 }
 
-/** Verified Workspace domains plus the switch that lets volunteers sign in with Google. */
+/**
+ * Switch that lets volunteers sign in with Google, then which accounts count: every Google account,
+ * or only the association's verified Workspace domains.
+ */
 @Composable
 private fun VolunteerPortalGoogleSection(
     googleEnabled: Boolean,
     onGoogleEnabledChange: (Boolean) -> Unit,
+    anyAccount: Boolean,
+    onAnyAccountChange: (Boolean) -> Unit,
+    domains: List<String>,
+    onAddDomain: suspend (String) -> DomainCheck,
+    onRemoveDomain: (String) -> Unit,
+    suggestedDomain: String,
+    canEdit: Boolean,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            stringResource(Res.string.portal_google_title),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                stringResource(Res.string.portal_google_enable),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f).padding(end = 8.dp),
+            )
+            Switch(checked = googleEnabled, onCheckedChange = onGoogleEnabledChange, enabled = canEdit)
+        }
+        if (googleEnabled) {
+            Column(Modifier.selectableGroup()) {
+                GoogleScopeOption(
+                    label = stringResource(Res.string.portal_google_scope_all),
+                    selected = anyAccount,
+                    enabled = canEdit,
+                    onSelect = { onAnyAccountChange(true) },
+                )
+                GoogleScopeOption(
+                    label = stringResource(Res.string.portal_google_scope_internal),
+                    selected = !anyAccount,
+                    enabled = canEdit,
+                    onSelect = { onAnyAccountChange(false) },
+                )
+            }
+            if (!anyAccount) {
+                GoogleDomainList(domains, onAddDomain, onRemoveDomain, suggestedDomain, canEdit)
+            }
+        }
+    }
+}
+
+@Composable
+private fun GoogleScopeOption(label: String, selected: Boolean, enabled: Boolean, onSelect: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onSelect),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RadioButton(selected = selected, onClick = null, enabled = enabled)
+        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 8.dp))
+    }
+}
+
+/** Verified Workspace domains; only these accounts may sign in in association-only mode. */
+@Composable
+private fun GoogleDomainList(
     domains: List<String>,
     onAddDomain: suspend (String) -> DomainCheck,
     onRemoveDomain: (String) -> Unit,
@@ -266,11 +345,6 @@ private fun VolunteerPortalGoogleSection(
         if (input.isBlank() && domains.isEmpty()) input = suggestedDomain
     }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            stringResource(Res.string.portal_google_title),
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
-        )
         Text(
             stringResource(Res.string.portal_google_domains_label),
             style = MaterialTheme.typography.bodySmall,
@@ -297,6 +371,13 @@ private fun VolunteerPortalGoogleSection(
                     Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.portal_google_domain_remove))
                 }
             }
+        }
+        if (domains.isEmpty()) {
+            Text(
+                stringResource(Res.string.portal_google_needs_domain),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
         }
         if (canEdit) {
             OutlinedTextField(
@@ -335,29 +416,6 @@ private fun VolunteerPortalGoogleSection(
             if (message != null) {
                 Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                stringResource(Res.string.portal_google_enable),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f).padding(end = 8.dp),
-            )
-            Switch(
-                checked = googleEnabled && domains.isNotEmpty(),
-                onCheckedChange = onGoogleEnabledChange,
-                enabled = canEdit && domains.isNotEmpty(),
-            )
-        }
-        if (domains.isEmpty()) {
-            Text(
-                stringResource(Res.string.portal_google_needs_domain),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 }
@@ -730,10 +788,11 @@ fun VolunteerPortalAccessCard(
     }
 }
 
-/** Association Google account of a volunteer whose portal access is open (only when the option is on). */
+/** Google account of a volunteer whose portal access is open (only when the option is on). */
 @Composable
 private fun PortalGoogleAccountRow(viewModel: EventManagerViewModel, volunteer: Volunteer) {
     val scope = rememberCoroutineScope()
+    val anyAccount by viewModel.volunteerPortalGoogleAnyAccount.collectAsState()
     var editing by remember(volunteer.id, volunteer.portalGoogleEmail) { mutableStateOf(volunteer.portalGoogleEmail.isBlank()) }
     var input by remember(volunteer.id, volunteer.portalGoogleEmail) { mutableStateOf(volunteer.portalGoogleEmail) }
     var errorCode by remember(volunteer.id) { mutableStateOf<String?>(null) }
@@ -744,13 +803,20 @@ private fun PortalGoogleAccountRow(viewModel: EventManagerViewModel, volunteer: 
         null -> null
         "DOMAIN" -> stringResource(Res.string.portal_access_google_err_domain)
         "TAKEN" -> stringResource(Res.string.portal_access_google_err_taken)
-        "SAME_AS_EMAIL" -> stringResource(Res.string.portal_access_google_err_same_as_email)
+        "SAME_AS_EMAIL" -> stringResource(
+            if (anyAccount) Res.string.portal_access_google_err_same_as_email_any
+            else Res.string.portal_access_google_err_same_as_email,
+        )
         "INVALID" -> stringResource(Res.string.portal_access_google_err_invalid)
         else -> stringResource(Res.string.portal_access_google_err_save)
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(stringResource(Res.string.portal_access_google_title), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+        Text(
+            stringResource(if (anyAccount) Res.string.portal_access_google_title_any else Res.string.portal_access_google_title),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+        )
         if (hasAccount && !editing) {
             Text(volunteer.portalGoogleEmail, style = MaterialTheme.typography.bodyMedium)
             val state = when {

@@ -32,7 +32,7 @@ async function waitFor(what, check, timeoutMs = 30_000) {
 }
 
 /** A fresh organization per test, so a late trigger of one test cannot touch another. */
-async function newOrg({ portal = "true", google = "true", domains = `${DOMAIN},other-asso.example` } = {}) {
+async function newOrg({ portal = "true", google = "true", domains = `${DOMAIN},other-asso.example`, anyAccount = null } = {}) {
   counter += 1;
   const org = `org-gg-${counter}-${Date.now()}`;
   const now = Date.now();
@@ -41,6 +41,7 @@ async function newOrg({ portal = "true", google = "true", domains = `${DOMAIN},o
   await setting("volunteer_portal_enabled", portal);
   await setting("volunteer_portal_google_enabled", google);
   await setting("volunteer_portal_google_domains", domains);
+  if (anyAccount !== null) await setting("volunteer_portal_google_any_account", anyAccount);
   return org;
 }
 
@@ -237,6 +238,14 @@ describe("onPortalGoogleClaimWritten: ADMIN_MATCH", () => {
     assertResult(await waitResult(await sendClaim(org, googleUid, "ADMIN_MATCH", "lea@gmail.com")), "REJECTED", "DOMAIN");
     assert.equal(await alias(org, googleUid), null);
     assert.deepEqual(await volunteer(org, v.id), v);
+  });
+
+  test("any-account mode links a personal Google account without any domain", async () => {
+    const org = await newOrg({ domains: "", anyAccount: "true" });
+    const v = await addVolunteer(org, { portalGoogleEmail: "lea@gmail.com", portalGoogleLinkedBy: "ADMIN" });
+    const googleUid = newUid("google");
+    assertResult(await waitResult(await sendClaim(org, googleUid, "ADMIN_MATCH", "lea@gmail.com")), "DONE", "");
+    assert.equal((await alias(org, googleUid)).volunteerUid, v.portalUid);
   });
 
   test("admin match with a valid alias is done without writing", async () => {

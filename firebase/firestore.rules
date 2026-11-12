@@ -1,5 +1,5 @@
 rules_version = '2';
-// NoctuList Firestore rules — NOCTULIST_RULES_VERSION = 15
+// NoctuList Firestore rules — NOCTULIST_RULES_VERSION = 16
 // Republish this exact file in Firebase Console → Firestore → Rules after every app update,
 // otherwise members that already exist cannot re-join their organization.
 service cloud.firestore {
@@ -39,8 +39,8 @@ service cloud.firestore {
       return /databases/$(database)/documents/orgs/$(orgId)/portalGoogleAccounts/$(request.auth.uid);
     }
 
-    // Second switch, under the portal one: volunteers may also sign in with an association
-    // Google account.
+    // Second switch, under the portal one: volunteers may also sign in with a Google account
+    // (the association's domains only, or any account; see portalGoogleAccountOk).
     function portalGoogleOn(orgId) {
       let path = settingPath(orgId, 'volunteer_portal_google_enabled');
       return portalOn(orgId)
@@ -70,11 +70,22 @@ service cloud.firestore {
         && domain in get(path).data.value.split(',');
     }
 
+    // The association opened Google sign-in to every Google account, personal ones included.
+    function portalGoogleAnyAccount(orgId) {
+      let path = settingPath(orgId, 'volunteer_portal_google_any_account');
+      return exists(path) && get(path).data.get('value', '') in ['true', true];
+    }
+
+    // This Google account may use the portal: any account, or one of the verified domains.
+    function portalGoogleAccountOk(orgId) {
+      return portalGoogleAnyAccount(orgId) || portalGoogleDomainOk(orgId);
+    }
+
     // A Google account that staff linked to one volunteer (portalGoogleAccounts/{googleUid}).
     function isPortalGoogleUser(orgId) {
       return isGoogleAccount()
         && portalGoogleOn(orgId)
-        && portalGoogleDomainOk(orgId)
+        && portalGoogleAccountOk(orgId)
         && exists(googleAliasPath(orgId));
     }
 
@@ -520,7 +531,7 @@ service cloud.firestore {
       return isGoogleAccount()
         && request.auth.uid == googleUid
         && portalGoogleOn(orgId)
-        && portalGoogleDomainOk(orgId);
+        && portalGoogleAccountOk(orgId);
     }
 
     function validGoogleClaim() {

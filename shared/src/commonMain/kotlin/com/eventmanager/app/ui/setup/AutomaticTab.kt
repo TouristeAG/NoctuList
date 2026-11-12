@@ -308,11 +308,7 @@ private fun StepControls(
                 }
             }
             SetupStepId.GOOGLE -> {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OpenButton(Res.string.setup_btn_open, SetupLinks.credentials(projectId))
-                    OpenButton(Res.string.setup_step_providers_title, SetupLinks.providers(projectId))
-                }
-                PortalGoogleAddresses(projectId, siteUrl)
+                PortalGoogleGuide(projectId, siteUrl)
                 Button(onClick = { automation.confirm(step) }) { Text(stringResource(Res.string.setup_btn_done)) }
             }
         }

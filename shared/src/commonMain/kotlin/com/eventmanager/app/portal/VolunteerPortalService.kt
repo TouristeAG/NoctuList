@@ -37,8 +37,10 @@ interface VolunteerPortalHost {
     fun profilePhotosEnabled(): Boolean
     /** Volunteers may also sign in with an association Google account. */
     fun portalGoogleEnabled(): Boolean
-    /** Verified Google Workspace domains, lowercase. */
+    /** Verified Google Workspace domains, lowercase. Ignored when [portalGoogleAnyAccount]. */
     fun portalGoogleDomains(): List<String>
+    /** Every Google account may sign in, not only the association's domains. */
+    fun portalGoogleAnyAccount(): Boolean = false
 
     suspend fun volunteers(): List<Volunteer>
     /** Inserts a new volunteer through the normal save + sync pipeline (with its optional photo). */
@@ -464,6 +466,7 @@ class VolunteerPortalService(
             ?: return completeClaim(googleUid, PortalRequest.STATUS_REJECTED, "INVALID")
         val volunteers = host.volunteers().filter { it.firebaseOrgId.isBlank() || it.firebaseOrgId == orgId }
         val domains = host.portalGoogleDomains()
+        val anyAccount = host.portalGoogleAnyAccount()
         var aliasTarget = gateway.getDocumentFromServer(orgId, PortalGoogleAccount.COLLECTION, googleUid)
             ?.get("volunteerUid") as? String
         if (aliasTarget != null && !PortalGoogleLinkProcessor.isAliasValid(googleUid, aliasTarget, volunteers)) {
@@ -474,7 +477,7 @@ class VolunteerPortalService(
         var linkRequestId: String? = null
         val decision = when (claim.type) {
             PortalGoogleClaimType.ADMIN_MATCH ->
-                PortalGoogleLinkProcessor.adminMatch(claim, volunteers, domains, aliasTarget)
+                PortalGoogleLinkProcessor.adminMatch(claim, volunteers, domains, aliasTarget, anyAccount)
             PortalGoogleClaimType.LINK_CODE -> {
                 val hash = PortalProjectionBuilder.sha256(claim.code)
                 val found = latestRequestDocs.firstOrNull { (_, data) ->
@@ -486,7 +489,7 @@ class VolunteerPortalService(
                 }
                 val request = if (found != null && data != null) PortalInputValidator.parseRequest(found.first, data) else null
                 PortalGoogleLinkProcessor.linkCode(
-                    claim, request, data?.let { firestoreMillisOf(it["requestedAt"]) }, now, volunteers, domains, aliasTarget,
+                    claim, request, data?.let { firestoreMillisOf(it["requestedAt"]) }, now, volunteers, domains, aliasTarget, anyAccount,
                 )
             }
         }
@@ -565,7 +568,7 @@ class VolunteerPortalService(
      */
     suspend fun assignGoogleAccount(volunteer: Volunteer, email: String): String? {
         val clean = PortalInputValidator.cleanEmail(email) ?: return "INVALID"
-        if (!PortalGoogleLinkProcessor.domainAllowed(clean, host.portalGoogleDomains())) return "DOMAIN"
+        if (!PortalGoogleLinkProcessor.accountAllowed(clean, host.portalGoogleDomains(), host.portalGoogleAnyAccount())) return "DOMAIN"
         val all = host.volunteers().filter { it.firebaseOrgId.isBlank() || it.firebaseOrgId == orgId }
         val current = all.firstOrNull { it.id == volunteer.id } ?: volunteer
         // The roster address already signs in with a password; the Google one must be the association's.
@@ -811,8 +814,9 @@ class VolunteerPortalService(
         }
     }
 
-    private fun googleLoginOn(): Boolean =
-        host.portalGoogleEnabled() && PortalGoogleLinkProcessor.usableDomains(host.portalGoogleDomains()).isNotEmpty()
+    private fun googleLoginOn(): Boolean = PortalGoogleLinkProcessor.loginOn(
+        host.portalGoogleEnabled(), host.portalGoogleAnyAccount(), host.portalGoogleDomains(),
+    )
 
     private val mailKey get() = "$orgId#mail"
 

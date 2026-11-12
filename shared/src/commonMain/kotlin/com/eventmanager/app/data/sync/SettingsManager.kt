@@ -209,6 +209,7 @@ class SettingsManager(private val storage: AppStorage) {
         private const val KEY_VOLUNTEER_PORTAL_GOOGLE_ENABLED = "volunteer_portal_google_enabled"
         private const val KEY_VOLUNTEER_PORTAL_SHOW_LOGO = "volunteer_portal_show_logo"
         private const val KEY_VOLUNTEER_PORTAL_GOOGLE_DOMAINS = "volunteer_portal_google_domains"
+        private const val KEY_VOLUNTEER_PORTAL_GOOGLE_ANY_ACCOUNT = "volunteer_portal_google_any_account"
         private const val KEY_PENDING_SIGNUP_FORMS = "volunteer_portal_pending_signup_forms"
         private const val KEY_PORTAL_PUBLISHED_HASHES = "volunteer_portal_published_hashes"
         private const val KEY_GUEST_FORMS_BILLETERIE_VALIDATE_ENABLED =
@@ -464,14 +465,20 @@ class SettingsManager(private val storage: AppStorage) {
             storage.getString(KEY_VOLUNTEER_PORTAL_GOOGLE_DOMAINS, "") ?: "",
         )
 
-    /** An empty list also turns the Google sign-in option off. */
+    /** With no domain left, association-only Google sign-in stays off until one is added again. */
     fun setVolunteerPortalGoogleDomains(domains: List<String>) {
         val serialized = com.eventmanager.app.data.remote.FirebaseEmailDomainPolicy.serialize(domains)
         storage.putString(KEY_VOLUNTEER_PORTAL_GOOGLE_DOMAINS, serialized)
         touchInstitutionSettingLastModified(InstitutionSettingsKeys.VOLUNTEER_PORTAL_GOOGLE_DOMAINS)
-        if (serialized.isEmpty() && isVolunteerPortalGoogleEnabled()) {
-            setVolunteerPortalGoogleEnabled(false)
-        }
+    }
+
+    /** Every Google account may sign in, not only the verified domains. Off by default. */
+    fun isVolunteerPortalGoogleAnyAccount(): Boolean =
+        storage.getBoolean(KEY_VOLUNTEER_PORTAL_GOOGLE_ANY_ACCOUNT, false)
+
+    fun setVolunteerPortalGoogleAnyAccount(any: Boolean) {
+        storage.putBoolean(KEY_VOLUNTEER_PORTAL_GOOGLE_ANY_ACCOUNT, any)
+        touchInstitutionSettingLastModified(InstitutionSettingsKeys.VOLUNTEER_PORTAL_GOOGLE_ANY_ACCOUNT)
     }
 
     /** Volunteer portal sign-in page for one organization. Empty when the site origin is unknown. */
@@ -1201,6 +1208,8 @@ class SettingsManager(private val storage: AppStorage) {
                 isVolunteerPortalShowLogo().toString()
             InstitutionSettingsKeys.VOLUNTEER_PORTAL_GOOGLE_DOMAINS ->
                 com.eventmanager.app.data.remote.FirebaseEmailDomainPolicy.serialize(volunteerPortalGoogleDomains())
+            InstitutionSettingsKeys.VOLUNTEER_PORTAL_GOOGLE_ANY_ACCOUNT ->
+                isVolunteerPortalGoogleAnyAccount().toString()
             InstitutionSettingsKeys.GUEST_FORMS_BILLETERIE_VALIDATE_ENABLED ->
                 isGuestFormsBilleterieValidateEnabled().toString()
             InstitutionSettingsKeys.GUEST_FORM_BASE_URL -> getGuestFormBaseUrl()
@@ -1371,6 +1380,11 @@ class SettingsManager(private val storage: AppStorage) {
                 storage.putBoolean(
                     KEY_VOLUNTEER_PORTAL_SHOW_LOGO,
                     !value.trim().equals("false", ignoreCase = true),
+                )
+            InstitutionSettingsKeys.VOLUNTEER_PORTAL_GOOGLE_ANY_ACCOUNT ->
+                storage.putBoolean(
+                    KEY_VOLUNTEER_PORTAL_GOOGLE_ANY_ACCOUNT,
+                    value.trim().equals("true", ignoreCase = true),
                 )
             InstitutionSettingsKeys.VOLUNTEER_PORTAL_GOOGLE_DOMAINS ->
                 storage.putString(

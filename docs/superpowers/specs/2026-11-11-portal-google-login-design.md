@@ -24,7 +24,7 @@ moins un domaine vérifié comme géré par Google Workspace.
 | Retrait | L'admin peut toujours modifier ou retirer. Le bénévole ne retire que le lien qu'il a créé. |
 | Domaines | Liste dédiée au portail, plusieurs domaines possibles, séparée de `allowedEmailDomains` (équipe). Pré-remplie une fois avec les domaines de l'équipe, puis indépendante. |
 | Détection Workspace | Chaque domaine est vérifié par une requête DNS MX (DNS-over-HTTPS) depuis l'appareil admin. MX chez Google = vérifié. Seuls les domaines vérifiés comptent. |
-| Filtre | Seuls les comptes Google dont le domaine est vérifié peuvent se connecter au portail. Les comptes gmail.com sont refusés. |
+| Filtre | Deux modes (ajout du 2026-11-12, règles v16) : « Comptes Google de l'association uniquement » (défaut) n'accepte que les domaines vérifiés, gmail.com refusé ; « Tous les comptes Google » accepte tout compte Google à l'adresse vérifiée et ignore la liste. Réglage `volunteer_portal_google_any_account` (`"true"`/`"false"`), lu par les règles, les Functions et les appareils. Sans domaine, le mode association reste fermé mais la coche principale n'est plus éteinte. |
 | Inscription | Reste en e-mail/mot de passe (l'e-mail personnel est nécessaire). La connexion Google suppose un accès portail déjà ouvert (`portalUid` rempli). |
 | Backend | Firebase uniquement, sous-option de la plateforme bénévole. |
 

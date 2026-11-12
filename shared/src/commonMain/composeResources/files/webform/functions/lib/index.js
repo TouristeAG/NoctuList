@@ -240,6 +240,12 @@ function parseDomains(raw) {
   }
   return out;
 }
+function accountAllowed(email, domains, anyAccount) {
+  if (!anyAccount) return domainAllowed(email, domains);
+  const clean = kotlinTrim(email);
+  const at = clean.lastIndexOf("@");
+  return at >= 0 && clean.slice(at + 1) !== "";
+}
 function domainAllowed(email, domains) {
   const clean = kotlinTrim(email).toLowerCase();
   const at = clean.lastIndexOf("@");
@@ -254,8 +260,8 @@ function isAliasValid(googleUid, aliasTarget, volunteers2) {
   return aliasTarget !== null && !isBlank(aliasTarget) && volunteers2.some((v) => v.portalUid === aliasTarget && v.portalGoogleUid === googleUid);
 }
 var hasPortal = (v) => v.portalEnabled && !isBlank(v.portalUid);
-function adminMatch(c, volunteers2, domains, aliasTarget) {
-  if (!domainAllowed(c.email, domains)) return { kind: "REJECT", reason: "DOMAIN" };
+function adminMatch(c, volunteers2, domains, aliasTarget, anyAccount = false) {
+  if (!accountAllowed(c.email, domains, anyAccount)) return { kind: "REJECT", reason: "DOMAIN" };
   if (isAliasValid(c.googleUid, aliasTarget, volunteers2)) return { kind: "ALREADY_LINKED" };
   const candidates = volunteers2.filter((v) => hasPortal(v) && sameAddress(v.portalGoogleEmail, c.email));
   if (candidates.length === 0) return { kind: "REJECT", reason: "NO_MATCH" };
@@ -264,14 +270,14 @@ function adminMatch(c, volunteers2, domains, aliasTarget) {
   const linkedBy = match.portalGoogleLinkedBy === LINKED_BY_VOLUNTEER ? LINKED_BY_VOLUNTEER : LINKED_BY_ADMIN;
   return { kind: "LINK", volunteer: match, linkedBy };
 }
-function linkCode(c, request, requestedAtMillis, now, volunteers2, domains, aliasTarget) {
+function linkCode(c, request, requestedAtMillis, now, volunteers2, domains, aliasTarget, anyAccount = false) {
   const codeOk = request !== null && request.type === "GOOGLE_LINK" && request.status === STATUS_PENDING && c.code !== "" && request.codeHash === sha256(c.code) && requestedAtMillis !== null && now - requestedAtMillis < LINK_CODE_VALIDITY_MS;
   if (!codeOk) return { kind: "REJECT", reason: "CODE" };
   const owner = volunteers2.find((v) => hasPortal(v) && v.portalUid === request.uid);
   if (owner === void 0) return { kind: "REJECT", reason: "NO_MATCH" };
   if (aliasTarget === owner.portalUid && owner.portalGoogleUid === c.googleUid) return { kind: "ALREADY_LINKED" };
   if (!isBlank(owner.portalGoogleEmail)) return { kind: "REJECT", reason: "ALREADY_LINKED" };
-  if (!domainAllowed(c.email, domains)) return { kind: "REJECT", reason: "DOMAIN" };
+  if (!accountAllowed(c.email, domains, anyAccount)) return { kind: "REJECT", reason: "DOMAIN" };
   const others = volunteers2.filter((v) => v.id !== owner.id);
   if (others.some((v) => v.portalGoogleUid === c.googleUid)) return { kind: "REJECT", reason: "TAKEN" };
   if (others.some((v) => sameAddress(v.portalGoogleEmail, c.email))) return { kind: "REJECT", reason: "TAKEN" };
@@ -293,12 +299,16 @@ var GOOGLE_FIELDS = ["portalEnabled", "portalUid", "portalGoogleEmail", "portalG
 async function googleOn(db, orgId) {
   return await institutionSetting(db, orgId, "volunteer_portal_google_enabled") === "true";
 }
+async function anyAccountOn(db, orgId) {
+  return await institutionSetting(db, orgId, "volunteer_portal_google_any_account") === "true";
+}
 async function googleLinkAllowed(db, orgId) {
-  const [on, domains] = await Promise.all([
+  const [on, any, domains] = await Promise.all([
     googleOn(db, orgId),
+    anyAccountOn(db, orgId),
     institutionSetting(db, orgId, "volunteer_portal_google_domains")
   ]);
-  return on && parseDomains(domains).length > 0;
+  return on && (any || parseDomains(domains).length > 0);
 }
 function googleProjectionFields(portalGoogleEmail, linkedBy, allowed) {
   const googleEmail = kotlinTrim(portalGoogleEmail);
@@ -339,9 +349,10 @@ async function processClaim(db, orgId, googleUid, claimed) {
   const c = parseGoogleClaim(googleUid, claimed);
   if (c === null) return rejected("INVALID");
   const now = Date.now();
-  const [all, domainSetting, aliasSnap] = await Promise.all([
+  const [all, domainSetting, anyAccount, aliasSnap] = await Promise.all([
     volunteersOf(db, orgId).select(...GOOGLE_FIELDS).get(),
     institutionSetting(db, orgId, "volunteer_portal_google_domains"),
+    anyAccountOn(db, orgId),
     aliasRef(db, orgId, googleUid).get()
   ]);
   const volunteers2 = all.docs.map((d) => googleVolunteerOf(d.id, d));
@@ -355,14 +366,14 @@ async function processClaim(db, orgId, googleUid, claimed) {
   let linkRequest = null;
   let decision;
   if (c.type === "ADMIN_MATCH") {
-    decision = adminMatch(c, volunteers2, domains, aliasTarget);
+    decision = adminMatch(c, volunteers2, domains, aliasTarget, anyAccount);
   } else {
     const found = await db.collection(`orgs/${orgId}/portalRequests`).where("type", "==", "GOOGLE_LINK").where("codeHash", "==", sha256(c.code)).limit(1).get();
     const doc = found.docs[0];
     linkRequest = doc?.ref ?? null;
     const request = doc !== void 0 ? parseRequest(doc.id, doc.data()) : null;
     const requestedAt = doc !== void 0 ? millisOf(doc.get("requestedAt")) : null;
-    decision = linkCode(c, request, requestedAt, now, volunteers2, domains, aliasTarget);
+    decision = linkCode(c, request, requestedAt, now, volunteers2, domains, aliasTarget, anyAccount);
   }
   let result;
   switch (decision.kind) {

@@ -1951,6 +1951,11 @@
     <string name="desktop_qr_open_image">Abrir imagen QR…</string>
     <string name="desktop_qr_opening_camera">Abriendo la cámara…</string>
     <string name="desktop_qr_opening_file_picker">Elija un archivo de imagen…</string>
+    <string name="desktop_qr_dialog_title">Escanear un código QR</string>
+    <string name="desktop_qr_option_camera_title">Usar la cámara</string>
+    <string name="desktop_qr_option_image_title">Importar una imagen</string>
+    <string name="desktop_qr_reader_hint">También puedes pasar una tarjeta por el lector externo.</string>
+    <string name="desktop_qr_other_method">Elegir otro método</string>
     <string name="desktop_qr_point_at_code">Apunte el código QR a la cámara</string>
     <string name="desktop_qr_start_webcam">Iniciar webcam</string>
     <string name="desktop_usb_reader_test_button">Probar lector USB</string>
@@ -2358,7 +2363,9 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="portal_google_not_found">Dominio no encontrado</string>
     <string name="portal_google_error">No se pudo verificar, inténtelo de nuevo</string>
     <string name="portal_google_enable">Permitir a los voluntarios iniciar sesión con una cuenta de Google</string>
-    <string name="portal_google_needs_domain">Añada un dominio gestionado por Google Workspace para activar esta opción</string>
+    <string name="portal_google_needs_domain">Añada al menos un dominio para que los voluntarios puedan iniciar sesión con Google</string>
+    <string name="portal_google_scope_all">Todas las cuentas de Google</string>
+    <string name="portal_google_scope_internal">Solo cuentas de Google de la asociación</string>
     <string name="portal_show_logo">Mostrar el logotipo de la asociación</string>
     <string name="portal_show_logo_hint">Junto al nombre de la asociación, arriba en la plataforma de voluntarios. Es el logotipo definido en Ajustes, Correo.</string>
     <string name="setup_google_redirects">URI de redireccionamiento autorizados</string>
@@ -2480,9 +2487,16 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="setup_manual_server">1. Plan Blaze y luego una alerta de presupuesto: Google Cloud Console, Billing, Budgets &amp; alerts, por ejemplo 5 €.\n2. En la cuenta de Gmail de la asociación, active la verificación en dos pasos y cree una contraseña de aplicación en https://myaccount.google.com/apppasswords.\n3. Busque la región: Firestore Database muestra la ubicación arriba. eur3 corresponde a europe-west1, nam5 a us-central1, europe-west6 (Zúrich) sigue siendo europe-west6.\n4. Exporte de nuevo el sitio y descomprímalo. Abra Terminal en la carpeta y pegue los comandos de abajo.\n• La línea del secreto pide la contraseña de aplicación. Péguela y pulse Intro (no se ve nada al escribir).\n• El despliegue pide GMAIL_USER (la dirección de Gmail) y REGION (punto 3).\nSi ve «Secret Manager API has not been used»: abra el enlace del mensaje, pulse Habilitar, espere 2 minutos y pegue de nuevo las dos últimas líneas.\nSi ve «Eventarc Service Agent»: Google aún se está preparando. Espere 5 minutos y pegue de nuevo la línea del despliegue.\nSi ve «Blaze» o «billing»: el proyecto aún no está en el plan Blaze.</string>
     <string name="setup_manual_server_cleanup">5. Cuando el despliegue funcione, pegue esta línea una vez para que las versiones antiguas se borren solas. Cambie europe-west1 si su región es otra.</string>
     <string name="setup_step_google_title">Inicio de sesión con Google para voluntarios</string>
-    <string name="setup_step_google_purpose">Solo si los voluntarios inician sesión en su espacio con una cuenta de Google de la asociación. Abra la página Credenciales, añada las direcciones de abajo al cliente OAuth que usa Firebase, guarde y pulse Ya está.</string>
-    <string name="setup_manual_google">Solo si los voluntarios inician sesión en su espacio con una cuenta de Google de la asociación. 1. Consola de Firebase, Authentication, Sign-in method, Google: abra Configuración del SDK web y anote el ID de cliente web. 2. Google Cloud, APIs y servicios, Credenciales: abra el cliente OAuth con ese ID. Añada las direcciones de abajo en URI de redireccionamiento autorizados y en Orígenes autorizados de JavaScript, y guarde. Si el espacio de voluntarios usa su propio dominio, añada también https://su-dominio/__/auth/handler y https://su-dominio. Sin este paso, Google muestra redirect_uri_mismatch. El cambio puede tardar unos minutos.</string>
+    <string name="setup_step_google_purpose">Solo si los voluntarios inician sesión en su espacio con una cuenta de Google de la asociación. Añada las direcciones de abajo al cliente OAuth que usa Firebase, guarde y pulse Ya está.</string>
+    <string name="setup_manual_google">Solo si los voluntarios inician sesión en su espacio con una cuenta de Google de la asociación. Sin este paso, Google muestra redirect_uri_mismatch. El cambio puede tardar unos minutos.</string>
     <string name="setup_google_secret">Si Google responde después auth/invalid-credential, el secreto guardado en Firebase no corresponde a este cliente. En Google Cloud, abra el cliente y pulse Añadir secreto, sin borrar el anterior: los dispositivos del equipo todavía lo usan. Pegue el nuevo secreto en Firebase, Authentication, Google, Configuración del SDK web, Secreto del cliente web, y guarde.</string>
+    <string name="setup_google_open_domains">Abrir dominios autorizados</string>
+    <string name="setup_google_domain_step">2. Firebase: añada este dominio a los dominios autorizados</string>
+    <string name="setup_google_open_provider">Abrir Google en Firebase</string>
+    <string name="setup_google_find_client">El ID de cliente web está en Firebase, Authentication, Google, Configuración del SDK web. En Google Cloud, abra el cliente OAuth con ese ID.</string>
+    <string name="setup_google_open_client">Abrir el cliente OAuth</string>
+    <string name="setup_google_client_step">1. Cliente OAuth: añada cada dirección y guarde</string>
+    <string name="setup_google_domain_field">Dominio propio del espacio de voluntarios (opcional)</string>
     <string name="firebase_tutorial_copy_redirect_uris">Copiar URI localhost de redirección</string>
     <string name="firebase_tutorial_copy_redirect_uris_done">Copiado. Pegue cada URI en Authorized redirect URIs y guarde</string>
     <string name="setup_redirect_note">En ese cliente Web, en «URI de redireccionamiento autorizados», añada las direcciones de abajo (botón copiar) y guarde. Espere un minuto antes de iniciar sesión.</string>
@@ -2492,6 +2506,7 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="setup_login_finish">Terminar el inicio de sesión</string>
     <string name="setup_btn_run_again">Ejecutar de nuevo</string>
     <string name="portal_access_google_title">Cuenta de Google de la asociación</string>
+    <string name="portal_access_google_title_any">Cuenta de Google</string>
     <string name="portal_access_google_hint">Dirección de Google</string>
     <string name="portal_access_google_pending">Esperando el primer inicio de sesión</string>
     <string name="portal_access_google_linked">Vinculada</string>
@@ -2499,6 +2514,7 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="portal_access_google_err_domain">Esta dirección no está en los dominios permitidos</string>
     <string name="portal_access_google_err_taken">Esta dirección ya está asociada a otro voluntario</string>
     <string name="portal_access_google_err_same_as_email">Usa la dirección de la asociación, no la dirección personal del voluntario</string>
+    <string name="portal_access_google_err_same_as_email_any">Esta dirección ya se usa para iniciar sesión con contraseña. Indica otra cuenta de Google.</string>
     <string name="portal_access_google_err_invalid">Dirección no válida</string>
     <string name="portal_access_google_err_save">No se pudo guardar, inténtalo de nuevo.</string>
     <string name="portal_access_google_remove_title">¿Quitar la cuenta de Google?</string>

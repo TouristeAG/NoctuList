@@ -3,6 +3,8 @@ package com.eventmanager.app.ui.setup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,6 +15,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -30,8 +33,10 @@ import androidx.compose.ui.unit.dp
 import com.eventmanager.app.data.remote.FirestoreRulesClipboardContent
 import com.eventmanager.app.data.remote.InstitutionGoogleWebOAuth
 import com.eventmanager.app.data.remote.StorageRulesClipboardContent
+import com.eventmanager.app.data.sync.SettingsManager
 import com.eventmanager.app.platform.LocalPlatformContext
 import com.eventmanager.app.platform.isDesktop
+import com.eventmanager.app.platform.openExternalUrl
 import com.eventmanager.app.portal.PortalGoogleRedirects
 import com.eventmanager.app.resources.*
 import com.eventmanager.app.setup.SetupStepId
@@ -127,23 +132,66 @@ private fun ManualExtras(step: SetupStepId, projectId: String) {
             CopyableTerminalBlock(portalServerCleanupCommand(projectId))
             Text(stringResource(Res.string.firebase_tutorial_server_optional_status), style = MaterialTheme.typography.bodySmall)
         }
-        SetupStepId.GOOGLE -> PortalGoogleAddresses(projectId, siteUrl = "")
+        SetupStepId.GOOGLE -> PortalGoogleGuide(projectId, siteUrl = "")
     }
 }
 
 /**
- * What volunteer Google sign-in needs on the Web OAuth client: the portal signs in through its own
- * site, so Google must know `https://<site>/__/auth/handler` (else `redirect_uri_mismatch`).
+ * What volunteer Google sign-in needs, done by hand because Google has no API for the redirect URIs
+ * of an existing OAuth client: the portal signs in through its own site, so the Web client must know
+ * `https://<site>/__/auth/handler` (else `redirect_uri_mismatch`). A custom domain must also be an
+ * authorized domain in Firebase.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun PortalGoogleAddresses(projectId: String, siteUrl: String) {
-    val redirects = PortalGoogleRedirects.redirectUris(projectId, siteUrl)
+internal fun PortalGoogleGuide(projectId: String, siteUrl: String) {
+    val platform = LocalPlatformContext.current
+    val settings = remember(platform) { SettingsManager(platform) }
+    val clientId = remember(settings) { settings.getFirebaseWebClientId() }
+    val savedBase = remember(settings) { settings.resolveGuestFormBaseUrl() }
+    var typedDomain by remember(projectId, savedBase) {
+        mutableStateOf(PortalGoogleRedirects.customOrigin(projectId, savedBase)?.removePrefix("https://").orEmpty())
+    }
+    val custom = PortalGoogleRedirects.customOrigin(projectId, typedDomain)
+    val portal = custom ?: siteUrl
+    val redirects = PortalGoogleRedirects.redirectUris(projectId, portal)
     if (redirects.isEmpty()) return
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    val open: (String) -> Unit = { openExternalUrl(platform, it) }
+    val clientUrl = PortalGoogleRedirects.oauthClientUrl(projectId, clientId)
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedTextField(
+            value = typedDomain,
+            onValueChange = { typedDomain = it.trim() },
+            label = { Text(stringResource(Res.string.setup_google_domain_field)) },
+            placeholder = { Text("benevoles.example.org") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        Text(stringResource(Res.string.setup_google_client_step), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+        if (clientUrl.isNotBlank()) {
+            OutlinedButton(onClick = { open(clientUrl) }) { Text("↗  ${stringResource(Res.string.setup_google_open_client)}") }
+        } else {
+            Text(stringResource(Res.string.setup_google_find_client), style = MaterialTheme.typography.bodySmall)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { open(SetupLinks.providers(projectId)) }) { Text("↗  ${stringResource(Res.string.setup_google_open_provider)}") }
+                OutlinedButton(onClick = { open(SetupLinks.credentials(projectId)) }) { Text("↗  ${stringResource(Res.string.setup_google_open_client)}") }
+            }
+        }
         Text(stringResource(Res.string.setup_google_redirects), style = MaterialTheme.typography.labelLarge)
         redirects.forEach { CopyableUrlBox(url = it) }
         Text(stringResource(Res.string.setup_google_origins), style = MaterialTheme.typography.labelLarge)
-        PortalGoogleRedirects.origins(projectId, siteUrl).forEach { CopyableUrlBox(url = it) }
+        PortalGoogleRedirects.origins(projectId, portal).forEach { CopyableUrlBox(url = it) }
+
+        if (custom != null) {
+            Text(stringResource(Res.string.setup_google_domain_step), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            OutlinedButton(onClick = { open(PortalGoogleRedirects.authorizedDomainsUrl(projectId)) }) {
+                Text("↗  ${stringResource(Res.string.setup_google_open_domains)}")
+            }
+            CopyableUrlBox(url = custom.removePrefix("https://"))
+        }
+
         Text(stringResource(Res.string.setup_google_secret), style = MaterialTheme.typography.bodySmall)
         Text(stringResource(Res.string.setup_google_test), style = MaterialTheme.typography.bodySmall)
     }
