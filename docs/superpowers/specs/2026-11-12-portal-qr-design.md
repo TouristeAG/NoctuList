@@ -33,7 +33,7 @@ dans l'export JSON, ni dans un document lisible par quelqu'un d'autre.
 
 ### Réglage
 
-- Clé `institutionSettings/portal_qr_enabled`, `value` booléen. Absente = activé.
+- Clé `institutionSettings/volunteer_portal_qr_enabled`, `value` booléen. Absente = activé.
 - App : coche « Afficher le QR dans l'espace bénévole » dans la carte « Plateforme bénévole »
   (Paramètres → Firebase), visible quand le portail est actif.
 
@@ -48,7 +48,7 @@ dans l'export JSON, ni dans un document lisible par quelqu'un d'autre.
 - Écrit et supprimé par les appareils dans `VolunteerPortalService`, au même moment que la page,
   avec le même mécanisme de hash publié (`loadPublishedHashes`) pour ne pas réécrire un document
   inchangé. Couper le réglage déclenche un `republish()` qui supprime les documents existants.
-- Écrit par le serveur (Cloud Functions) partout où il crée une page : inscription et CLAIM, avec les mêmes conditions.
+- Écrit par le serveur (Cloud Functions) à l'inscription, seul endroit où il crée une page (un CLAIM ne fait que lier la fiche, la page vient ensuite des appareils).
 - Une fonction pure partagée côté Kotlin (`PortalQrDocument.build(volunteer, settings): Map?`)
   décide de l'existence et du contenu. Le serveur a son équivalent TypeScript.
 
@@ -56,8 +56,8 @@ dans l'export JSON, ni dans un document lisible par quelqu'un d'autre.
 
 ```
 function portalQrOn(orgId) {
-  return !exists(.../institutionSettings/portal_qr_enabled)
-    || get(.../institutionSettings/portal_qr_enabled).data.get('value', true) in [true, 'true'];
+  return !exists(.../institutionSettings/volunteer_portal_qr_enabled)
+    || get(.../institutionSettings/volunteer_portal_qr_enabled).data.get('value', true) in [true, 'true'];
 }
 
 match /orgs/{orgId}/volunteerPortalQr/{uid} {
@@ -110,7 +110,7 @@ match /orgs/{orgId}/volunteerPortalQr/{uid} {
 
 ## 5. Textes
 
-Nouveaux libellés uniquement, dans les 7 langues, sans tiret cadratin :
+Nouveaux libellés uniquement, dans toutes les langues de l'app (7) et du portail (5), sans tiret cadratin :
 
 - App : « Afficher le QR dans l'espace bénévole ».
 - Portail : « Mon QR », « Fermer ».
@@ -130,8 +130,7 @@ Règles (`firebase/tests/rules/portal-qr.test.mjs`) :
 - `list` et toute écriture refusés depuis le web.
 
 Cloud Functions (`npm run test:functions`) :
-- Inscription et CLAIM écrivent le document QR quand le réglage est actif, pas quand il est coupé,
-  jamais pour un admin.
+- L'inscription écrit le document QR quand le réglage est actif ou absent, pas quand il est coupé.
 
 Navigateur (`npm run preview` + `node seed.mjs`) :
 - « Mon QR » s'ouvre, le QR est lu par le scanner de l'app desktop.
