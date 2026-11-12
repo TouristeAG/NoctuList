@@ -2585,4 +2585,18 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="sync_backup_key_missing">No service account key on this device yet.</string>
     <string name="sync_backup_sheet_names">Sheet names</string>
     <string name="sync_backup_storage_title">Change storage</string>
+    <string name="sync_sheets_page_title">Sync</string>
+    <string name="sync_sheets_connection_subtitle">Google Sheets spreadsheet and service account key</string>
+    <string name="sync_sheets_sync_subtitle">Sync with Google Sheets, by hand or automatically</string>
+    <string name="sync_sheets_spreadsheet_title">Spreadsheet</string>
+    <string name="sync_sheets_key_title">Service account key</string>
+    <string name="sync_sheets_sync_now">Sync now</string>
+    <string name="sync_sheets_last_sync_now">Last sync just now</string>
+    <string name="sync_sheets_last_sync_minutes">Last sync %1$d min ago</string>
+    <string name="sync_sheets_last_sync_hours">Last sync %1$d h ago</string>
+    <string name="sync_sheets_last_sync_days">Last sync %1$d d ago</string>
+    <string name="sync_sheets_never_synced">Not synced yet</string>
+    <string name="sync_sheets_auto_title">Automatic sync</string>
+    <string name="sync_sheets_every_minute">Every minute</string>
+    <string name="sync_sheets_every_minutes">Every %1$d minutes</string>
 </resources>

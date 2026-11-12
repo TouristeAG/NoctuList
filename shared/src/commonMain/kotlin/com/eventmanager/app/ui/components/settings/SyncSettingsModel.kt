@@ -29,6 +29,13 @@ fun MirrorFrequency.Companion.fromMinutes(m: Int): MirrorFrequency {
 /** Choices of the Sheets sync frequency menu, in minutes (same stored value as `getSyncInterval()`). */
 val SHEETS_SYNC_MINUTES: List<Int> = listOf(1, 5, 15, 30, 60)
 
+/**
+ * The menu option shown for a stored Sheets sync interval: the nearest of [SHEETS_SYNC_MINUTES]
+ * (the shorter one on a tie). Pure: the page writes only when the user picks an option, so an odd
+ * stored value (for example 10) is never rewritten silently.
+ */
+fun nearestSheetsSyncMinutes(stored: Int): Int = SHEETS_SYNC_MINUTES.minBy { abs(it - stored) }
+
 enum class SyncConnectionState { READY, NEEDS_SIGN_IN, NEEDS_CONFIG }
 
 fun syncConnectionState(orgReady: Boolean, projectReady: Boolean, signedIn: Boolean): SyncConnectionState =

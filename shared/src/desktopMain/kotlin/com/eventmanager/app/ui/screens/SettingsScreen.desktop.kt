@@ -87,7 +87,14 @@ import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 
 private enum class DesktopSettingsNav {
-    Sync,
+    // Sync & data, one entry per page. Firebase: Connexion, Équipe, Fonctions en ligne, Sauvegarde.
+    // Google Sheets: Connexion, Synchronisation. The selection is not persisted, so no old value
+    // ("Sync") needs migrating.
+    SyncConnection,
+    SyncTeam,
+    SyncOnline,
+    SyncBackup,
+    SyncSheets,
     Email,
     Maintenance,
     Catalog,
@@ -137,19 +144,6 @@ actual fun SettingsScreen(
     val firebaseSignInFeedbackState = remember { mutableStateOf<String?>(null) }
     val firebaseAuthEmailState = remember { mutableStateOf(settingsManager.getFirebaseAuthEmail()) }
     var firebaseAuthEmail by firebaseAuthEmailState
-    var isFirebaseOrgAdmin by remember { mutableStateOf(false) }
-    LaunchedEffect(firebaseAuthEmail, settingsManager.getFirebaseOrgId()) {
-        isFirebaseOrgAdmin = com.eventmanager.app.data.remote.FirebaseOrgAdminAccess
-            .currentUserIsOrgAdmin(platformContext, settingsManager)
-    }
-    val canEditInstitutionSettings = com.eventmanager.app.data.security.canEditSyncedInstitutionSettings(
-        backendType = settingsManager.getBackendType(),
-        isFirebaseOrgAdmin = isFirebaseOrgAdmin,
-    )
-    val canEditBilleterieSendSetting = com.eventmanager.app.data.security.canEditAnnouncementsNonAdminSendSetting(
-        backendType = settingsManager.getBackendType(),
-        isFirebaseOrgAdmin = isFirebaseOrgAdmin,
-    )
     val venues by viewModel.venues.collectAsState()
     val activeVenues = remember(venues) { venues.filter { it.isActive } }
     val temporaryGuestAccesses by viewModel.temporaryGuestVenueAccesses.collectAsState()
@@ -212,9 +206,39 @@ actual fun SettingsScreen(
     var uninstallDataInProgress by remember { mutableStateOf(false) }
     val cacheClearedMsg = stringResource(Res.string.app_cache_cleared)
 
+    // One set of sync bindings for the whole screen: the sync pages read it, and its org-admin
+    // check also gates the institution-wide settings below (no second role check).
+    val syncBindings = com.eventmanager.app.ui.components.settings.rememberSyncSettingsBindings(
+        viewModel = viewModel,
+        settingsManager = settingsManager,
+        platformContext = platformContext,
+        onOpenFirebaseGuide = { showInstructions = true },
+        onOpenMigration = { migrationWizard = it },
+        authEmailState = firebaseAuthEmailState,
+        signInFeedbackState = firebaseSignInFeedbackState,
+        onStatusMessage = { uploadStatus = it },
+        scope = scope,
+    )
+    val isFirebaseOrgAdmin = syncBindings.isOrgAdmin
+    val canEditInstitutionSettings = com.eventmanager.app.data.security.canEditSyncedInstitutionSettings(
+        backendType = settingsManager.getBackendType(),
+        isFirebaseOrgAdmin = isFirebaseOrgAdmin,
+    )
+    val canEditBilleterieSendSetting = com.eventmanager.app.data.security.canEditAnnouncementsNonAdminSendSetting(
+        backendType = settingsManager.getBackendType(),
+        isFirebaseOrgAdmin = isFirebaseOrgAdmin,
+    )
+
     val navItems = buildList {
         if (variant == SettingsScreenVariant.Full) {
-            add(DesktopSettingsNavItem(DesktopSettingsNav.Sync, stringResource(Res.string.settings_category_sync), Icons.Default.CloudSync))
+            add(DesktopSettingsNavItem(DesktopSettingsNav.SyncConnection, stringResource(Res.string.sync_connection_page_title), Icons.Default.CloudSync))
+            if (isFirebaseBackend) {
+                add(DesktopSettingsNavItem(DesktopSettingsNav.SyncTeam, stringResource(Res.string.sync_team_page_title), Icons.Default.Group))
+                add(DesktopSettingsNavItem(DesktopSettingsNav.SyncOnline, stringResource(Res.string.sync_online_page_title), Icons.Default.Public))
+                add(DesktopSettingsNavItem(DesktopSettingsNav.SyncBackup, stringResource(Res.string.sync_backup_page_title), Icons.Default.Backup))
+            } else {
+                add(DesktopSettingsNavItem(DesktopSettingsNav.SyncSheets, stringResource(Res.string.sync_sheets_page_title), Icons.Default.Sync))
+            }
             add(DesktopSettingsNavItem(DesktopSettingsNav.Email, stringResource(Res.string.settings_category_email), Icons.Default.Email))
             add(DesktopSettingsNavItem(DesktopSettingsNav.Maintenance, stringResource(Res.string.settings_category_maintenance), Icons.Default.Build))
             add(DesktopSettingsNavItem(DesktopSettingsNav.Catalog, stringResource(Res.string.settings_category_catalog), Icons.Default.Category))
@@ -237,7 +261,7 @@ actual fun SettingsScreen(
         mutableStateOf(
             when (variant) {
                 SettingsScreenVariant.BilleterieBasic, SettingsScreenVariant.PosBasic -> DesktopSettingsNav.Appearance
-                else -> DesktopSettingsNav.Sync
+                else -> DesktopSettingsNav.SyncConnection
             }
         )
     }
@@ -350,123 +374,96 @@ actual fun SettingsScreen(
                 // Variant-specific background animation is embedded in Appearance below.
 
         if (variant == SettingsScreenVariant.Full) {
-        DesktopSettingsCategory(
-            section = DesktopSettingsNav.Sync,
-            selectedSection = selectedSection,
-            title = stringResource(Res.string.settings_category_sync),
-            icon = Icons.Default.CloudSync,
-        ) {
-            com.eventmanager.app.ui.components.SyncSetupInstructionsButton(
-                backendType = settingsManager.getBackendType(),
-                onClick = { showInstructions = true },
-            )
-
-            if (variant == SettingsScreenVariant.Full &&
-                settingsManager.getBackendType() == com.eventmanager.app.data.remote.BackendType.SHEETS
+            DesktopSettingsCategory(
+                section = DesktopSettingsNav.SyncConnection,
+                selectedSection = selectedSection,
+                title = stringResource(Res.string.sync_connection_page_title),
+                icon = Icons.Default.CloudSync,
             ) {
-                OutlinedTextField(
-                    value = spreadsheetId,
-                    onValueChange = { spreadsheetId = it },
-                    label = { Text(stringResource(Res.string.spreadsheet_id_label)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                SheetNameField(stringResource(Res.string.guest_list_sheet_label), guestListSheet) { guestListSheet = it }
-                SheetNameField(stringResource(Res.string.volunteer_sheet_label), volunteerSheet) { volunteerSheet = it }
-                SheetNameField(stringResource(Res.string.shifts_sheet_label), jobsSheet) { jobsSheet = it }
-                SheetNameField(stringResource(Res.string.shift_types_sheet_label), jobTypesSheet) { jobTypesSheet = it }
-                SheetNameField(stringResource(Res.string.venues_sheet_label), venuesSheet) { venuesSheet = it }
-                SheetNameField(stringResource(Res.string.sales_items_sheet_label), salesItemsSheet) { salesItemsSheet = it }
-                SheetNameField(stringResource(Res.string.transfers_sheet_label), transfersSheet) { transfersSheet = it }
-                SheetNameField(stringResource(Res.string.temp_guest_list_sheet_label), tempGuestListSheet) { tempGuestListSheet = it }
-                SheetNameField(stringResource(Res.string.settings_sheet_label), settingsSheet) { settingsSheet = it }
-
-                ServiceAccountKeyUploadButton(
-                    platformContext = platformContext,
-                    onStatusUpdate = { uploadStatus = it },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(8.dp))
-                DesktopServiceAccountKeyInfoPanel(keyInfo = serviceAccountKeyInfo)
-                uploadStatus?.let {
-                    Spacer(Modifier.height(8.dp))
-                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (isFirebaseBackend) {
+                    com.eventmanager.app.ui.components.settings.SyncConnectionPage(syncBindings)
+                } else {
+                    com.eventmanager.app.ui.components.settings.SheetsConnectionPage(
+                        spreadsheetId = spreadsheetId,
+                        onSpreadsheetIdChange = { spreadsheetId = it },
+                        keyReady = serviceAccountKeyInfo != null,
+                        keyDetails = serviceAccountKeyInfo?.let { info ->
+                            stringResource(Res.string.email_colon, info.clientEmail) + "\n" +
+                                stringResource(Res.string.project_colon, info.projectId)
+                        },
+                        onSave = { saveSheetsConfig() },
+                        onOpenGuide = { showInstructions = true },
+                        keyActions = {
+                            ServiceAccountKeyUploadButton(
+                                platformContext = platformContext,
+                                onStatusUpdate = { uploadStatus = it },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            uploadStatus?.let {
+                                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        },
+                        sheetNameFields = {
+                            SheetNameField(stringResource(Res.string.guest_list_sheet_label), guestListSheet) { guestListSheet = it }
+                            SheetNameField(stringResource(Res.string.volunteer_sheet_label), volunteerSheet) { volunteerSheet = it }
+                            SheetNameField(stringResource(Res.string.shifts_sheet_label), jobsSheet) { jobsSheet = it }
+                            SheetNameField(stringResource(Res.string.shift_types_sheet_label), jobTypesSheet) { jobTypesSheet = it }
+                            SheetNameField(stringResource(Res.string.venues_sheet_label), venuesSheet) { venuesSheet = it }
+                            SheetNameField(stringResource(Res.string.sales_items_sheet_label), salesItemsSheet) { salesItemsSheet = it }
+                            SheetNameField(stringResource(Res.string.transfers_sheet_label), transfersSheet) { transfersSheet = it }
+                            SheetNameField(stringResource(Res.string.temp_guest_list_sheet_label), tempGuestListSheet) { tempGuestListSheet = it }
+                            SheetNameField(stringResource(Res.string.settings_sheet_label), settingsSheet) { settingsSheet = it }
+                        },
+                    )
                 }
-
-                Spacer(Modifier.height(12.dp))
-                OutlinedButton(
-                    onClick = { saveSheetsConfig() },
-                    modifier = Modifier.fillMaxWidth()
+            }
+            // Firebase-only and Sheets-only pages are also gated here, so a stale selection never
+            // renders a page (and its network calls) for the other backend, even for one frame.
+            if (isFirebaseBackend) {
+                DesktopSettingsCategory(
+                    section = DesktopSettingsNav.SyncTeam,
+                    selectedSection = selectedSection,
+                    title = stringResource(Res.string.sync_team_page_title),
+                    icon = Icons.Default.Group,
                 ) {
-                    Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(Res.string.save_sheets_config))
+                    com.eventmanager.app.ui.components.settings.SyncTeamPage(syncBindings)
                 }
-                com.eventmanager.app.ui.components.SheetsMigrateToFirebaseButton(
-                    onClick = {
-                        migrationWizard = com.eventmanager.app.data.remote.MigrationDirection.SHEETS_TO_FIREBASE
-                    },
-                    projectId = settingsManager.getFirebaseProjectId(),
-                )
-            }
-
-            if (variant == SettingsScreenVariant.Full &&
-                settingsManager.getBackendType() == com.eventmanager.app.data.remote.BackendType.FIREBASE
-            ) {
-                val syncBindings = com.eventmanager.app.ui.components.settings.rememberSyncSettingsBindings(
-                    viewModel = viewModel,
-                    settingsManager = settingsManager,
-                    platformContext = platformContext,
-                    onOpenFirebaseGuide = { showInstructions = true },
-                    onOpenMigration = { migrationWizard = it },
-                    authEmailState = firebaseAuthEmailState,
-                    signInFeedbackState = firebaseSignInFeedbackState,
-                    onStatusMessage = { uploadStatus = it },
-                    scope = scope,
-                )
-                com.eventmanager.app.ui.components.settings.LegacyFirebaseSyncSettings(syncBindings)
-            }
-
-            if (variant == SettingsScreenVariant.Full) {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-            }
-
-            if (com.eventmanager.app.ui.components.shouldShowSyncInterval(settingsManager.getBackendType())) {
-                DesktopSyncIntervalSettings(
-                    settingsManager = settingsManager,
-                    viewModel = viewModel,
-                    syncInterval = syncInterval,
-                    onSyncIntervalChange = { syncInterval = it }
-                )
-            }
-
-            if (variant == SettingsScreenVariant.Full &&
-                com.eventmanager.app.ui.components.shouldShowSheetsManualSyncControls(settingsManager.getBackendType())
-            ) {
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = { viewModel.performFullSync() },
-                        enabled = !isSyncing,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        if (isSyncing) {
-                            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                        } else {
-                            Icon(Icons.Default.Sync, contentDescription = null)
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(Res.string.manual_sync_now))
-                    }
-                    OutlinedButton(
-                        onClick = { viewModel.testSyncStatus() },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(stringResource(Res.string.test_sync_status))
-                    }
+                DesktopSettingsCategory(
+                    section = DesktopSettingsNav.SyncOnline,
+                    selectedSection = selectedSection,
+                    title = stringResource(Res.string.sync_online_page_title),
+                    icon = Icons.Default.Public,
+                ) {
+                    com.eventmanager.app.ui.components.settings.SyncOnlinePage(syncBindings)
+                }
+                DesktopSettingsCategory(
+                    section = DesktopSettingsNav.SyncBackup,
+                    selectedSection = selectedSection,
+                    title = stringResource(Res.string.sync_backup_page_title),
+                    icon = Icons.Default.Backup,
+                ) {
+                    com.eventmanager.app.ui.components.settings.SyncBackupPage(syncBindings)
+                }
+            } else {
+                DesktopSettingsCategory(
+                    section = DesktopSettingsNav.SyncSheets,
+                    selectedSection = selectedSection,
+                    title = stringResource(Res.string.sync_sheets_page_title),
+                    icon = Icons.Default.Sync,
+                ) {
+                    com.eventmanager.app.ui.components.settings.SheetsSyncPage(
+                        b = syncBindings,
+                        isSyncing = isSyncing,
+                        syncIntervalMinutes = syncInterval,
+                        onSyncIntervalChange = { minutes ->
+                            syncInterval = minutes
+                            settingsManager.saveSyncInterval(minutes)
+                            viewModel.updateSyncInterval()
+                        },
+                        onTestSyncStatus = { viewModel.testSyncStatus() },
+                    )
                 }
             }
-        }
         }
 
         if (variant == SettingsScreenVariant.Full || variant == SettingsScreenVariant.BilleterieBasic || variant == SettingsScreenVariant.PosBasic) {

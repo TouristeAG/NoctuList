@@ -2588,4 +2588,18 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="sync_backup_key_missing">इस डिवाइस पर अभी कोई सर्विस अकाउंट कुंजी नहीं है।</string>
     <string name="sync_backup_sheet_names">शीट के नाम</string>
     <string name="sync_backup_storage_title">स्टोरेज बदलें</string>
+    <string name="sync_sheets_page_title">सिंक</string>
+    <string name="sync_sheets_connection_subtitle">Google Sheets स्प्रेडशीट और सर्विस अकाउंट कुंजी</string>
+    <string name="sync_sheets_sync_subtitle">Google Sheets के साथ सिंक, हाथ से या अपने आप</string>
+    <string name="sync_sheets_spreadsheet_title">स्प्रेडशीट</string>
+    <string name="sync_sheets_key_title">सर्विस अकाउंट कुंजी</string>
+    <string name="sync_sheets_sync_now">अभी सिंक करें</string>
+    <string name="sync_sheets_last_sync_now">पिछला सिंक अभी-अभी</string>
+    <string name="sync_sheets_last_sync_minutes">पिछला सिंक %1$d मिनट पहले</string>
+    <string name="sync_sheets_last_sync_hours">पिछला सिंक %1$d घंटे पहले</string>
+    <string name="sync_sheets_last_sync_days">पिछला सिंक %1$d दिन पहले</string>
+    <string name="sync_sheets_never_synced">अभी तक सिंक नहीं हुआ</string>
+    <string name="sync_sheets_auto_title">स्वचालित सिंक</string>
+    <string name="sync_sheets_every_minute">हर मिनट</string>
+    <string name="sync_sheets_every_minutes">हर %1$d मिनट</string>
 </resources>

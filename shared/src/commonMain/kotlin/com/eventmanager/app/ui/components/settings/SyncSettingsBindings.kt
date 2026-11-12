@@ -10,6 +10,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import com.eventmanager.app.data.remote.BackendType
 import com.eventmanager.app.data.remote.FirebaseAuthResult
 import com.eventmanager.app.data.remote.FirebaseConfiguredOrg
 import com.eventmanager.app.data.remote.FirebaseMemberSignIn
@@ -105,6 +106,10 @@ class SyncSettingsBindings(
  *   cancelled when the sync section leaves the composition.
  * - [onSignInOverride]: replaces the shared sign-in flow. Android passes its activity-result
  *   launcher flow here; desktop uses the shared flow.
+ * - [onSyncNowOverride]: replaces the Sheets "sync now" action (Android keeps its own call).
+ *
+ * The org-admin role is only checked on the Firebase backend; in Sheets mode [SyncSettingsBindings.isOrgAdmin]
+ * stays false and no Firebase call runs.
  */
 @Composable
 fun rememberSyncSettingsBindings(
@@ -120,6 +125,7 @@ fun rememberSyncSettingsBindings(
     onStatusMessage: (String?) -> Unit = {},
     onSignInOverride: (() -> Unit)? = null,
     scope: CoroutineScope = rememberCoroutineScope(),
+    onSyncNowOverride: (() -> Unit)? = null,
 ): SyncSettingsBindings {
     var authEmail by authEmailState
     var signInFeedback by signInFeedbackState
@@ -152,8 +158,10 @@ fun rememberSyncSettingsBindings(
 
     var isOrgAdmin by remember { mutableStateOf(false) }
     val writableOrgId = settingsManager.resolveWritableFirebaseOrgId()
-    LaunchedEffect(authEmail, writableOrgId, settingsManager) {
-        isOrgAdmin = FirebaseOrgAdminAccess.currentUserIsOrgAdmin(platformContext, settingsManager)
+    val firebaseBackend = settingsManager.getBackendType() == BackendType.FIREBASE
+    LaunchedEffect(authEmail, writableOrgId, settingsManager, firebaseBackend) {
+        isOrgAdmin = firebaseBackend &&
+            FirebaseOrgAdminAccess.currentUserIsOrgAdmin(platformContext, settingsManager)
     }
 
     val sharedSignIn: () -> Unit = {
@@ -281,7 +289,7 @@ fun rememberSyncSettingsBindings(
         onOpenFirebaseGuide = onOpenFirebaseGuide,
         onOpenMigration = onOpenMigration,
         lastSyncAt = lastSyncAt,
-        onSyncNow = { viewModel.performFullSync() },
+        onSyncNow = onSyncNowOverride ?: { viewModel.performFullSync() },
         scope = scope,
     )
 }

@@ -2588,4 +2588,18 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="sync_backup_key_missing">Nulla clavis rationis servitii in hoc instrumento adhuc est.</string>
     <string name="sync_backup_sheet_names">Nomina paginarum</string>
     <string name="sync_backup_storage_title">Repositorium muta</string>
+    <string name="sync_sheets_page_title">Synchronizatio</string>
+    <string name="sync_sheets_connection_subtitle">Tabula Google Sheets et clavis rationis servitii</string>
+    <string name="sync_sheets_sync_subtitle">Cum Google Sheets synchronizare, manu aut sponte</string>
+    <string name="sync_sheets_spreadsheet_title">Tabula</string>
+    <string name="sync_sheets_key_title">Clavis rationis servitii</string>
+    <string name="sync_sheets_sync_now">Nunc synchronizare</string>
+    <string name="sync_sheets_last_sync_now">Ultima synchronizatio modo</string>
+    <string name="sync_sheets_last_sync_minutes">Ultima synchronizatio ante %1$d min</string>
+    <string name="sync_sheets_last_sync_hours">Ultima synchronizatio ante %1$d h</string>
+    <string name="sync_sheets_last_sync_days">Ultima synchronizatio ante %1$d d</string>
+    <string name="sync_sheets_never_synced">Nondum synchronizatum</string>
+    <string name="sync_sheets_auto_title">Synchronizatio sponte</string>
+    <string name="sync_sheets_every_minute">Singulis minutis</string>
+    <string name="sync_sheets_every_minutes">Singulis %1$d minutis</string>
 </resources>

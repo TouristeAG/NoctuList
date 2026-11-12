@@ -2582,4 +2582,18 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="sync_backup_key_missing">Aucune clé de compte de service sur cet appareil.</string>
     <string name="sync_backup_sheet_names">Noms des feuilles</string>
     <string name="sync_backup_storage_title">Changer de stockage</string>
+    <string name="sync_sheets_page_title">Synchronisation</string>
+    <string name="sync_sheets_connection_subtitle">Tableur Google Sheets et clé du compte de service</string>
+    <string name="sync_sheets_sync_subtitle">Synchroniser avec Google Sheets, à la main ou automatiquement</string>
+    <string name="sync_sheets_spreadsheet_title">Tableur</string>
+    <string name="sync_sheets_key_title">Clé du compte de service</string>
+    <string name="sync_sheets_sync_now">Synchroniser maintenant</string>
+    <string name="sync_sheets_last_sync_now">Dernière synchro à l\'instant</string>
+    <string name="sync_sheets_last_sync_minutes">Dernière synchro il y a %1$d min</string>
+    <string name="sync_sheets_last_sync_hours">Dernière synchro il y a %1$d h</string>
+    <string name="sync_sheets_last_sync_days">Dernière synchro il y a %1$d j</string>
+    <string name="sync_sheets_never_synced">Pas encore synchronisé</string>
+    <string name="sync_sheets_auto_title">Synchronisation automatique</string>
+    <string name="sync_sheets_every_minute">Chaque minute</string>
+    <string name="sync_sheets_every_minutes">Toutes les %1$d minutes</string>
 </resources>

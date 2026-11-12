@@ -141,4 +141,14 @@ class SyncSettingsModelTest {
         assertEquals(ExportAge(ExportAgeUnit.HOURS, 23), exportAge(now - 1439 * 60_000L, now))
         assertEquals(ExportAge(ExportAgeUnit.DAYS, 1), exportAge(now - 1440 * 60_000L, now))
     }
+
+    @Test
+    fun sheetsSyncIntervalShowsNearestOption() {
+        assertEquals(1, nearestSheetsSyncMinutes(1))
+        assertEquals(15, nearestSheetsSyncMinutes(15))
+        assertEquals(1, nearestSheetsSyncMinutes(0))
+        assertEquals(5, nearestSheetsSyncMinutes(10))
+        assertEquals(30, nearestSheetsSyncMinutes(45))
+        assertEquals(60, nearestSheetsSyncMinutes(90))
+    }
 }

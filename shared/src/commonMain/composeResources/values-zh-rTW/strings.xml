@@ -2583,4 +2583,18 @@
     <string name="sync_backup_key_missing">此裝置上還沒有服務帳戶金鑰。</string>
     <string name="sync_backup_sheet_names">工作表名稱</string>
     <string name="sync_backup_storage_title">變更儲存方式</string>
+    <string name="sync_sheets_page_title">同步</string>
+    <string name="sync_sheets_connection_subtitle">Google Sheets 試算表和服務帳戶金鑰</string>
+    <string name="sync_sheets_sync_subtitle">與 Google Sheets 同步，手動或自動</string>
+    <string name="sync_sheets_spreadsheet_title">試算表</string>
+    <string name="sync_sheets_key_title">服務帳戶金鑰</string>
+    <string name="sync_sheets_sync_now">立即同步</string>
+    <string name="sync_sheets_last_sync_now">剛剛同步</string>
+    <string name="sync_sheets_last_sync_minutes">%1$d 分鐘前同步</string>
+    <string name="sync_sheets_last_sync_hours">%1$d 小時前同步</string>
+    <string name="sync_sheets_last_sync_days">%1$d 天前同步</string>
+    <string name="sync_sheets_never_synced">尚未同步</string>
+    <string name="sync_sheets_auto_title">自動同步</string>
+    <string name="sync_sheets_every_minute">每分鐘</string>
+    <string name="sync_sheets_every_minutes">每 %1$d 分鐘</string>
 </resources>

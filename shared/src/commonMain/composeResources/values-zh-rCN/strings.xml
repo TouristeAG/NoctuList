@@ -2583,4 +2583,18 @@
     <string name="sync_backup_key_missing">此设备上还没有服务账号密钥。</string>
     <string name="sync_backup_sheet_names">工作表名称</string>
     <string name="sync_backup_storage_title">更改存储方式</string>
+    <string name="sync_sheets_page_title">同步</string>
+    <string name="sync_sheets_connection_subtitle">Google Sheets 表格和服务账号密钥</string>
+    <string name="sync_sheets_sync_subtitle">与 Google Sheets 同步，手动或自动</string>
+    <string name="sync_sheets_spreadsheet_title">表格</string>
+    <string name="sync_sheets_key_title">服务账号密钥</string>
+    <string name="sync_sheets_sync_now">立即同步</string>
+    <string name="sync_sheets_last_sync_now">刚刚同步</string>
+    <string name="sync_sheets_last_sync_minutes">%1$d 分钟前同步</string>
+    <string name="sync_sheets_last_sync_hours">%1$d 小时前同步</string>
+    <string name="sync_sheets_last_sync_days">%1$d 天前同步</string>
+    <string name="sync_sheets_never_synced">尚未同步</string>
+    <string name="sync_sheets_auto_title">自动同步</string>
+    <string name="sync_sheets_every_minute">每分钟</string>
+    <string name="sync_sheets_every_minutes">每 %1$d 分钟</string>
 </resources>
