@@ -8,7 +8,7 @@ globalThis.localStorage = {
   removeItem: (k) => void data.delete(k),
 };
 
-const { clearQr, readCachedQr, storeQr } = await import("../site/portal-qr.js");
+const { clearQr, isStaleFor, missingIsFinal, readCachedQr, storeQr } = await import("../site/portal-qr.js");
 
 const ORG = "org1";
 const ENTRY = { uid: "u1", payload: "NL1:abc", name: "Ada Lovelace", association: "Les Noctambules" };
@@ -35,4 +35,18 @@ test("clearRemoves", () => {
 test("corruptJsonIsNull", () => {
   data.set(`noctulist.portalQr.${ORG}`, "{not json");
   assert.equal(readCachedQr(ORG), null);
+});
+
+test("isStaleFor: other account is stale, Google sessions and same uid are not", () => {
+  assert.equal(isStaleFor(ENTRY, "other", false), true);
+  assert.equal(isStaleFor(ENTRY, "u1", false), false);
+  assert.equal(isStaleFor(ENTRY, "authUid", true), false);
+  assert.equal(isStaleFor(null, "u1", false), false);
+});
+
+test("missingIsFinal: a cache-served missing doc never clears", () => {
+  const snap = (exists, fromCache) => ({ exists: () => exists, metadata: { fromCache } });
+  assert.equal(missingIsFinal(snap(false, false)), true);
+  assert.equal(missingIsFinal(snap(false, true)), false);
+  assert.equal(missingIsFinal(snap(true, false)), false);
 });

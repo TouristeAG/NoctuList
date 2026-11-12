@@ -39,7 +39,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 import { EMULATOR_PORTS, isLocalDev, loadConfig, parseOrgPath } from "./firebase-env.js?v=portal-2";
 import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=google-2";
-import { clearQr, openQrDialog, readCachedQr, storeQr } from "./portal-qr.js?v=qr-1";
+import { clearQr, closeQrDialog, isStaleFor, missingIsFinal, openQrDialog, readCachedQr, storeQr } from "./portal-qr.js?v=qr-2";
 import {
   EMAIL_RE,
   authErrorKey,
@@ -608,6 +608,7 @@ function googleMark() {
 
 async function doSignOut(reasonKey) {
   if ($("account-dialog").open) $("account-dialog").close();
+  closeQrDialog();
   disposeLinkSession();
   stopListeners();
   clearQr(path.orgId);
@@ -648,13 +649,7 @@ async function onUser(next) {
   googleSession = false;
   armIdleTimer();
   portalUid = "";
-  const cachedUid = path ? readCachedQr(path.orgId)?.uid : "";
-  // Google sessions are keyed by the linked volunteer uid (portalUid), not by next.uid: watchProjection replaces the copy.
-  if (cachedUid && next && !isGoogleUser(next) && cachedUid !== next.uid) {
-    // Another account signed in on this device: its QR must not stay behind.
-    clearQr(path.orgId);
-    qrDoc = null;
-  }
+  qrDoc = null; // watchProjection fills it again
   if (!user) {
     $("signin-email").value = $("signin-email").value || "";
     return showView("view-signin");
@@ -663,6 +658,9 @@ async function onUser(next) {
   const google = await readGoogleSession(next);
   if (user !== next) return;
   googleSession = google;
+  // Another account's QR must not stay on this device. Google sessions are keyed by the linked
+  // volunteer uid, not by the auth uid, so watchProjection replaces their copy instead.
+  if (isStaleFor(readCachedQr(path.orgId), next.uid, google)) clearQr(path.orgId);
   // Google accounts are verified by Google; their access goes through the link to a volunteer.
   if (isGoogleUser(user)) return openGoogleSession(user);
   if (!user.emailVerified) {
@@ -712,15 +710,17 @@ function watchProjection() {
       const data = snap.data();
       qrDoc = { payload: data.payload, name: data.name || "" };
       storeQr(path.orgId, { uid: uidAtStart, payload: data.payload, name: qrDoc.name, association: projection?.association || "" });
-    } else {
+    } else if (missingIsFinal(snap)) {
       qrDoc = null;
       clearQr(path.orgId);
+      closeQrDialog();
     }
     if (projection) renderDashboard();
   }, (error) => {
     if (String(error?.code).includes("permission-denied")) {
       qrDoc = null;
       clearQr(path.orgId);
+      closeQrDialog();
       if (projection) renderDashboard();
     }
   }));

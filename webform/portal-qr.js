@@ -43,6 +43,21 @@ export function clearQr(orgId) {
   }
 }
 
+/** True when the stored copy belongs to another account than the one signing in (Google sessions are keyed by the linked uid, so never judged here). */
+export function isStaleFor(cached, authUid, google) {
+  return Boolean(cached?.uid) && !google && cached.uid !== authUid;
+}
+
+/** True when a snapshot is allowed to wipe the stored copy: the server said the document is gone. */
+export function missingIsFinal(snap) {
+  return !snap.exists() && !snap.metadata?.fromCache;
+}
+
+export function closeQrDialog() {
+  const dialog = document.getElementById("qr-dialog");
+  if (dialog?.open) dialog.close();
+}
+
 let wakeLock = null;
 
 async function releaseWakeLock() {
