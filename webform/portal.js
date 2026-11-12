@@ -38,7 +38,7 @@ import {
   uploadBytes,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 import { EMULATOR_PORTS, isLocalDev, loadConfig, parseOrgPath } from "./firebase-env.js?v=portal-2";
-import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=google-2";
+import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=qr-3";
 import { clearQr, closeQrDialog, isStaleFor, missingIsFinal, openQrDialog, readCachedQr, storeQr } from "./portal-qr.js?v=qr-2";
 import {
   EMAIL_RE,
@@ -104,6 +104,12 @@ function showView(id) {
 /** Reduced screen with only "My QR", from the copy stored on this device. */
 function showOffline() {
   showView("view-offline");
+}
+
+/** Offline screen shown at boot: the page never started Firebase, so it reloads once the network is back. */
+function showOfflineUntilOnline() {
+  showOffline();
+  window.addEventListener("online", () => location.reload(), { once: true });
 }
 
 function openOfflineQr() {
@@ -669,7 +675,11 @@ function stopListeners() {
 function armIdleTimer() {
   if (idleTimer) clearTimeout(idleTimer);
   if (!user) return;
-  idleTimer = setTimeout(() => doSignOut("idleSignOut"), IDLE_LIMIT_MS);
+  idleTimer = setTimeout(() => {
+    // Signing out offline would wipe the only copy of the QR: wait until the network is back.
+    if (!navigator.onLine) return armIdleTimer();
+    doSignOut("idleSignOut");
+  }, IDLE_LIMIT_MS);
 }
 
 async function onUser(next) {
@@ -680,6 +690,8 @@ async function onUser(next) {
   portalUid = "";
   qrDoc = null; // watchProjection fills it again
   if (!user) {
+    // Session ended (signed out elsewhere, expired, tab session gone): no QR without a session.
+    if (path) clearQr(path.orgId);
     $("signin-email").value = $("signin-email").value || "";
     return showView("view-signin");
   }
@@ -748,7 +760,12 @@ function watchProjection() {
     if (snap.exists() && snap.data().payload) {
       const data = snap.data();
       qrDoc = { payload: data.payload, name: data.name || "" };
-      storeQr(path.orgId, { uid: uidAtStart, payload: data.payload, name: qrDoc.name, association: projection?.association || "" });
+      // Kept on the device only for a remembered session: a tab session ends without a sign-out.
+      if (rememberDefault()) {
+        storeQr(path.orgId, { uid: uidAtStart, payload: data.payload, name: qrDoc.name, association: projection?.association || "" });
+      } else {
+        clearQr(path.orgId);
+      }
     } else if (missingIsFinal(snap)) {
       qrDoc = null;
       clearQr(path.orgId);
@@ -1530,7 +1547,7 @@ async function main() {
   localStorage.setItem(LAST_ORG_KEY, path.orgId);
   $("offline-qr").prepend(icon("qr", 18));
   $("offline-qr").addEventListener("click", openOfflineQr);
-  if (!navigator.onLine && readCachedQr(path.orgId)) return showOffline();
+  if (!navigator.onLine && readCachedQr(path.orgId)) return showOfflineUntilOnline();
   let app;
   try {
     const config = await loadConfig(t("hostingError"));
@@ -1540,7 +1557,7 @@ async function main() {
     app = initializeApp(firebaseConfig);
   } catch (error) {
     // fetch rejects with a TypeError when the network is down.
-    if (error instanceof TypeError && readCachedQr(path.orgId)) return showOffline();
+    if (error instanceof TypeError && readCachedQr(path.orgId)) return showOfflineUntilOnline();
     $("disabled-error").textContent = error.message;
     $("disabled-error").classList.remove("hidden");
     return showView("view-disabled");
@@ -1563,7 +1580,7 @@ async function main() {
   const open = await loadBranding();
   renderBranding();
   applyStaticI18n();
-  if (open === null && readCachedQr(path.orgId)) return showOffline();
+  if (open === null && readCachedQr(path.orgId)) return showOfflineUntilOnline();
   if (!open) return showView("view-disabled");
   onAuthStateChanged(auth, (next) => {
     onUser(next).catch((error) => console.error("portal state failed", error));

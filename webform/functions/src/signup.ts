@@ -245,7 +245,7 @@ async function create(
     batch.set(db.doc(`orgs/${orgId}/volunteerPortalQr/${submission.uid}`), {
       schema: 1,
       payload: id,
-      name: `${submission.firstName} ${lastName}`,
+      name: `${submission.firstName} ${lastName}`.trim(),
     });
   }
   await batch.commit();

@@ -3,9 +3,11 @@
 // on every iOS version). Firestore, Auth and Storage requests are never touched.
 // The helpers below are plain functions so the unit tests can load this file in a Node vm.
 
-const CACHE = "portal-v1";
+const CACHE = "portal-v2";
 const SHELL = "/portal.html";
 const FIREBASE_CDN = "https://www.gstatic.com/firebasejs/";
+/** Pinned SDK version: its files never change, so they are served from the cache first. */
+const FIREBASE_SDK = "https://www.gstatic.com/firebasejs/10.14.1/";
 const FIXED = ["/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/apple-touch-icon.png"];
 
 /** "html", "js" or "css" when the file is read for more URLs at install, else null. */
@@ -53,14 +55,18 @@ function collectUrls(text, kind, base) {
   return found;
 }
 
-/** "navigate", "cache" or null (not intercepted) for a request seen by the worker. */
+/**
+ * "navigate", "sdk" (pinned Firebase SDK, cache first), "asset" (other stored file, network first)
+ * or null (not intercepted) for a request seen by the worker.
+ */
 function routeFor({ method, url, mode }, origin) {
   if (method !== "GET") return null;
   if (mode === "navigate") {
     const u = new URL(url);
     return u.origin === origin && u.pathname.startsWith("/v/") ? "navigate" : null;
   }
-  return cacheable(url, origin) ? "cache" : null;
+  if (!cacheable(url, origin)) return null;
+  return url.startsWith(FIREBASE_SDK) ? "sdk" : "asset";
 }
 
 function requestFor(url, origin) {
@@ -115,6 +121,20 @@ async function networkFirst(event) {
   }
 }
 
+/** Site files change on deploy without always changing their URL: fresh copy first, stored one offline. */
+async function networkFirstAsset(event) {
+  const cache = await caches.open(CACHE);
+  try {
+    const response = await fetch(event.request);
+    if (response.ok) event.waitUntil(cache.put(event.request, response.clone()));
+    return response;
+  } catch (error) {
+    const hit = await cache.match(event.request, { ignoreVary: true });
+    if (hit) return hit;
+    throw error;
+  }
+}
+
 async function cacheFirst(event) {
   const cache = await caches.open(CACHE);
   const hit = await cache.match(event.request, { ignoreVary: true });
@@ -140,6 +160,7 @@ if (typeof ServiceWorkerGlobalScope !== "undefined" && self instanceof ServiceWo
   self.addEventListener("fetch", (event) => {
     const route = routeFor(event.request, self.location.origin);
     if (route === "navigate") event.respondWith(networkFirst(event));
-    else if (route === "cache") event.respondWith(cacheFirst(event));
+    else if (route === "sdk") event.respondWith(cacheFirst(event));
+    else if (route === "asset") event.respondWith(networkFirstAsset(event));
   });
 }
