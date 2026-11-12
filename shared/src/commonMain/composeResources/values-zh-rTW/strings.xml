@@ -2513,6 +2513,7 @@
     <string name="sync_missing_sign_in">請使用 Google 登入以同步此裝置。</string>
     <string name="sync_missing_project">Firebase 專案尚未設定。</string>
     <string name="sync_missing_org">請新增您的組織 ID。</string>
+    <string name="sync_configure">設定…</string>
     <string name="sync_reconfigure">重新設定…</string>
     <string name="sync_firebase_guide_title">Firebase 設定指南</string>
     <string name="sync_firebase_guide_subtitle">首次安裝時以及每次更新 NoctuList 後</string>

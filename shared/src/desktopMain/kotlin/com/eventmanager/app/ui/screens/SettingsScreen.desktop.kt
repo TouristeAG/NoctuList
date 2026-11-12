@@ -422,6 +422,7 @@ actual fun SettingsScreen(
                     authEmailState = firebaseAuthEmailState,
                     signInFeedbackState = firebaseSignInFeedbackState,
                     onStatusMessage = { uploadStatus = it },
+                    scope = scope,
                 )
                 com.eventmanager.app.ui.components.settings.LegacyFirebaseSyncSettings(syncBindings)
             }

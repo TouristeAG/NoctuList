@@ -2021,6 +2021,7 @@ actual fun SettingsScreen(
                     authEmailState = firebaseAuthEmailState,
                     signInFeedbackState = firebaseSignInFeedbackState,
                     onStatusMessage = { uploadStatus = it },
+                    scope = coroutineScope,
                     // Android signs in through the activity-result launcher when it can.
                     onSignInOverride = {
                         firebaseSignInFeedback = null

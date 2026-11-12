@@ -2518,6 +2518,7 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="sync_missing_sign_in">Intra cum Google ut hoc instrumentum synchronizes.</string>
     <string name="sync_missing_project">Projectum Firebase nondum configuratum est.</string>
     <string name="sync_missing_org">Adde ID societatis tuae.</string>
+    <string name="sync_configure">Configurare…</string>
     <string name="sync_reconfigure">Iterum configurare…</string>
     <string name="sync_firebase_guide_title">Dux configurationis Firebase</string>
     <string name="sync_firebase_guide_subtitle">Ad primam installationem et post quamque renovationem NoctuList</string>

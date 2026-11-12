@@ -72,6 +72,7 @@ import com.eventmanager.app.resources.setup_firebase_project_title
 import com.eventmanager.app.resources.sync_connected_as
 import com.eventmanager.app.resources.sync_connection_page_subtitle
 import com.eventmanager.app.resources.sync_connection_page_title
+import com.eventmanager.app.resources.sync_configure
 import com.eventmanager.app.resources.sync_connection_status_title
 import com.eventmanager.app.resources.sync_firebase_guide_subtitle
 import com.eventmanager.app.resources.sync_firebase_guide_title
@@ -187,11 +188,15 @@ private fun ConnectionStateBlock(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 val signedIn = !b.authEmail.isNullOrBlank()
+                // Nothing typed yet: "Configurer…"; a project exists (even partly): "Reconfigurer…".
+                val projectStarted = b.projectId.isNotBlank() || b.applicationId.isNotBlank() || b.apiKey.isNotBlank()
                 when {
                     state == SyncConnectionState.NEEDS_SIGN_IN ->
                         Button(onClick = b.onSignIn) { Text(stringResource(Res.string.firebase_sign_in)) }
                     state == SyncConnectionState.NEEDS_CONFIG && !projectReady ->
-                        Button(onClick = onReconfigure) { Text(stringResource(Res.string.sync_reconfigure)) }
+                        Button(onClick = onReconfigure) {
+                            Text(stringResource(if (projectStarted) Res.string.sync_reconfigure else Res.string.sync_configure))
+                        }
                     state == SyncConnectionState.NEEDS_CONFIG ->
                         Button(onClick = onAddOrganisation) {
                             Text(stringResource(Res.string.firebase_configured_org_add))
@@ -269,8 +274,9 @@ private fun OrganisationsBlock(b: SyncSettingsBindings, onAddOrganisation: () ->
                                 )
                             },
                         )
-                        // The last organisation cannot be removed, as before.
-                        if (orgs.size > 1) {
+                        // The last valid organisation cannot be removed, as before; a malformed
+                        // ID can always be removed.
+                        if (malformed || orgs.size > 1) {
                             TextButton(onClick = { orgToRemove = org.orgId }) {
                                 Text(stringResource(Res.string.remove))
                             }

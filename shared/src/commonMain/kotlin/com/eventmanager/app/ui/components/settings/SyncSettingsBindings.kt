@@ -24,6 +24,7 @@ import com.eventmanager.app.portal.DomainCheck
 import com.eventmanager.app.portal.PortalServerStatus
 import com.eventmanager.app.ui.components.FirebaseSyncSettingsSection
 import com.eventmanager.app.ui.viewmodel.EventManagerViewModel
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 /**
@@ -98,6 +99,8 @@ class SyncSettingsBindings(
  *   screen read or write the signed-in e-mail (migration sign-in, Android activity result).
  * - [onStatusMessage]: the screen's status line (`uploadStatus`), which receives the same error
  *   messages as before.
+ * - [scope]: pass the screen-level scope so a sign-in, sign-out or domains publish is not
+ *   cancelled when the sync section leaves the composition.
  * - [onSignInOverride]: replaces the shared sign-in flow. Android passes its activity-result
  *   launcher flow here; desktop uses the shared flow.
  */
@@ -114,8 +117,8 @@ fun rememberSyncSettingsBindings(
     signInFeedbackState: MutableState<String?> = remember { mutableStateOf(null) },
     onStatusMessage: (String?) -> Unit = {},
     onSignInOverride: (() -> Unit)? = null,
+    scope: CoroutineScope = rememberCoroutineScope(),
 ): SyncSettingsBindings {
-    val scope = rememberCoroutineScope()
     var authEmail by authEmailState
     var signInFeedback by signInFeedbackState
 

@@ -2513,6 +2513,7 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="sync_missing_sign_in">Inicie sesión con Google para sincronizar este dispositivo.</string>
     <string name="sync_missing_project">El proyecto Firebase aún no está configurado.</string>
     <string name="sync_missing_org">Añada el ID de su organización.</string>
+    <string name="sync_configure">Configurar…</string>
     <string name="sync_reconfigure">Reconfigurar…</string>
     <string name="sync_firebase_guide_title">Guía de configuración de Firebase</string>
     <string name="sync_firebase_guide_subtitle">Para la primera instalación y después de cada actualización de NoctuList</string>

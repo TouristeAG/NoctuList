@@ -2518,6 +2518,7 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="sync_missing_sign_in">इस डिवाइस को सिंक करने के लिए Google से साइन इन करें।</string>
     <string name="sync_missing_project">Firebase प्रोजेक्ट अभी सेट अप नहीं है।</string>
     <string name="sync_missing_org">अपने संगठन की ID जोड़ें।</string>
+    <string name="sync_configure">कॉन्फ़िगर करें…</string>
     <string name="sync_reconfigure">फिर से कॉन्फ़िगर करें…</string>
     <string name="sync_firebase_guide_title">Firebase सेटअप गाइड</string>
     <string name="sync_firebase_guide_subtitle">पहली बार इंस्टॉल करने पर और NoctuList के हर अपडेट के बाद</string>
