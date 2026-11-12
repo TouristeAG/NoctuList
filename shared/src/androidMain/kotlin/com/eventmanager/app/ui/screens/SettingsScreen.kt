@@ -1719,10 +1719,10 @@ actual fun SettingsScreen(
     var selectedFileUri by remember { mutableStateOf<Uri?>(null) }
     var syncInterval by remember { mutableStateOf(settingsManager.getSyncInterval()) }
     var migrationWizard by remember { mutableStateOf<com.eventmanager.app.data.remote.MigrationDirection?>(null) }
-    var firebaseConfiguredOrgs by remember { mutableStateOf(settingsManager.getFirebaseConfiguredOrgs()) }
-    var firebaseAuthEmail by remember { mutableStateOf(settingsManager.getFirebaseAuthEmail()) }
-    var firebaseSignInFeedback by remember { mutableStateOf<String?>(null) }
-    var allowedEmailDomains by remember { mutableStateOf(settingsManager.getAllowedEmailDomains()) }
+    val firebaseAuthEmailState = remember { mutableStateOf(settingsManager.getFirebaseAuthEmail()) }
+    var firebaseAuthEmail by firebaseAuthEmailState
+    val firebaseSignInFeedbackState = remember { mutableStateOf<String?>(null) }
+    var firebaseSignInFeedback by firebaseSignInFeedbackState
     var isFirebaseOrgAdmin by remember { mutableStateOf(false) }
     LaunchedEffect(firebaseAuthEmail, settingsManager.getFirebaseOrgId()) {
         isFirebaseOrgAdmin = com.eventmanager.app.data.remote.FirebaseOrgAdminAccess
@@ -1836,15 +1836,7 @@ actual fun SettingsScreen(
     // Sync status dialog state
     val syncStatusMessage by viewModel.syncStatusMessage.collectAsState()
     val showSyncStatusDialog by viewModel.showSyncStatusDialog.collectAsState()
-    val profilePhotosEnabled by viewModel.profilePhotosUploadEnabled.collectAsState()
-    var driveImportEnabled by remember { mutableStateOf(viewModel.isDriveImportEnabled()) }
     val guestFormsEnabled by viewModel.guestFormsEnabled.collectAsState()
-    val volunteerPortalEnabled by viewModel.volunteerPortalEnabled.collectAsState()
-    val volunteerPortalGoogleEnabled by viewModel.volunteerPortalGoogleEnabled.collectAsState()
-    val volunteerPortalShowLogo by viewModel.volunteerPortalShowLogo.collectAsState()
-    val volunteerPortalGoogleDomains by viewModel.volunteerPortalGoogleDomains.collectAsState()
-    val portalServerStatus by viewModel.portalServerStatus.collectAsState()
-    val guestFormsBilleterieValidateEnabled by viewModel.guestFormsBilleterieValidateEnabled.collectAsState()
     val billeterieSendEnabled by viewModel.announcementsBilleterieSendEnabled.collectAsState()
     
     // Check if JSON key file exists on first load
@@ -2020,15 +2012,17 @@ actual fun SettingsScreen(
                     onClick = { showInstructions = true },
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                com.eventmanager.app.ui.components.FirebaseSyncSettingsSection(
-                    configuredOrgs = firebaseConfiguredOrgs,
-                    authEmail = firebaseAuthEmail.ifBlank { null },
-                    onConfiguredOrgsChange = {
-                        firebaseConfiguredOrgs = it
-                        viewModel.updateFirebaseConfiguredOrgsLocal(it)
-                    },
-                    onOrgIdCommitted = viewModel::provisionFirebaseOrg,
-                    onSignIn = {
+                val syncBindings = com.eventmanager.app.ui.components.settings.rememberSyncSettingsBindings(
+                    viewModel = viewModel,
+                    settingsManager = settingsManager,
+                    platformContext = platformContext,
+                    onOpenFirebaseGuide = { showInstructions = true },
+                    onOpenMigration = { migrationWizard = it },
+                    authEmailState = firebaseAuthEmailState,
+                    signInFeedbackState = firebaseSignInFeedbackState,
+                    onStatusMessage = { uploadStatus = it },
+                    // Android signs in through the activity-result launcher when it can.
+                    onSignInOverride = {
                         firebaseSignInFeedback = null
                         val auth = firebaseAuthService
                         if (auth != null) {
@@ -2050,80 +2044,8 @@ actual fun SettingsScreen(
                             }
                         }
                     },
-                    onSignOut = {
-                        coroutineScope.launch {
-                            com.eventmanager.app.data.remote.createFirebaseAuthService(platformContext).signOut()
-                            firebaseAuthEmail = ""
-                            settingsManager.setFirebaseAuthEmail("")
-                            firebaseSignInFeedback = null
-                        }
-                    },
-                    onMigrateToSheets = {
-                        migrationWizard = com.eventmanager.app.data.remote.MigrationDirection.FIREBASE_TO_SHEETS
-                    },
-                    onMirrorExport = {
-                        viewModel.exportSheetsMirrorNow()
-                    },
-                    platformContext = platformContext,
-                    onMirrorSettingsChanged = { viewModel.onSheetsMirrorSettingsChanged() },
-                    settingsManager = settingsManager,
-                    profilePhotosEnabled = profilePhotosEnabled,
-                    onProfilePhotosEnabledChange = { viewModel.setProfilePhotosEnabled(it) },
-                    driveImportEnabled = driveImportEnabled,
-                    onDriveImportEnabledChange = {
-                        driveImportEnabled = it
-                        viewModel.setDriveImportEnabled(it)
-                    },
-                    guestFormsEnabled = guestFormsEnabled,
-                    onGuestFormsEnabledChange = { viewModel.setGuestFormsEnabled(it) },
-                    guestFormsBilleterieValidateEnabled = guestFormsBilleterieValidateEnabled,
-                    onGuestFormsBilleterieValidateEnabledChange = {
-                        viewModel.setGuestFormsBilleterieValidateEnabled(it)
-                    },
-                    guestFormSiteOrigin = viewModel.guestFormSiteOrigin(),
-                    volunteerPortalEnabled = volunteerPortalEnabled,
-                    portalServerStatus = portalServerStatus,
-                    onVolunteerPortalEnabledChange = { viewModel.setVolunteerPortalEnabled(it) },
-                    volunteerPortalUrl = viewModel.volunteerPortalUrl(),
-                    volunteerPortalGoogleEnabled = volunteerPortalGoogleEnabled,
-                    onVolunteerPortalGoogleEnabledChange = { viewModel.setVolunteerPortalGoogleEnabled(it) },
-                    volunteerPortalShowLogo = volunteerPortalShowLogo,
-                    onVolunteerPortalShowLogoChange = { viewModel.setVolunteerPortalShowLogo(it) },
-                    volunteerPortalGoogleDomains = volunteerPortalGoogleDomains,
-                    onAddVolunteerPortalGoogleDomain = { viewModel.addVolunteerPortalGoogleDomain(it) },
-                    onRemoveVolunteerPortalGoogleDomain = { viewModel.removeVolunteerPortalGoogleDomain(it) },
-                    projectId = settingsManager.getFirebaseProjectId(),
-                    apiKey = settingsManager.getFirebaseApiKey(),
-                    applicationId = settingsManager.getFirebaseApplicationId(),
-                    onProjectIdChange = { settingsManager.setFirebaseProjectId(it) },
-                    onApiKeyChange = { settingsManager.setFirebaseApiKey(it) },
-                    onApplicationIdChange = { settingsManager.setFirebaseApplicationId(it) },
-                    webClientId = settingsManager.getFirebaseWebClientId(),
-                    onWebClientIdChange = { settingsManager.setFirebaseWebClientId(it) },
-                    webClientSecret = settingsManager.getFirebaseWebClientSecret(),
-                    onWebClientSecretChange = { settingsManager.setFirebaseWebClientSecret(it) },
-                    allowedEmailDomains = allowedEmailDomains,
-                    onAllowedEmailDomainsChange = { domains ->
-                        allowedEmailDomains = domains
-                        settingsManager.setAllowedEmailDomains(domains)
-                        coroutineScope.launch {
-                            val org = settingsManager.resolveWritableFirebaseOrgId()
-                            if (org.isBlank()) return@launch
-                            val gateway = com.eventmanager.app.data.remote.createFirestoreGateway(
-                                platformContext,
-                                settingsManager,
-                            )
-                            runCatching {
-                                com.eventmanager.app.data.remote.MemberRoleAdmin.publishAllowedEmailDomains(
-                                    gateway = gateway,
-                                    orgId = org,
-                                    domains = domains,
-                                )
-                            }.onFailure { uploadStatus = it.message }
-                        }
-                    },
-                    signInFeedback = firebaseSignInFeedback,
                 )
+                com.eventmanager.app.ui.components.settings.LegacyFirebaseSyncSettings(syncBindings)
                 Spacer(modifier = Modifier.height(16.dp))
             }
 

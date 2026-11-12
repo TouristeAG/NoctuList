@@ -134,8 +134,9 @@ actual fun SettingsScreen(
     var settingsSheet by remember { mutableStateOf(settingsManager.getSettingsSheet()) }
     var syncInterval by remember { mutableStateOf(settingsManager.getSyncInterval()) }
     var uploadStatus by remember { mutableStateOf<String?>(null) }
-    var firebaseSignInFeedback by remember { mutableStateOf<String?>(null) }
-    var firebaseAuthEmail by remember { mutableStateOf(settingsManager.getFirebaseAuthEmail()) }
+    val firebaseSignInFeedbackState = remember { mutableStateOf<String?>(null) }
+    val firebaseAuthEmailState = remember { mutableStateOf(settingsManager.getFirebaseAuthEmail()) }
+    var firebaseAuthEmail by firebaseAuthEmailState
     var isFirebaseOrgAdmin by remember { mutableStateOf(false) }
     LaunchedEffect(firebaseAuthEmail, settingsManager.getFirebaseOrgId()) {
         isFirebaseOrgAdmin = com.eventmanager.app.data.remote.FirebaseOrgAdminAccess
@@ -255,15 +256,7 @@ actual fun SettingsScreen(
     val showSyncStatusDialog by viewModel.showSyncStatusDialog.collectAsState()
     val isSyncing by viewModel.isSyncing.collectAsState()
     val announcementsVenues by viewModel.venues.collectAsState()
-    val profilePhotosEnabled by viewModel.profilePhotosUploadEnabled.collectAsState()
-    var driveImportEnabled by remember { mutableStateOf(viewModel.isDriveImportEnabled()) }
     val guestFormsEnabled by viewModel.guestFormsEnabled.collectAsState()
-    val volunteerPortalEnabled by viewModel.volunteerPortalEnabled.collectAsState()
-    val volunteerPortalGoogleEnabled by viewModel.volunteerPortalGoogleEnabled.collectAsState()
-    val volunteerPortalShowLogo by viewModel.volunteerPortalShowLogo.collectAsState()
-    val volunteerPortalGoogleDomains by viewModel.volunteerPortalGoogleDomains.collectAsState()
-    val portalServerStatus by viewModel.portalServerStatus.collectAsState()
-    val guestFormsBilleterieValidateEnabled by viewModel.guestFormsBilleterieValidateEnabled.collectAsState()
     val billeterieSendEnabled by viewModel.announcementsBilleterieSendEnabled.collectAsState()
 
     val saveLabel = stringResource(Res.string.save)
@@ -420,139 +413,17 @@ actual fun SettingsScreen(
             if (variant == SettingsScreenVariant.Full &&
                 settingsManager.getBackendType() == com.eventmanager.app.data.remote.BackendType.FIREBASE
             ) {
-                var firebaseConfiguredOrgs by remember { mutableStateOf(settingsManager.getFirebaseConfiguredOrgs()) }
-                var firebaseProjectId by remember { mutableStateOf(settingsManager.getFirebaseProjectId()) }
-                var firebaseApiKey by remember { mutableStateOf(settingsManager.getFirebaseApiKey()) }
-                var firebaseApplicationId by remember { mutableStateOf(settingsManager.getFirebaseApplicationId()) }
-                var allowedEmailDomains by remember {
-                    mutableStateOf(settingsManager.getAllowedEmailDomains())
-                }
-                com.eventmanager.app.ui.components.FirebaseSyncSettingsSection(
-                    configuredOrgs = firebaseConfiguredOrgs,
-                    authEmail = firebaseAuthEmail.ifBlank { null },
-                    onConfiguredOrgsChange = {
-                        firebaseConfiguredOrgs = it
-                        viewModel.updateFirebaseConfiguredOrgsLocal(it)
-                    },
-                    onOrgIdCommitted = viewModel::provisionFirebaseOrg,
-                    onSignIn = {
-                        scope.launch {
-                            firebaseSignInFeedback = null
-                            when (val result = com.eventmanager.app.data.remote.createFirebaseAuthService(platformContext).signInWithGoogle()) {
-                                is com.eventmanager.app.data.remote.FirebaseAuthResult.Success -> {
-                                    firebaseSignInFeedback = null
-                                    firebaseAuthEmail = result.email.orEmpty()
-                                    settingsManager.setFirebaseAuthEmail(result.email.orEmpty())
-                                    val org = settingsManager.getFirebaseOrgId()
-                                    if (org.isNotBlank() && result.uid.isNotBlank()) {
-                                        val gateway = com.eventmanager.app.data.remote.createFirestoreGateway(
-                                            platformContext,
-                                            settingsManager,
-                                        )
-                                        runCatching {
-                                            com.eventmanager.app.data.remote.FirebaseMemberSignIn.afterGoogleSignIn(
-                                                gateway = gateway,
-                                                settings = settingsManager,
-                                                uid = result.uid,
-                                                email = result.email,
-                                                joinWithBootstrapCode = settingsManager.getFirebaseBootstrapCode().isNotBlank(),
-                                            )
-                                        }.onFailure { e ->
-                                            firebaseSignInFeedback = e.message
-                                            uploadStatus = e.message
-                                        }
-                                    }
-                                }
-                                is com.eventmanager.app.data.remote.FirebaseAuthResult.Error -> {
-                                    firebaseSignInFeedback = result.message
-                                    uploadStatus = result.message
-                                }
-                            }
-                        }
-                    },
-                    onSignOut = {
-                        scope.launch {
-                            com.eventmanager.app.data.remote.createFirebaseAuthService(platformContext).signOut()
-                            firebaseAuthEmail = ""
-                            settingsManager.setFirebaseAuthEmail("")
-                            firebaseSignInFeedback = null
-                        }
-                    },
-                    onMigrateToSheets = {
-                        migrationWizard = com.eventmanager.app.data.remote.MigrationDirection.FIREBASE_TO_SHEETS
-                    },
-                    onMirrorExport = {
-                        viewModel.exportSheetsMirrorNow()
-                    },
-                    platformContext = platformContext,
-                    onMirrorSettingsChanged = { viewModel.onSheetsMirrorSettingsChanged() },
+                val syncBindings = com.eventmanager.app.ui.components.settings.rememberSyncSettingsBindings(
+                    viewModel = viewModel,
                     settingsManager = settingsManager,
-                    profilePhotosEnabled = profilePhotosEnabled,
-                    onProfilePhotosEnabledChange = { viewModel.setProfilePhotosEnabled(it) },
-                    driveImportEnabled = driveImportEnabled,
-                    onDriveImportEnabledChange = {
-                        driveImportEnabled = it
-                        viewModel.setDriveImportEnabled(it)
-                    },
-                    guestFormsEnabled = guestFormsEnabled,
-                    onGuestFormsEnabledChange = { viewModel.setGuestFormsEnabled(it) },
-                    guestFormsBilleterieValidateEnabled = guestFormsBilleterieValidateEnabled,
-                    onGuestFormsBilleterieValidateEnabledChange = {
-                        viewModel.setGuestFormsBilleterieValidateEnabled(it)
-                    },
-                    guestFormSiteOrigin = viewModel.guestFormSiteOrigin(),
-                    volunteerPortalEnabled = volunteerPortalEnabled,
-                    portalServerStatus = portalServerStatus,
-                    onVolunteerPortalEnabledChange = { viewModel.setVolunteerPortalEnabled(it) },
-                    volunteerPortalUrl = viewModel.volunteerPortalUrl(),
-                    volunteerPortalGoogleEnabled = volunteerPortalGoogleEnabled,
-                    onVolunteerPortalGoogleEnabledChange = { viewModel.setVolunteerPortalGoogleEnabled(it) },
-                    volunteerPortalShowLogo = volunteerPortalShowLogo,
-                    onVolunteerPortalShowLogoChange = { viewModel.setVolunteerPortalShowLogo(it) },
-                    volunteerPortalGoogleDomains = volunteerPortalGoogleDomains,
-                    onAddVolunteerPortalGoogleDomain = { viewModel.addVolunteerPortalGoogleDomain(it) },
-                    onRemoveVolunteerPortalGoogleDomain = { viewModel.removeVolunteerPortalGoogleDomain(it) },
-                    projectId = firebaseProjectId,
-                    apiKey = firebaseApiKey,
-                    applicationId = firebaseApplicationId,
-                    onProjectIdChange = {
-                        firebaseProjectId = it
-                        settingsManager.setFirebaseProjectId(it)
-                    },
-                    onApiKeyChange = {
-                        firebaseApiKey = it
-                        settingsManager.setFirebaseApiKey(it)
-                    },
-                    onApplicationIdChange = {
-                        firebaseApplicationId = it
-                        settingsManager.setFirebaseApplicationId(it)
-                    },
-                    webClientId = settingsManager.getFirebaseWebClientId(),
-                    onWebClientIdChange = { settingsManager.setFirebaseWebClientId(it) },
-                    webClientSecret = settingsManager.getFirebaseWebClientSecret(),
-                    onWebClientSecretChange = { settingsManager.setFirebaseWebClientSecret(it) },
-                    allowedEmailDomains = allowedEmailDomains,
-                    onAllowedEmailDomainsChange = { domains ->
-                        allowedEmailDomains = domains
-                        settingsManager.setAllowedEmailDomains(domains)
-                        scope.launch {
-                            val org = settingsManager.resolveWritableFirebaseOrgId()
-                            if (org.isBlank()) return@launch
-                            val gateway = com.eventmanager.app.data.remote.createFirestoreGateway(
-                                platformContext,
-                                settingsManager,
-                            )
-                            runCatching {
-                                com.eventmanager.app.data.remote.MemberRoleAdmin.publishAllowedEmailDomains(
-                                    gateway = gateway,
-                                    orgId = org,
-                                    domains = domains,
-                                )
-                            }.onFailure { uploadStatus = it.message }
-                        }
-                    },
-                    signInFeedback = firebaseSignInFeedback,
+                    platformContext = platformContext,
+                    onOpenFirebaseGuide = { showInstructions = true },
+                    onOpenMigration = { migrationWizard = it },
+                    authEmailState = firebaseAuthEmailState,
+                    signInFeedbackState = firebaseSignInFeedbackState,
+                    onStatusMessage = { uploadStatus = it },
                 )
+                com.eventmanager.app.ui.components.settings.LegacyFirebaseSyncSettings(syncBindings)
             }
 
             if (variant == SettingsScreenVariant.Full) {

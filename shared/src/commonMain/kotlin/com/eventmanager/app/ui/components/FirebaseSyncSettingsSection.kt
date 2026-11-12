@@ -159,20 +159,24 @@ fun FirebaseSyncSettingsSection(
     onAddVolunteerPortalGoogleDomain: suspend (String) -> com.eventmanager.app.portal.DomainCheck =
         { com.eventmanager.app.portal.DomainCheck.ERROR },
     onRemoveVolunteerPortalGoogleDomain: (String) -> Unit = {},
+    /** When set (by the sync settings bindings), used instead of checking the role again here. */
+    isFirebaseOrgAdminOverride: Boolean? = null,
 ) {
     val ready = firebaseConnectionReady(configuredOrgs, projectId, applicationId, apiKey, authEmail)
     val projectReady = projectId.isNotBlank() && applicationId.isNotBlank() && apiKey.isNotBlank()
     val orgReady = firebaseConfiguredOrgsReady(configuredOrgs)
     val authReady = !authEmail.isNullOrBlank()
-    var isFirebaseOrgAdmin by remember { mutableStateOf(false) }
+    var checkedOrgAdmin by remember { mutableStateOf(false) }
     val writableOrgId = settingsManager?.resolveWritableFirebaseOrgId().orEmpty()
-    LaunchedEffect(authEmail, writableOrgId, settingsManager) {
-        isFirebaseOrgAdmin = if (settingsManager == null) {
+    LaunchedEffect(authEmail, writableOrgId, settingsManager, isFirebaseOrgAdminOverride) {
+        if (isFirebaseOrgAdminOverride != null) return@LaunchedEffect
+        checkedOrgAdmin = if (settingsManager == null) {
             false
         } else {
             FirebaseOrgAdminAccess.currentUserIsOrgAdmin(platformContext, settingsManager)
         }
     }
+    val isFirebaseOrgAdmin = isFirebaseOrgAdminOverride ?: checkedOrgAdmin
     val allowProjectSecrets = canRevealFirebaseProjectSecrets(
         isFirebaseOrgAdmin = isFirebaseOrgAdmin,
         projectConfigured = projectReady,
