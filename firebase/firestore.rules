@@ -35,6 +35,12 @@ service cloud.firestore {
       return /databases/$(database)/documents/orgs/$(orgId)/institutionSettings/$(key);
     }
 
+    // Third switch: the volunteer's personal QR code. Absent setting means enabled.
+    function portalQrOn(orgId) {
+      let path = settingPath(orgId, 'volunteer_portal_qr_enabled');
+      return !exists(path) || get(path).data.get('value', 'true') in ['true', true];
+    }
+
     function googleAliasPath(orgId) {
       return /databases/$(database)/documents/orgs/$(orgId)/portalGoogleAccounts/$(request.auth.uid);
     }
@@ -463,6 +469,17 @@ service cloud.firestore {
     // The filtered projection the app publishes for one volunteer. Only its owner may read it.
     match /orgs/{orgId}/volunteerPortal/{uid} {
       allow get: if portalOn(orgId)
+        && (
+          (isPortalUser() && request.auth.uid == uid)
+          || (isPortalGoogleUser(orgId) && portalUidOf(orgId) == uid)
+        );
+    }
+
+    // The volunteer's QR payload, kept apart from the page. Only its owner may read it, one document
+    // at a time, and never write it from a client.
+    match /orgs/{orgId}/volunteerPortalQr/{uid} {
+      allow get: if portalOn(orgId)
+        && portalQrOn(orgId)
         && (
           (isPortalUser() && request.auth.uid == uid)
           || (isPortalGoogleUser(orgId) && portalUidOf(orgId) == uid)

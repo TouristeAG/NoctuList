@@ -208,6 +208,7 @@ class SettingsManager(private val storage: AppStorage) {
         private const val KEY_VOLUNTEER_PORTAL_ENABLED = "volunteer_portal_enabled"
         private const val KEY_VOLUNTEER_PORTAL_GOOGLE_ENABLED = "volunteer_portal_google_enabled"
         private const val KEY_VOLUNTEER_PORTAL_SHOW_LOGO = "volunteer_portal_show_logo"
+        private const val KEY_VOLUNTEER_PORTAL_QR_ENABLED = "volunteer_portal_qr_enabled"
         private const val KEY_VOLUNTEER_PORTAL_GOOGLE_DOMAINS = "volunteer_portal_google_domains"
         private const val KEY_VOLUNTEER_PORTAL_GOOGLE_ANY_ACCOUNT = "volunteer_portal_google_any_account"
         private const val KEY_PENDING_SIGNUP_FORMS = "volunteer_portal_pending_signup_forms"
@@ -457,6 +458,14 @@ class SettingsManager(private val storage: AppStorage) {
     fun setVolunteerPortalShowLogo(show: Boolean) {
         storage.putBoolean(KEY_VOLUNTEER_PORTAL_SHOW_LOGO, show)
         touchInstitutionSettingLastModified(InstitutionSettingsKeys.VOLUNTEER_PORTAL_SHOW_LOGO)
+    }
+
+    /** Volunteers see their own QR code in the volunteer portal. On by default. */
+    fun isVolunteerPortalQrEnabled(): Boolean = storage.getBoolean(KEY_VOLUNTEER_PORTAL_QR_ENABLED, true)
+
+    fun setVolunteerPortalQrEnabled(enabled: Boolean) {
+        storage.putBoolean(KEY_VOLUNTEER_PORTAL_QR_ENABLED, enabled)
+        touchInstitutionSettingLastModified(InstitutionSettingsKeys.VOLUNTEER_PORTAL_QR_ENABLED)
     }
 
     /** Verified Google Workspace domains only; the rules split the stored value on commas. */
@@ -1206,6 +1215,8 @@ class SettingsManager(private val storage: AppStorage) {
                 isVolunteerPortalGoogleEnabled().toString()
             InstitutionSettingsKeys.VOLUNTEER_PORTAL_SHOW_LOGO ->
                 isVolunteerPortalShowLogo().toString()
+            InstitutionSettingsKeys.VOLUNTEER_PORTAL_QR_ENABLED ->
+                isVolunteerPortalQrEnabled().toString()
             InstitutionSettingsKeys.VOLUNTEER_PORTAL_GOOGLE_DOMAINS ->
                 com.eventmanager.app.data.remote.FirebaseEmailDomainPolicy.serialize(volunteerPortalGoogleDomains())
             InstitutionSettingsKeys.VOLUNTEER_PORTAL_GOOGLE_ANY_ACCOUNT ->
@@ -1385,6 +1396,11 @@ class SettingsManager(private val storage: AppStorage) {
                 storage.putBoolean(
                     KEY_VOLUNTEER_PORTAL_GOOGLE_ANY_ACCOUNT,
                     value.trim().equals("true", ignoreCase = true),
+                )
+            InstitutionSettingsKeys.VOLUNTEER_PORTAL_QR_ENABLED ->
+                storage.putBoolean(
+                    KEY_VOLUNTEER_PORTAL_QR_ENABLED,
+                    !value.trim().equals("false", ignoreCase = true),
                 )
             InstitutionSettingsKeys.VOLUNTEER_PORTAL_GOOGLE_DOMAINS ->
                 storage.putString(

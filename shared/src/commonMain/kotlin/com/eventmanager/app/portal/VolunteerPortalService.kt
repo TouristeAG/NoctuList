@@ -42,6 +42,9 @@ interface VolunteerPortalHost {
     /** Every Google account may sign in, not only the association's domains. */
     fun portalGoogleAnyAccount(): Boolean = false
 
+    /** Non-admin volunteers get their own QR code in the portal. */
+    fun portalQrEnabled(): Boolean = true
+
     suspend fun volunteers(): List<Volunteer>
     /** Inserts a new volunteer through the normal save + sync pipeline (with its optional photo). */
     suspend fun createVolunteer(volunteer: Volunteer, photo: ByteArray?): Volunteer?
@@ -82,7 +85,7 @@ sealed class PortalGrantResult {
  *  - turns submitted registration links into volunteers,
  *  - processes portal requests (profile edits, QR by e-mail, account linking),
  *  - links association Google accounts (`portalGoogleClaims`) to volunteers,
- *  - publishes each linked volunteer's filtered projection and photo copy.
+ *  - publishes each linked volunteer's filtered projection, photo copy and, for non-admins, their QR document.
  *
  * Every request is claimed with a Firestore transaction first, so two devices never act twice.
  */
@@ -689,8 +692,11 @@ class VolunteerPortalService(
             .forEach { uid -> runCatching { unpublish(uid) } }
         runCatching { gateway.deleteDocument(orgId, BRANDING_COLLECTION, BRANDING_DOC) }
         runCatching { gateway.deleteDocument(orgId, MAIL_COLLECTION, MAIL_DOC) }
+        // Failed QR deletes stay so the next publish retries them.
         host.savePublishedHashes(
-            host.loadPublishedHashes().filterKeys { !it.startsWith("$orgId/") && it != brandingKey && it != mailKey },
+            host.loadPublishedHashes().filterKeys {
+                (!it.startsWith("$orgId/") || it.endsWith(QR_SUFFIX)) && it != brandingKey && it != mailKey
+            },
         )
     }
 
@@ -744,8 +750,7 @@ class VolunteerPortalService(
                     offsetHours = host.dateOffsetHours(),
                 ),
             )
-            if (hashes[key] == projection.contentHash) continue
-            try {
+            if (hashes[key] != projection.contentHash) try {
                 gateway.setPlainDocument(
                     orgId,
                     PortalProjection.COLLECTION,
@@ -759,6 +764,7 @@ class VolunteerPortalService(
             } catch (e: Exception) {
                 println("Portal: publish failed for one volunteer: ${e.message}")
             }
+            publishQr(volunteer, hashes)
         }
         // Access revoked, volunteer deleted or unlinked: take their page down.
         val stale = hashes.keys.filter {
@@ -770,8 +776,59 @@ class VolunteerPortalService(
             runCatching { host.deleteStorage(portalPhotoPath(uid)) }
             hashes.remove(key)
             hashes.remove("$key#photo")
+            deleteQrDocument(uid, hashes)
+        }
+        // QR deletes that failed earlier (page already gone): retry them.
+        val staleQr = hashes.keys.filter {
+            it.startsWith("$orgId/") && it.endsWith(QR_SUFFIX) && it.removeSuffix(QR_SUFFIX) !in keep
+        }
+        for (qrKey in staleQr) {
+            deleteQrDocument(qrKey.removePrefix("$orgId/").removeSuffix(QR_SUFFIX), hashes)
         }
         host.savePublishedHashes(hashes)
+    }
+
+    /** Deletes the QR document; the hash entry is dropped only on success so a later publish retries. */
+    private suspend fun deleteQrDocument(uid: String, hashes: MutableMap<String, String>) {
+        val qrKey = "$orgId/$uid$QR_SUFFIX"
+        if (hashes[qrKey] == QR_TOMBSTONE) {
+            hashes.remove(qrKey)
+            return
+        }
+        try {
+            gateway.deleteDocument(orgId, PortalQrDocument.COLLECTION, uid)
+            hashes.remove(qrKey)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            hashes[qrKey] = hashes[qrKey] ?: QR_RETRY
+            println("Portal: QR delete failed for one volunteer: ${e.message}")
+        }
+    }
+
+    /** Writes, refreshes or removes the volunteer's QR document so it follows admin status and the setting. */
+    private suspend fun publishQr(volunteer: Volunteer, hashes: MutableMap<String, String>) {
+        val qrKey = "$orgId/${volunteer.portalUid}$QR_SUFFIX"
+        val data = PortalQrDocument.build(volunteer, host.portalQrEnabled())
+        try {
+            if (data == null) {
+                // Hashes are per device: the doc may come from the signup function or another
+                // device, so delete unless this device already did (tombstone).
+                if (hashes[qrKey] != QR_TOMBSTONE) {
+                    gateway.deleteDocument(orgId, PortalQrDocument.COLLECTION, volunteer.portalUid)
+                    hashes[qrKey] = QR_TOMBSTONE
+                }
+                return
+            }
+            val hash = PortalProjectionBuilder.sha256(data.toString())
+            if (hashes[qrKey] == hash) return
+            gateway.setPlainDocument(orgId, PortalQrDocument.COLLECTION, volunteer.portalUid, data, merge = false)
+            hashes[qrKey] = hash
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            println("Portal: QR publish failed for one volunteer: ${e.message}")
+        }
     }
 
     private val brandingKey get() = "$orgId#branding"
@@ -866,6 +923,8 @@ class VolunteerPortalService(
         val hashes = host.loadPublishedHashes().toMutableMap()
         hashes.remove("$orgId/$uid")
         hashes.remove("$orgId/$uid#photo")
+        hashes.remove("$orgId/$uid$QR_SUFFIX")
+        deleteQrDocument(uid, hashes)
         host.savePublishedHashes(hashes)
     }
 
@@ -906,6 +965,11 @@ class VolunteerPortalService(
         const val BRANDING_DOC = "default"
         const val MAIL_COLLECTION = "portalMail"
         const val MAIL_DOC = "default"
+        private const val QR_SUFFIX = "#qr"
+        /** QR hash value meaning "this device deleted the QR doc". */
+        private const val QR_TOMBSTONE = "-"
+        /** QR hash value meaning "a delete failed, retry it". */
+        private const val QR_RETRY = "retry"
         /** Age under which a signup or request is left to the Cloud Functions. */
         const val DEVICE_GRACE_MS = 120_000L
         /** The branding document is public and read on every page load: keep the logo small. */

@@ -109,6 +109,9 @@ object InstitutionSettingsKeys {
     /** Show the association logo next to its name at the top of the volunteer portal. On by default. */
     const val VOLUNTEER_PORTAL_SHOW_LOGO = "volunteer_portal_show_logo"
 
+    /** Let each volunteer see their own QR code in the volunteer portal. On by default. */
+    const val VOLUNTEER_PORTAL_QR_ENABLED = "volunteer_portal_qr_enabled"
+
     /** Everything driving the Firebase-only artist guest list forms. */
     val GUEST_FORM_KEYS: List<String> = listOf(
         GUEST_FORMS_ENABLED,
@@ -198,6 +201,7 @@ object InstitutionSettingsKeys {
         VOLUNTEER_PORTAL_ENABLED,
         VOLUNTEER_PORTAL_GOOGLE_ENABLED,
         VOLUNTEER_PORTAL_SHOW_LOGO,
+        VOLUNTEER_PORTAL_QR_ENABLED,
         VOLUNTEER_PORTAL_GOOGLE_DOMAINS,
         VOLUNTEER_PORTAL_GOOGLE_ANY_ACCOUNT,
     ) + TEMP_GUEST_KEYS + GUEST_FORM_KEYS + BACKEND_KEYS + SHEETS_MIRROR_KEYS
@@ -213,6 +217,7 @@ object InstitutionSettingsKeys {
         VOLUNTEER_PORTAL_ENABLED,
         VOLUNTEER_PORTAL_GOOGLE_ENABLED,
         VOLUNTEER_PORTAL_SHOW_LOGO,
+        VOLUNTEER_PORTAL_QR_ENABLED,
         VOLUNTEER_PORTAL_GOOGLE_DOMAINS,
         VOLUNTEER_PORTAL_GOOGLE_ANY_ACCOUNT,
     ) + TEMP_GUEST_KEYS + GUEST_FORM_KEYS

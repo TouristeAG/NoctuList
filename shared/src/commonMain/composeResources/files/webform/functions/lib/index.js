@@ -787,9 +787,10 @@ async function create(db, bucket, orgId, submission, photo) {
     portalEnabled: true,
     portalUid: submission.uid
   };
-  const [currency, association] = await Promise.all([
+  const [currency, association, qrEnabled] = await Promise.all([
     institutionSetting(db, orgId, "currency_code"),
-    associationName(db, orgId)
+    associationName(db, orgId),
+    institutionSetting(db, orgId, "volunteer_portal_qr_enabled")
   ]);
   const projection = minimalProjection({
     firstName: submission.firstName,
@@ -805,6 +806,13 @@ async function create(db, bucket, orgId, submission, photo) {
   const batch = db.batch();
   batch.create(db.doc(`orgs/${orgId}/volunteers/${id}`), volunteer);
   batch.set(db.doc(`orgs/${orgId}/volunteerPortal/${submission.uid}`), projection);
+  if (qrEnabled.trim() !== "false") {
+    batch.set(db.doc(`orgs/${orgId}/volunteerPortalQr/${submission.uid}`), {
+      schema: 1,
+      payload: id,
+      name: `${submission.firstName} ${lastName}`.trim()
+    });
+  }
   await batch.commit();
 }
 async function finish(bucket, ref, orgId, formId) {

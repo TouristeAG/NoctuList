@@ -1842,6 +1842,7 @@ actual fun SettingsScreen(
     val volunteerPortalEnabled by viewModel.volunteerPortalEnabled.collectAsState()
     val volunteerPortalGoogleEnabled by viewModel.volunteerPortalGoogleEnabled.collectAsState()
     val volunteerPortalShowLogo by viewModel.volunteerPortalShowLogo.collectAsState()
+    val volunteerPortalQrEnabled by viewModel.volunteerPortalQrEnabled.collectAsState()
     val volunteerPortalGoogleDomains by viewModel.volunteerPortalGoogleDomains.collectAsState()
     val volunteerPortalGoogleAnyAccount by viewModel.volunteerPortalGoogleAnyAccount.collectAsState()
     val portalServerStatus by viewModel.portalServerStatus.collectAsState()
@@ -2090,6 +2091,8 @@ actual fun SettingsScreen(
                     onVolunteerPortalGoogleEnabledChange = { viewModel.setVolunteerPortalGoogleEnabled(it) },
                     volunteerPortalShowLogo = volunteerPortalShowLogo,
                     onVolunteerPortalShowLogoChange = { viewModel.setVolunteerPortalShowLogo(it) },
+                    volunteerPortalQrEnabled = volunteerPortalQrEnabled,
+                    onVolunteerPortalQrEnabledChange = { viewModel.setVolunteerPortalQrEnabled(it) },
                     volunteerPortalGoogleDomains = volunteerPortalGoogleDomains,
                     onAddVolunteerPortalGoogleDomain = { viewModel.addVolunteerPortalGoogleDomain(it) },
                     onRemoveVolunteerPortalGoogleDomain = { viewModel.removeVolunteerPortalGoogleDomain(it) },

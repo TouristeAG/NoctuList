@@ -2620,6 +2620,8 @@ class EventManagerViewModel(
     private val _volunteerPortalGoogleEnabled = MutableStateFlow(false)
     private val _volunteerPortalShowLogo = MutableStateFlow(true)
     val volunteerPortalShowLogo: StateFlow<Boolean> = _volunteerPortalShowLogo.asStateFlow()
+    private val _volunteerPortalQrEnabled = MutableStateFlow(true)
+    val volunteerPortalQrEnabled: StateFlow<Boolean> = _volunteerPortalQrEnabled.asStateFlow()
 
     /** Volunteers may sign in with an association Google account (needs a verified domain). */
     val volunteerPortalGoogleEnabled: StateFlow<Boolean> = _volunteerPortalGoogleEnabled.asStateFlow()
@@ -2651,6 +2653,7 @@ class EventManagerViewModel(
         _volunteerPortalEnabled.value = isVolunteerPortalFeatureEnabled()
         _volunteerPortalGoogleEnabled.value = settingsManagerCached?.isVolunteerPortalGoogleEnabled() == true
         _volunteerPortalShowLogo.value = settingsManagerCached?.isVolunteerPortalShowLogo() != false
+        _volunteerPortalQrEnabled.value = settingsManagerCached?.isVolunteerPortalQrEnabled() != false
         _volunteerPortalGoogleDomains.value = settingsManagerCached?.volunteerPortalGoogleDomains().orEmpty()
         _volunteerPortalGoogleAnyAccount.value = settingsManagerCached?.isVolunteerPortalGoogleAnyAccount() == true
     }
@@ -2664,6 +2667,15 @@ class EventManagerViewModel(
         val settings = settingsManagerCached ?: return
         if (getActiveBackendType() != BackendType.FIREBASE) return
         settings.setVolunteerPortalShowLogo(show)
+        publishVolunteerPortalSettings()
+        republishVolunteerPortal()
+        backupInstitutionSettingsToSheets()
+    }
+
+    fun setVolunteerPortalQrEnabled(enabled: Boolean) {
+        val settings = settingsManagerCached ?: return
+        if (getActiveBackendType() != BackendType.FIREBASE) return
+        settings.setVolunteerPortalQrEnabled(enabled)
         publishVolunteerPortalSettings()
         republishVolunteerPortal()
         backupInstitutionSettingsToSheets()
@@ -2873,6 +2885,7 @@ class EventManagerViewModel(
         override fun institutionLogoPng(): String =
             if (settingsManagerCached?.isVolunteerPortalShowLogo() == false) "" else settingsManagerCached?.getInstitutionLogoPng().orEmpty()
         override fun profilePhotosEnabled(): Boolean = isProfilePhotoUploadEnabled()
+        override fun portalQrEnabled() = settingsManagerCached?.isVolunteerPortalQrEnabled() != false
         override fun portalGoogleEnabled(): Boolean = settingsManagerCached?.isVolunteerPortalGoogleEnabled() == true
         override fun portalGoogleDomains(): List<String> = settingsManagerCached?.volunteerPortalGoogleDomains().orEmpty()
         override fun portalGoogleAnyAccount(): Boolean = settingsManagerCached?.isVolunteerPortalGoogleAnyAccount() == true

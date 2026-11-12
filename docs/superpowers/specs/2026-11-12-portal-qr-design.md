@@ -20,7 +20,7 @@ Réussite : un bénévole non admin ouvre l'app depuis l'écran d'accueil en mod
 | Activation | Réglage par association, **activé par défaut** quand le portail est actif. |
 | Transport | Document séparé `volunteerPortalQr/{uid}`, jamais un champ de la page `volunteerPortal/{uid}`. |
 | Contenu du QR | Exactement celui de l'e-mail : `volunteer.id`. Rien à changer côté scanners. |
-| Affichage | Bouton « Mon QR » en haut du tableau de bord, qui ouvre une vue plein écran. Pas de QR sur le tableau de bord. |
+| Affichage | Bouton « Mon QR » dans le bloc « Mon QR code » existant, sous son titre, qui ouvre une vue plein écran. « M'envoyer mon QR code » devient un petit lien en dessous. Pas de QR sur le tableau de bord. |
 | Hors ligne | QR gardé sur l'appareil, effacé à la déconnexion ou quand le serveur refuse l'accès. Pas d'expiration par durée. |
 | QR par e-mail | Reste disponible, inchangé. |
 | Textes | Aucun texte d'aide ou d'explication ajouté (ni conseil iOS, ni message hors ligne). Seuls les libellés nécessaires. |
@@ -78,7 +78,8 @@ match /orgs/{orgId}/volunteerPortalQr/{uid} {
 ### Bouton et vue plein écran
 
 - `portal.js` lit `volunteerPortalQr/{uid}` après la page. S'il existe, un bouton « Mon QR »
-  apparaît en haut du tableau de bord.
+  apparaît dans le bloc « Mon QR code » existant, sous son titre. « M'envoyer mon QR code »
+  devient un petit lien en dessous (demande de l'utilisateur).
 - Vue plein écran : fond blanc, QR le plus grand possible avec une marge blanche, prénom et nom,
   nom de l'association, bouton Fermer. Fermeture aussi par Échap et par le bouton retour.
 - Rendu par `qrcode-generator` (MIT), copié dans `webform/vendor/qrcode.js`, en SVG, niveau de

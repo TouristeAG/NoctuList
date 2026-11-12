@@ -27,7 +27,7 @@ import {
   uploadBytes,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 import { EMULATOR_PORTS, isLocalDev, loadConfig, parseOrgPath } from "./firebase-env.js?v=portal-1";
-import { bindLanguageSelect, currentLang, t } from "./portal-i18n.js?v=portal-1";
+import { bindLanguageSelect, currentLang, t } from "./portal-i18n.js?v=qr-3";
 import {
   DATE_RE,
   EMAIL_RE,

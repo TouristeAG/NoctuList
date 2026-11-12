@@ -2373,6 +2373,7 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="portal_google_scope_internal">Rationes Google consociationis tantum</string>
     <string name="portal_show_logo">Monstra signum societatis</string>
     <string name="portal_show_logo_hint">Iuxta nomen societatis, in summa parte suggestus voluntariorum. Signum est quod in Optionibus, Epistula positum est.</string>
+    <string name="volunteer_portal_qr_enabled">QR in spatio voluntariorum ostendere</string>
     <string name="setup_google_redirects">URI redirectionis permissae</string>
     <string name="setup_google_origins">Origines JavaScript permissae</string>
     <string name="setup_google_test">Ad probandum, introi ratione dominii in Optionibus, Firebase, Suggestu voluntariorum probati. Rationes gmail.com semper recusantur.</string>

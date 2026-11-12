@@ -2370,6 +2370,7 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="portal_google_scope_internal">Association Google accounts only</string>
     <string name="portal_show_logo">Show the association logo</string>
     <string name="portal_show_logo_hint">Next to the association name at the top of the volunteer portal. The logo is the one set in Settings, E-mail.</string>
+    <string name="volunteer_portal_qr_enabled">Show the QR code in the volunteer space</string>
     <string name="setup_google_redirects">Authorized redirect URIs</string>
     <string name="setup_google_origins">Authorized JavaScript origins</string>
     <string name="setup_google_test">To test, sign in with an account from a domain verified in Settings, Firebase, Volunteer portal. gmail.com accounts are always refused.</string>
