@@ -33,11 +33,13 @@ private class FakeGateway : NoOpFirestoreGateway() {
     val deleted = mutableListOf<String>()
     val listeners = mutableMapOf<String, suspend (List<Pair<String, Map<String, Any?>>>) -> Unit>()
     var claimsRefused = false
+    var qrWrites = 0
 
     override fun isAvailable() = true
 
     override suspend fun setPlainDocument(orgId: String, collection: String, docId: String, data: Map<String, Any?>, merge: Boolean) {
         val key = "$collection/$docId"
+        if (collection == "volunteerPortalQr") qrWrites++
         docs[key] = if (merge) (docs[key].orEmpty() + data) else data
     }
 
@@ -88,6 +90,7 @@ private class FakeHost(initial: List<Volunteer>) : VolunteerPortalHost {
     var mailSubject = "Your QR code"
     var mailTemplateEnabled = true
     var googleEnabled = true
+    var qrEnabled = true
     var googleDomains = listOf("asso.ch")
     private var pending = emptyList<VolunteerSignupForm>()
     private var hashes = emptyMap<String, String>()
@@ -101,6 +104,7 @@ private class FakeHost(initial: List<Volunteer>) : VolunteerPortalHost {
     override fun profilePhotosEnabled() = true
     override fun portalGoogleEnabled() = googleEnabled
     override fun portalGoogleDomains() = googleDomains
+    override fun portalQrEnabled() = qrEnabled
     override suspend fun volunteers() = volunteers.toList()
     override suspend fun createVolunteer(volunteer: Volunteer, photo: ByteArray?): Volunteer {
         created += volunteer
@@ -471,6 +475,84 @@ class VolunteerPortalServiceTest {
         volunteers.value = listOf(linked.copy(portalEnabled = false, portalUid = ""))
         withTimeout(5_000) { while (gateway.docs["volunteerPortal/$UID"] != null) delay(20) }
         assertTrue("volunteerPortal/$UID" in gateway.deleted)
+    }
+
+    private suspend fun awaitDoc(gateway: FakeGateway, key: String) =
+        withTimeout(5_000) { while (gateway.docs[key] == null) delay(20) }
+
+    @Test
+    fun qrDocPublishedWithPage() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(volunteer("SECRETID123", "lea@example.org", enabled = true, uid = UID)))
+        service(gateway, host).start(MutableStateFlow(host.volunteers.toList()), MutableStateFlow(emptyList<Job>()),
+            MutableStateFlow(emptyList<AccountTransfer>()), MutableStateFlow(emptyList<JobTypeConfig>()))
+        awaitDoc(gateway, "volunteerPortalQr/$UID")
+        assertEquals("SECRETID123", gateway.docs["volunteerPortalQr/$UID"]!!["payload"])
+        assertFalse(gateway.docs["volunteerPortal/$UID"].toString().contains("SECRETID123"))
+    }
+
+    @Test
+    fun qrDocNotPublishedForAdmin() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true, uid = UID, admin = true)))
+        service(gateway, host).start(MutableStateFlow(host.volunteers.toList()), MutableStateFlow(emptyList<Job>()),
+            MutableStateFlow(emptyList<AccountTransfer>()), MutableStateFlow(emptyList<JobTypeConfig>()))
+        awaitDoc(gateway, "volunteerPortal/$UID")
+        assertNull(gateway.docs["volunteerPortalQr/$UID"])
+    }
+
+    @Test
+    fun qrDocRemovedWhenVolunteerBecomesAdmin() = runBlocking {
+        val gateway = FakeGateway()
+        val linked = volunteer("V1", "lea@example.org", enabled = true, uid = UID)
+        val host = FakeHost(listOf(linked))
+        val volunteers = MutableStateFlow(host.volunteers.toList())
+        service(gateway, host).start(volunteers, MutableStateFlow(emptyList<Job>()),
+            MutableStateFlow(emptyList<AccountTransfer>()), MutableStateFlow(emptyList<JobTypeConfig>()))
+        awaitDoc(gateway, "volunteerPortalQr/$UID")
+        volunteers.value = listOf(linked.copy(isAdmin = true))
+        withTimeout(5_000) { while ("volunteerPortalQr/$UID" !in gateway.deleted) delay(20) }
+        assertNull(gateway.docs["volunteerPortalQr/$UID"])
+    }
+
+    @Test
+    fun qrDocRemovedWhenSettingOff() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true, uid = UID)))
+        val service = service(gateway, host)
+        service.start(MutableStateFlow(host.volunteers.toList()), MutableStateFlow(emptyList<Job>()),
+            MutableStateFlow(emptyList<AccountTransfer>()), MutableStateFlow(emptyList<JobTypeConfig>()))
+        awaitDoc(gateway, "volunteerPortalQr/$UID")
+        host.qrEnabled = false
+        service.republish()
+        assertTrue("volunteerPortalQr/$UID" in gateway.deleted)
+    }
+
+    @Test
+    fun qrDocRemovedWithStalePage() = runBlocking {
+        val gateway = FakeGateway()
+        val linked = volunteer("V1", "lea@example.org", enabled = true, uid = UID)
+        val host = FakeHost(listOf(linked))
+        val volunteers = MutableStateFlow(host.volunteers.toList())
+        service(gateway, host).start(volunteers, MutableStateFlow(emptyList<Job>()),
+            MutableStateFlow(emptyList<AccountTransfer>()), MutableStateFlow(emptyList<JobTypeConfig>()))
+        awaitDoc(gateway, "volunteerPortalQr/$UID")
+        volunteers.value = listOf(linked.copy(portalEnabled = false))
+        withTimeout(5_000) { while ("volunteerPortalQr/$UID" !in gateway.deleted) delay(20) }
+        assertTrue("volunteerPortal/$UID" in gateway.deleted)
+    }
+
+    @Test
+    fun qrDocNotRewrittenWhenUnchanged() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true, uid = UID)))
+        val service = service(gateway, host)
+        service.start(MutableStateFlow(host.volunteers.toList()), MutableStateFlow(emptyList<Job>()),
+            MutableStateFlow(emptyList<AccountTransfer>()), MutableStateFlow(emptyList<JobTypeConfig>()))
+        awaitDoc(gateway, "volunteerPortalQr/$UID")
+        service.republish()
+        service.republish()
+        assertEquals(1, gateway.qrWrites)
     }
 
     @Test

@@ -39,6 +39,8 @@ interface VolunteerPortalHost {
     fun portalGoogleEnabled(): Boolean
     /** Verified Google Workspace domains, lowercase. */
     fun portalGoogleDomains(): List<String>
+    /** Non-admin volunteers get their own QR code in the portal. */
+    fun portalQrEnabled(): Boolean = true
 
     suspend fun volunteers(): List<Volunteer>
     /** Inserts a new volunteer through the normal save + sync pipeline (with its optional photo). */
@@ -80,7 +82,7 @@ sealed class PortalGrantResult {
  *  - turns submitted registration links into volunteers,
  *  - processes portal requests (profile edits, QR by e-mail, account linking),
  *  - links association Google accounts (`portalGoogleClaims`) to volunteers,
- *  - publishes each linked volunteer's filtered projection and photo copy.
+ *  - publishes each linked volunteer's filtered projection, photo copy and, for non-admins, their QR document.
  *
  * Every request is claimed with a Firestore transaction first, so two devices never act twice.
  */
@@ -741,8 +743,7 @@ class VolunteerPortalService(
                     offsetHours = host.dateOffsetHours(),
                 ),
             )
-            if (hashes[key] == projection.contentHash) continue
-            try {
+            if (hashes[key] != projection.contentHash) try {
                 gateway.setPlainDocument(
                     orgId,
                     PortalProjection.COLLECTION,
@@ -756,6 +757,7 @@ class VolunteerPortalService(
             } catch (e: Exception) {
                 println("Portal: publish failed for one volunteer: ${e.message}")
             }
+            publishQr(volunteer, hashes)
         }
         // Access revoked, volunteer deleted or unlinked: take their page down.
         val stale = hashes.keys.filter {
@@ -767,8 +769,33 @@ class VolunteerPortalService(
             runCatching { host.deleteStorage(portalPhotoPath(uid)) }
             hashes.remove(key)
             hashes.remove("$key#photo")
+            runCatching { gateway.deleteDocument(orgId, PortalQrDocument.COLLECTION, uid) }
+            hashes.remove("$key#qr")
         }
         host.savePublishedHashes(hashes)
+    }
+
+    /** Writes, refreshes or removes the volunteer's QR document so it follows admin status and the setting. */
+    private suspend fun publishQr(volunteer: Volunteer, hashes: MutableMap<String, String>) {
+        val qrKey = "$orgId/${volunteer.portalUid}#qr"
+        val data = PortalQrDocument.build(volunteer, host.portalQrEnabled())
+        try {
+            if (data == null) {
+                if (qrKey in hashes) {
+                    gateway.deleteDocument(orgId, PortalQrDocument.COLLECTION, volunteer.portalUid)
+                    hashes.remove(qrKey)
+                }
+                return
+            }
+            val hash = PortalProjectionBuilder.sha256(data.toString())
+            if (hashes[qrKey] == hash) return
+            gateway.setPlainDocument(orgId, PortalQrDocument.COLLECTION, volunteer.portalUid, data, merge = false)
+            hashes[qrKey] = hash
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            println("Portal: QR publish failed for one volunteer: ${e.message}")
+        }
     }
 
     private val brandingKey get() = "$orgId#branding"
@@ -862,6 +889,8 @@ class VolunteerPortalService(
         val hashes = host.loadPublishedHashes().toMutableMap()
         hashes.remove("$orgId/$uid")
         hashes.remove("$orgId/$uid#photo")
+        runCatching { gateway.deleteDocument(orgId, PortalQrDocument.COLLECTION, uid) }
+        hashes.remove("$orgId/$uid#qr")
         host.savePublishedHashes(hashes)
     }
 
