@@ -130,4 +130,15 @@ class SyncSettingsModelTest {
         assertEquals(ExportAge(ExportAgeUnit.HOURS, 23), exportAge(now - 23 * 3_600_000L - 59 * 60_000L, now))
         assertEquals(ExportAge(ExportAgeUnit.DAYS, 2), exportAge(now - 49 * 3_600_000L, now))
     }
+
+    @Test
+    fun exportAgeBoundaries() {
+        val now = 10_000_000_000L
+        assertEquals(ExportAge(ExportAgeUnit.NOW, 0), exportAge(now - 59_999L, now))
+        assertEquals(ExportAge(ExportAgeUnit.MINUTES, 1), exportAge(now - 60_000L, now))
+        assertEquals(ExportAge(ExportAgeUnit.MINUTES, 59), exportAge(now - 59 * 60_000L, now))
+        assertEquals(ExportAge(ExportAgeUnit.HOURS, 1), exportAge(now - 60 * 60_000L, now))
+        assertEquals(ExportAge(ExportAgeUnit.HOURS, 23), exportAge(now - 1439 * 60_000L, now))
+        assertEquals(ExportAge(ExportAgeUnit.DAYS, 1), exportAge(now - 1440 * 60_000L, now))
+    }
 }

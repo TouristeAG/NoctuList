@@ -12,6 +12,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -104,6 +106,11 @@ private fun MirrorBlock(b: SyncSettingsBindings, canEdit: Boolean) {
                     enabled = canEdit && keyReady && spreadsheetId.isNotBlank() && !exporting,
                     onClick = {
                         exporting = true
+                        val typedId = spreadsheetId.trim()
+                        if (typedId != sm.getSheetsMirrorSpreadsheetId()) {
+                            sm.setSheetsMirrorSpreadsheetId(typedId)
+                            b.onMirrorSettingsChanged()
+                        }
                         b.scope.launch {
                             try {
                                 b.onMirrorExport()
@@ -272,9 +279,18 @@ private fun SaveOnBlurField(
     onCommit: () -> Unit,
 ) {
     var hadFocus by remember { mutableStateOf(false) }
+    var dirty by remember { mutableStateOf(false) }
+    val latestCommit by rememberUpdatedState(onCommit)
+    // Leaving the page while the field is being edited must not drop the edit.
+    DisposableEffect(Unit) {
+        onDispose { if (hadFocus && dirty) latestCommit() }
+    }
     OutlinedTextField(
         value = value,
-        onValueChange = onValueChange,
+        onValueChange = {
+            dirty = true
+            onValueChange(it)
+        },
         label = { Text(label) },
         singleLine = true,
         enabled = enabled,
@@ -285,6 +301,7 @@ private fun SaveOnBlurField(
                     hadFocus = true
                 } else if (hadFocus) {
                     hadFocus = false
+                    dirty = false
                     onCommit()
                 }
             },
