@@ -5,28 +5,6 @@ import com.eventmanager.app.platform.PlatformContext
 import kotlin.coroutines.cancellation.CancellationException
 
 object FirebaseTeamActions {
-    suspend fun assignRole(
-        platformContext: PlatformContext?,
-        settings: SettingsManager,
-        uid: String,
-        email: String?,
-        role: MemberRole,
-    ): Result<Unit> = runCatchingExceptCancellation {
-        val org = settings.resolveWritableFirebaseOrgId()
-        val gateway = createFirestoreGateway(platformContext, settings)
-        if (!gateway.isAvailable()) {
-            error("NOT_READY")
-        }
-        MemberRoleAdmin.assignTeamMember(
-            gateway = gateway,
-            orgId = org,
-            uid = uid,
-            role = role,
-            email = email,
-            allowedEmailDomains = settings.getAllowedEmailDomains(),
-        )
-    }
-
     suspend fun loadMembers(
         platformContext: PlatformContext?,
         settings: SettingsManager,

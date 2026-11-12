@@ -3,6 +3,7 @@ package com.eventmanager.app.ui.components.settings
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class SyncSettingsModelTest {
@@ -159,5 +160,33 @@ class SyncSettingsModelTest {
         assertEquals(90, sheetsSyncMinutesShown(90))
         assertEquals(1, sheetsSyncMinutesShown(0))
         assertEquals(1, sheetsSyncMinutesShown(-3))
+    }
+
+    @Test
+    fun removalRotationIsForcedOnlyForAdmins() {
+        assertTrue(removalRotationForced(memberIsAdmin = true))
+        assertFalse(removalRotationForced(memberIsAdmin = false))
+    }
+
+    @Test
+    fun rotationAfterRemovalFollowsTheBoxExceptForAdmins() {
+        assertTrue(rotateAfterRemoval(boxChecked = true, memberIsAdmin = false))
+        assertFalse(rotateAfterRemoval(boxChecked = false, memberIsAdmin = false))
+        assertTrue(rotateAfterRemoval(boxChecked = true, memberIsAdmin = true))
+        // An admin's device always keeps the code: the rotation happens even if the box were off.
+        assertTrue(rotateAfterRemoval(boxChecked = false, memberIsAdmin = true))
+    }
+
+    @Test
+    fun signedOutPagesAskToSignIn() {
+        assertEquals(SyncPageNotice.SIGNED_OUT, syncPageNotice(signedIn = false, adminChecked = false, isOrgAdmin = false))
+        assertEquals(SyncPageNotice.SIGNED_OUT, syncPageNotice(signedIn = false, adminChecked = true, isOrgAdmin = false))
+    }
+
+    @Test
+    fun readOnlyNoticeWaitsForTheAdminCheck() {
+        assertNull(syncPageNotice(signedIn = true, adminChecked = false, isOrgAdmin = false))
+        assertEquals(SyncPageNotice.READ_ONLY, syncPageNotice(signedIn = true, adminChecked = true, isOrgAdmin = false))
+        assertNull(syncPageNotice(signedIn = true, adminChecked = true, isOrgAdmin = true))
     }
 }

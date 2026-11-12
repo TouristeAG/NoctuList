@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -22,6 +23,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -72,7 +74,6 @@ import org.jetbrains.compose.resources.stringResource
  */
 @Composable
 fun SyncTeamPage(b: SyncSettingsBindings, showTitle: Boolean = true) {
-    val signedIn = !b.authEmail.isNullOrBlank()
     var showAddPerson by remember { mutableStateOf(false) }
     val invitation = remember(b.settingsManager) { InvitationCodeState(b.settingsManager.getFirebaseBootstrapCode()) }
 
@@ -80,11 +81,11 @@ fun SyncTeamPage(b: SyncSettingsBindings, showTitle: Boolean = true) {
         showTitle = showTitle,
         title = stringResource(Res.string.sync_team_page_title),
         subtitle = stringResource(Res.string.sync_team_page_subtitle),
-        readOnlyNotice = if (!b.isOrgAdmin && signedIn) stringResource(Res.string.sync_read_only_notice) else null,
+        readOnlyNotice = syncPageNoticeText(b),
     ) {
         AddPersonBlock(b = b, onOpen = { showAddPerson = true })
         WhoCanJoinBlock(b = b)
-        MembersBlock(b = b)
+        MembersBlock(b = b, invitation = invitation)
     }
 
     if (showAddPerson && b.isOrgAdmin) {
@@ -164,19 +165,35 @@ private fun ensureInvitation(
     }
 }
 
+/**
+ * Replaces the org's invitation code (older QR codes stop working) and keeps [invitation] in step.
+ * Callers have already had the user confirm; see [rotateInvitation] and the member removal.
+ */
+private suspend fun replaceInvitationCode(b: SyncSettingsBindings, invitation: InvitationCodeState): Result<String> {
+    invitation.busy = true
+    invitation.error = null
+    return try {
+        val code = rotateFirebaseInvitationCode(b.platformContext, b.settingsManager)
+        invitation.code = code
+        invitation.orgHasCode = false
+        Result.success(code)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Result.failure(e)
+    } finally {
+        invitation.busy = false
+    }
+}
+
 /** Creates or replaces the invitation code in the screen scope (older QR codes stop working). */
 private fun rotateInvitation(b: SyncSettingsBindings, invitation: InvitationCodeState, texts: TeamErrorTexts) {
     if (invitation.busy) return
     invitation.busy = true
     invitation.error = null
     b.scope.launch {
-        runCatching { rotateFirebaseInvitationCode(b.platformContext, b.settingsManager) }
-            .onSuccess {
-                invitation.code = it
-                invitation.orgHasCode = false
-            }
+        replaceInvitationCode(b, invitation)
             .onFailure { invitation.error = mapTeamError(it, texts, email = null, allowedDomains = emptyList()) }
-        invitation.busy = false
     }
 }
 
@@ -387,6 +404,13 @@ private fun WhoCanJoinBlock(b: SyncSettingsBindings) {
                     )
                 }
             }
+            b.allowedEmailDomainsError?.let { message ->
+                Text(
+                    message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
         }
     }
 
@@ -475,6 +499,9 @@ private class TeamMembersState {
     var loading by mutableStateOf(true)
     var error by mutableStateOf<String?>(null)
 
+    /** Shown above the list: a removal went through but the old QR codes could not be disabled. */
+    var rotationError by mutableStateOf<String?>(null)
+
     /** The load in flight; a new load cancels it so an older result never overwrites a newer one. */
     var job: Job? = null
     var generation = 0
@@ -513,10 +540,12 @@ private class MemberActionState {
 }
 
 @Composable
-private fun MembersBlock(b: SyncSettingsBindings) {
+private fun MembersBlock(b: SyncSettingsBindings, invitation: InvitationCodeState) {
     val title = stringResource(Res.string.sync_team_members_title)
     val texts = rememberTeamErrorTexts()
     val loadError = stringResource(Res.string.firebase_team_load_error)
+    // "%1$s" placeholder kept so the error can be filled in later.
+    val rotateFailed = stringResource(Res.string.sync_team_remove_rotate_failed, "%1\$s")
     val writableOrgId = b.settingsManager.resolveWritableFirebaseOrgId()
     val state = remember(writableOrgId) { TeamMembersState() }
     val action = remember(writableOrgId) { MemberActionState() }
@@ -525,13 +554,16 @@ private fun MembersBlock(b: SyncSettingsBindings) {
         reloadMembers(b, state, texts, loadError)
     }
 
-    fun runAction(email: String, block: suspend () -> Result<Unit>) {
+    /** [afterSuccess] runs once [block] succeeded, before the dialog closes and the list reloads. */
+    fun runAction(email: String, afterSuccess: suspend () -> Unit = {}, block: suspend () -> Result<Unit>) {
         if (action.busy) return
         action.busy = true
         action.error = null
+        state.rotationError = null
         b.scope.launch {
             block().fold(
                 onSuccess = {
+                    afterSuccess()
                     action.busy = false
                     action.email = null
                     reloadMembers(b, state, texts, loadError)
@@ -562,6 +594,7 @@ private fun MembersBlock(b: SyncSettingsBindings) {
             compareBy<FirebaseTeamMemberListing> { MemberRole.fromStorage(it.role) != MemberRole.ADMIN }
                 .thenBy { it.email?.lowercase().orEmpty() },
         )
+        state.rotationError?.let { MembersMessage(it, isError = true) }
         when {
             state.loading && sorted.isEmpty() -> Box(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
@@ -602,8 +635,19 @@ private fun MembersBlock(b: SyncSettingsBindings) {
             onSetRole = { role ->
                 runAction(openEmail) { FirebaseTeamActions.setRoleByEmail(b.platformContext, b.settingsManager, openEmail, role) }
             },
-            onRemove = {
-                runAction(openEmail) { FirebaseTeamActions.removeMemberByEmail(b.platformContext, b.settingsManager, openEmail) }
+            onRemove = { rotate ->
+                runAction(
+                    openEmail,
+                    afterSuccess = {
+                        // Without a new code the removed device can rejoin with the code it holds.
+                        if (rotate) {
+                            replaceInvitationCode(b, invitation).onFailure {
+                                val detail = mapTeamError(it, texts, email = null, allowedDomains = emptyList())
+                                state.rotationError = rotateFailed.replace("%1\$s", detail)
+                            }
+                        }
+                    },
+                ) { FirebaseTeamActions.removeMemberByEmail(b.platformContext, b.settingsManager, openEmail) }
             },
             onDismiss = {
                 action.email = null
@@ -721,11 +765,13 @@ private fun MemberDialog(
     busy: Boolean,
     error: String?,
     onSetRole: (MemberRole) -> Unit,
-    onRemove: () -> Unit,
+    /** Called with whether to disable the old QR codes once the person is removed. */
+    onRemove: (rotate: Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var confirmAdmin by remember { mutableStateOf(false) }
     var confirmRemove by remember { mutableStateOf(false) }
+    var rotateChecked by remember { mutableStateOf(true) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -756,7 +802,10 @@ private fun MemberDialog(
                     Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
                 }
                 TextButton(
-                    onClick = { confirmRemove = true },
+                    onClick = {
+                        rotateChecked = true
+                        confirmRemove = true
+                    },
                     enabled = !busy,
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                 ) { Text(stringResource(Res.string.sync_team_remove)) }
@@ -787,12 +836,39 @@ private fun MemberDialog(
         AlertDialog(
             onDismissRequest = { confirmRemove = false },
             title = { Text(stringResource(Res.string.sync_team_remove_title, email)) },
-            text = { Text(stringResource(Res.string.sync_team_remove_body)) },
+            text = {
+                val forced = removalRotationForced(isAdmin)
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(stringResource(Res.string.sync_team_remove_body))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .toggleable(
+                                value = forced || rotateChecked,
+                                enabled = !forced,
+                                role = Role.Checkbox,
+                                onValueChange = { rotateChecked = it },
+                            ),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(checked = forced || rotateChecked, onCheckedChange = null, enabled = !forced)
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(Res.string.sync_team_remove_also_rotate), style = MaterialTheme.typography.bodyLarge)
+                    }
+                    if (forced) {
+                        Text(
+                            stringResource(Res.string.sync_team_remove_rotate_admin),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
                         confirmRemove = false
-                        onRemove()
+                        onRemove(rotateAfterRemoval(boxChecked = rotateChecked, memberIsAdmin = isAdmin))
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                 ) { Text(stringResource(Res.string.remove)) }

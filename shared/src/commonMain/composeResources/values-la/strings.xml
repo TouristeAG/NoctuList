@@ -2462,6 +2462,7 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="sync_team_page_title">Turma</string>
     <string name="sync_team_page_subtitle">Sodales, munera et aditus ad ordinationem</string>
     <string name="sync_read_only_notice">Soli administratores ordinationis haec praecepta mutare possunt.</string>
+    <string name="sync_signed_out_notice">In Conexio inscribe ut haec praecepta mutes.</string>
     <string name="settings_more_options_cd">Plura optiones</string>
     <string name="sync_team_add_person">Personam adde</string>
     <string name="sync_team_show_qr">QR ostende</string>
@@ -2482,7 +2483,11 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="sync_team_make_admin_action">Administratorem fac</string>
     <string name="sync_team_remove">E turma remove</string>
     <string name="sync_team_remove_title">%1$s e turma removere?</string>
-    <string name="sync_team_remove_body">Haec persona aditum ad data amittet. Ne cum vetere QR redeat, veteres QR quoque exstingue.</string>
+    <string name="sync_team_remove_body">Haec persona aditum ad data amittet. Nisi veteres QR exstinguis, eius instrumentum cum codice quem iam habet turmae iterum se adiungere potest.</string>
+    <string name="sync_team_remove_also_rotate">Veteres QR quoque exstingue</string>
+    <string name="sync_team_remove_rotate_admin">Administratori necessarium, nam eius instrumentum codicem invitationis servat.</string>
+    <string name="sync_team_remove_rotate_failed">Persona remota est, sed veteres QR non exstincti sunt. Fac hoc ex Personam adde. Error: %1$s</string>
+    <string name="sync_team_domains_publish_failed">Dominia pro turma servari non potuerunt. Error: %1$s</string>
     <string name="sync_team_error_not_found">Haec persona iam in turma non est. Indicem renova.</string>
     <string name="sync_team_error_ambiguous">Plures rationes turmae hac inscriptione utuntur. Eas in console Firebase muta.</string>
     <string name="sync_team_error_self">Aditum tuum ipse mutare non potes.</string>

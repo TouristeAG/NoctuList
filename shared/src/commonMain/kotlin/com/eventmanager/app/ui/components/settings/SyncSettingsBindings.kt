@@ -23,9 +23,15 @@ import com.eventmanager.app.data.sync.SettingsManager
 import com.eventmanager.app.platform.PlatformContext
 import com.eventmanager.app.portal.DomainCheck
 import com.eventmanager.app.portal.PortalServerStatus
+import com.eventmanager.app.resources.Res
+import com.eventmanager.app.resources.sync_read_only_notice
+import com.eventmanager.app.resources.sync_signed_out_notice
+import com.eventmanager.app.resources.sync_team_domains_publish_failed
 import com.eventmanager.app.ui.viewmodel.EventManagerViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlin.coroutines.cancellation.CancellationException
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Everything the sync settings pages read and do. Built once per screen by
@@ -56,6 +62,8 @@ class SyncSettingsBindings(
     val onWebClientSecretChange: (String) -> Unit,
     val allowedEmailDomains: List<String>,
     val onAllowedEmailDomainsChange: (List<String>) -> Unit,
+    /** Why the last publish of [allowedEmailDomains] to the org failed, or null. */
+    val allowedEmailDomainsError: String?,
     val signInFeedback: String?,
     val profilePhotosEnabled: Boolean,
     val onProfilePhotosEnabledChange: (Boolean) -> Unit,
@@ -80,6 +88,8 @@ class SyncSettingsBindings(
     // Added for the pages.
     /** [FirebaseOrgAdminAccess.currentUserIsOrgAdmin], checked on the Firebase backend only. */
     val isOrgAdmin: Boolean,
+    /** True once the first [isOrgAdmin] check has finished (at once in Sheets mode). */
+    val adminChecked: Boolean,
     val onOpenFirebaseGuide: () -> Unit,
     val onOpenMigration: (MigrationDirection) -> Unit,
     /** Sheets only. */
@@ -106,7 +116,7 @@ class SyncSettingsBindings(
  * - [onSyncNowOverride]: replaces the Sheets "sync now" action (Android keeps its own call).
  *
  * The org-admin role is only checked on the Firebase backend; in Sheets mode [SyncSettingsBindings.isOrgAdmin]
- * stays false and no Firebase call runs.
+ * stays false, [SyncSettingsBindings.adminChecked] is true at once, and no Firebase call runs.
  */
 @Composable
 fun rememberSyncSettingsBindings(
@@ -154,12 +164,20 @@ fun rememberSyncSettingsBindings(
     val lastSyncAt by viewModel.lastSyncTime.collectAsState()
 
     var isOrgAdmin by remember { mutableStateOf(false) }
+    var adminChecked by remember { mutableStateOf(false) }
     val writableOrgId = settingsManager.resolveWritableFirebaseOrgId()
     val firebaseBackend = settingsManager.getBackendType() == BackendType.FIREBASE
     LaunchedEffect(authEmail, writableOrgId, settingsManager, firebaseBackend) {
-        isOrgAdmin = firebaseBackend &&
-            FirebaseOrgAdminAccess.currentUserIsOrgAdmin(platformContext, settingsManager)
+        if (!firebaseBackend) {
+            isOrgAdmin = false
+            adminChecked = true
+            return@LaunchedEffect
+        }
+        isOrgAdmin = FirebaseOrgAdminAccess.currentUserIsOrgAdmin(platformContext, settingsManager)
+        adminChecked = true
     }
+    var allowedEmailDomainsError by remember { mutableStateOf<String?>(null) }
+    val domainsPublishFailed = stringResource(Res.string.sync_team_domains_publish_failed, "%1\$s")
 
     val sharedSignIn: () -> Unit = {
         scope.launch {
@@ -245,19 +263,27 @@ fun rememberSyncSettingsBindings(
         onAllowedEmailDomainsChange = { domains ->
             allowedEmailDomains = domains
             settingsManager.setAllowedEmailDomains(domains)
+            allowedEmailDomainsError = null
             scope.launch {
                 val org = settingsManager.resolveWritableFirebaseOrgId()
                 if (org.isBlank()) return@launch
                 val gateway = createFirestoreGateway(platformContext, settingsManager)
-                runCatching {
+                try {
                     MemberRoleAdmin.publishAllowedEmailDomains(
                         gateway = gateway,
                         orgId = org,
                         domains = domains,
                     )
-                }.onFailure { onStatusMessage(it.message) }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    val detail = e.message?.takeIf { it.isNotBlank() } ?: e::class.simpleName.orEmpty()
+                    allowedEmailDomainsError = domainsPublishFailed.replace("%1\$s", detail)
+                    onStatusMessage(e.message)
+                }
             }
         },
+        allowedEmailDomainsError = allowedEmailDomainsError,
         signInFeedback = signInFeedback,
         profilePhotosEnabled = profilePhotosEnabled,
         onProfilePhotosEnabledChange = { viewModel.setProfilePhotosEnabled(it) },
@@ -283,6 +309,7 @@ fun rememberSyncSettingsBindings(
         onAddVolunteerPortalGoogleDomain = { viewModel.addVolunteerPortalGoogleDomain(it) },
         onRemoveVolunteerPortalGoogleDomain = { viewModel.removeVolunteerPortalGoogleDomain(it) },
         isOrgAdmin = isOrgAdmin,
+        adminChecked = adminChecked,
         onOpenFirebaseGuide = onOpenFirebaseGuide,
         onOpenMigration = onOpenMigration,
         lastSyncAt = lastSyncAt,
@@ -290,3 +317,12 @@ fun rememberSyncSettingsBindings(
         scope = scope,
     )
 }
+
+/** The notice line of a Firebase org page (Équipe, Fonctions en ligne, Sauvegarde), see [syncPageNotice]. */
+@Composable
+internal fun syncPageNoticeText(b: SyncSettingsBindings): String? =
+    when (syncPageNotice(signedIn = !b.authEmail.isNullOrBlank(), adminChecked = b.adminChecked, isOrgAdmin = b.isOrgAdmin)) {
+        SyncPageNotice.SIGNED_OUT -> stringResource(Res.string.sync_signed_out_notice)
+        SyncPageNotice.READ_ONLY -> stringResource(Res.string.sync_read_only_notice)
+        null -> null
+    }

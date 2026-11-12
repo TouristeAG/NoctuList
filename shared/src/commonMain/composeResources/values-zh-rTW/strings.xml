@@ -2457,6 +2457,7 @@
     <string name="sync_team_page_title">團隊</string>
     <string name="sync_team_page_subtitle">成員、角色與組織存取權限</string>
     <string name="sync_read_only_notice">只有組織管理員可以變更這些設定。</string>
+    <string name="sync_signed_out_notice">請在「連線」中登入以變更這些設定。</string>
     <string name="settings_more_options_cd">更多選項</string>
     <string name="sync_team_add_person">新增人員</string>
     <string name="sync_team_show_qr">顯示 QR 碼</string>
@@ -2477,7 +2478,11 @@
     <string name="sync_team_make_admin_action">設為管理員</string>
     <string name="sync_team_remove">從團隊中移除</string>
     <string name="sync_team_remove_title">將 %1$s 從團隊中移除？</string>
-    <string name="sync_team_remove_body">此人將無法再存取資料。為防止其使用舊 QR 碼重新加入，請同時停用舊 QR 碼。</string>
+    <string name="sync_team_remove_body">此人將無法再存取資料。如果不停用舊 QR 碼，其裝置可以用已有的代碼重新加入團隊。</string>
+    <string name="sync_team_remove_also_rotate">同時停用舊 QR 碼</string>
+    <string name="sync_team_remove_rotate_admin">管理員必須停用，因為其裝置會保留邀請碼。</string>
+    <string name="sync_team_remove_rotate_failed">已移除此人，但舊 QR 碼未能停用。請在「新增人員」中操作。錯誤：%1$s</string>
+    <string name="sync_team_domains_publish_failed">無法為團隊儲存這些網域。錯誤：%1$s</string>
     <string name="sync_team_error_not_found">此人已不在團隊中。請重新整理清單。</string>
     <string name="sync_team_error_ambiguous">團隊中有多個帳號使用此地址。請在 Firebase 主控台中修改。</string>
     <string name="sync_team_error_self">您無法變更自己的存取權限。</string>

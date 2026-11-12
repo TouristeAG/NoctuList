@@ -30,20 +30,20 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * Sauvegarde page (Firebase): the optional one-way copy of the data into a Google Sheets
- * spreadsheet, and the way to switch the live storage to Google Sheets. Both are organization
- * level, so only org admins can use them; others see a read-only notice.
+ * spreadsheet, and the way to switch the live storage to Google Sheets. The copy is organization
+ * level, so only org admins can change it; others see a read-only notice. The switch stays open
+ * to everyone because the migration wizard handles its own sign-in.
  */
 @Composable
 fun SyncBackupPage(b: SyncSettingsBindings, showTitle: Boolean = true) {
-    val signedIn = !b.authEmail.isNullOrBlank()
     SettingsPage(
         showTitle = showTitle,
         title = stringResource(Res.string.sync_backup_page_title),
         subtitle = stringResource(Res.string.sync_backup_page_subtitle),
-        readOnlyNotice = if (!b.isOrgAdmin && signedIn) stringResource(Res.string.sync_read_only_notice) else null,
+        readOnlyNotice = syncPageNoticeText(b),
     ) {
         MirrorBlock(b, canEdit = b.isOrgAdmin)
-        StorageBlock(b, canEdit = b.isOrgAdmin)
+        StorageBlock(b)
     }
 }
 
@@ -312,11 +312,11 @@ private fun SaveOnBlurField(
 }
 
 @Composable
-private fun StorageBlock(b: SyncSettingsBindings, canEdit: Boolean) {
+private fun StorageBlock(b: SyncSettingsBindings) {
     SettingsBlock(title = stringResource(Res.string.sync_backup_storage_title)) {
+        // Open to everyone: the migration wizard asks for its own sign-in.
         SettingsRow(
             title = stringResource(Res.string.firebase_migrate_to_sheets),
-            enabled = canEdit,
             onClick = { b.onOpenMigration(MigrationDirection.FIREBASE_TO_SHEETS) },
         )
     }

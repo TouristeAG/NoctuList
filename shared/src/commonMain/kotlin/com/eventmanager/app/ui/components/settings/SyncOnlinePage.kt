@@ -33,12 +33,11 @@ import org.jetbrains.compose.resources.stringResource
  */
 @Composable
 fun SyncOnlinePage(b: SyncSettingsBindings, showTitle: Boolean = true) {
-    val signedIn = !b.authEmail.isNullOrBlank()
     SettingsPage(
         showTitle = showTitle,
         title = stringResource(Res.string.sync_online_page_title),
         subtitle = stringResource(Res.string.sync_online_page_subtitle),
-        readOnlyNotice = if (!b.isOrgAdmin && signedIn) stringResource(Res.string.sync_read_only_notice) else null,
+        readOnlyNotice = syncPageNoticeText(b),
     ) {
         PublicSiteBlock(b)
         FeaturesBlock(b, canEdit = b.isOrgAdmin)
@@ -70,7 +69,8 @@ private fun PublicSiteBlock(b: SyncSettingsBindings) {
                 CopyField(b.guestFormSiteOrigin)
                 val lastRun = portalServerLastRun(b.portalServerStatus)
                 if (lastRun != null) {
-                    StatusPill(stringResource(Res.string.sync_online_processing_active, lastRun), PillTone.OK)
+                    // Two lines: with the date the text does not fit on one line on a phone.
+                    StatusPill(stringResource(Res.string.sync_online_processing_active, lastRun), PillTone.OK, maxLines = 2)
                 } else {
                     StatusPill(stringResource(Res.string.sync_online_processing_inactive), PillTone.NEUTRAL)
                 }

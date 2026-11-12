@@ -2457,6 +2457,7 @@
     <string name="sync_team_page_title">团队</string>
     <string name="sync_team_page_subtitle">成员、角色和组织访问权限</string>
     <string name="sync_read_only_notice">只有组织管理员可以更改这些设置。</string>
+    <string name="sync_signed_out_notice">请在“连接”中登录以更改这些设置。</string>
     <string name="settings_more_options_cd">更多选项</string>
     <string name="sync_team_add_person">添加人员</string>
     <string name="sync_team_show_qr">显示二维码</string>
@@ -2477,7 +2478,11 @@
     <string name="sync_team_make_admin_action">设为管理员</string>
     <string name="sync_team_remove">从团队中移除</string>
     <string name="sync_team_remove_title">将 %1$s 从团队中移除？</string>
-    <string name="sync_team_remove_body">此人将无法再访问数据。为防止其使用旧二维码重新加入，请同时停用旧二维码。</string>
+    <string name="sync_team_remove_body">此人将无法再访问数据。如果不停用旧二维码，其设备可以用已有的代码重新加入团队。</string>
+    <string name="sync_team_remove_also_rotate">同时停用旧二维码</string>
+    <string name="sync_team_remove_rotate_admin">管理员必须停用，因为其设备会保留邀请码。</string>
+    <string name="sync_team_remove_rotate_failed">已移除此人，但旧二维码未能停用。请在“添加人员”中操作。错误：%1$s</string>
+    <string name="sync_team_domains_publish_failed">无法为团队保存这些域名。错误：%1$s</string>
     <string name="sync_team_error_not_found">此人已不在团队中。请刷新列表。</string>
     <string name="sync_team_error_ambiguous">团队中有多个账号使用此地址。请在 Firebase 控制台中修改。</string>
     <string name="sync_team_error_self">您无法更改自己的访问权限。</string>

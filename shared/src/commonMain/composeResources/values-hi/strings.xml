@@ -2462,6 +2462,7 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="sync_team_page_title">टीम</string>
     <string name="sync_team_page_subtitle">सदस्य, भूमिकाएँ और संगठन तक पहुँच</string>
     <string name="sync_read_only_notice">केवल संगठन के एडमिन ये सेटिंग्स बदल सकते हैं।</string>
+    <string name="sync_signed_out_notice">ये सेटिंग्स बदलने के लिए कनेक्शन में साइन इन करें।</string>
     <string name="settings_more_options_cd">और विकल्प</string>
     <string name="sync_team_add_person">व्यक्ति जोड़ें</string>
     <string name="sync_team_show_qr">QR दिखाएँ</string>
@@ -2482,7 +2483,11 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="sync_team_make_admin_action">एडमिन बनाएँ</string>
     <string name="sync_team_remove">टीम से हटाएँ</string>
     <string name="sync_team_remove_title">%1$s को टीम से हटाएँ?</string>
-    <string name="sync_team_remove_body">इस व्यक्ति की डेटा तक पहुँच खत्म हो जाएगी। पुराने QR से वापस आने से रोकने के लिए पुराने QR भी बंद करें।</string>
+    <string name="sync_team_remove_body">इस व्यक्ति की डेटा तक पहुँच खत्म हो जाएगी। पुराने QR बंद किए बिना, उसका डिवाइस पहले से मौजूद कोड से टीम में फिर से जुड़ सकता है।</string>
+    <string name="sync_team_remove_also_rotate">पुराने QR भी बंद करें</string>
+    <string name="sync_team_remove_rotate_admin">एडमिन के लिए ज़रूरी है, क्योंकि उसका डिवाइस आमंत्रण कोड रखता है।</string>
+    <string name="sync_team_remove_rotate_failed">व्यक्ति को हटा दिया गया, लेकिन पुराने QR बंद नहीं हुए। यह व्यक्ति जोड़ें से करें। त्रुटि: %1$s</string>
+    <string name="sync_team_domains_publish_failed">टीम के लिए डोमेन सहेजे नहीं जा सके। त्रुटि: %1$s</string>
     <string name="sync_team_error_not_found">यह व्यक्ति अब टीम में नहीं है। सूची रीफ़्रेश करें।</string>
     <string name="sync_team_error_ambiguous">टीम के कई खाते यह पता इस्तेमाल करते हैं। इन्हें Firebase कंसोल में बदलें।</string>
     <string name="sync_team_error_self">आप अपनी खुद की पहुँच नहीं बदल सकते।</string>

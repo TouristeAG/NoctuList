@@ -2457,6 +2457,7 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="sync_team_page_title">Equipo</string>
     <string name="sync_team_page_subtitle">Miembros, roles y acceso a la organización</string>
     <string name="sync_read_only_notice">Solo los administradores de la organización pueden cambiar estos ajustes.</string>
+    <string name="sync_signed_out_notice">Inicie sesión en Conexión para cambiar estos ajustes.</string>
     <string name="settings_more_options_cd">Más opciones</string>
     <string name="sync_team_add_person">Añadir una persona</string>
     <string name="sync_team_show_qr">Mostrar el QR</string>
@@ -2477,7 +2478,11 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="sync_team_make_admin_action">Hacer administrador</string>
     <string name="sync_team_remove">Quitar del equipo</string>
     <string name="sync_team_remove_title">¿Quitar a %1$s del equipo?</string>
-    <string name="sync_team_remove_body">Esta persona perderá el acceso a los datos. Para que no pueda volver con un QR antiguo, desactive también los QR antiguos.</string>
+    <string name="sync_team_remove_body">Esta persona perderá el acceso a los datos. Si no desactiva los QR antiguos, su dispositivo puede volver a unirse al equipo con el código que ya tiene.</string>
+    <string name="sync_team_remove_also_rotate">Desactivar también los QR antiguos</string>
+    <string name="sync_team_remove_rotate_admin">Obligatorio para un administrador, porque su dispositivo conserva el código de invitación.</string>
+    <string name="sync_team_remove_rotate_failed">La persona se ha quitado, pero los QR antiguos no se han desactivado. Hágalo desde Añadir una persona. Error: %1$s</string>
+    <string name="sync_team_domains_publish_failed">No se pudieron guardar los dominios para el equipo. Error: %1$s</string>
     <string name="sync_team_error_not_found">Esta persona ya no está en el equipo. Actualice la lista.</string>
     <string name="sync_team_error_ambiguous">Varias cuentas del equipo usan esta dirección. Cámbielas en la consola de Firebase.</string>
     <string name="sync_team_error_self">No puede cambiar su propio acceso.</string>

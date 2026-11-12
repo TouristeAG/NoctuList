@@ -66,6 +66,30 @@ fun memberActionsAllowed(isOrgAdmin: Boolean, memberEmail: String?, selfEmail: S
 }
 
 /**
+ * The removal confirmation's "also disable old QR codes" box cannot be unchecked for an admin:
+ * an admin's device always keeps the invitation code, so it would rejoin on its next sync.
+ */
+fun removalRotationForced(memberIsAdmin: Boolean): Boolean = memberIsAdmin
+
+/** Whether the invitation code is replaced after a successful removal. */
+fun rotateAfterRemoval(boxChecked: Boolean, memberIsAdmin: Boolean): Boolean =
+    boxChecked || removalRotationForced(memberIsAdmin)
+
+/** The notice at the top of a Firebase org page (Équipe, Fonctions en ligne, Sauvegarde). */
+enum class SyncPageNotice { SIGNED_OUT, READ_ONLY }
+
+/**
+ * Signed out: ask to sign in. Signed in: say the page is read-only only once the admin check has
+ * finished ([adminChecked]) and found no admin role, so an admin never sees the notice flash.
+ */
+fun syncPageNotice(signedIn: Boolean, adminChecked: Boolean, isOrgAdmin: Boolean): SyncPageNotice? =
+    when {
+        !signedIn -> SyncPageNotice.SIGNED_OUT
+        adminChecked && !isOrgAdmin -> SyncPageNotice.READ_ONLY
+        else -> null
+    }
+
+/**
  * Whether the org's `metadata/config` already holds an invitation code: the hashed field
  * `bootstrapCodeHash` or the legacy `bootstrapCode`, non-empty (the same test as the Firestore
  * rules). When it does, a device without the code must not create one silently, because a new code

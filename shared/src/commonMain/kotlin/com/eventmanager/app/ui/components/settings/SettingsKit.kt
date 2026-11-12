@@ -283,8 +283,8 @@ private fun RowTexts(title: String, subtitle: String?, modifier: Modifier = Modi
 /**
  * A row: title, optional effect line (only when it says something the title does not), control at
  * the end. When [onClick] is set the whole row is clickable and, without [trailing], shows a chevron.
- * When [enabled] is false the row is not clickable and its texts are dimmed; [trailing] controls
- * handle their own enabled state.
+ * When [enabled] is false the row is not clickable and its texts and chevron are dimmed; [trailing]
+ * controls handle their own enabled state.
  */
 @Composable
 fun SettingsRow(
@@ -329,7 +329,9 @@ fun SettingsRow(
                     Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp),
+                    modifier = Modifier
+                        .size(20.dp)
+                        .alpha(if (enabled) 1f else SettingsKitDefaults.DisabledAlpha),
                 )
             }
         }
@@ -428,14 +430,15 @@ private fun pillColors(tone: PillTone): PillColors {
 
 /** Status label: text only on a tinted, 8 dp rounded background. */
 @Composable
-fun StatusPill(text: String, tone: PillTone) {
+fun StatusPill(text: String, tone: PillTone, maxLines: Int = 1) {
     val colors = pillColors(tone)
     Text(
         text,
         style = MaterialTheme.typography.labelMedium,
         fontWeight = FontWeight.Medium,
         color = colors.content,
-        maxLines = 1,
+        maxLines = maxLines,
+        overflow = TextOverflow.Ellipsis,
         modifier = Modifier
             .background(colors.container, RoundedCornerShape(8.dp))
             .padding(horizontal = 10.dp, vertical = 4.dp),

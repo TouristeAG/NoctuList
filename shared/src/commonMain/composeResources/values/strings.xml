@@ -2459,6 +2459,7 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="sync_team_page_title">Team</string>
     <string name="sync_team_page_subtitle">Members, roles and access to the organization</string>
     <string name="sync_read_only_notice">Only organization admins can change these settings.</string>
+    <string name="sync_signed_out_notice">Sign in under Connection to change these settings.</string>
     <string name="settings_more_options_cd">More options</string>
     <string name="sync_team_add_person">Add a person</string>
     <string name="sync_team_show_qr">Show QR code</string>
@@ -2479,7 +2480,11 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="sync_team_make_admin_action">Make admin</string>
     <string name="sync_team_remove">Remove from team</string>
     <string name="sync_team_remove_title">Remove %1$s from the team?</string>
-    <string name="sync_team_remove_body">This person will lose access to the data. To stop them coming back with an old QR code, also disable old QR codes.</string>
+    <string name="sync_team_remove_body">This person will lose access to the data. Without disabling old QR codes, their device can rejoin the team with the code it already has.</string>
+    <string name="sync_team_remove_also_rotate">Also disable old QR codes</string>
+    <string name="sync_team_remove_rotate_admin">Required for an admin, because their device keeps the invitation code.</string>
+    <string name="sync_team_remove_rotate_failed">The person was removed, but old QR codes were not disabled. Do it from Add a person. Error: %1$s</string>
+    <string name="sync_team_domains_publish_failed">The domains could not be saved for the team. Error: %1$s</string>
     <string name="sync_team_error_not_found">This person is no longer in the team. Refresh the list.</string>
     <string name="sync_team_error_ambiguous">Several team accounts use this address. Change them in the Firebase console.</string>
     <string name="sync_team_error_self">You cannot change your own access.</string>
