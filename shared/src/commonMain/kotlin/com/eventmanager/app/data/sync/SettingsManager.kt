@@ -131,6 +131,10 @@ class SettingsManager(private val storage: AppStorage) {
         
         // Settings Category Expansion State Keys
         private const val KEY_CATEGORY_SYNC_EXPANDED = "category_sync_expanded"
+        private const val KEY_CATEGORY_SYNC_TEAM_EXPANDED = "category_sync_team_expanded"
+        private const val KEY_CATEGORY_SYNC_ONLINE_EXPANDED = "category_sync_online_expanded"
+        private const val KEY_CATEGORY_SYNC_BACKUP_EXPANDED = "category_sync_backup_expanded"
+        private const val KEY_CATEGORY_SYNC_SHEETS_EXPANDED = "category_sync_sheets_expanded"
         private const val KEY_CATEGORY_APPEARANCE_EXPANDED = "category_appearance_expanded"
         private const val KEY_CATEGORY_LOCALIZATION_EXPANDED = "category_localization_expanded"
         private const val KEY_CATEGORY_ANIMATION_EXPANDED = "category_animation_expanded"
@@ -2385,6 +2389,38 @@ class SettingsManager(private val storage: AppStorage) {
     
     fun setCategorySyncExpanded(expanded: Boolean) {
         storage.putBoolean(KEY_CATEGORY_SYNC_EXPANDED, expanded)
+    }
+
+    fun isCategorySyncTeamExpanded(): Boolean {
+        return storage.getBoolean(KEY_CATEGORY_SYNC_TEAM_EXPANDED, false)
+    }
+
+    fun setCategorySyncTeamExpanded(expanded: Boolean) {
+        storage.putBoolean(KEY_CATEGORY_SYNC_TEAM_EXPANDED, expanded)
+    }
+
+    fun isCategorySyncOnlineExpanded(): Boolean {
+        return storage.getBoolean(KEY_CATEGORY_SYNC_ONLINE_EXPANDED, false)
+    }
+
+    fun setCategorySyncOnlineExpanded(expanded: Boolean) {
+        storage.putBoolean(KEY_CATEGORY_SYNC_ONLINE_EXPANDED, expanded)
+    }
+
+    fun isCategorySyncBackupExpanded(): Boolean {
+        return storage.getBoolean(KEY_CATEGORY_SYNC_BACKUP_EXPANDED, false)
+    }
+
+    fun setCategorySyncBackupExpanded(expanded: Boolean) {
+        storage.putBoolean(KEY_CATEGORY_SYNC_BACKUP_EXPANDED, expanded)
+    }
+
+    fun isCategorySyncSheetsExpanded(): Boolean {
+        return storage.getBoolean(KEY_CATEGORY_SYNC_SHEETS_EXPANDED, false)
+    }
+
+    fun setCategorySyncSheetsExpanded(expanded: Boolean) {
+        storage.putBoolean(KEY_CATEGORY_SYNC_SHEETS_EXPANDED, expanded)
     }
     
     fun isCategoryAppearanceExpanded(): Boolean {

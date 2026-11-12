@@ -97,6 +97,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.collectAsState
 import kotlin.math.roundToInt
 import com.eventmanager.app.R
+import com.eventmanager.app.resources.Res
+import com.eventmanager.app.resources.sync_backup_page_title
+import com.eventmanager.app.resources.sync_connection_page_title
+import com.eventmanager.app.resources.sync_online_page_title
+import com.eventmanager.app.resources.sync_sheets_page_title
+import com.eventmanager.app.resources.sync_team_page_title
+import org.jetbrains.compose.resources.stringResource
 import com.eventmanager.app.platform.AppBuildInfo
 import com.eventmanager.app.platform.installedVersionName
 import com.eventmanager.app.ui.theme.ThemeMode
@@ -483,6 +490,17 @@ private fun CustomThemeEditorDialog(
             }
         }
     }
+}
+
+@Composable
+private fun AndroidSheetNameField(label: String, value: String, onValueChange: (String) -> Unit) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 // Helper composable for expandable settings category
@@ -1723,19 +1741,6 @@ actual fun SettingsScreen(
     var firebaseAuthEmail by firebaseAuthEmailState
     val firebaseSignInFeedbackState = remember { mutableStateOf<String?>(null) }
     var firebaseSignInFeedback by firebaseSignInFeedbackState
-    var isFirebaseOrgAdmin by remember { mutableStateOf(false) }
-    LaunchedEffect(firebaseAuthEmail, settingsManager.getFirebaseOrgId()) {
-        isFirebaseOrgAdmin = com.eventmanager.app.data.remote.FirebaseOrgAdminAccess
-            .currentUserIsOrgAdmin(platformContext, settingsManager)
-    }
-    val canEditInstitutionSettings = com.eventmanager.app.data.security.canEditSyncedInstitutionSettings(
-        backendType = settingsManager.getBackendType(),
-        isFirebaseOrgAdmin = isFirebaseOrgAdmin,
-    )
-    val canEditBilleterieSendSetting = com.eventmanager.app.data.security.canEditAnnouncementsNonAdminSendSetting(
-        backendType = settingsManager.getBackendType(),
-        isFirebaseOrgAdmin = isFirebaseOrgAdmin,
-    )
     val catalogVenues by viewModel.venues.collectAsState()
     val activeVenues = remember(catalogVenues) { catalogVenues.filter { it.isActive } }
     val temporaryGuestAccesses by viewModel.temporaryGuestVenueAccesses.collectAsState()
@@ -1800,7 +1805,61 @@ actual fun SettingsScreen(
             }
         }
     }
+    // One set of sync bindings for the whole screen: the sync pages read it, and its org-admin
+    // check also gates the institution-wide settings below (no second role check).
+    val syncBindings = com.eventmanager.app.ui.components.settings.rememberSyncSettingsBindings(
+        viewModel = viewModel,
+        settingsManager = settingsManager,
+        platformContext = platformContext,
+        onOpenFirebaseGuide = { showInstructions = true },
+        onOpenMigration = { migrationWizard = it },
+        authEmailState = firebaseAuthEmailState,
+        signInFeedbackState = firebaseSignInFeedbackState,
+        onStatusMessage = { uploadStatus = it },
+        scope = coroutineScope,
+        // Android signs in through the activity-result launcher when it can.
+        onSignInOverride = {
+            firebaseSignInFeedback = null
+            val auth = firebaseAuthService
+            if (auth != null) {
+                firebaseAuthLauncher.launch(auth.getSignInIntent())
+            } else {
+                coroutineScope.launch {
+                    when (val result = com.eventmanager.app.data.remote.createFirebaseAuthService(platformContext).signInWithGoogle()) {
+                        is com.eventmanager.app.data.remote.FirebaseAuthResult.Success -> {
+                            firebaseAuthEmail = result.email.orEmpty()
+                            settingsManager.setFirebaseAuthEmail(result.email.orEmpty())
+                            firebaseSignInFeedback = null
+                            uploadStatus = "Firebase signed in as ${result.email ?: result.uid}"
+                        }
+                        is com.eventmanager.app.data.remote.FirebaseAuthResult.Error -> {
+                            firebaseSignInFeedback = result.message
+                            uploadStatus = result.message
+                        }
+                    }
+                }
+            }
+        },
+        // Android's manual Sheets sync has always used this call.
+        onSyncNowOverride = { viewModel.syncWithGoogleSheets() },
+    )
+    val isFirebaseOrgAdmin = syncBindings.isOrgAdmin
+    val canEditInstitutionSettings = com.eventmanager.app.data.security.canEditSyncedInstitutionSettings(
+        backendType = settingsManager.getBackendType(),
+        isFirebaseOrgAdmin = isFirebaseOrgAdmin,
+    )
+    val canEditBilleterieSendSetting = com.eventmanager.app.data.security.canEditAnnouncementsNonAdminSendSetting(
+        backendType = settingsManager.getBackendType(),
+        isFirebaseOrgAdmin = isFirebaseOrgAdmin,
+    )
+    val isSyncing by viewModel.isSyncing.collectAsState()
+    // Sync & data: one card per page, each remembering whether it is open. Connexion keeps the
+    // flag of the former single "Sync" card.
     var showSyncSettings by remember { mutableStateOf(settingsManager.isCategorySyncExpanded()) }
+    var showSyncTeamSettings by remember { mutableStateOf(settingsManager.isCategorySyncTeamExpanded()) }
+    var showSyncOnlineSettings by remember { mutableStateOf(settingsManager.isCategorySyncOnlineExpanded()) }
+    var showSyncBackupSettings by remember { mutableStateOf(settingsManager.isCategorySyncBackupExpanded()) }
+    var showSyncSheetsSettings by remember { mutableStateOf(settingsManager.isCategorySyncSheetsExpanded()) }
     var showEmailSettings by remember { mutableStateOf(settingsManager.isCategoryEmailExpanded()) }
     var showAppearanceSettings by remember { mutableStateOf(settingsManager.isCategoryAppearanceExpanded()) }
     var showLocalizationSettings by remember { mutableStateOf(settingsManager.isCategoryLocalizationExpanded()) }
@@ -1994,486 +2053,149 @@ actual fun SettingsScreen(
         
         Spacer(modifier = Modifier.height(24.dp))
         
-        // Sync & Data Settings
+        // Sync & data: Connexion, Équipe, Fonctions en ligne, Sauvegarde (Firebase) or
+        // Connexion, Synchronisation (Google Sheets).
+        val isFirebaseBackend =
+            settingsManager.getBackendType() == com.eventmanager.app.data.remote.BackendType.FIREBASE
         ExpandableSettingsCategory(
-            title = context.getString(R.string.settings_category_sync),
+            title = stringResource(Res.string.sync_connection_page_title),
             icon = Icons.Default.CloudSync,
             isExpanded = showSyncSettings,
-            onToggleExpanded = { 
+            onToggleExpanded = {
                 showSyncSettings = !showSyncSettings
                 settingsManager.setCategorySyncExpanded(showSyncSettings)
             }
         ) {
-            if (variant == SettingsScreenVariant.Full &&
-                settingsManager.getBackendType() == com.eventmanager.app.data.remote.BackendType.FIREBASE
-            ) {
-                com.eventmanager.app.ui.components.SyncSetupInstructionsButton(
-                    backendType = com.eventmanager.app.data.remote.BackendType.FIREBASE,
-                    onClick = { showInstructions = true },
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                val syncBindings = com.eventmanager.app.ui.components.settings.rememberSyncSettingsBindings(
-                    viewModel = viewModel,
-                    settingsManager = settingsManager,
-                    platformContext = platformContext,
-                    onOpenFirebaseGuide = { showInstructions = true },
-                    onOpenMigration = { migrationWizard = it },
-                    authEmailState = firebaseAuthEmailState,
-                    signInFeedbackState = firebaseSignInFeedbackState,
-                    onStatusMessage = { uploadStatus = it },
-                    scope = coroutineScope,
-                    // Android signs in through the activity-result launcher when it can.
-                    onSignInOverride = {
-                        firebaseSignInFeedback = null
-                        val auth = firebaseAuthService
-                        if (auth != null) {
-                            firebaseAuthLauncher.launch(auth.getSignInIntent())
-                        } else {
-                            coroutineScope.launch {
-                                when (val result = com.eventmanager.app.data.remote.createFirebaseAuthService(platformContext).signInWithGoogle()) {
-                                    is com.eventmanager.app.data.remote.FirebaseAuthResult.Success -> {
-                                        firebaseAuthEmail = result.email.orEmpty()
-                                        settingsManager.setFirebaseAuthEmail(result.email.orEmpty())
-                                        firebaseSignInFeedback = null
-                                        uploadStatus = "Firebase signed in as ${result.email ?: result.uid}"
-                                    }
-                                    is com.eventmanager.app.data.remote.FirebaseAuthResult.Error -> {
-                                        firebaseSignInFeedback = result.message
-                                        uploadStatus = result.message
-                                    }
-                                }
-                            }
-                        }
+            if (isFirebaseBackend) {
+                com.eventmanager.app.ui.components.settings.SyncConnectionPage(syncBindings)
+            } else {
+                com.eventmanager.app.ui.components.settings.SheetsConnectionPage(
+                    spreadsheetId = spreadsheetId,
+                    onSpreadsheetIdChange = { spreadsheetId = it },
+                    keyReady = jsonKeyInfo != null,
+                    keyDetails = jsonKeyInfo?.let { info ->
+                        context.getString(R.string.email_colon, info.clientEmail) + "\n" +
+                            context.getString(R.string.project_colon, info.projectId)
                     },
-                )
-                com.eventmanager.app.ui.components.settings.LegacyFirebaseSyncSettings(syncBindings)
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            if (settingsManager.getBackendType() == com.eventmanager.app.data.remote.BackendType.SHEETS) {
-            // Google Sheets Configuration Section
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Default.CloudSync,
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = context.getString(R.string.google_sheets_config_title),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Instructions Button
-                    Button(
-                        onClick = { showInstructions = true },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.Help, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(context.getString(R.string.view_setup_instructions))
-                    }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Spreadsheet ID
-                    OutlinedTextField(
-                        value = spreadsheetId,
-                        onValueChange = { spreadsheetId = it },
-                        label = { Text(context.getString(R.string.spreadsheet_id_label)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        supportingText = { 
-                            Text(context.getString(R.string.spreadsheet_id_hint))
-                        },
-                        leadingIcon = {
-                            Icon(Icons.Default.Link, contentDescription = null)
-                        }
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Sheet Names
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = guestListSheet,
-                            onValueChange = { guestListSheet = it },
-                            label = { Text(context.getString(R.string.guest_list_sheet_label)) },
-                            modifier = Modifier.weight(1f),
-                            leadingIcon = {
-                                Icon(Icons.Default.People, contentDescription = null)
-                            }
-                        )
-                        
-                        OutlinedTextField(
-                            value = volunteerSheet,
-                            onValueChange = { volunteerSheet = it },
-                            label = { Text(context.getString(R.string.volunteer_sheet_label)) },
-                            modifier = Modifier.weight(1f),
-                            leadingIcon = {
-                                Icon(Icons.Default.Group, contentDescription = null)
-                            }
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    OutlinedTextField(
-                        value = jobsSheet,
-                        onValueChange = { jobsSheet = it },
-                        label = { Text(context.getString(R.string.shifts_sheet_label)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        leadingIcon = {
-                            Icon(Icons.Default.Work, contentDescription = null)
-                        }
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Additional Sheet Names
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = volunteerGuestListSheet,
-                            onValueChange = { volunteerGuestListSheet = it },
-                            label = { Text(context.getString(R.string.volunteer_guest_list_sheet_label)) },
-                            modifier = Modifier.weight(1f),
-                            leadingIcon = {
-                                Icon(Icons.Default.People, contentDescription = null)
-                            }
-                        )
-                        
-                        OutlinedTextField(
-                            value = tempGuestListSheet,
-                            onValueChange = { tempGuestListSheet = it },
-                            label = { Text(context.getString(R.string.temp_guest_list_sheet_label)) },
-                            modifier = Modifier.weight(1f),
-                            leadingIcon = {
-                                Icon(Icons.Default.People, contentDescription = null)
-                            }
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = jobTypesSheet,
-                            onValueChange = { jobTypesSheet = it },
-                            label = { Text(context.getString(R.string.shift_types_sheet_label)) },
-                            modifier = Modifier.weight(1f),
-                            leadingIcon = {
-                                Icon(Icons.Default.Settings, contentDescription = null)
-                            }
-                        )
-                        
-                        OutlinedTextField(
-                            value = venuesSheet,
-                            onValueChange = { venuesSheet = it },
-                            label = { Text(context.getString(R.string.venues_sheet_label)) },
-                            modifier = Modifier.weight(1f),
-                            leadingIcon = {
-                                Icon(Icons.Default.LocationOn, contentDescription = null)
-                            }
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    OutlinedTextField(
-                        value = salesItemsSheet,
-                        onValueChange = { salesItemsSheet = it },
-                        label = { Text(context.getString(R.string.sales_items_sheet_label)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        leadingIcon = {
-                            Icon(Icons.Default.PointOfSale, contentDescription = null)
-                        }
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    OutlinedTextField(
-                        value = transfersSheet,
-                        onValueChange = { transfersSheet = it },
-                        label = { Text(context.getString(R.string.transfers_sheet_label)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        leadingIcon = {
-                            Icon(Icons.Default.SwapHoriz, contentDescription = null)
-                        }
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    OutlinedTextField(
-                        value = settingsSheet,
-                        onValueChange = { settingsSheet = it },
-                        label = { Text(context.getString(R.string.settings_sheet_label)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        leadingIcon = {
-                            Icon(Icons.Default.Settings, contentDescription = null)
-                        }
-                    )
-                    
-                    Spacer(modifier = Modifier.height(24.dp))
-                    
-                    // Action Buttons
-                    Button(
-                        onClick = { 
-                            settingsManager.saveSpreadsheetId(spreadsheetId)
-                            settingsManager.saveGuestListSheet(guestListSheet)
-                            settingsManager.saveVolunteerSheet(volunteerSheet)
-                            settingsManager.saveJobsSheet(jobsSheet)
-                            settingsManager.saveVolunteerGuestListSheet(volunteerGuestListSheet)
-                            settingsManager.saveTempGuestListSheet(tempGuestListSheet)
-                            settingsManager.saveJobTypesSheet(jobTypesSheet)
-                            settingsManager.saveVenuesSheet(venuesSheet)
-                            settingsManager.saveSalesItemsSheet(salesItemsSheet)
-                            settingsManager.saveTransfersSheet(transfersSheet)
-                            settingsManager.saveSettingsSheet(settingsSheet)
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Save, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(context.getString(R.string.save_settings))
-                    }
-                }
-            }
-            
-            } // end SHEETS-only sync fields
-
-            if (variant == SettingsScreenVariant.Full &&
-                settingsManager.getBackendType() == com.eventmanager.app.data.remote.BackendType.SHEETS
-            ) {
-                com.eventmanager.app.ui.components.SheetsMigrateToFirebaseButton(
-                    onClick = {
-                        migrationWizard = com.eventmanager.app.data.remote.MigrationDirection.SHEETS_TO_FIREBASE
+                    onSave = {
+                        settingsManager.saveSpreadsheetId(spreadsheetId)
+                        settingsManager.saveGuestListSheet(guestListSheet)
+                        settingsManager.saveVolunteerSheet(volunteerSheet)
+                        settingsManager.saveJobsSheet(jobsSheet)
+                        settingsManager.saveVolunteerGuestListSheet(volunteerGuestListSheet)
+                        settingsManager.saveTempGuestListSheet(tempGuestListSheet)
+                        settingsManager.saveJobTypesSheet(jobTypesSheet)
+                        settingsManager.saveVenuesSheet(venuesSheet)
+                        settingsManager.saveSalesItemsSheet(salesItemsSheet)
+                        settingsManager.saveTransfersSheet(transfersSheet)
+                        settingsManager.saveSettingsSheet(settingsSheet)
                     },
-                    projectId = settingsManager.getFirebaseProjectId(),
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            if (settingsManager.getBackendType() == com.eventmanager.app.data.remote.BackendType.SHEETS) {
-            // Service Account Configuration Section
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Default.Security,
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = context.getString(R.string.service_account_config_title),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // JSON Key File Status
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (jsonKeyInfo != null) 
-                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                            else 
-                                MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp)
+                    onOpenGuide = { showInstructions = true },
+                    keyActions = {
+                        Button(
+                            onClick = {
+                                // Accept common fallbacks because some Android 9 pickers gray out application/json
+                                filePickerLauncher.launch(arrayOf(
+                                    "application/json",
+                                    "application/octet-stream",
+                                    "text/plain",
+                                    "text/*",
+                                    "application/x-json"
+                                ))
+                            },
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    if (jsonKeyInfo != null) Icons.Default.CheckCircle else Icons.Default.Warning,
-                                    contentDescription = null,
-                                    tint = if (jsonKeyInfo != null) 
-                                        MaterialTheme.colorScheme.primary 
-                                    else 
-                                        MaterialTheme.colorScheme.error
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column {
-                                    Text(
-                                        text = if (jsonKeyInfo != null) context.getString(R.string.service_account_key_found) else context.getString(R.string.service_account_key_required),
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                    if (jsonKeyInfo != null) {
-                                        Text(
-                                            text = context.getString(R.string.email_colon, jsonKeyInfo!!.clientEmail),
-                                            style = MaterialTheme.typography.bodySmall
-                                        )
-                                        Text(
-                                            text = context.getString(R.string.project_colon, jsonKeyInfo!!.projectId),
-                                            style = MaterialTheme.typography.bodySmall
-                                        )
-                                    } else {
-                                        Text(
-                                            text = context.getString(R.string.upload_key_description),
-                                            style = MaterialTheme.typography.bodySmall
-                                        )
-                                    }
-                                }
-                            }
-                            
-                            Spacer(modifier = Modifier.height(12.dp))
-                            
-                            // Upload Button
-                            Button(
-                                onClick = {
-                                    // Accept common fallbacks because some Android 9 pickers gray out application/json
-                                    filePickerLauncher.launch(arrayOf(
-                                        "application/json",
-                                        "application/octet-stream",
-                                        "text/plain",
-                                        "text/*",
-                                        "application/x-json"
-                                    ))
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(Icons.Default.Upload, contentDescription = null)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(if (jsonKeyInfo != null) context.getString(R.string.replace_key_file) else context.getString(R.string.upload_key_file))
-                            }
-                            
-                            if (uploadStatus != null) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = uploadStatus!!,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = if (uploadStatus!!.contains(context.getString(R.string.file_uploaded_successfully))) 
-                                        MaterialTheme.colorScheme.primary 
-                                    else 
-                                        MaterialTheme.colorScheme.error
-                                )
-                            }
+                            Icon(Icons.Default.Upload, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(if (jsonKeyInfo != null) context.getString(R.string.replace_key_file) else context.getString(R.string.upload_key_file))
                         }
-                    }
-                }
+                        uploadStatus?.let { status ->
+                            Text(
+                                text = status,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (status.contains(context.getString(R.string.file_uploaded_successfully)))
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.error
+                            )
+                        }
+                    },
+                    sheetNameFields = {
+                        AndroidSheetNameField(context.getString(R.string.guest_list_sheet_label), guestListSheet) { guestListSheet = it }
+                        AndroidSheetNameField(context.getString(R.string.volunteer_sheet_label), volunteerSheet) { volunteerSheet = it }
+                        AndroidSheetNameField(context.getString(R.string.shifts_sheet_label), jobsSheet) { jobsSheet = it }
+                        AndroidSheetNameField(context.getString(R.string.volunteer_guest_list_sheet_label), volunteerGuestListSheet) { volunteerGuestListSheet = it }
+                        AndroidSheetNameField(context.getString(R.string.temp_guest_list_sheet_label), tempGuestListSheet) { tempGuestListSheet = it }
+                        AndroidSheetNameField(context.getString(R.string.shift_types_sheet_label), jobTypesSheet) { jobTypesSheet = it }
+                        AndroidSheetNameField(context.getString(R.string.venues_sheet_label), venuesSheet) { venuesSheet = it }
+                        AndroidSheetNameField(context.getString(R.string.sales_items_sheet_label), salesItemsSheet) { salesItemsSheet = it }
+                        AndroidSheetNameField(context.getString(R.string.transfers_sheet_label), transfersSheet) { transfersSheet = it }
+                        AndroidSheetNameField(context.getString(R.string.settings_sheet_label), settingsSheet) { settingsSheet = it }
+                    },
+                )
             }
-            
+        }
+
+        if (isFirebaseBackend) {
             Spacer(modifier = Modifier.height(16.dp))
-            
-            // Sync Configuration Section
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Default.Sync,
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = context.getString(R.string.sync_config_title),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Sync Interval
-                    OutlinedTextField(
-                        value = syncInterval.toString(),
-                        onValueChange = { 
-                            val newInterval = it.toIntOrNull() ?: 5
-                            if (newInterval >= 1 && newInterval <= 60) {
-                                syncInterval = newInterval
-                                settingsManager.saveSyncInterval(newInterval)
-                                // Update the background sync interval with a small delay to prevent rapid changes
-                                coroutineScope.launch {
-                                    kotlinx.coroutines.delay(500) // 500ms debounce
-                                    viewModel.updateSyncInterval()
-                                }
-                            }
-                        },
-                        label = { Text(context.getString(R.string.sync_interval_label)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        supportingText = { 
-                            Text(context.getString(R.string.sync_interval_hint))
-                        },
-                        leadingIcon = {
-                            Icon(Icons.Default.Timer, contentDescription = null)
-                        }
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Test Buttons
-                    Button(
-                        onClick = { viewModel.testSyncStatus() },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.BugReport, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(context.getString(R.string.test_sync_status))
-                    }
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    Button(
-                        onClick = { viewModel.syncWithGoogleSheets() },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Sync, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(context.getString(R.string.manual_sync_now))
-                    }
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
+            ExpandableSettingsCategory(
+                title = stringResource(Res.string.sync_team_page_title),
+                icon = Icons.Default.Group,
+                isExpanded = showSyncTeamSettings,
+                onToggleExpanded = {
+                    showSyncTeamSettings = !showSyncTeamSettings
+                    settingsManager.setCategorySyncTeamExpanded(showSyncTeamSettings)
                 }
+            ) {
+                com.eventmanager.app.ui.components.settings.SyncTeamPage(syncBindings)
             }
-            } // end SHEETS service account + sync interval
+            Spacer(modifier = Modifier.height(16.dp))
+            ExpandableSettingsCategory(
+                title = stringResource(Res.string.sync_online_page_title),
+                icon = Icons.Default.Public,
+                isExpanded = showSyncOnlineSettings,
+                onToggleExpanded = {
+                    showSyncOnlineSettings = !showSyncOnlineSettings
+                    settingsManager.setCategorySyncOnlineExpanded(showSyncOnlineSettings)
+                }
+            ) {
+                com.eventmanager.app.ui.components.settings.SyncOnlinePage(syncBindings)
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            ExpandableSettingsCategory(
+                title = stringResource(Res.string.sync_backup_page_title),
+                icon = Icons.Default.Backup,
+                isExpanded = showSyncBackupSettings,
+                onToggleExpanded = {
+                    showSyncBackupSettings = !showSyncBackupSettings
+                    settingsManager.setCategorySyncBackupExpanded(showSyncBackupSettings)
+                }
+            ) {
+                com.eventmanager.app.ui.components.settings.SyncBackupPage(syncBindings)
+            }
+        } else {
+            Spacer(modifier = Modifier.height(16.dp))
+            ExpandableSettingsCategory(
+                title = stringResource(Res.string.sync_sheets_page_title),
+                icon = Icons.Default.Sync,
+                isExpanded = showSyncSheetsSettings,
+                onToggleExpanded = {
+                    showSyncSheetsSettings = !showSyncSheetsSettings
+                    settingsManager.setCategorySyncSheetsExpanded(showSyncSheetsSettings)
+                }
+            ) {
+                com.eventmanager.app.ui.components.settings.SheetsSyncPage(
+                    b = syncBindings,
+                    isSyncing = isSyncing,
+                    syncIntervalMinutes = syncInterval,
+                    onSyncIntervalChange = { minutes ->
+                        syncInterval = minutes
+                        settingsManager.saveSyncInterval(minutes)
+                        viewModel.updateSyncInterval()
+                    },
+                    onTestSyncStatus = { viewModel.testSyncStatus() },
+                )
+            }
         }
         }
 
