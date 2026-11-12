@@ -128,8 +128,9 @@ site (see the guest form hosting guide in the app). Storage is only needed for p
 How it stays safe:
 
 - A volunteer only ever reads `orgs/{orgId}/volunteerPortal/{uid}`, a filtered copy NoctuList
-  publishes for them. The volunteer id (which is also their wallet QR code), NFC data and the admin
-  flag are never published.
+  publishes for them. NFC data and the admin flag are never published. The volunteer id (which is
+  also their wallet QR code) is not in that copy; it only reaches its own non-admin volunteer, by
+  e-mail or through the separate QR document below.
 - Reading requires a verified e-mail address. Changes go through `portalRequests`, which the rules
   check field by field and throttle; a NoctuList device validates and applies them.
 - The QR code is published separately in `orgs/{orgId}/volunteerPortalQr/{uid}`, only for

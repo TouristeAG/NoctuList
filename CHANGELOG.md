@@ -28,7 +28,7 @@ New, optional: a personal web space for volunteers, and a refreshed look for eve
 
 ### Security
 
-- Firestore rules **v16** and new Storage rules. A volunteer can only read their own filtered page; the wallet QR id, NFC data and admin flag never leave the devices. E-mail verification is required, every write is checked field by field, requests are throttled server-side, and the whole portal is closed by the rules while the setting is off.
+- Firestore rules **v16** and new Storage rules. A volunteer can only read their own filtered page; NFC data and the admin flag never leave the devices, and the wallet QR id only reaches its own non-admin volunteer (by e-mail or in their space). E-mail verification is required, every write is checked field by field, requests are throttled server-side, and the whole portal is closed by the rules while the setting is off.
 - E-mail/password accounts can never act as team members, even with an invitation code.
 - Strict Content-Security-Policy and security headers on the form site. Portal pages (`/v/**`, `/portal.html`) use `Cross-Origin-Opener-Policy: same-origin-allow-popups` for the Google window and their Content-Security-Policy also allows `https://apis.google.com` and frames from the site itself; Firebase's reserved `/__/` paths may be framed by the site itself only. Every other page keeps the strict policy.
 
