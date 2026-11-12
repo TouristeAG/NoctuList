@@ -15,13 +15,14 @@ enum class SetupStepId(val number: Int, val optional: Boolean) {
     SITE(7, true),
     PHOTOS(8, true),
     SERVER(9, true),
+    GOOGLE(10, true),
 }
 
 enum class StepKind { RUN, OPEN, RUN_THEN_OPEN, OPEN_THEN_RUN }
 
 val SetupStepId.kind: StepKind
     get() = when (this) {
-        SetupStepId.PROVIDERS -> StepKind.OPEN
+        SetupStepId.PROVIDERS, SetupStepId.GOOGLE -> StepKind.OPEN
         SetupStepId.CONNECT -> StepKind.RUN_THEN_OPEN
         SetupStepId.PHOTOS, SetupStepId.SERVER -> StepKind.OPEN_THEN_RUN
         else -> StepKind.RUN

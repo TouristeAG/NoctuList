@@ -175,7 +175,7 @@ class SetupRunner(
                 deploy(step, "firestore:rules")
                 markDone(step)
             }
-            SetupStepId.PROVIDERS -> {
+            SetupStepId.PROVIDERS, SetupStepId.GOOGLE -> {
                 confirm(step)
             }
             SetupStepId.CONNECT -> {

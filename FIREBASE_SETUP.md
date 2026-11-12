@@ -192,6 +192,15 @@ iPhone. If the Google window fails to open or stays blank, the headers on Fireba
 paths are the first place to look. If Google shows `redirect_uri_mismatch`, the redirect URI of
 step 1 is missing for that site.
 
+If the sign-in then fails with `auth/invalid-credential`, the client secret saved in Firebase does
+not match the OAuth client (its ID is the same, its secret is not). Google Cloud only shows a secret
+once, so: open the client in Credentials, press **Add secret** and copy it, **without** disabling or
+deleting the old one (team devices still use it). Paste the new secret in Firebase, Authentication,
+Sign-in method, Google, **Web SDK configuration**, **Web client secret**, and save.
+
+The setup assistant has the same instructions in its optional step **Google sign-in for
+volunteers**, in both the Automatic and Manual tabs, with the addresses to copy.
+
 ### Optional: automatic processing (Cloud Functions)
 
 **Skip this section unless requests and QR e-mails should be handled within seconds, even when no

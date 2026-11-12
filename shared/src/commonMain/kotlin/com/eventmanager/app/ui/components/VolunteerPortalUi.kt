@@ -118,6 +118,8 @@ import com.eventmanager.app.resources.portal_google_domains_label
 import com.eventmanager.app.resources.portal_google_enable
 import com.eventmanager.app.resources.portal_google_error
 import com.eventmanager.app.resources.portal_google_needs_domain
+import com.eventmanager.app.resources.portal_show_logo
+import com.eventmanager.app.resources.portal_show_logo_hint
 import com.eventmanager.app.resources.portal_google_not_found
 import com.eventmanager.app.resources.portal_google_other
 import com.eventmanager.app.resources.portal_google_title
@@ -176,6 +178,8 @@ fun VolunteerPortalSettingsCard(
     onAddGoogleDomain: suspend (String) -> DomainCheck = { DomainCheck.ERROR },
     onRemoveGoogleDomain: (String) -> Unit = {},
     suggestedGoogleDomain: String = "",
+    showLogo: Boolean = true,
+    onShowLogoChange: (Boolean) -> Unit = {},
 ) {
     GuidedStepCard(
         title = stringResource(Res.string.portal_settings_title),
@@ -210,6 +214,23 @@ fun VolunteerPortalSettingsCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             CopyableUrlBox(url = portalUrl)
+        }
+        if (enabled) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                    Text(stringResource(Res.string.portal_show_logo), style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        stringResource(Res.string.portal_show_logo_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(checked = showLogo, onCheckedChange = onShowLogoChange, enabled = canEdit)
+            }
         }
         if (enabled) {
             VolunteerPortalGoogleSection(

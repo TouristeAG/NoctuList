@@ -2618,6 +2618,8 @@ class EventManagerViewModel(
     val volunteerPortalEnabled: StateFlow<Boolean> = _volunteerPortalEnabled.asStateFlow()
 
     private val _volunteerPortalGoogleEnabled = MutableStateFlow(false)
+    private val _volunteerPortalShowLogo = MutableStateFlow(true)
+    val volunteerPortalShowLogo: StateFlow<Boolean> = _volunteerPortalShowLogo.asStateFlow()
 
     /** Volunteers may sign in with an association Google account (needs a verified domain). */
     val volunteerPortalGoogleEnabled: StateFlow<Boolean> = _volunteerPortalGoogleEnabled.asStateFlow()
@@ -2643,12 +2645,22 @@ class EventManagerViewModel(
     private fun publishVolunteerPortalSettings() {
         _volunteerPortalEnabled.value = isVolunteerPortalFeatureEnabled()
         _volunteerPortalGoogleEnabled.value = settingsManagerCached?.isVolunteerPortalGoogleEnabled() == true
+        _volunteerPortalShowLogo.value = settingsManagerCached?.isVolunteerPortalShowLogo() != false
         _volunteerPortalGoogleDomains.value = settingsManagerCached?.volunteerPortalGoogleDomains().orEmpty()
     }
 
     private fun republishVolunteerPortal() {
         val service = volunteerPortalService ?: return
         viewModelScope.launch { service.republish() }
+    }
+
+    fun setVolunteerPortalShowLogo(show: Boolean) {
+        val settings = settingsManagerCached ?: return
+        if (getActiveBackendType() != BackendType.FIREBASE) return
+        settings.setVolunteerPortalShowLogo(show)
+        publishVolunteerPortalSettings()
+        republishVolunteerPortal()
+        backupInstitutionSettingsToSheets()
     }
 
     fun setVolunteerPortalGoogleEnabled(enabled: Boolean) {
@@ -2844,7 +2856,8 @@ class EventManagerViewModel(
         override fun currencyCode(): String = settingsManagerCached?.getCurrencyCode() ?: "CHF"
         override fun associationName(): String = settingsManagerCached?.getEmailAssociationName().orEmpty()
         override fun dateOffsetHours(): Int = settingsManagerCached?.getDateChangeOffsetHours() ?: 0
-        override fun institutionLogoPng(): String = settingsManagerCached?.getInstitutionLogoPng().orEmpty()
+        override fun institutionLogoPng(): String =
+            if (settingsManagerCached?.isVolunteerPortalShowLogo() == false) "" else settingsManagerCached?.getInstitutionLogoPng().orEmpty()
         override fun profilePhotosEnabled(): Boolean = isProfilePhotoUploadEnabled()
         override fun portalGoogleEnabled(): Boolean = settingsManagerCached?.isVolunteerPortalGoogleEnabled() == true
         override fun portalGoogleDomains(): List<String> = settingsManagerCached?.volunteerPortalGoogleDomains().orEmpty()

@@ -65,6 +65,7 @@ internal fun stepTitle(step: SetupStepId): StringResource = when (step) {
     SetupStepId.SITE -> Res.string.setup_step_site_title
     SetupStepId.PHOTOS -> Res.string.setup_step_photos_title
     SetupStepId.SERVER -> Res.string.setup_step_server_title
+    SetupStepId.GOOGLE -> Res.string.setup_step_google_title
 }
 
 private fun stepPurpose(step: SetupStepId): StringResource = when (step) {
@@ -78,6 +79,7 @@ private fun stepPurpose(step: SetupStepId): StringResource = when (step) {
     SetupStepId.SITE -> Res.string.setup_step_site_purpose
     SetupStepId.PHOTOS -> Res.string.setup_step_photos_purpose
     SetupStepId.SERVER -> Res.string.setup_step_server_purpose
+    SetupStepId.GOOGLE -> Res.string.setup_step_google_purpose
 }
 
 @Composable
@@ -304,6 +306,14 @@ private fun StepControls(
                     password = ""
                     input
                 }
+            }
+            SetupStepId.GOOGLE -> {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OpenButton(Res.string.setup_btn_open, SetupLinks.credentials(projectId))
+                    OpenButton(Res.string.setup_step_providers_title, SetupLinks.providers(projectId))
+                }
+                PortalGoogleAddresses(projectId, siteUrl)
+                Button(onClick = { automation.confirm(step) }) { Text(stringResource(Res.string.setup_btn_done)) }
             }
         }
     }

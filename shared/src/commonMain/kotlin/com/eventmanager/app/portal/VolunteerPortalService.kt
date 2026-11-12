@@ -1,6 +1,7 @@
 package com.eventmanager.app.portal
 
 import com.eventmanager.app.data.models.AccountTransfer
+import com.eventmanager.app.data.models.GuestFormLogoCodec
 import com.eventmanager.app.data.models.Job
 import com.eventmanager.app.data.models.JobTypeConfig
 import com.eventmanager.app.data.models.Volunteer
@@ -772,14 +773,29 @@ class VolunteerPortalService(
 
     private val brandingKey get() = "$orgId#branding"
 
+    /** Last logo seen and its public version: shrinking a large PNG is not redone on every publish. */
+    private var logoSource: String = ""
+    private var logoPublished: String = ""
+
+    /** A logo the public page can show: large pictures are shrunk to a small JPEG, unusable ones dropped. */
+    private fun publicLogo(raw: String): String {
+        if (raw != logoSource) {
+            logoSource = raw
+            logoPublished = if (raw.isBlank()) "" else GuestFormLogoCodec.fitForFirestore(raw).let {
+                if (it.length <= MAX_PUBLIC_LOGO_CHARS) it else ""
+            }
+        }
+        return logoPublished
+    }
+
     private suspend fun publishBranding(hashes: MutableMap<String, String>) {
-        val logo = host.institutionLogoPng().trim()
+        val logo = publicLogo(host.institutionLogoPng().trim())
         val data = mapOf(
             "associationName" to host.associationName().trim().take(80),
             // Lets the portal offer a photo change only when the rules accept the upload.
             "photosEnabled" to host.profilePhotosEnabled(),
             // The rules cap nothing here, so keep the public document small.
-            "logoDataUri" to if (logo.isNotBlank() && logo.length < 300_000) "data:image/png;base64,$logo" else "",
+            "logoDataUri" to logo,
             // Shows "Sign in with Google"; the domains themselves are never published.
             "googleLogin" to googleLoginOn(),
         )
@@ -888,6 +904,8 @@ class VolunteerPortalService(
         const val MAIL_DOC = "default"
         /** Age under which a signup or request is left to the Cloud Functions. */
         const val DEVICE_GRACE_MS = 120_000L
+        /** The branding document is public and read on every page load: keep the logo small. */
+        const val MAX_PUBLIC_LOGO_CHARS = 300_000
         /** Same cap as the Storage rules for portal uploads. */
         private const val MAX_UPLOAD_BYTES = 3 * 1024 * 1024
         private const val PUBLISH_DEBOUNCE_MS = 4_000L

@@ -2364,6 +2364,11 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="portal_google_error">जाँच नहीं हो सकी, फिर से कोशिश करें</string>
     <string name="portal_google_enable">स्वयंसेवकों को Google खाते से साइन-इन करने दें</string>
     <string name="portal_google_needs_domain">इस विकल्प को चालू करने के लिए Google Workspace द्वारा प्रबंधित डोमेन जोड़ें</string>
+    <string name="portal_show_logo">संस्था का लोगो दिखाएँ</string>
+    <string name="portal_show_logo_hint">स्वयंसेवक प्लेटफ़ॉर्म में सबसे ऊपर संस्था के नाम के पास। यह वही लोगो है जो सेटिंग्स, ई-मेल में सेट है।</string>
+    <string name="setup_google_redirects">अधिकृत redirect URI</string>
+    <string name="setup_google_origins">अधिकृत JavaScript origins</string>
+    <string name="setup_google_test">परीक्षण के लिए सेटिंग्स, Firebase, स्वयंसेवक प्लेटफ़ॉर्म में सत्यापित डोमेन के खाते से साइन-इन करें। gmail.com खाते हमेशा अस्वीकार होते हैं।</string>
     <string name="portal_sign_in_url">साइन-इन पेज: %1$s</string>
     <string name="portal_server_active">स्वचालित प्रोसेसिंग चालू है। आखिरी बार चला: %1$s</string>
     <string name="portal_server_inactive">अभी तक कोई स्वचालित प्रोसेसिंग नहीं देखी गई। NoctuList डिवाइस ऑनलाइन होने पर अनुरोधों को संभालता है।</string>
@@ -2479,6 +2484,10 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="setup_manual_photos">1. Blaze प्लान पर जाएँ: Firebase Console में नीचे बाईं ओर Spark, फिर Upgrade।\n2. Build, Storage, Get started।\n3. Storage, Rules: Storage नियम चिपकाएँ (नीचे बटन), फिर Publish।\n4. NoctuList में सेटिंग्स, Firebase में प्रोफ़ाइल फ़ोटो चालू करें।</string>
     <string name="setup_manual_server">1. Blaze प्लान, फिर बजट अलर्ट: Google Cloud Console, Billing, Budgets &amp; alerts, जैसे 5 €।\n2. संस्था के Gmail खाते में 2-step verification चालू करें, फिर https://myaccount.google.com/apppasswords पर app password बनाएँ।\n3. क्षेत्र ढूँढें: Firestore Database ऊपर स्थान दिखाता है। eur3 का मतलब europe-west1, nam5 का मतलब us-central1, europe-west6 (ज़्यूरिख़) वैसा ही रहता है।\n4. साइट फिर से एक्सपोर्ट करें और unzip करें। फ़ोल्डर में Terminal खोलें और नीचे के कमांड चिपकाएँ।\n• secret वाली पंक्ति app password पूछती है। उसे चिपकाएँ और Enter दबाएँ (टाइप करते समय कुछ नहीं दिखता)।\n• deploy GMAIL_USER (Gmail पता) और REGION (बिंदु 3) पूछता है।\nअगर «Secret Manager API has not been used» दिखे: संदेश का लिंक खोलें, Enable दबाएँ, 2 मिनट रुकें, फिर आख़िरी दो पंक्तियाँ फिर से चिपकाएँ।\nअगर «Eventarc Service Agent» दिखे: Google अभी तैयार हो रहा है। 5 मिनट रुकें और deploy वाली पंक्ति फिर से चिपकाएँ।\nअगर «Blaze» या «billing» दिखे: प्रोजेक्ट अभी Blaze प्लान पर नहीं है।</string>
     <string name="setup_manual_server_cleanup">5. deploy सफल होने के बाद यह पंक्ति एक बार चिपकाएँ, ताकि पुराने build अपने-आप हटें। अगर आपका क्षेत्र अलग है तो europe-west1 बदलें।</string>
+    <string name="setup_step_google_title">स्वयंसेवकों के लिए Google साइन-इन</string>
+    <string name="setup_step_google_purpose">केवल तब, जब स्वयंसेवक संस्था के Google खाते से अपने स्थान में साइन-इन करते हैं। Credentials पेज खोलें, नीचे दिए पते उस OAuth क्लाइंट में जोड़ें जिसे Firebase इस्तेमाल करता है, सेव करें, फिर हो गया दबाएँ।</string>
+    <string name="setup_manual_google">केवल तब, जब स्वयंसेवक संस्था के Google खाते से अपने स्थान में साइन-इन करते हैं। 1. Firebase Console, Authentication, Sign-in method, Google: Web SDK configuration खोलें और Web client ID नोट करें। 2. Google Cloud, APIs and Services, Credentials: उसी ID वाला OAuth क्लाइंट खोलें। नीचे दिए पते Authorized redirect URIs और Authorized JavaScript origins में जोड़ें, फिर सेव करें। अगर स्वयंसेवक स्थान आपके अपने डोमेन पर है, तो https://your-domain/__/auth/handler और https://your-domain भी जोड़ें। इस चरण के बिना Google redirect_uri_mismatch दिखाता है। बदलाव लागू होने में कुछ मिनट लग सकते हैं।</string>
+    <string name="setup_google_secret">अगर इसके बाद Google auth/invalid-credential बताए, तो Firebase में सेव किया गया secret इस क्लाइंट से मेल नहीं खाता। Google Cloud में क्लाइंट खोलें और Add secret दबाएँ, पुराना न हटाएँ: टीम के डिवाइस अभी भी उसका इस्तेमाल करते हैं। नया secret Firebase, Authentication, Google, Web SDK configuration, Web client secret में चिपकाएँ और सेव करें।</string>
     <string name="firebase_tutorial_copy_redirect_uris">localhost redirect URI कॉपी करें</string>
     <string name="firebase_tutorial_copy_redirect_uris_done">कॉपी हुआ, प्रत्येक URI Authorized redirect URIs में चिपकाएँ, फिर Save</string>
     <string name="setup_redirect_note">उसी Web client में Authorized redirect URIs के नीचे नीचे दिए पते जोड़ें (कॉपी बटन), फिर Save करें। साइन इन से पहले एक मिनट रुकें।</string>

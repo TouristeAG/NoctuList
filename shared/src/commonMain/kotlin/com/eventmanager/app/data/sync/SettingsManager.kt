@@ -207,6 +207,7 @@ class SettingsManager(private val storage: AppStorage) {
         private const val KEY_GUEST_FORMS_ENABLED = "guest_forms_enabled"
         private const val KEY_VOLUNTEER_PORTAL_ENABLED = "volunteer_portal_enabled"
         private const val KEY_VOLUNTEER_PORTAL_GOOGLE_ENABLED = "volunteer_portal_google_enabled"
+        private const val KEY_VOLUNTEER_PORTAL_SHOW_LOGO = "volunteer_portal_show_logo"
         private const val KEY_VOLUNTEER_PORTAL_GOOGLE_DOMAINS = "volunteer_portal_google_domains"
         private const val KEY_PENDING_SIGNUP_FORMS = "volunteer_portal_pending_signup_forms"
         private const val KEY_PORTAL_PUBLISHED_HASHES = "volunteer_portal_published_hashes"
@@ -447,6 +448,14 @@ class SettingsManager(private val storage: AppStorage) {
     fun setVolunteerPortalGoogleEnabled(enabled: Boolean) {
         storage.putBoolean(KEY_VOLUNTEER_PORTAL_GOOGLE_ENABLED, enabled)
         touchInstitutionSettingLastModified(InstitutionSettingsKeys.VOLUNTEER_PORTAL_GOOGLE_ENABLED)
+    }
+
+    /** Association logo at the top of the volunteer portal. On by default. */
+    fun isVolunteerPortalShowLogo(): Boolean = storage.getBoolean(KEY_VOLUNTEER_PORTAL_SHOW_LOGO, true)
+
+    fun setVolunteerPortalShowLogo(show: Boolean) {
+        storage.putBoolean(KEY_VOLUNTEER_PORTAL_SHOW_LOGO, show)
+        touchInstitutionSettingLastModified(InstitutionSettingsKeys.VOLUNTEER_PORTAL_SHOW_LOGO)
     }
 
     /** Verified Google Workspace domains only; the rules split the stored value on commas. */
@@ -1188,6 +1197,8 @@ class SettingsManager(private val storage: AppStorage) {
             InstitutionSettingsKeys.VOLUNTEER_PORTAL_ENABLED -> isVolunteerPortalEnabled().toString()
             InstitutionSettingsKeys.VOLUNTEER_PORTAL_GOOGLE_ENABLED ->
                 isVolunteerPortalGoogleEnabled().toString()
+            InstitutionSettingsKeys.VOLUNTEER_PORTAL_SHOW_LOGO ->
+                isVolunteerPortalShowLogo().toString()
             InstitutionSettingsKeys.VOLUNTEER_PORTAL_GOOGLE_DOMAINS ->
                 com.eventmanager.app.data.remote.FirebaseEmailDomainPolicy.serialize(volunteerPortalGoogleDomains())
             InstitutionSettingsKeys.GUEST_FORMS_BILLETERIE_VALIDATE_ENABLED ->
@@ -1355,6 +1366,11 @@ class SettingsManager(private val storage: AppStorage) {
                 storage.putBoolean(
                     KEY_VOLUNTEER_PORTAL_GOOGLE_ENABLED,
                     value.trim().equals("true", ignoreCase = true),
+                )
+            InstitutionSettingsKeys.VOLUNTEER_PORTAL_SHOW_LOGO ->
+                storage.putBoolean(
+                    KEY_VOLUNTEER_PORTAL_SHOW_LOGO,
+                    !value.trim().equals("false", ignoreCase = true),
                 )
             InstitutionSettingsKeys.VOLUNTEER_PORTAL_GOOGLE_DOMAINS ->
                 storage.putString(

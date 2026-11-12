@@ -2359,6 +2359,11 @@
     <string name="portal_google_error">無法驗證，請再試一次</string>
     <string name="portal_google_enable">允許志工使用 Google 帳號登入</string>
     <string name="portal_google_needs_domain">請先新增由 Google Workspace 管理的網域，才能啟用此選項</string>
+    <string name="portal_show_logo">顯示協會標誌</string>
+    <string name="portal_show_logo_hint">顯示在志工平台頂端的協會名稱旁邊。使用的是「設定 > 電子郵件」中設定的標誌。</string>
+    <string name="setup_google_redirects">已授權的重新導向 URI</string>
+    <string name="setup_google_origins">已授權的 JavaScript 來源</string>
+    <string name="setup_google_test">測試時，請使用在「設定 > Firebase > 志工平台」中已驗證網域的帳號登入。gmail.com 帳號一律會被拒絕。</string>
     <string name="portal_sign_in_url">登入頁面：%1$s</string>
     <string name="portal_server_active">自動處理已開啟。上次執行：%1$s</string>
     <string name="portal_server_inactive">尚未發現自動處理。NoctuList 裝置在線時會處理請求。</string>
@@ -2474,6 +2479,10 @@
     <string name="setup_manual_photos">1. 升級到 Blaze 方案：Firebase 控制台左下角點選 Spark → Upgrade。\n2. Build → Storage → Get started。\n3. Storage → Rules：貼上 Storage 規則（下方按鈕），然後發布。\n4. 在 NoctuList 設定 → Firebase 中開啟大頭照。</string>
     <string name="setup_manual_server">1. Blaze 方案，然後設定預算提醒：Google Cloud Console → Billing → Budgets &amp; alerts，例如 5 €。\n2. 在協會的 Gmail 帳戶中開啟兩步驟驗證，然後在 https://myaccount.google.com/apppasswords 建立應用程式密碼。\n3. 查找區域：Firestore Database 頂部會顯示位置。eur3 對應 europe-west1，nam5 對應 us-central1，europe-west6（蘇黎世）維持 europe-west6。\n4. 重新匯出網站並解壓縮。在該資料夾中開啟終端機，貼上下方指令。\n• 密鑰那一行會要求輸入應用程式密碼。貼上後按 Enter（輸入時不會顯示任何內容）。\n• 部署會問 GMAIL_USER（Gmail 地址）和 REGION（第 3 點）。\n如果看到「Secret Manager API has not been used」：開啟訊息中的連結，點選啟用，等 2 分鐘，再貼上最後兩行。\n如果看到「Eventarc Service Agent」：Google 仍在準備。等 5 分鐘後再貼上部署那一行。\n如果看到「Blaze」或「billing」：專案還沒有升級到 Blaze 方案。</string>
     <string name="setup_manual_server_cleanup">5. 部署成功後，貼上此行一次，舊版本會被自動刪除。如果您的區域不同，請替換 europe-west1。</string>
+    <string name="setup_step_google_title">志工 Google 登入</string>
+    <string name="setup_step_google_purpose">僅在志工使用協會的 Google 帳號登入自己的空間時需要。開啟「憑證」頁面，把下方網址加入 Firebase 使用的 OAuth 用戶端，儲存後按「已完成」。</string>
+    <string name="setup_manual_google">僅在志工使用協會的 Google 帳號登入自己的空間時需要。1. Firebase 主控台 > Authentication > Sign-in method > Google：開啟「Web SDK 設定」，記下網頁用戶端 ID。2. Google Cloud > API 和服務 > 憑證：開啟具有該 ID 的 OAuth 用戶端。把下方網址加入「已授權的重新導向 URI」和「已授權的 JavaScript 來源」，然後儲存。如果志工空間使用您自己的網域，也要加入 https://您的網域/__/auth/handler 和 https://您的網域。少了這一步，Google 會顯示 redirect_uri_mismatch。變更可能需要幾分鐘才會生效。</string>
+    <string name="setup_google_secret">如果之後 Google 回應 auth/invalid-credential，表示 Firebase 中儲存的密鑰與此用戶端不符。在 Google Cloud 開啟該用戶端並按「新增密鑰」，不要刪除舊的：團隊裝置仍在使用。把新密鑰貼到 Firebase > Authentication > Google > Web SDK 設定 > 網頁用戶端密鑰，然後儲存。</string>
     <string name="firebase_tutorial_copy_redirect_uris">複製 localhost 重新導向 URI</string>
     <string name="firebase_tutorial_copy_redirect_uris_done">已複製，將每個 URI 貼到 Authorized redirect URIs，然後儲存</string>
     <string name="setup_redirect_note">在該 Web 用戶端的「已授權的重新導向 URI」中新增下方位址（複製按鈕），然後儲存。登入前請等一分鐘。</string>

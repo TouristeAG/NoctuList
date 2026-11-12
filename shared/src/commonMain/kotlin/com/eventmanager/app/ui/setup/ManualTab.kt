@@ -32,9 +32,11 @@ import com.eventmanager.app.data.remote.InstitutionGoogleWebOAuth
 import com.eventmanager.app.data.remote.StorageRulesClipboardContent
 import com.eventmanager.app.platform.LocalPlatformContext
 import com.eventmanager.app.platform.isDesktop
+import com.eventmanager.app.portal.PortalGoogleRedirects
 import com.eventmanager.app.resources.*
 import com.eventmanager.app.setup.SetupStepId
 import com.eventmanager.app.ui.components.CopyableTerminalBlock
+import com.eventmanager.app.ui.components.CopyableUrlBox
 import com.eventmanager.app.ui.components.GuestFormHostingGuide
 import com.eventmanager.app.ui.components.ManualSetupCommands
 import com.eventmanager.app.ui.components.portalServerCleanupCommand
@@ -54,6 +56,7 @@ private fun manualBody(step: SetupStepId): StringResource = when (step) {
     SetupStepId.SITE -> Res.string.setup_manual_site
     SetupStepId.PHOTOS -> Res.string.setup_manual_photos
     SetupStepId.SERVER -> Res.string.setup_manual_server
+    SetupStepId.GOOGLE -> Res.string.setup_manual_google
 }
 
 /** The same steps as the Automatic tab, written out for doing them by hand. */
@@ -124,6 +127,25 @@ private fun ManualExtras(step: SetupStepId, projectId: String) {
             CopyableTerminalBlock(portalServerCleanupCommand(projectId))
             Text(stringResource(Res.string.firebase_tutorial_server_optional_status), style = MaterialTheme.typography.bodySmall)
         }
+        SetupStepId.GOOGLE -> PortalGoogleAddresses(projectId, siteUrl = "")
+    }
+}
+
+/**
+ * What volunteer Google sign-in needs on the Web OAuth client: the portal signs in through its own
+ * site, so Google must know `https://<site>/__/auth/handler` (else `redirect_uri_mismatch`).
+ */
+@Composable
+internal fun PortalGoogleAddresses(projectId: String, siteUrl: String) {
+    val redirects = PortalGoogleRedirects.redirectUris(projectId, siteUrl)
+    if (redirects.isEmpty()) return
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(stringResource(Res.string.setup_google_redirects), style = MaterialTheme.typography.labelLarge)
+        redirects.forEach { CopyableUrlBox(url = it) }
+        Text(stringResource(Res.string.setup_google_origins), style = MaterialTheme.typography.labelLarge)
+        PortalGoogleRedirects.origins(projectId, siteUrl).forEach { CopyableUrlBox(url = it) }
+        Text(stringResource(Res.string.setup_google_secret), style = MaterialTheme.typography.bodySmall)
+        Text(stringResource(Res.string.setup_google_test), style = MaterialTheme.typography.bodySmall)
     }
 }
 

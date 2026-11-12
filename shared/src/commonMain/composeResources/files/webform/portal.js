@@ -200,7 +200,9 @@ async function onSignIn(event) {
     await signInWithEmailAndPassword(auth, email, password);
     $("signin-password").value = "";
   } catch (error) {
-    setError("signin-error", authErrorKey(error));
+    const key = authErrorKey(error);
+    // An association address belongs on the Google button, not in this form.
+    setError("signin-error", key === "errSignIn" && branding?.googleLogin === true ? "errSignInGoogle" : key);
   } finally {
     btn.disabled = false;
   }
@@ -264,11 +266,19 @@ function popupDismissed(error) {
   return code.includes("popup-closed-by-user") || code.includes("cancelled-popup-request");
 }
 
-function googleErrorKey(error) {
+/**
+ * Message for a failed Google sign-in or link, never the e-mail/password one: `[key, vars]`.
+ * Unknown failures show the Firebase code so the association can tell what to fix.
+ */
+function googleError(error) {
   const code = String(error?.code || "");
-  if (code.includes("popup-blocked")) return "googlePopupBlocked";
-  if (code.includes("account-exists-with-different-credential")) return "googleAccountExists";
-  return authErrorKey(error);
+  if (code.includes("popup-blocked")) return ["googlePopupBlocked"];
+  if (code.includes("account-exists-with-different-credential")) return ["googleAccountExists"];
+  if (code.includes("unauthorized-domain")) return ["googleUnauthorizedDomain"];
+  if (code.includes("operation-not-allowed")) return ["googleNotEnabled"];
+  if (code.includes("network-request-failed")) return ["errNetwork"];
+  if (code.includes("too-many-requests")) return ["errTooMany"];
+  return ["googleSignInFailed", { code: code.replace(/^auth\//, "") || "unknown" }];
 }
 
 async function onGoogleSignIn() {
@@ -282,8 +292,9 @@ async function onGoogleSignIn() {
     await signInWithPopup(auth, googleProvider());
   } catch (error) {
     if (!popupDismissed(error)) {
-      console.warn("google sign-in failed", error?.code);
-      setError("signin-error", googleErrorKey(error));
+      // The message names the real cause (wrong OAuth client, audience, secret): keep it for the association.
+      console.warn("google sign-in failed", error?.code, error?.message, error?.customData?._serverResponse || "");
+      setError("signin-error", ...googleError(error));
     }
   } finally {
     btn.disabled = false;
@@ -498,7 +509,8 @@ async function onLinkClick() {
       googleMsg = null;
     } else {
       console.warn("google link failed", error?.code);
-      googleMsg = { cls: "error", key: String(error?.code).includes("permission-denied") ? "googleWait" : googleErrorKey(error) };
+      const [key, vars] = String(error?.code).includes("permission-denied") ? ["googleWait"] : googleError(error);
+      googleMsg = { cls: "error", key, vars };
     }
   } finally {
     // One instance per attempt: a new one is prepared when the button is shown again.
@@ -534,7 +546,7 @@ function renderGoogleBox() {
   const p = projection || {};
   const email = String(p.googleEmail || "").trim();
   // Empty text node when there is nothing to say: Node.append would print "null".
-  const say = () => (googleMsg ? el("p", { class: googleMsg.cls, role: "status", text: t(googleMsg.key) }) : "");
+  const say = () => (googleMsg ? el("p", { class: googleMsg.cls, role: "status", text: t(googleMsg.key, googleMsg.vars) }) : "");
   if (email && p.googleLinkedBy === "VOLUNTEER") {
     const unlink = requests.GOOGLE_UNLINK;
     const waiting = isWaiting(unlink);
@@ -951,11 +963,9 @@ function benefitSummary(list, payload) {
   }), { freeEntry: false, friendInvitation: false, inviteCount: 0, drinkTokens: 0, barDiscount: 0, guestListAccess: false, validUntil: 0 });
 }
 
-function perkTile(iconName, value, label) {
-  return el("div", { class: "perk-tile" },
-    icon(iconName, 18),
-    el("div", { class: "perk-value", text: value }),
-    el("div", { class: "perk-label", text: label }));
+/** One line of "Right now": what the volunteer gets, then how much. */
+function perkRow(label, value) {
+  return el("li", {}, el("span", { class: "perk-name", text: label }), el("span", { class: "perk-amount", text: value }));
 }
 
 function benefitsTile(view) {
@@ -976,31 +986,43 @@ function benefitsTile(view) {
   const s = view.summary;
   const perks = [];
   if (s) {
-    if (s.freeEntry) perks.push(perkTile("ticket", t("included"), t("perkFreeEntry")));
+    if (s.freeEntry) perks.push(perkRow(t("perkFreeEntry"), t("included")));
     const invites = Number(s.inviteCount) || (s.friendInvitation ? 1 : 0);
-    if (invites > 0) perks.push(perkTile("user", `+${invites}`, t("perkInvites")));
-    if (Number(s.drinkTokens) > 0) perks.push(perkTile("drink", String(s.drinkTokens), t("perkDrinks")));
-    if (Number(s.barDiscount) > 0) perks.push(perkTile("percent", `${s.barDiscount} %`, t("perkBarDiscount")));
-    if (s.guestListAccess) perks.push(perkTile("list", t("included"), t("perkGuestList")));
+    if (invites > 0) perks.push(perkRow(t("perkInvites"), `+${invites}`));
+    if (Number(s.drinkTokens) > 0) perks.push(perkRow(t("perkDrinks"), String(s.drinkTokens)));
+    if (Number(s.barDiscount) > 0) perks.push(perkRow(t("perkBarDiscount"), `${s.barDiscount} %`));
+    // Free entry already gets you in: the guest list only matters without it.
+    if (s.guestListAccess && !s.freeEntry) perks.push(perkRow(t("perkGuestList"), t("included")));
   }
   if (perks.length) {
     const until = Number(s.validUntil) || Math.max(0, ...list.map((b) => Number(b.validUntil) || 0));
     card.append(el("div", { class: "section-row" },
       el("h3", { class: "list-title", text: t("nowTitle") }),
       until ? el("span", { class: "until", text: t("untilShort", { date: fmtDate(until) }) }) : null));
-    card.append(el("div", { class: "perk-grid" }, perks));
+    card.append(el("ul", { class: "perk-list" }, perks));
   }
   const ul = el("ul", { class: "list benefit-list" });
   list.forEach((b) => {
     ul.append(el("li", {},
-      el("span", { class: "grow meta-line", text: b.description || gainsText(b) }),
+      el("span", { class: "grow meta-line", text: benefitLine(b) }),
       b.validUntil ? el("span", { class: "until", text: t("untilShort", { date: fmtDate(b.validUntil) }) }) : null));
   });
   card.append(ul);
   return card;
 }
 
-/** Compact one-line wording of a benefit, using the same labels as the perk tiles. */
+/**
+ * A benefit in the visitor's language. The app's own `description` is English and stays unused:
+ * the structured fields say the same thing.
+ */
+function benefitLine(b) {
+  const text = gainsText(b);
+  const entries = Number(b.futureEntriesRemaining) || 0;
+  const extra = entries > 0 ? `${entries} ${t("perkSingleEntries")}` : "";
+  return [text, extra].filter(Boolean).join(" · ") || t("perkSpecial");
+}
+
+/** Compact one-line wording of a benefit, using the same labels as "Right now". */
 function gainsText(b) {
   const parts = [];
   if (b.freeEntry) parts.push(t("perkFreeEntry"));
@@ -1008,7 +1030,7 @@ function gainsText(b) {
   if (invites > 0) parts.push(`+${invites} ${t("perkInvites")}`);
   if (Number(b.drinkTokens) > 0) parts.push(`${b.drinkTokens} ${t("perkDrinks")}`);
   if (Number(b.barDiscount) > 0) parts.push(`${b.barDiscount} % ${t("perkBarDiscount")}`);
-  if (b.guestListAccess) parts.push(t("perkGuestList"));
+  if (b.guestListAccess && !b.freeEntry) parts.push(t("perkGuestList"));
   return parts.join(" · ");
 }
 
@@ -1253,7 +1275,6 @@ function openAccountDialog() {
   body.append(...[
     el("section", { class: "dialog-section" },
       el("h3", { text: t("myInfo") }),
-      el("p", { class: "hint", text: t(photosEnabled() ? "myInfoHintPhoto" : "myInfoHint") }),
       profileForm()),
     // The password belongs to the e-mail sign-in; a Google session cannot change it.
     isGoogleUser(user) ? null : el("details", { class: "dialog-section fold" },
