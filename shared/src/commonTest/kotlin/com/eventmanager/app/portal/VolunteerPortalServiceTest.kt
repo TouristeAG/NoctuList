@@ -34,6 +34,7 @@ private class FakeGateway : NoOpFirestoreGateway() {
     val listeners = mutableMapOf<String, suspend (List<Pair<String, Map<String, Any?>>>) -> Unit>()
     var claimsRefused = false
     var qrWrites = 0
+    var qrDeleteFailures = 0
 
     override fun isAvailable() = true
 
@@ -44,6 +45,10 @@ private class FakeGateway : NoOpFirestoreGateway() {
     }
 
     override suspend fun deleteDocument(orgId: String, collection: String, docId: String) {
+        if (collection == "volunteerPortalQr" && qrDeleteFailures > 0) {
+            qrDeleteFailures--
+            throw IllegalStateException("offline")
+        }
         docs.remove("$collection/$docId")
         deleted += "$collection/$docId"
     }
@@ -540,6 +545,43 @@ class VolunteerPortalServiceTest {
         volunteers.value = listOf(linked.copy(portalEnabled = false))
         withTimeout(5_000) { while ("volunteerPortalQr/$UID" !in gateway.deleted) delay(20) }
         assertTrue("volunteerPortal/$UID" in gateway.deleted)
+    }
+
+    @Test
+    fun qrDocWrittenElsewhereIsRemovedForAdminOnce() = runBlocking {
+        val gateway = FakeGateway()
+        // Written by the signup function or another device: no local hash here.
+        gateway.docs["volunteerPortalQr/$UID"] = mapOf("payload" to "V1")
+        val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true, uid = UID, admin = true)))
+        val service = service(gateway, host)
+        service.start(MutableStateFlow(host.volunteers.toList()), MutableStateFlow(emptyList<Job>()),
+            MutableStateFlow(emptyList<AccountTransfer>()), MutableStateFlow(emptyList<JobTypeConfig>()))
+        awaitDoc(gateway, "volunteerPortal/$UID")
+        service.republish()
+        assertNull(gateway.docs["volunteerPortalQr/$UID"])
+        assertEquals(1, gateway.deleted.count { it == "volunteerPortalQr/$UID" })
+        service.republish()
+        assertEquals(1, gateway.deleted.count { it == "volunteerPortalQr/$UID" })
+    }
+
+    @Test
+    fun failedQrDeleteOfStalePageIsRetried() = runBlocking {
+        val gateway = FakeGateway()
+        val linked = volunteer("V1", "lea@example.org", enabled = true, uid = UID)
+        val host = FakeHost(listOf(linked))
+        val volunteers = MutableStateFlow(host.volunteers.toList())
+        val service = service(gateway, host)
+        service.start(volunteers, MutableStateFlow(emptyList<Job>()),
+            MutableStateFlow(emptyList<AccountTransfer>()), MutableStateFlow(emptyList<JobTypeConfig>()))
+        awaitDoc(gateway, "volunteerPortalQr/$UID")
+        gateway.qrDeleteFailures = 1
+        volunteers.value = listOf(linked.copy(portalEnabled = false))
+        withTimeout(5_000) { while ("volunteerPortal/$UID" !in gateway.deleted) delay(20) }
+        withTimeout(5_000) { while (gateway.qrDeleteFailures > 0) delay(20) }
+        service.republish()
+        assertNull(gateway.docs["volunteerPortalQr/$UID"])
+        assertTrue("volunteerPortalQr/$UID" in gateway.deleted)
+        assertFalse(host.loadPublishedHashes().keys.any { it.endsWith("#qr") })
     }
 
     @Test
