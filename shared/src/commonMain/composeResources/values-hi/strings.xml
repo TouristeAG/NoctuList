@@ -2509,4 +2509,18 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="portal_access_google_remove_title">Google खाता हटाएं?</string>
     <string name="portal_access_google_remove_body">%1$s अब %2$s से साइन इन नहीं कर पाएगा। पासवर्ड से साइन-इन अब भी काम करता है।</string>
     <string name="settings_help_cd">सहायता</string>
+    <string name="sync_connection_page_title">कनेक्शन</string>
+    <string name="sync_connection_page_subtitle">Firebase प्रोजेक्ट, संगठन और Google खाता</string>
+    <string name="sync_connection_status_title">स्थिति</string>
+    <string name="sync_state_ready">सिंक हो गया</string>
+    <string name="sync_state_needs_config">सेट अप करना है</string>
+    <string name="sync_connected_as">%1$s से %2$s के रूप में कनेक्टेड</string>
+    <string name="sync_missing_sign_in">इस डिवाइस को सिंक करने के लिए Google से साइन इन करें।</string>
+    <string name="sync_missing_project">Firebase प्रोजेक्ट अभी सेट अप नहीं है।</string>
+    <string name="sync_missing_org">अपने संगठन की ID जोड़ें।</string>
+    <string name="sync_reconfigure">फिर से कॉन्फ़िगर करें…</string>
+    <string name="sync_firebase_guide_title">Firebase सेटअप गाइड</string>
+    <string name="sync_firebase_guide_subtitle">पहली बार इंस्टॉल करने पर और NoctuList के हर अपडेट के बाद</string>
+    <string name="sync_org_remove_title">%1$s हटाएँ?</string>
+    <string name="sync_org_remove_body">यह डिवाइस अब इस संगठन के साथ काम नहीं करेगा। इसका डेटा Firebase में रहता है।</string>
 </resources>

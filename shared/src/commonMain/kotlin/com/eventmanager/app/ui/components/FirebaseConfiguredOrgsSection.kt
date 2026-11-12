@@ -226,7 +226,7 @@ fun FirebaseConfiguredOrgsSection(
 }
 
 @Composable
-private fun OrgColorSwatchRow(
+internal fun OrgColorSwatchRow(
     selectedColorArgb: Long,
     onColorSelected: (Long) -> Unit,
     enabled: Boolean,

@@ -2504,4 +2504,18 @@
     <string name="portal_access_google_remove_title">移除 Google 帳號？</string>
     <string name="portal_access_google_remove_body">%1$s 將無法再使用 %2$s 登入。密碼登入仍然可用。</string>
     <string name="settings_help_cd">說明</string>
+    <string name="sync_connection_page_title">連線</string>
+    <string name="sync_connection_page_subtitle">Firebase 專案、組織和 Google 帳戶</string>
+    <string name="sync_connection_status_title">狀態</string>
+    <string name="sync_state_ready">已同步</string>
+    <string name="sync_state_needs_config">待設定</string>
+    <string name="sync_connected_as">已以 %2$s 身分連線到 %1$s</string>
+    <string name="sync_missing_sign_in">請使用 Google 登入以同步此裝置。</string>
+    <string name="sync_missing_project">Firebase 專案尚未設定。</string>
+    <string name="sync_missing_org">請新增您的組織 ID。</string>
+    <string name="sync_reconfigure">重新設定…</string>
+    <string name="sync_firebase_guide_title">Firebase 設定指南</string>
+    <string name="sync_firebase_guide_subtitle">首次安裝時以及每次更新 NoctuList 後</string>
+    <string name="sync_org_remove_title">移除 %1$s？</string>
+    <string name="sync_org_remove_body">此裝置將不再使用該組織。其資料仍保留在 Firebase 中。</string>
 </resources>

@@ -2509,4 +2509,18 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="portal_access_google_remove_title">Rationem Google removere?</string>
     <string name="portal_access_google_remove_body">%1$s non iam per %2$s intrare poterit. Aditus per tesseram manet.</string>
     <string name="settings_help_cd">Auxilium</string>
+    <string name="sync_connection_page_title">Conexio</string>
+    <string name="sync_connection_page_subtitle">Projectum Firebase, societates et ratio Google</string>
+    <string name="sync_connection_status_title">Status</string>
+    <string name="sync_state_ready">Synchronizatum</string>
+    <string name="sync_state_needs_config">Configurandum</string>
+    <string name="sync_connected_as">Conexum cum %1$s ut %2$s</string>
+    <string name="sync_missing_sign_in">Intra cum Google ut hoc instrumentum synchronizes.</string>
+    <string name="sync_missing_project">Projectum Firebase nondum configuratum est.</string>
+    <string name="sync_missing_org">Adde ID societatis tuae.</string>
+    <string name="sync_reconfigure">Iterum configurare…</string>
+    <string name="sync_firebase_guide_title">Dux configurationis Firebase</string>
+    <string name="sync_firebase_guide_subtitle">Ad primam installationem et post quamque renovationem NoctuList</string>
+    <string name="sync_org_remove_title">Removere %1$s?</string>
+    <string name="sync_org_remove_body">Hoc instrumentum cum hac societate non iam laborabit. Data eius in Firebase manent.</string>
 </resources>

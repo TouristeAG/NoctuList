@@ -2504,4 +2504,18 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="portal_access_google_remove_title">¿Quitar la cuenta de Google?</string>
     <string name="portal_access_google_remove_body">%1$s ya no podrá iniciar sesión con %2$s. El inicio de sesión con contraseña sigue funcionando.</string>
     <string name="settings_help_cd">Ayuda</string>
+    <string name="sync_connection_page_title">Conexión</string>
+    <string name="sync_connection_page_subtitle">Proyecto Firebase, organizaciones y cuenta de Google</string>
+    <string name="sync_connection_status_title">Estado</string>
+    <string name="sync_state_ready">Sincronizado</string>
+    <string name="sync_state_needs_config">Por configurar</string>
+    <string name="sync_connected_as">Conectado a %1$s como %2$s</string>
+    <string name="sync_missing_sign_in">Inicie sesión con Google para sincronizar este dispositivo.</string>
+    <string name="sync_missing_project">El proyecto Firebase aún no está configurado.</string>
+    <string name="sync_missing_org">Añada el ID de su organización.</string>
+    <string name="sync_reconfigure">Reconfigurar…</string>
+    <string name="sync_firebase_guide_title">Guía de configuración de Firebase</string>
+    <string name="sync_firebase_guide_subtitle">Para la primera instalación y después de cada actualización de NoctuList</string>
+    <string name="sync_org_remove_title">¿Quitar %1$s?</string>
+    <string name="sync_org_remove_body">Este dispositivo dejará de trabajar con esta organización. Sus datos se quedan en Firebase.</string>
 </resources>
