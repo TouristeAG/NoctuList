@@ -31,7 +31,7 @@
         "headers": [
           {
             "key": "Content-Security-Policy",
-            "value": "default-src 'self'; script-src 'self' https://www.gstatic.com; style-src 'self'; img-src 'self' data: blob: https://firebasestorage.googleapis.com; font-src 'self'; connect-src 'self' https://firestore.googleapis.com https://firebasestorage.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.gstatic.com; manifest-src 'self'; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; worker-src 'none'; upgrade-insecure-requests"
+            "value": "default-src 'self'; script-src 'self' https://www.gstatic.com; style-src 'self'; img-src 'self' data: blob: https://firebasestorage.googleapis.com; font-src 'self'; connect-src 'self' https://firestore.googleapis.com https://firebasestorage.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.gstatic.com; manifest-src 'self'; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; worker-src 'self'; upgrade-insecure-requests"
           },
           {
             "key": "Strict-Transport-Security",
@@ -77,7 +77,7 @@
           },
           {
             "key": "Content-Security-Policy",
-            "value": "default-src 'self'; script-src 'self' https://www.gstatic.com https://apis.google.com; style-src 'self'; img-src 'self' data: blob: https://firebasestorage.googleapis.com; font-src 'self'; connect-src 'self' https://firestore.googleapis.com https://firebasestorage.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.gstatic.com https://apis.google.com; manifest-src 'self'; frame-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; worker-src 'none'; upgrade-insecure-requests"
+            "value": "default-src 'self'; script-src 'self' https://www.gstatic.com https://apis.google.com; style-src 'self'; img-src 'self' data: blob: https://firebasestorage.googleapis.com; font-src 'self'; connect-src 'self' https://firestore.googleapis.com https://firebasestorage.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.gstatic.com https://apis.google.com; manifest-src 'self'; frame-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; worker-src 'self'; upgrade-insecure-requests"
           },
           {
             "key": "Cross-Origin-Opener-Policy",
@@ -94,7 +94,7 @@
           },
           {
             "key": "Content-Security-Policy",
-            "value": "default-src 'self'; script-src 'self' https://www.gstatic.com https://apis.google.com; style-src 'self'; img-src 'self' data: blob: https://firebasestorage.googleapis.com; font-src 'self'; connect-src 'self' https://firestore.googleapis.com https://firebasestorage.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.gstatic.com https://apis.google.com; manifest-src 'self'; frame-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; worker-src 'none'; upgrade-insecure-requests"
+            "value": "default-src 'self'; script-src 'self' https://www.gstatic.com https://apis.google.com; style-src 'self'; img-src 'self' data: blob: https://firebasestorage.googleapis.com; font-src 'self'; connect-src 'self' https://firestore.googleapis.com https://firebasestorage.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.gstatic.com https://apis.google.com; manifest-src 'self'; frame-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; worker-src 'self'; upgrade-insecure-requests"
           },
           {
             "key": "Cross-Origin-Opener-Policy",

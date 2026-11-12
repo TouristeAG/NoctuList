@@ -113,12 +113,14 @@ site (see the guest form hosting guide in the app). Storage is only needed for p
 1. **Authentication, Sign-in method:** enable **Email/Password** (leave "Email link" off). Keep
    **Email enumeration protection** on (Authentication, Settings, User actions).
 2. **Firestore, Rules** and **Storage, Rules:** publish the latest files
-   ([`firebase/firestore.rules`](firebase/firestore.rules) v15 and
+   ([`firebase/firestore.rules`](firebase/firestore.rules) v16 and
    [`firebase/storage.rules`](firebase/storage.rules)).
 3. **Hosting:** export the form site from the app again and redeploy it. It adds `/s/` (registration)
-   and `/v/` (volunteer space) and sends strict security headers.
+   and `/v/` (volunteer space) and sends strict security headers. Redeploy it after updating
+   NoctuList: the headers now allow the volunteer space's service worker (offline use).
 4. In NoctuList **Settings, Firebase**, an org admin turns on **Volunteer portal**. The sign-in
-   address `https://<site>/v/<orgId>` is shown there.
+   address `https://<site>/v/<orgId>` is shown there. **Show the QR code in the volunteer space**
+   is on by default; turn it off if volunteers should not see their QR code in the portal.
 5. Optional, for "Send me my QR code": either deploy the automatic processing below, or keep at
    least one NoctuList device with Gmail set up (Email settings) running. Without the server,
    requests wait until a device is online.
@@ -130,6 +132,9 @@ How it stays safe:
   flag are never published.
 - Reading requires a verified e-mail address. Changes go through `portalRequests`, which the rules
   check field by field and throttle; a NoctuList device validates and applies them.
+- The QR code is published separately in `orgs/{orgId}/volunteerPortalQr/{uid}`, only for
+  non-admin volunteers, and only its owner can read it. The space works offline once installed; the
+  QR code stays on the device until the volunteer signs out.
 - E-mail/password accounts can never become team members.
 - Turning the setting off closes everything in the rules, and NoctuList removes the published pages.
 
@@ -153,7 +158,7 @@ and password sign-in stays available.
    - `https://<project>.web.app/__/auth/handler`
    - `https://<project>.firebaseapp.com/__/auth/handler`
    - `https://<custom portal domain>/__/auth/handler` for each custom domain, if any
-2. **Firestore, Rules** and **Storage, Rules:** publish the new files (version 15). Both change.
+2. **Firestore, Rules** and **Storage, Rules:** publish the new files (version 16). Both change.
 3. **Hosting and functions:** export the form site again and redeploy it (`firebase deploy --only
    hosting,functions` from the exported folder). The site gets new security headers and the
    functions get a new trigger on `portalGoogleClaims`.

@@ -39,6 +39,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 import { EMULATOR_PORTS, isLocalDev, loadConfig, parseOrgPath } from "./firebase-env.js?v=portal-2";
 import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=google-2";
+import { clearQr, closeQrDialog, isStaleFor, missingIsFinal, openQrDialog, readCachedQr, storeQr } from "./portal-qr.js?v=qr-2";
 import {
   EMAIL_RE,
   authErrorKey,
@@ -52,7 +53,7 @@ import {
 } from "./portal-common.js?v=portal-2";
 
 const $ = (id) => document.getElementById(id);
-const VIEWS = ["view-loading", "view-disabled", "view-signin", "view-reset", "view-verify", "view-pending", "view-google", "view-dash"];
+const VIEWS = ["view-loading", "view-disabled", "view-signin", "view-reset", "view-verify", "view-pending", "view-google", "view-dash", "view-offline"];
 const REMEMBER_KEY = "nl-portal-remember";
 const LAST_ORG_KEY = "nl-portal-org";
 const IDLE_LIMIT_MS = 30 * 60 * 1000;
@@ -65,6 +66,8 @@ const ADMIN_MATCH_KEYS = { NO_MATCH: "googleNoMatch", DOMAIN: "googleDomain" };
 const LINK_CODE_KEYS = { CODE: "googleCode", TAKEN: "googleTaken", ALREADY_LINKED: "googleAlreadyLinked", DOMAIN: "googleDomain" };
 /** Same as the rules: a PROCESSING claim this old was abandoned and the request can be sent again. */
 const PROCESSING_STALE_MS = 5 * 60_000;
+/** Without any answer from Firestore for this long, a QR stored on the device is shown alone. */
+const OFFLINE_FALLBACK_MS = 4000;
 
 let path = null;
 let firebaseConfig = null;
@@ -76,11 +79,13 @@ let user = null;
 /** Portal account the page reads and writes for: the signed-in uid, or the volunteer a Google account is linked to. */
 let portalUid = "";
 let projection = null;
+let qrDoc = null;
 let projectionUpdatedAt = 0;
 let photoUrl = "";
 let photoVersionLoaded = "";
 let requests = {};
 let unsubscribers = [];
+let offlineTimer = null;
 let idleTimer = null;
 /** Google section of "My account": the node, the message of the last link attempt, a link in progress. */
 let googleBox = null;
@@ -94,6 +99,29 @@ let unlinkSent = false;
 function showView(id) {
   VIEWS.forEach((v) => $(v).classList.toggle("hidden", v !== id));
   document.body.classList.toggle("dash-open", id === "view-dash");
+}
+
+/** Reduced screen with only "My QR", from the copy stored on this device. */
+function showOffline() {
+  showView("view-offline");
+}
+
+function openOfflineQr() {
+  const cached = readCachedQr(path.orgId);
+  if (cached) openQrDialog({ payload: cached.payload, name: cached.name, association: cached.association });
+}
+
+/** The worker serves the page without network. Off on the emulator unless ?sw=1 is in the URL. */
+function registerWorker() {
+  if (!("serviceWorker" in navigator)) return;
+  if (isLocalDev() && new URLSearchParams(location.search).get("sw") !== "1") {
+    // A worker left by an earlier ?sw=1 run would keep serving old local files.
+    navigator.serviceWorker.getRegistrations()
+      .then((list) => list.forEach((reg) => reg.unregister()))
+      .catch(() => {});
+    return;
+  }
+  navigator.serviceWorker.register("/portal-sw.js", { scope: "/v/" }).catch(() => {});
 }
 
 function setError(id, key, vars) {
@@ -160,7 +188,8 @@ async function loadBranding() {
   } catch (error) {
     // Firestore rules refuse everything here while the institution has the portal turned off.
     console.warn("portal branding unavailable", error?.code);
-    return false;
+    // "unavailable": no network, not a refusal.
+    return String(error?.code).includes("unavailable") ? null : false;
   }
 }
 
@@ -606,11 +635,14 @@ function googleMark() {
 
 async function doSignOut(reasonKey) {
   if ($("account-dialog").open) $("account-dialog").close();
+  closeQrDialog();
   disposeLinkSession();
   stopListeners();
+  clearQr(path.orgId);
   portalUid = "";
   unlinkSent = false;
   projection = null;
+  qrDoc = null;
   photoUrl = "";
   photoVersionLoaded = "";
   await signOut(auth).catch(() => {});
@@ -630,6 +662,8 @@ function stopListeners() {
   });
   unsubscribers = [];
   requests = {};
+  clearTimeout(offlineTimer);
+  offlineTimer = null;
 }
 
 function armIdleTimer() {
@@ -644,6 +678,7 @@ async function onUser(next) {
   googleSession = false;
   armIdleTimer();
   portalUid = "";
+  qrDoc = null; // watchProjection fills it again
   if (!user) {
     $("signin-email").value = $("signin-email").value || "";
     return showView("view-signin");
@@ -652,6 +687,9 @@ async function onUser(next) {
   const google = await readGoogleSession(next);
   if (user !== next) return;
   googleSession = google;
+  // Another account's QR must not stay on this device. Google sessions are keyed by the linked
+  // volunteer uid, not by the auth uid, so watchProjection replaces their copy instead.
+  if (isStaleFor(readCachedQr(path.orgId), next.uid, google)) clearQr(path.orgId);
   // Google accounts are verified by Google; their access goes through the link to a volunteer.
   if (isGoogleUser(user)) return openGoogleSession(user);
   if (!user.emailVerified) {
@@ -667,8 +705,19 @@ async function onUser(next) {
 
 function watchProjection() {
   showView("view-loading");
+  const uidAtStart = portalUid;
+  clearTimeout(offlineTimer);
+  offlineTimer = setTimeout(() => {
+    offlineTimer = null;
+    if (portalUid === uidAtStart && readCachedQr(path.orgId, uidAtStart)) showOffline();
+  }, OFFLINE_FALLBACK_MS);
   const ref = doc(db, "orgs", path.orgId, "volunteerPortal", portalUid);
   unsubscribers.push(onSnapshot(ref, (snap) => {
+    // An empty answer from the local cache (no network) says nothing about the page: with a QR
+    // stored here, the offline screen stays or the timer above shows it.
+    if (!snap.exists() && snap.metadata.fromCache && readCachedQr(path.orgId, uidAtStart)) return;
+    clearTimeout(offlineTimer);
+    offlineTimer = null;
     if (!snap.exists()) {
       projection = null;
       showPending();
@@ -692,6 +741,26 @@ function watchProjection() {
     } else if (String(error?.code).includes("permission-denied")) {
       $("disabled-error").classList.add("hidden");
       showView("view-disabled");
+    }
+  }));
+  const qrRef = doc(db, "orgs", path.orgId, "volunteerPortalQr", portalUid);
+  unsubscribers.push(onSnapshot(qrRef, (snap) => {
+    if (snap.exists() && snap.data().payload) {
+      const data = snap.data();
+      qrDoc = { payload: data.payload, name: data.name || "" };
+      storeQr(path.orgId, { uid: uidAtStart, payload: data.payload, name: qrDoc.name, association: projection?.association || "" });
+    } else if (missingIsFinal(snap)) {
+      qrDoc = null;
+      clearQr(path.orgId);
+      closeQrDialog();
+    }
+    if (projection) renderDashboard();
+  }, (error) => {
+    if (String(error?.code).includes("permission-denied")) {
+      qrDoc = null;
+      clearQr(path.orgId);
+      closeQrDialog();
+      if (projection) renderDashboard();
     }
   }));
   REQUEST_TYPES.forEach((type) => {
@@ -833,13 +902,21 @@ function profileTile() {
   // QR code by e-mail: the wallet code itself never appears on this page.
   const qr = el("div", { class: "qr-block" });
   qr.append(el("div", { class: "tile-head" }, icon("qr", 18), el("h2", { text: t("qrTitle") })));
+  if (qrDoc) {
+    const shown = { payload: qrDoc.payload, name: qrDoc.name || projection?.firstName || "", association: projection?.association || "" };
+    qr.append(el("button", {
+      type: "button",
+      class: "primary qr-open",
+      onclick: () => openQrDialog(shown),
+    }, icon("qr", 18), el("span", { text: t("myQr") })));
+  }
   if (!p.qrEmailAllowed) {
-    qr.append(el("p", { class: "small-note", text: t("qrNotAllowed") }));
+    if (!qrDoc) qr.append(el("p", { class: "small-note", text: t("qrNotAllowed") }));
   } else {
-    qr.append(el("p", { class: "muted left", text: t("qrBody", { email: p.email }) }));
+    if (!qrDoc) qr.append(el("p", { class: "muted left", text: t("qrBody", { email: p.email }) }));
     const r = requests.QR_EMAIL;
     const cooldown = requestCooldownMinutes("QR_EMAIL");
-    const btn = el("button", { type: "button", class: "tonal", onclick: onQrClick }, icon("mail", 16), t("qrButton"));
+    const btn = el("button", { type: "button", class: qrDoc ? "link-small" : "tonal", onclick: onQrClick }, icon("mail", qrDoc ? 14 : 16), t("qrButton"));
     const waiting = isWaiting(r);
     if (waiting) {
       qr.append(el("p", { class: "notice", text: t("qrPending") }));
@@ -1442,6 +1519,7 @@ async function main() {
     renderDashboard();
     renderGoogleBox();
   });
+  registerWorker();
   path = parseOrgPath("v", false);
   if (!path) {
     // Opened from the home-screen icon (/v/): go back to the organisation last used here.
@@ -1450,6 +1528,9 @@ async function main() {
     return showView("view-disabled");
   }
   localStorage.setItem(LAST_ORG_KEY, path.orgId);
+  $("offline-qr").prepend(icon("qr", 18));
+  $("offline-qr").addEventListener("click", openOfflineQr);
+  if (!navigator.onLine && readCachedQr(path.orgId)) return showOffline();
   let app;
   try {
     const config = await loadConfig(t("hostingError"));
@@ -1458,6 +1539,8 @@ async function main() {
     firebaseConfig = isLocalDev() ? config : { ...config, authDomain: location.host };
     app = initializeApp(firebaseConfig);
   } catch (error) {
+    // fetch rejects with a TypeError when the network is down.
+    if (error instanceof TypeError && readCachedQr(path.orgId)) return showOffline();
     $("disabled-error").textContent = error.message;
     $("disabled-error").classList.remove("hidden");
     return showView("view-disabled");
@@ -1480,6 +1563,7 @@ async function main() {
   const open = await loadBranding();
   renderBranding();
   applyStaticI18n();
+  if (open === null && readCachedQr(path.orgId)) return showOffline();
   if (!open) return showView("view-disabled");
   onAuthStateChanged(auth, (next) => {
     onUser(next).catch((error) => console.error("portal state failed", error));
