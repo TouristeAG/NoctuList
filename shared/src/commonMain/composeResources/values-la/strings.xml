@@ -2557,4 +2557,20 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="sync_team_invite_create_new">Novum codicem crea</string>
     <string name="sync_team_invite_check_failed">Codex invitationis ordinationis inspici non potuit. Conexionem inspice, deinde iterum conare.</string>
     <string name="sync_team_retry">Iterum conare</string>
+    <string name="sync_online_page_title">Functiones interretiales</string>
+    <string name="sync_online_page_subtitle">Situs publicus et optiones totius ordinationis</string>
+    <string name="sync_online_site_title">Situs publicus</string>
+    <string name="sync_online_site_help">Situs publicus gratis in Firebase Hosting hospitatur. Artifices ibi indicem hospitum mittunt et voluntarii portam suam inveniunt.\n\nEum ex duce configurationis Firebase edito, deinde iterum post quamque renovationem NoctuList.\n\nTractatio automatica libera est: petitiones situs paucis secundis tractat. Sine ea, instrumentum NoctuList eas tractat dum in linea est.</string>
+    <string name="sync_online_site_not_published">Situs nondum editus</string>
+    <string name="sync_online_processing_active">Tractatio automatica activa, ultimo %1$s</string>
+    <string name="sync_online_processing_inactive">Tractatio automatica inactiva</string>
+    <string name="sync_online_features_title">Functiones</string>
+    <string name="sync_online_guest_forms">Formulae indicis hospitum</string>
+    <string name="sync_online_billeterie_validates">Tesseraria formulas probat</string>
+    <string name="sync_online_portal_link">Nexus portae</string>
+    <string name="sync_online_logo_hint">Signum in Praeceptis, Epistula definitum</string>
+    <string name="sync_online_use_domain">Utere %1$s</string>
+    <string name="sync_online_profile_photos">Imagines personales</string>
+    <string name="sync_online_photos_hint">Firebase Storage adhibet, quod rationem Blaze (solutam) requirere potest</string>
+    <string name="sync_online_drive_import">Importatio ex Google Drive</string>
 </resources>

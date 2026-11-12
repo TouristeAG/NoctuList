@@ -165,6 +165,13 @@ fun rememberVolunteerPortalEnabled(viewModel: EventManagerViewModel?): Boolean {
 internal fun portalMailLanguage(viewModel: EventManagerViewModel?): String =
     viewModel?.currentLanguageCode()?.take(2)?.lowercase()?.takeIf { it in setOf("fr", "en", "es", "de", "it") } ?: "fr"
 
+/** Date and time of the last automatic processing run, or null when none was seen. */
+@Composable
+internal fun portalServerLastRun(status: PortalServerStatus?): String? {
+    val platformContext = LocalPlatformContext.current
+    return status?.let { DateFormatUtils.formatDateTime(it.lastRunAt, platformContext) }
+}
+
 @Composable
 fun VolunteerPortalSettingsCard(
     enabled: Boolean,
@@ -198,8 +205,7 @@ fun VolunteerPortalSettingsCard(
             Switch(checked = enabled, onCheckedChange = onEnabledChange, enabled = canEdit)
         }
         if (enabled) {
-            val platformContext = LocalPlatformContext.current
-            val lastRun = serverStatus?.let { DateFormatUtils.formatDateTime(it.lastRunAt, platformContext) }
+            val lastRun = portalServerLastRun(serverStatus)
             Text(
                 if (lastRun != null) stringResource(Res.string.portal_server_active, lastRun)
                 else stringResource(Res.string.portal_server_inactive),
@@ -246,6 +252,26 @@ fun VolunteerPortalSettingsCard(
     }
 }
 
+/**
+ * Messages for the outcome of a Google Workspace domain check: null when the domain was verified
+ * ([DomainCheck.GOOGLE]), otherwise the error to show. The strings are resolved here so the
+ * mapping can run inside a coroutine. Shared by the old portal card and the Fonctions en ligne page.
+ */
+@Composable
+internal fun domainCheckMessages(): (DomainCheck) -> String? {
+    val other = stringResource(Res.string.portal_google_other)
+    val notFound = stringResource(Res.string.portal_google_not_found)
+    val error = stringResource(Res.string.portal_google_error)
+    return { check ->
+        when (check) {
+            DomainCheck.GOOGLE -> null
+            DomainCheck.OTHER -> other
+            DomainCheck.NOT_FOUND -> notFound
+            DomainCheck.ERROR -> error
+        }
+    }
+}
+
 /** Verified Workspace domains plus the switch that lets volunteers sign in with Google. */
 @Composable
 private fun VolunteerPortalGoogleSection(
@@ -262,6 +288,7 @@ private fun VolunteerPortalGoogleSection(
     var input by remember { mutableStateOf(if (domains.isEmpty()) suggestedDomain else "") }
     var checking by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<DomainCheck?>(null) }
+    val messageFor = domainCheckMessages()
     LaunchedEffect(suggestedDomain) {
         if (input.isBlank() && domains.isEmpty()) input = suggestedDomain
     }
@@ -326,12 +353,7 @@ private fun VolunteerPortalGoogleSection(
                 }
                 Text(stringResource(Res.string.portal_google_verify_add))
             }
-            val message = when (result) {
-                DomainCheck.OTHER -> stringResource(Res.string.portal_google_other)
-                DomainCheck.NOT_FOUND -> stringResource(Res.string.portal_google_not_found)
-                DomainCheck.ERROR -> stringResource(Res.string.portal_google_error)
-                else -> null
-            }
+            val message = result?.let(messageFor)
             if (message != null) {
                 Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }

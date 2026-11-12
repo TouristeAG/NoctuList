@@ -2551,4 +2551,20 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="sync_team_invite_create_new">Créer un nouveau code</string>
     <string name="sync_team_invite_check_failed">Impossible de vérifier le code d'invitation de l'organisation. Vérifiez la connexion, puis réessayez.</string>
     <string name="sync_team_retry">Réessayer</string>
+    <string name="sync_online_page_title">Fonctions en ligne</string>
+    <string name="sync_online_page_subtitle">Site public et options valables pour toute l'organisation</string>
+    <string name="sync_online_site_title">Site public</string>
+    <string name="sync_online_site_help">Le site public est hébergé gratuitement par Firebase Hosting. Les artistes y envoient leur guestlist et les bénévoles y trouvent leur plateforme.\n\nPubliez-le depuis le guide de configuration Firebase, puis à nouveau après chaque mise à jour de NoctuList.\n\nLe traitement automatique est facultatif : il traite les demandes du site en quelques secondes. Sans lui, un appareil NoctuList les traite lorsqu'il est en ligne.</string>
+    <string name="sync_online_site_not_published">Site pas encore publié</string>
+    <string name="sync_online_processing_active">Traitement automatique actif, dernier passage le %1$s</string>
+    <string name="sync_online_processing_inactive">Traitement automatique inactif</string>
+    <string name="sync_online_features_title">Fonctions</string>
+    <string name="sync_online_guest_forms">Formulaires de guestlist</string>
+    <string name="sync_online_billeterie_validates">La billetterie valide les formulaires</string>
+    <string name="sync_online_portal_link">Lien du portail</string>
+    <string name="sync_online_logo_hint">Le logo défini dans Réglages, E-mail</string>
+    <string name="sync_online_use_domain">Utiliser %1$s</string>
+    <string name="sync_online_profile_photos">Photos de profil</string>
+    <string name="sync_online_photos_hint">Utilise Firebase Storage, qui peut exiger le plan Blaze (payant)</string>
+    <string name="sync_online_drive_import">Import Google Drive</string>
 </resources>

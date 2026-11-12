@@ -2552,4 +2552,20 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="sync_team_invite_create_new">Crear un código nuevo</string>
     <string name="sync_team_invite_check_failed">No se pudo comprobar el código de invitación de la organización. Compruebe la conexión y vuelva a intentarlo.</string>
     <string name="sync_team_retry">Reintentar</string>
+    <string name="sync_online_page_title">Funciones en línea</string>
+    <string name="sync_online_page_subtitle">Sitio público y opciones válidas para toda la organización</string>
+    <string name="sync_online_site_title">Sitio público</string>
+    <string name="sync_online_site_help">El sitio público está alojado gratis en Firebase Hosting. Los artistas envían allí su lista de invitados y los voluntarios encuentran su portal.\n\nPublíquelo desde la guía de configuración de Firebase y otra vez después de cada actualización de NoctuList.\n\nEl procesamiento automático es opcional: trata las solicitudes del sitio en pocos segundos. Sin él, un dispositivo NoctuList las trata cuando está en línea.</string>
+    <string name="sync_online_site_not_published">Sitio aún no publicado</string>
+    <string name="sync_online_processing_active">Procesamiento automático activo, última ejecución %1$s</string>
+    <string name="sync_online_processing_inactive">Procesamiento automático inactivo</string>
+    <string name="sync_online_features_title">Funciones</string>
+    <string name="sync_online_guest_forms">Formularios de lista de invitados</string>
+    <string name="sync_online_billeterie_validates">La taquilla valida los formularios</string>
+    <string name="sync_online_portal_link">Enlace del portal</string>
+    <string name="sync_online_logo_hint">El logotipo definido en Ajustes, Correo</string>
+    <string name="sync_online_use_domain">Usar %1$s</string>
+    <string name="sync_online_profile_photos">Fotos de perfil</string>
+    <string name="sync_online_photos_hint">Usa Firebase Storage, que puede requerir el plan Blaze (de pago)</string>
+    <string name="sync_online_drive_import">Importación desde Google Drive</string>
 </resources>

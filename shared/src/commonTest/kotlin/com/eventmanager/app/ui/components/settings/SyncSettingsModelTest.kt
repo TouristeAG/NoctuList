@@ -96,4 +96,27 @@ class SyncSettingsModelTest {
         assertFalse(orgConfigHasInvitationCode(mapOf("backendType" to "FIREBASE")))
         assertFalse(orgConfigHasInvitationCode(mapOf("bootstrapCodeHash" to "", "bootstrapCode" to null)))
     }
+
+    @Test
+    fun teamDomainsAreSuggestedWhenNoneIsVerified() {
+        assertEquals(
+            listOf("asso.ch", "club.org"),
+            portalGoogleDomainSuggestions(listOf("@Asso.CH", "club.org", "asso.ch"), emptyList()),
+        )
+    }
+
+    @Test
+    fun verifiedTeamDomainsAreNotSuggestedAgain() {
+        assertEquals(
+            listOf("club.org"),
+            portalGoogleDomainSuggestions(listOf("asso.ch", "club.org"), listOf("ASSO.ch")),
+        )
+        assertEquals(emptyList<String>(), portalGoogleDomainSuggestions(listOf("asso.ch"), listOf("asso.ch")))
+    }
+
+    @Test
+    fun blankOrInvalidTeamDomainsAreNotSuggested() {
+        assertEquals(emptyList<String>(), portalGoogleDomainSuggestions(listOf("", " ", "localhost", "@"), emptyList()))
+        assertEquals(emptyList<String>(), portalGoogleDomainSuggestions(emptyList(), emptyList()))
+    }
 }

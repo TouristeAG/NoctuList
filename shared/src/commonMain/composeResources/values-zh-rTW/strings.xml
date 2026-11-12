@@ -2552,4 +2552,20 @@
     <string name="sync_team_invite_create_new">建立新代碼</string>
     <string name="sync_team_invite_check_failed">無法檢查組織的邀請碼。請檢查網路連線後重試。</string>
     <string name="sync_team_retry">重試</string>
+    <string name="sync_online_page_title">線上功能</string>
+    <string name="sync_online_page_subtitle">公開網站以及適用於整個組織的選項</string>
+    <string name="sync_online_site_title">公開網站</string>
+    <string name="sync_online_site_help">公開網站免費託管在 Firebase Hosting 上。藝人在這裡提交賓客名單，志工在這裡使用他們的入口網站。\n\n請透過 Firebase 設定指南發佈網站，並在每次更新 NoctuList 後重新發佈。\n\n自動處理是選用的：它會在幾秒內處理網站的請求。沒有它時，NoctuList 裝置會在連線時處理這些請求。</string>
+    <string name="sync_online_site_not_published">網站尚未發佈</string>
+    <string name="sync_online_processing_active">自動處理已啟用，上次執行 %1$s</string>
+    <string name="sync_online_processing_inactive">自動處理未啟用</string>
+    <string name="sync_online_features_title">功能</string>
+    <string name="sync_online_guest_forms">賓客名單表單</string>
+    <string name="sync_online_billeterie_validates">售票處審核表單</string>
+    <string name="sync_online_portal_link">入口網站連結</string>
+    <string name="sync_online_logo_hint">在「設定 &gt; 電子郵件」中設定的標誌</string>
+    <string name="sync_online_use_domain">使用 %1$s</string>
+    <string name="sync_online_profile_photos">大頭貼</string>
+    <string name="sync_online_photos_hint">使用 Firebase Storage，可能需要 Blaze 付費方案</string>
+    <string name="sync_online_drive_import">Google Drive 匯入</string>
 </resources>

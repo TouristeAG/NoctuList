@@ -2557,4 +2557,20 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="sync_team_invite_create_new">नया कोड बनाएँ</string>
     <string name="sync_team_invite_check_failed">संगठन का आमंत्रण कोड जाँचा नहीं जा सका। कनेक्शन जाँचें, फिर दोबारा कोशिश करें।</string>
     <string name="sync_team_retry">दोबारा कोशिश करें</string>
+    <string name="sync_online_page_title">ऑनलाइन सुविधाएँ</string>
+    <string name="sync_online_page_subtitle">सार्वजनिक साइट और पूरे संगठन पर लागू विकल्प</string>
+    <string name="sync_online_site_title">सार्वजनिक साइट</string>
+    <string name="sync_online_site_help">सार्वजनिक साइट Firebase Hosting पर मुफ़्त होस्ट होती है। कलाकार वहाँ अपनी गेस्ट लिस्ट भेजते हैं और स्वयंसेवक वहाँ अपना पोर्टल पाते हैं।\n\nइसे Firebase सेटअप गाइड से प्रकाशित करें, फिर NoctuList के हर अपडेट के बाद दोबारा।\n\nस्वचालित प्रोसेसिंग वैकल्पिक है: यह साइट के अनुरोध कुछ सेकंड में संभालती है। इसके बिना, कोई NoctuList डिवाइस ऑनलाइन होने पर उन्हें संभालता है।</string>
+    <string name="sync_online_site_not_published">साइट अभी प्रकाशित नहीं हुई</string>
+    <string name="sync_online_processing_active">स्वचालित प्रोसेसिंग सक्रिय, पिछली बार %1$s</string>
+    <string name="sync_online_processing_inactive">स्वचालित प्रोसेसिंग निष्क्रिय</string>
+    <string name="sync_online_features_title">सुविधाएँ</string>
+    <string name="sync_online_guest_forms">गेस्ट लिस्ट फ़ॉर्म</string>
+    <string name="sync_online_billeterie_validates">टिकट काउंटर फ़ॉर्म स्वीकृत करता है</string>
+    <string name="sync_online_portal_link">पोर्टल लिंक</string>
+    <string name="sync_online_logo_hint">सेटिंग्स, ई-मेल में सेट किया गया लोगो</string>
+    <string name="sync_online_use_domain">%1$s इस्तेमाल करें</string>
+    <string name="sync_online_profile_photos">प्रोफ़ाइल फ़ोटो</string>
+    <string name="sync_online_photos_hint">Firebase Storage का उपयोग करता है, जिसके लिए Blaze प्लान (सशुल्क) ज़रूरी हो सकता है</string>
+    <string name="sync_online_drive_import">Google Drive इम्पोर्ट</string>
 </resources>

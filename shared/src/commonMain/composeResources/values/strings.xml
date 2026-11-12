@@ -2554,4 +2554,20 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="sync_team_invite_create_new">Create a new code</string>
     <string name="sync_team_invite_check_failed">Could not check the organization's invitation code. Check the connection, then try again.</string>
     <string name="sync_team_retry">Try again</string>
+    <string name="sync_online_page_title">Online features</string>
+    <string name="sync_online_page_subtitle">Public site and options that apply to the whole organization</string>
+    <string name="sync_online_site_title">Public site</string>
+    <string name="sync_online_site_help">The public site is hosted for free by Firebase Hosting. Artists send their guest list there and volunteers find their portal there.\n\nPublish it from the Firebase setup guide, then again after each NoctuList update.\n\nAutomatic processing is optional: it handles the site's requests within seconds. Without it, a NoctuList device handles them while it is online.</string>
+    <string name="sync_online_site_not_published">Site not published yet</string>
+    <string name="sync_online_processing_active">Automatic processing active, last run %1$s</string>
+    <string name="sync_online_processing_inactive">Automatic processing inactive</string>
+    <string name="sync_online_features_title">Features</string>
+    <string name="sync_online_guest_forms">Guest list forms</string>
+    <string name="sync_online_billeterie_validates">The box office approves the forms</string>
+    <string name="sync_online_portal_link">Portal link</string>
+    <string name="sync_online_logo_hint">The logo set in Settings, E-mail</string>
+    <string name="sync_online_use_domain">Use %1$s</string>
+    <string name="sync_online_profile_photos">Profile photos</string>
+    <string name="sync_online_photos_hint">Uses Firebase Storage, which may require the Blaze plan (paid)</string>
+    <string name="sync_online_drive_import">Google Drive import</string>
 </resources>

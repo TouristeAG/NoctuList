@@ -1,5 +1,6 @@
 package com.eventmanager.app.ui.components.settings
 
+import com.eventmanager.app.data.remote.FirebaseEmailDomainPolicy
 import kotlin.math.abs
 
 /**
@@ -60,3 +61,17 @@ fun orgConfigHasInvitationCode(config: Map<String, Any?>): Boolean =
     listOf("bootstrapCodeHash", "bootstrapCode").any { key ->
         (config[key] as? String)?.isNotBlank() == true
     }
+
+/**
+ * Team domains (the allowed e-mail domains of the team) offered as one-click suggestions for the
+ * volunteer portal's Google sign-in: normalized, valid, without duplicates, and not already among
+ * the verified [verifiedDomains]. A suggestion is only a shortcut: picking it runs the same Google
+ * Workspace check as typing the domain.
+ */
+fun portalGoogleDomainSuggestions(teamDomains: List<String>, verifiedDomains: List<String>): List<String> {
+    val verified = verifiedDomains.map { FirebaseEmailDomainPolicy.normalizeDomain(it) }.toSet()
+    return teamDomains
+        .map { FirebaseEmailDomainPolicy.normalizeDomain(it) }
+        .filter { it.isNotBlank() && it.contains('.') && it !in verified }
+        .distinct()
+}
