@@ -131,6 +131,10 @@ class SettingsManager(private val storage: AppStorage) {
         
         // Settings Category Expansion State Keys
         private const val KEY_CATEGORY_SYNC_EXPANDED = "category_sync_expanded"
+        private const val KEY_CATEGORY_SYNC_TEAM_EXPANDED = "category_sync_team_expanded"
+        private const val KEY_CATEGORY_SYNC_ONLINE_EXPANDED = "category_sync_online_expanded"
+        private const val KEY_CATEGORY_SYNC_BACKUP_EXPANDED = "category_sync_backup_expanded"
+        private const val KEY_CATEGORY_SYNC_SHEETS_EXPANDED = "category_sync_sheets_expanded"
         private const val KEY_CATEGORY_APPEARANCE_EXPANDED = "category_appearance_expanded"
         private const val KEY_CATEGORY_LOCALIZATION_EXPANDED = "category_localization_expanded"
         private const val KEY_CATEGORY_ANIMATION_EXPANDED = "category_animation_expanded"
@@ -173,6 +177,7 @@ class SettingsManager(private val storage: AppStorage) {
         private const val KEY_EMAIL_GMAIL_USE_SERVICE_ACCOUNT = "email_gmail_use_service_account"
         private const val KEY_EMAIL_GMAIL_SERVICE_ACCOUNT_SENDER = "email_gmail_service_account_sender"
         private const val KEY_CATEGORY_EMAIL_EXPANDED = "category_email_expanded"
+        private const val KEY_CATEGORY_ASSOCIATION_EXPANDED = "category_association_expanded"
         
         // Guest Email Settings Keys
         private const val KEY_GUEST_EMAIL_SUBJECT = "guest_email_subject"
@@ -2228,6 +2233,12 @@ class SettingsManager(private val storage: AppStorage) {
     fun setCategoryEmailExpanded(expanded: Boolean) {
         storage.putBoolean(KEY_CATEGORY_EMAIL_EXPANDED, expanded)
     }
+
+    fun isCategoryAssociationExpanded(): Boolean = storage.getBoolean(KEY_CATEGORY_ASSOCIATION_EXPANDED, false)
+
+    fun setCategoryAssociationExpanded(expanded: Boolean) {
+        storage.putBoolean(KEY_CATEGORY_ASSOCIATION_EXPANDED, expanded)
+    }
     
     // Guest Email Settings Configuration
     fun getGuestEmailSubject(): String {
@@ -2415,6 +2426,38 @@ class SettingsManager(private val storage: AppStorage) {
     
     fun setCategorySyncExpanded(expanded: Boolean) {
         storage.putBoolean(KEY_CATEGORY_SYNC_EXPANDED, expanded)
+    }
+
+    fun isCategorySyncTeamExpanded(): Boolean {
+        return storage.getBoolean(KEY_CATEGORY_SYNC_TEAM_EXPANDED, false)
+    }
+
+    fun setCategorySyncTeamExpanded(expanded: Boolean) {
+        storage.putBoolean(KEY_CATEGORY_SYNC_TEAM_EXPANDED, expanded)
+    }
+
+    fun isCategorySyncOnlineExpanded(): Boolean {
+        return storage.getBoolean(KEY_CATEGORY_SYNC_ONLINE_EXPANDED, false)
+    }
+
+    fun setCategorySyncOnlineExpanded(expanded: Boolean) {
+        storage.putBoolean(KEY_CATEGORY_SYNC_ONLINE_EXPANDED, expanded)
+    }
+
+    fun isCategorySyncBackupExpanded(): Boolean {
+        return storage.getBoolean(KEY_CATEGORY_SYNC_BACKUP_EXPANDED, false)
+    }
+
+    fun setCategorySyncBackupExpanded(expanded: Boolean) {
+        storage.putBoolean(KEY_CATEGORY_SYNC_BACKUP_EXPANDED, expanded)
+    }
+
+    fun isCategorySyncSheetsExpanded(): Boolean {
+        return storage.getBoolean(KEY_CATEGORY_SYNC_SHEETS_EXPANDED, false)
+    }
+
+    fun setCategorySyncSheetsExpanded(expanded: Boolean) {
+        storage.putBoolean(KEY_CATEGORY_SYNC_SHEETS_EXPANDED, expanded)
     }
     
     fun isCategoryAppearanceExpanded(): Boolean {

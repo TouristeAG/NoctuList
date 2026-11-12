@@ -46,7 +46,6 @@ import com.eventmanager.app.platform.DesktopAppEraser
 import com.eventmanager.app.platform.LocalPlatformContext
 import com.eventmanager.app.platform.createAppStorage
 import com.eventmanager.app.platform.createBiometricAuth
-import com.eventmanager.app.platform.createGmailAuth
 import com.eventmanager.app.platform.AppBuildInfo
 import com.eventmanager.app.platform.hardware.DesktopBleReaderScanner
 import com.eventmanager.app.platform.hardware.DesktopExternalNfcReader
@@ -66,7 +65,6 @@ import com.eventmanager.app.ui.components.CleanupInactiveVolunteersDialog
 import com.eventmanager.app.ui.components.SyncStatusDialog
 import com.eventmanager.app.ui.components.TemporaryGuestAccessSettingsSection
 import com.eventmanager.app.ui.platform.ServiceAccountKeyUploadButton
-import com.eventmanager.app.ui.platform.GmailOAuthClientUploadButton
 import com.eventmanager.app.ui.platform.EmailLogoUploadSection
 import com.eventmanager.app.platform.PlatformFileManager
 import com.eventmanager.app.ui.platform.AppAppearanceState
@@ -87,7 +85,15 @@ import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 
 private enum class DesktopSettingsNav {
-    Sync,
+    // Sync & data, one entry per page. Firebase: Connexion, Équipe, Fonctions en ligne, Sauvegarde.
+    // Google Sheets: Connexion, Synchronisation. The selection is not persisted, so no old value
+    // ("Sync") needs migrating.
+    SyncConnection,
+    SyncTeam,
+    SyncOnline,
+    SyncBackup,
+    SyncSheets,
+    Association,
     Email,
     Maintenance,
     Catalog,
@@ -120,7 +126,6 @@ actual fun SettingsScreen(
     val platformContext = LocalPlatformContext.current
     val settingsManager = remember(platformContext) { SettingsManager(createAppStorage(platformContext)) }
     val scope = rememberCoroutineScope()
-    val gmailAuth = remember(platformContext) { createGmailAuth(platformContext) }
 
     var spreadsheetId by remember { mutableStateOf(settingsManager.getSpreadsheetId()) }
     var guestListSheet by remember { mutableStateOf(settingsManager.getGuestListSheet()) }
@@ -134,45 +139,17 @@ actual fun SettingsScreen(
     var settingsSheet by remember { mutableStateOf(settingsManager.getSettingsSheet()) }
     var syncInterval by remember { mutableStateOf(settingsManager.getSyncInterval()) }
     var uploadStatus by remember { mutableStateOf<String?>(null) }
-    var firebaseSignInFeedback by remember { mutableStateOf<String?>(null) }
-    var firebaseAuthEmail by remember { mutableStateOf(settingsManager.getFirebaseAuthEmail()) }
-    var isFirebaseOrgAdmin by remember { mutableStateOf(false) }
-    LaunchedEffect(firebaseAuthEmail, settingsManager.getFirebaseOrgId()) {
-        isFirebaseOrgAdmin = com.eventmanager.app.data.remote.FirebaseOrgAdminAccess
-            .currentUserIsOrgAdmin(platformContext, settingsManager)
-    }
-    val canEditInstitutionSettings = com.eventmanager.app.data.security.canEditSyncedInstitutionSettings(
-        backendType = settingsManager.getBackendType(),
-        isFirebaseOrgAdmin = isFirebaseOrgAdmin,
-    )
-    val canEditBilleterieSendSetting = com.eventmanager.app.data.security.canEditAnnouncementsNonAdminSendSetting(
-        backendType = settingsManager.getBackendType(),
-        isFirebaseOrgAdmin = isFirebaseOrgAdmin,
-    )
+    val firebaseSignInFeedbackState = remember { mutableStateOf<String?>(null) }
+    val firebaseAuthEmailState = remember { mutableStateOf(settingsManager.getFirebaseAuthEmail()) }
+    var firebaseAuthEmail by firebaseAuthEmailState
     val venues by viewModel.venues.collectAsState()
     val activeVenues = remember(venues) { venues.filter { it.isActive } }
     val temporaryGuestAccesses by viewModel.temporaryGuestVenueAccesses.collectAsState()
     val temporaryGuestCreditsEnabled by viewModel.temporaryGuestCreditsEnabled.collectAsState()
     val temporaryGuestFeaturesEnabled = viewModel.isTemporaryGuestFeaturesEnabled()
     var migrationWizard by remember { mutableStateOf<com.eventmanager.app.data.remote.MigrationDirection?>(null) }
-    var gmailLoading by remember { mutableStateOf(false) }
-    var gmailSignedIn by remember { mutableStateOf(gmailAuth.isSignedIn) }
-    var gmailEmail by remember { mutableStateOf(gmailAuth.accountEmail) }
-    var gmailOAuthConfigured by remember(platformContext) {
-        mutableStateOf(PlatformFileManager(platformContext).getGmailOAuthClientFile() != null)
-    }
-    var gmailOAuthUploadStatus by remember { mutableStateOf<String?>(null) }
-    var gmailUseServiceAccount by remember { mutableStateOf(settingsManager.isGmailUseServiceAccount()) }
-    var gmailServiceAccountSender by remember { mutableStateOf(settingsManager.getGmailServiceAccountSenderEmail()) }
     val isFirebaseBackend =
         settingsManager.getBackendType() == com.eventmanager.app.data.remote.BackendType.FIREBASE
-    // Firebase has no Sheets service account — keep Gmail on OAuth only.
-    LaunchedEffect(isFirebaseBackend) {
-        if (isFirebaseBackend && gmailUseServiceAccount) {
-            gmailUseServiceAccount = false
-            settingsManager.setGmailUseServiceAccount(false)
-        }
-    }
     val platformFileManager = remember(platformContext) { PlatformFileManager(platformContext) }
     val serviceAccountConfigured = platformFileManager.getServiceAccountFile() != null
 
@@ -202,7 +179,6 @@ actual fun SettingsScreen(
     var nfcAdvancedExpanded by remember { mutableStateOf(false) }
 
     var showInstructions by remember { mutableStateOf(false) }
-    var showGmailOAuthHelp by remember { mutableStateOf(false) }
     var showCleanupDialog by remember { mutableStateOf(false) }
     var showActiveVolunteersDialog by remember { mutableStateOf(false) }
     var showFactoryResetDialog by remember { mutableStateOf(false) }
@@ -211,9 +187,40 @@ actual fun SettingsScreen(
     var uninstallDataInProgress by remember { mutableStateOf(false) }
     val cacheClearedMsg = stringResource(Res.string.app_cache_cleared)
 
+    // One set of sync bindings for the whole screen: the sync pages read it, and its org-admin
+    // check also gates the institution-wide settings below (no second role check).
+    val syncBindings = com.eventmanager.app.ui.components.settings.rememberSyncSettingsBindings(
+        viewModel = viewModel,
+        settingsManager = settingsManager,
+        platformContext = platformContext,
+        onOpenFirebaseGuide = { showInstructions = true },
+        onOpenMigration = { migrationWizard = it },
+        authEmailState = firebaseAuthEmailState,
+        signInFeedbackState = firebaseSignInFeedbackState,
+        onStatusMessage = { uploadStatus = it },
+        scope = scope,
+    )
+    val isFirebaseOrgAdmin = syncBindings.isOrgAdmin
+    val canEditInstitutionSettings = com.eventmanager.app.data.security.canEditSyncedInstitutionSettings(
+        backendType = settingsManager.getBackendType(),
+        isFirebaseOrgAdmin = isFirebaseOrgAdmin,
+    )
+    val canEditBilleterieSendSetting = com.eventmanager.app.data.security.canEditAnnouncementsNonAdminSendSetting(
+        backendType = settingsManager.getBackendType(),
+        isFirebaseOrgAdmin = isFirebaseOrgAdmin,
+    )
+
     val navItems = buildList {
         if (variant == SettingsScreenVariant.Full) {
-            add(DesktopSettingsNavItem(DesktopSettingsNav.Sync, stringResource(Res.string.settings_category_sync), Icons.Default.CloudSync))
+            add(DesktopSettingsNavItem(DesktopSettingsNav.SyncConnection, stringResource(Res.string.sync_connection_page_title), Icons.Default.CloudSync))
+            if (isFirebaseBackend) {
+                add(DesktopSettingsNavItem(DesktopSettingsNav.SyncTeam, stringResource(Res.string.sync_team_page_title), Icons.Default.Group))
+                add(DesktopSettingsNavItem(DesktopSettingsNav.SyncOnline, stringResource(Res.string.sync_online_page_title), Icons.Default.Public))
+                add(DesktopSettingsNavItem(DesktopSettingsNav.SyncBackup, stringResource(Res.string.sync_backup_page_title), Icons.Default.Backup))
+            } else {
+                add(DesktopSettingsNavItem(DesktopSettingsNav.SyncSheets, stringResource(Res.string.sync_sheets_page_title), Icons.Default.Sync))
+            }
+            add(DesktopSettingsNavItem(DesktopSettingsNav.Association, stringResource(Res.string.settings_category_association), Icons.Default.Business))
             add(DesktopSettingsNavItem(DesktopSettingsNav.Email, stringResource(Res.string.settings_category_email), Icons.Default.Email))
             add(DesktopSettingsNavItem(DesktopSettingsNav.Maintenance, stringResource(Res.string.settings_category_maintenance), Icons.Default.Build))
             add(DesktopSettingsNavItem(DesktopSettingsNav.Catalog, stringResource(Res.string.settings_category_catalog), Icons.Default.Category))
@@ -236,7 +243,7 @@ actual fun SettingsScreen(
         mutableStateOf(
             when (variant) {
                 SettingsScreenVariant.BilleterieBasic, SettingsScreenVariant.PosBasic -> DesktopSettingsNav.Appearance
-                else -> DesktopSettingsNav.Sync
+                else -> DesktopSettingsNav.SyncConnection
             }
         )
     }
@@ -255,39 +262,10 @@ actual fun SettingsScreen(
     val showSyncStatusDialog by viewModel.showSyncStatusDialog.collectAsState()
     val isSyncing by viewModel.isSyncing.collectAsState()
     val announcementsVenues by viewModel.venues.collectAsState()
-    val profilePhotosEnabled by viewModel.profilePhotosUploadEnabled.collectAsState()
-    var driveImportEnabled by remember { mutableStateOf(viewModel.isDriveImportEnabled()) }
     val guestFormsEnabled by viewModel.guestFormsEnabled.collectAsState()
-    val volunteerPortalEnabled by viewModel.volunteerPortalEnabled.collectAsState()
-    val volunteerPortalGoogleEnabled by viewModel.volunteerPortalGoogleEnabled.collectAsState()
-    val volunteerPortalShowLogo by viewModel.volunteerPortalShowLogo.collectAsState()
-    val volunteerPortalQrEnabled by viewModel.volunteerPortalQrEnabled.collectAsState()
-    val volunteerPortalGoogleDomains by viewModel.volunteerPortalGoogleDomains.collectAsState()
-    val volunteerPortalGoogleAnyAccount by viewModel.volunteerPortalGoogleAnyAccount.collectAsState()
-    val portalServerStatus by viewModel.portalServerStatus.collectAsState()
-    val guestFormsBilleterieValidateEnabled by viewModel.guestFormsBilleterieValidateEnabled.collectAsState()
     val billeterieSendEnabled by viewModel.announcementsBilleterieSendEnabled.collectAsState()
 
-    val saveLabel = stringResource(Res.string.save)
-    val gmailAuthSuccessMsg = stringResource(Res.string.email_gmail_auth_success)
-    val gmailNotSignedInMsg = stringResource(Res.string.email_gmail_not_signed_in)
-    val gmailRevokedMsg = stringResource(Res.string.email_gmail_auth_revoked)
-    val gmailOAuthMissingMsg = stringResource(Res.string.email_gmail_oauth_client_missing)
-    val gmailOAuthInvalidMsg = stringResource(Res.string.invalid_gmail_oauth_client_json)
-    val gmailServiceAccountMissingMsg = stringResource(Res.string.email_gmail_service_account_missing)
-    val gmailSenderMissingMsg = stringResource(Res.string.email_gmail_service_account_sender_label)
-    val gmailInvalidServiceAccountMsg = stringResource(Res.string.invalid_service_account_json)
     val readerClearedToast = stringResource(Res.string.external_reader_cleared_toast)
-
-    fun resolveGmailSignInErrorMessage(errorCode: String?): String = when (errorCode) {
-        "missing_oauth_client" -> gmailOAuthMissingMsg
-        "invalid_oauth_client" -> gmailOAuthInvalidMsg
-        "missing_service_account" -> gmailServiceAccountMissingMsg
-        "missing_sender_email" -> gmailSenderMissingMsg
-        "invalid_service_account" -> gmailInvalidServiceAccountMsg
-        null, "" -> gmailNotSignedInMsg
-        else -> errorCode
-    }
 
     fun saveSheetsConfig() {
         settingsManager.saveSpreadsheetId(spreadsheetId.trim())
@@ -300,7 +278,6 @@ actual fun SettingsScreen(
         settingsManager.saveTransfersSheet(transfersSheet.trim())
         settingsManager.saveTempGuestListSheet(tempGuestListSheet.trim())
         settingsManager.saveSettingsSheet(settingsSheet.trim())
-        showPlatformToast(platformContext, saveLabel)
     }
 
     LaunchedEffect(selectedSection) {
@@ -359,248 +336,112 @@ actual fun SettingsScreen(
                 // Variant-specific background animation is embedded in Appearance below.
 
         if (variant == SettingsScreenVariant.Full) {
-        DesktopSettingsCategory(
-            section = DesktopSettingsNav.Sync,
-            selectedSection = selectedSection,
-            title = stringResource(Res.string.settings_category_sync),
-            icon = Icons.Default.CloudSync,
-        ) {
-            com.eventmanager.app.ui.components.SyncSetupInstructionsButton(
-                backendType = settingsManager.getBackendType(),
-                onClick = { showInstructions = true },
-            )
-
-            if (variant == SettingsScreenVariant.Full &&
-                settingsManager.getBackendType() == com.eventmanager.app.data.remote.BackendType.SHEETS
+            DesktopSettingsCategory(
+                section = DesktopSettingsNav.SyncConnection,
+                selectedSection = selectedSection,
+                title = stringResource(Res.string.sync_connection_page_title),
+                icon = Icons.Default.CloudSync,
             ) {
-                OutlinedTextField(
-                    value = spreadsheetId,
-                    onValueChange = { spreadsheetId = it },
-                    label = { Text(stringResource(Res.string.spreadsheet_id_label)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                SheetNameField(stringResource(Res.string.guest_list_sheet_label), guestListSheet) { guestListSheet = it }
-                SheetNameField(stringResource(Res.string.volunteer_sheet_label), volunteerSheet) { volunteerSheet = it }
-                SheetNameField(stringResource(Res.string.shifts_sheet_label), jobsSheet) { jobsSheet = it }
-                SheetNameField(stringResource(Res.string.shift_types_sheet_label), jobTypesSheet) { jobTypesSheet = it }
-                SheetNameField(stringResource(Res.string.venues_sheet_label), venuesSheet) { venuesSheet = it }
-                SheetNameField(stringResource(Res.string.sales_items_sheet_label), salesItemsSheet) { salesItemsSheet = it }
-                SheetNameField(stringResource(Res.string.transfers_sheet_label), transfersSheet) { transfersSheet = it }
-                SheetNameField(stringResource(Res.string.temp_guest_list_sheet_label), tempGuestListSheet) { tempGuestListSheet = it }
-                SheetNameField(stringResource(Res.string.settings_sheet_label), settingsSheet) { settingsSheet = it }
-
-                ServiceAccountKeyUploadButton(
-                    platformContext = platformContext,
-                    onStatusUpdate = { uploadStatus = it },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(8.dp))
-                DesktopServiceAccountKeyInfoPanel(keyInfo = serviceAccountKeyInfo)
-                uploadStatus?.let {
-                    Spacer(Modifier.height(8.dp))
-                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-
-                Spacer(Modifier.height(12.dp))
-                OutlinedButton(
-                    onClick = { saveSheetsConfig() },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(Res.string.save_sheets_config))
-                }
-                com.eventmanager.app.ui.components.SheetsMigrateToFirebaseButton(
-                    onClick = {
-                        migrationWizard = com.eventmanager.app.data.remote.MigrationDirection.SHEETS_TO_FIREBASE
-                    },
-                    projectId = settingsManager.getFirebaseProjectId(),
-                )
-            }
-
-            if (variant == SettingsScreenVariant.Full &&
-                settingsManager.getBackendType() == com.eventmanager.app.data.remote.BackendType.FIREBASE
-            ) {
-                var firebaseConfiguredOrgs by remember { mutableStateOf(settingsManager.getFirebaseConfiguredOrgs()) }
-                var firebaseProjectId by remember { mutableStateOf(settingsManager.getFirebaseProjectId()) }
-                var firebaseApiKey by remember { mutableStateOf(settingsManager.getFirebaseApiKey()) }
-                var firebaseApplicationId by remember { mutableStateOf(settingsManager.getFirebaseApplicationId()) }
-                var allowedEmailDomains by remember {
-                    mutableStateOf(settingsManager.getAllowedEmailDomains())
-                }
-                com.eventmanager.app.ui.components.FirebaseSyncSettingsSection(
-                    configuredOrgs = firebaseConfiguredOrgs,
-                    authEmail = firebaseAuthEmail.ifBlank { null },
-                    onConfiguredOrgsChange = {
-                        firebaseConfiguredOrgs = it
-                        viewModel.updateFirebaseConfiguredOrgsLocal(it)
-                    },
-                    onOrgIdCommitted = viewModel::provisionFirebaseOrg,
-                    onSignIn = {
-                        scope.launch {
-                            firebaseSignInFeedback = null
-                            when (val result = com.eventmanager.app.data.remote.createFirebaseAuthService(platformContext).signInWithGoogle()) {
-                                is com.eventmanager.app.data.remote.FirebaseAuthResult.Success -> {
-                                    firebaseSignInFeedback = null
-                                    firebaseAuthEmail = result.email.orEmpty()
-                                    settingsManager.setFirebaseAuthEmail(result.email.orEmpty())
-                                    val org = settingsManager.getFirebaseOrgId()
-                                    if (org.isNotBlank() && result.uid.isNotBlank()) {
-                                        val gateway = com.eventmanager.app.data.remote.createFirestoreGateway(
-                                            platformContext,
-                                            settingsManager,
-                                        )
-                                        runCatching {
-                                            com.eventmanager.app.data.remote.FirebaseMemberSignIn.afterGoogleSignIn(
-                                                gateway = gateway,
-                                                settings = settingsManager,
-                                                uid = result.uid,
-                                                email = result.email,
-                                                joinWithBootstrapCode = settingsManager.getFirebaseBootstrapCode().isNotBlank(),
-                                            )
-                                        }.onFailure { e ->
-                                            firebaseSignInFeedback = e.message
-                                            uploadStatus = e.message
-                                        }
-                                    }
-                                }
-                                is com.eventmanager.app.data.remote.FirebaseAuthResult.Error -> {
-                                    firebaseSignInFeedback = result.message
-                                    uploadStatus = result.message
-                                }
-                            }
-                        }
-                    },
-                    onSignOut = {
-                        scope.launch {
-                            com.eventmanager.app.data.remote.createFirebaseAuthService(platformContext).signOut()
-                            firebaseAuthEmail = ""
-                            settingsManager.setFirebaseAuthEmail("")
-                            firebaseSignInFeedback = null
-                        }
-                    },
-                    onMigrateToSheets = {
-                        migrationWizard = com.eventmanager.app.data.remote.MigrationDirection.FIREBASE_TO_SHEETS
-                    },
-                    onMirrorExport = {
-                        viewModel.exportSheetsMirrorNow()
-                    },
-                    platformContext = platformContext,
-                    onMirrorSettingsChanged = { viewModel.onSheetsMirrorSettingsChanged() },
-                    settingsManager = settingsManager,
-                    profilePhotosEnabled = profilePhotosEnabled,
-                    onProfilePhotosEnabledChange = { viewModel.setProfilePhotosEnabled(it) },
-                    driveImportEnabled = driveImportEnabled,
-                    onDriveImportEnabledChange = {
-                        driveImportEnabled = it
-                        viewModel.setDriveImportEnabled(it)
-                    },
-                    guestFormsEnabled = guestFormsEnabled,
-                    onGuestFormsEnabledChange = { viewModel.setGuestFormsEnabled(it) },
-                    guestFormsBilleterieValidateEnabled = guestFormsBilleterieValidateEnabled,
-                    onGuestFormsBilleterieValidateEnabledChange = {
-                        viewModel.setGuestFormsBilleterieValidateEnabled(it)
-                    },
-                    guestFormSiteOrigin = viewModel.guestFormSiteOrigin(),
-                    volunteerPortalEnabled = volunteerPortalEnabled,
-                    portalServerStatus = portalServerStatus,
-                    onVolunteerPortalEnabledChange = { viewModel.setVolunteerPortalEnabled(it) },
-                    volunteerPortalUrl = viewModel.volunteerPortalUrl(),
-                    volunteerPortalGoogleEnabled = volunteerPortalGoogleEnabled,
-                    onVolunteerPortalGoogleEnabledChange = { viewModel.setVolunteerPortalGoogleEnabled(it) },
-                    volunteerPortalShowLogo = volunteerPortalShowLogo,
-                    onVolunteerPortalShowLogoChange = { viewModel.setVolunteerPortalShowLogo(it) },
-                    volunteerPortalQrEnabled = volunteerPortalQrEnabled,
-                    onVolunteerPortalQrEnabledChange = { viewModel.setVolunteerPortalQrEnabled(it) },
-                    volunteerPortalGoogleDomains = volunteerPortalGoogleDomains,
-                    onAddVolunteerPortalGoogleDomain = { viewModel.addVolunteerPortalGoogleDomain(it) },
-                    onRemoveVolunteerPortalGoogleDomain = { viewModel.removeVolunteerPortalGoogleDomain(it) },
-                    volunteerPortalGoogleAnyAccount = volunteerPortalGoogleAnyAccount,
-                    onVolunteerPortalGoogleAnyAccountChange = { viewModel.setVolunteerPortalGoogleAnyAccount(it) },
-                    projectId = firebaseProjectId,
-                    apiKey = firebaseApiKey,
-                    applicationId = firebaseApplicationId,
-                    onProjectIdChange = {
-                        firebaseProjectId = it
-                        settingsManager.setFirebaseProjectId(it)
-                    },
-                    onApiKeyChange = {
-                        firebaseApiKey = it
-                        settingsManager.setFirebaseApiKey(it)
-                    },
-                    onApplicationIdChange = {
-                        firebaseApplicationId = it
-                        settingsManager.setFirebaseApplicationId(it)
-                    },
-                    webClientId = settingsManager.getFirebaseWebClientId(),
-                    onWebClientIdChange = { settingsManager.setFirebaseWebClientId(it) },
-                    webClientSecret = settingsManager.getFirebaseWebClientSecret(),
-                    onWebClientSecretChange = { settingsManager.setFirebaseWebClientSecret(it) },
-                    allowedEmailDomains = allowedEmailDomains,
-                    onAllowedEmailDomainsChange = { domains ->
-                        allowedEmailDomains = domains
-                        settingsManager.setAllowedEmailDomains(domains)
-                        scope.launch {
-                            val org = settingsManager.resolveWritableFirebaseOrgId()
-                            if (org.isBlank()) return@launch
-                            val gateway = com.eventmanager.app.data.remote.createFirestoreGateway(
-                                platformContext,
-                                settingsManager,
+                if (isFirebaseBackend) {
+                    com.eventmanager.app.ui.components.settings.SyncConnectionPage(syncBindings, showTitle = false)
+                } else {
+                    com.eventmanager.app.ui.components.settings.SheetsConnectionPage(
+                        spreadsheetId = spreadsheetId,
+                        onSpreadsheetIdChange = { spreadsheetId = it },
+                        keyReady = serviceAccountKeyInfo != null,
+                        keyDetails = serviceAccountKeyInfo?.let { info ->
+                            stringResource(Res.string.email_colon, info.clientEmail) + "\n" +
+                                stringResource(Res.string.project_colon, info.projectId)
+                        },
+                        onSave = { saveSheetsConfig() },
+                        onOpenGuide = { showInstructions = true },
+                        keyActions = {
+                            ServiceAccountKeyUploadButton(
+                                platformContext = platformContext,
+                                onStatusUpdate = { uploadStatus = it },
+                                modifier = Modifier.fillMaxWidth(),
                             )
-                            runCatching {
-                                com.eventmanager.app.data.remote.MemberRoleAdmin.publishAllowedEmailDomains(
-                                    gateway = gateway,
-                                    orgId = org,
-                                    domains = domains,
-                                )
-                            }.onFailure { uploadStatus = it.message }
-                        }
-                    },
-                    signInFeedback = firebaseSignInFeedback,
-                )
+                            uploadStatus?.let {
+                                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        },
+                        sheetNameFields = {
+                            SheetNameField(stringResource(Res.string.guest_list_sheet_label), guestListSheet) { guestListSheet = it }
+                            SheetNameField(stringResource(Res.string.volunteer_sheet_label), volunteerSheet) { volunteerSheet = it }
+                            SheetNameField(stringResource(Res.string.shifts_sheet_label), jobsSheet) { jobsSheet = it }
+                            SheetNameField(stringResource(Res.string.shift_types_sheet_label), jobTypesSheet) { jobTypesSheet = it }
+                            SheetNameField(stringResource(Res.string.venues_sheet_label), venuesSheet) { venuesSheet = it }
+                            SheetNameField(stringResource(Res.string.sales_items_sheet_label), salesItemsSheet) { salesItemsSheet = it }
+                            SheetNameField(stringResource(Res.string.transfers_sheet_label), transfersSheet) { transfersSheet = it }
+                            SheetNameField(stringResource(Res.string.temp_guest_list_sheet_label), tempGuestListSheet) { tempGuestListSheet = it }
+                            SheetNameField(stringResource(Res.string.settings_sheet_label), settingsSheet) { settingsSheet = it }
+                        },
+                    )
+                }
             }
-
-            if (variant == SettingsScreenVariant.Full) {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-            }
-
-            if (com.eventmanager.app.ui.components.shouldShowSyncInterval(settingsManager.getBackendType())) {
-                DesktopSyncIntervalSettings(
-                    settingsManager = settingsManager,
-                    viewModel = viewModel,
-                    syncInterval = syncInterval,
-                    onSyncIntervalChange = { syncInterval = it }
-                )
-            }
-
-            if (variant == SettingsScreenVariant.Full &&
-                com.eventmanager.app.ui.components.shouldShowSheetsManualSyncControls(settingsManager.getBackendType())
-            ) {
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = { viewModel.performFullSync() },
-                        enabled = !isSyncing,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        if (isSyncing) {
-                            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                        } else {
-                            Icon(Icons.Default.Sync, contentDescription = null)
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(Res.string.manual_sync_now))
-                    }
-                    OutlinedButton(
-                        onClick = { viewModel.testSyncStatus() },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(stringResource(Res.string.test_sync_status))
-                    }
+            // Firebase-only and Sheets-only pages are also gated here, so a stale selection never
+            // renders a page (and its network calls) for the other backend, even for one frame.
+            if (isFirebaseBackend) {
+                DesktopSettingsCategory(
+                    section = DesktopSettingsNav.SyncTeam,
+                    selectedSection = selectedSection,
+                    title = stringResource(Res.string.sync_team_page_title),
+                    icon = Icons.Default.Group,
+                ) {
+                    com.eventmanager.app.ui.components.settings.SyncTeamPage(syncBindings, showTitle = false)
+                }
+                DesktopSettingsCategory(
+                    section = DesktopSettingsNav.SyncOnline,
+                    selectedSection = selectedSection,
+                    title = stringResource(Res.string.sync_online_page_title),
+                    icon = Icons.Default.Public,
+                ) {
+                    com.eventmanager.app.ui.components.settings.SyncOnlinePage(syncBindings, showTitle = false)
+                }
+                DesktopSettingsCategory(
+                    section = DesktopSettingsNav.SyncBackup,
+                    selectedSection = selectedSection,
+                    title = stringResource(Res.string.sync_backup_page_title),
+                    icon = Icons.Default.Backup,
+                ) {
+                    com.eventmanager.app.ui.components.settings.SyncBackupPage(syncBindings, showTitle = false)
+                }
+            } else {
+                DesktopSettingsCategory(
+                    section = DesktopSettingsNav.SyncSheets,
+                    selectedSection = selectedSection,
+                    title = stringResource(Res.string.sync_sheets_page_title),
+                    icon = Icons.Default.Sync,
+                ) {
+                    com.eventmanager.app.ui.components.settings.SheetsSyncPage(
+                        b = syncBindings,
+                        isSyncing = isSyncing,
+                        syncIntervalMinutes = syncInterval,
+                        onSyncIntervalChange = { minutes ->
+                            syncInterval = minutes
+                            settingsManager.saveSyncInterval(minutes)
+                            viewModel.updateSyncInterval()
+                        },
+                        onTestSyncStatus = { viewModel.testSyncStatus() },
+                        showTitle = false,
+                    )
                 }
             }
         }
+
+        if (variant == SettingsScreenVariant.Full) {
+            DesktopSettingsCategory(
+                section = DesktopSettingsNav.Association,
+                selectedSection = selectedSection,
+                title = stringResource(Res.string.settings_category_association),
+                icon = Icons.Default.Business,
+            ) {
+                DesktopAssociationLogoSettings(
+                    settingsManager = settingsManager,
+                    editable = canEditInstitutionSettings,
+                    onInstitutionLogoBytes = { viewModel.setInstitutionLogo(it) },
+                )
+            }
         }
 
         if (variant == SettingsScreenVariant.Full || variant == SettingsScreenVariant.BilleterieBasic || variant == SettingsScreenVariant.PosBasic) {
@@ -610,178 +451,6 @@ actual fun SettingsScreen(
             title = stringResource(Res.string.settings_category_email),
             icon = Icons.Default.Email,
         ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = stringResource(Res.string.email_gmail_auth_title),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.weight(1f)
-                    )
-                    IconButton(
-                        onClick = { showGmailOAuthHelp = true },
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Help,
-                            contentDescription = stringResource(Res.string.email_gmail_oauth_help_title),
-                            modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-                Text(
-                    text = stringResource(Res.string.email_gmail_auth_description),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(8.dp))
-                if (!isFirebaseBackend) {
-                    DesktopSettingsToggleRow(
-                        title = stringResource(Res.string.email_gmail_use_service_account),
-                        description = stringResource(Res.string.email_gmail_use_service_account_description),
-                        checked = gmailUseServiceAccount,
-                        onCheckedChange = { enabled ->
-                            gmailUseServiceAccount = enabled
-                            settingsManager.setGmailUseServiceAccount(enabled)
-                            scope.launch {
-                                gmailAuth.signOut()
-                                settingsManager.clearGmailAuth()
-                                gmailSignedIn = false
-                                gmailEmail = null
-                            }
-                        }
-                    )
-                    Spacer(Modifier.height(8.dp))
-                }
-                if (!isFirebaseBackend && gmailUseServiceAccount) {
-                    Text(
-                        text = if (serviceAccountConfigured) {
-                            stringResource(Res.string.email_gmail_service_account_configured)
-                        } else {
-                            stringResource(Res.string.email_gmail_service_account_missing)
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (serviceAccountConfigured) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.error
-                        }
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = gmailServiceAccountSender,
-                        onValueChange = {
-                            gmailServiceAccountSender = it
-                            settingsManager.saveGmailServiceAccountSenderEmail(it)
-                        },
-                        label = { Text(stringResource(Res.string.email_gmail_service_account_sender_label)) },
-                        supportingText = {
-                            Text(stringResource(Res.string.email_gmail_service_account_sender_description))
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        enabled = !gmailSignedIn
-                    )
-                } else {
-                    Text(
-                        text = stringResource(Res.string.email_gmail_oauth_client_description),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    GmailOAuthClientUploadButton(
-                        platformContext = platformContext,
-                        onStatusUpdate = { gmailOAuthUploadStatus = it },
-                        onConfiguredChanged = { gmailOAuthConfigured = it },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Text(
-                        text = if (gmailOAuthConfigured) {
-                            stringResource(Res.string.email_gmail_oauth_client_configured)
-                        } else {
-                            stringResource(Res.string.email_gmail_oauth_client_missing)
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (gmailOAuthConfigured) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.error
-                        }
-                    )
-                    gmailOAuthUploadStatus?.let { status ->
-                        Text(
-                            text = status,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                Spacer(Modifier.height(12.dp))
-
-                if (gmailSignedIn && gmailEmail != null) {
-                    Text(
-                        text = stringResource(Res.string.email_gmail_signed_in_as, gmailEmail!!),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    OutlinedButton(
-                        onClick = {
-                            scope.launch {
-                                gmailLoading = true
-                                gmailAuth.signOut()
-                                settingsManager.clearGmailAuth()
-                                gmailSignedIn = false
-                                gmailEmail = null
-                                gmailLoading = false
-                                showPlatformToast(platformContext, gmailRevokedMsg)
-                            }
-                        },
-                        enabled = !gmailLoading
-                    ) {
-                        Text(stringResource(Res.string.email_gmail_sign_out))
-                    }
-                } else {
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                gmailLoading = true
-                                if (!isFirebaseBackend && gmailUseServiceAccount) {
-                                    settingsManager.saveGmailServiceAccountSenderEmail(gmailServiceAccountSender.trim())
-                                }
-                                val ok = gmailAuth.signIn()
-                                gmailSignedIn = ok
-                                gmailEmail = gmailAuth.accountEmail
-                                gmailLoading = false
-                                if (ok) {
-                                    gmailEmail?.let { settingsManager.saveGmailAccount(it) }
-                                    showPlatformToast(platformContext, gmailAuthSuccessMsg)
-                                } else {
-                                    val errorMsg = resolveGmailSignInErrorMessage(gmailAuth.lastSignInError)
-                                    showPlatformToast(platformContext, errorMsg)
-                                }
-                            }
-                        },
-                        enabled = !gmailLoading && (
-                            if (!isFirebaseBackend && gmailUseServiceAccount) {
-                                serviceAccountConfigured && gmailServiceAccountSender.isNotBlank()
-                            } else {
-                                gmailOAuthConfigured
-                            }
-                            )
-                    ) {
-                        if (gmailLoading) {
-                            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                        } else {
-                            Text(stringResource(Res.string.email_gmail_sign_in))
-                        }
-                    }
-                }
-
-                HorizontalDivider()
-
                 DesktopEmailTemplateSettings(
                     settingsManager,
                     onSyncedSettingChanged = {
@@ -789,7 +458,6 @@ actual fun SettingsScreen(
                     },
                     editable = canEditInstitutionSettings,
                     temporaryFeaturesEnabled = temporaryGuestFeaturesEnabled,
-                    onInstitutionLogoBytes = { viewModel.setInstitutionLogo(it) },
                 )
             }
         }
@@ -1583,12 +1251,6 @@ actual fun SettingsScreen(
         }
     }
 
-    if (showGmailOAuthHelp) {
-        DesktopGmailOAuthInstructionsDialog(
-            showServiceAccountHelp = !isFirebaseBackend,
-            onDismiss = { showGmailOAuthHelp = false },
-        )
-    }
 
     if (showCleanupDialog) {
         val volunteers by viewModel.volunteers.collectAsState()
@@ -2053,117 +1715,6 @@ private fun DesktopDateTimeFormatSettings(settingsManager: SettingsManager) {
 }
 
 @Composable
-private fun DesktopSyncIntervalSettings(
-    settingsManager: SettingsManager,
-    viewModel: EventManagerViewModel,
-    syncInterval: Int,
-    onSyncIntervalChange: (Int) -> Unit,
-) {
-    val scope = rememberCoroutineScope()
-    var debounceJob by remember { mutableStateOf<Job?>(null) }
-
-    fun applyInterval(newValue: Int) {
-        val clamped = newValue.coerceIn(1, 60)
-        onSyncIntervalChange(clamped)
-        settingsManager.saveSyncInterval(clamped)
-        debounceJob?.cancel()
-        debounceJob = scope.launch {
-            delay(500)
-            viewModel.updateSyncInterval()
-        }
-    }
-
-    Text(
-        text = stringResource(Res.string.sync_config_title),
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold
-    )
-    Text(
-        text = stringResource(Res.string.sync_interval_hint),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
-    )
-    Spacer(Modifier.height(8.dp))
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    Icons.Default.Timer,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Text(
-                    text = stringResource(Res.string.sync_interval_label),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                FilledTonalIconButton(
-                    onClick = { applyInterval(syncInterval - 1) },
-                    enabled = syncInterval > 1,
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Icon(Icons.Default.Remove, contentDescription = stringResource(Res.string.date_change_offset_decrease))
-                }
-
-                Column(
-                    modifier = Modifier.weight(1f),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = syncInterval.toString(),
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = stringResource(Res.string.minutes_short),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                FilledTonalIconButton(
-                    onClick = { applyInterval(syncInterval + 1) },
-                    enabled = syncInterval < 60,
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = stringResource(Res.string.date_change_offset_increase))
-                }
-            }
-
-            Slider(
-                value = syncInterval.toFloat(),
-                onValueChange = { applyInterval(it.toInt()) },
-                valueRange = 1f..60f,
-                steps = 58,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-    }
-}
-
-@Composable
 private fun DesktopDateChangeOffset(
     settingsManager: SettingsManager,
     onSyncedSettingChanged: () -> Unit = {},
@@ -2235,6 +1786,44 @@ private fun DesktopDateChangeOffset(
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
+/**
+ * The association's logo, set once here. E-mails, artist guest list forms, the volunteer portal
+ * and Wallet passes all use it, so it no longer lives in the e-mail settings.
+ */
+@Composable
+private fun DesktopAssociationLogoSettings(
+    settingsManager: SettingsManager,
+    editable: Boolean,
+    onInstitutionLogoBytes: (ByteArray?) -> Unit,
+) {
+    val platformContext = LocalPlatformContext.current
+    var logoPath by remember { mutableStateOf(settingsManager.getEmailLogoUri()) }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            stringResource(Res.string.association_logo_title),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            stringResource(Res.string.association_logo_used_by),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        EmailLogoUploadSection(
+            platformContext = platformContext,
+            logoPath = logoPath,
+            onLogoPathChanged = { path ->
+                if (!editable) return@EmailLogoUploadSection
+                logoPath = path
+                settingsManager.saveEmailLogoUri(path)
+                val bytes = if (path.isBlank()) null else PlatformFileManager(platformContext).readEmailLogoBytes()
+                onInstitutionLogoBytes(bytes)
+            },
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
 @Composable
 private fun DesktopEmailTemplateSettings(
     settingsManager: SettingsManager,
@@ -2242,8 +1831,6 @@ private fun DesktopEmailTemplateSettings(
     editable: Boolean = true,
     /** The artist guest list tab only exists on Firebase, like the rest of the feature. */
     temporaryFeaturesEnabled: Boolean = false,
-    /** Keep the e-mail logo and the institution / form logo in sync. */
-    onInstitutionLogoBytes: (ByteArray?) -> Unit = {},
 ) {
     fun persistSynced(block: () -> Unit) {
         if (!editable) return
@@ -2591,9 +2178,6 @@ private fun DesktopEmailTemplateSettings(
         },
         enabled = editable,
     )
-    if (includeWalletPass) {
-        DesktopWalletPassCertificateSettings(settingsManager = settingsManager, platformContext = platformContext)
-    }
     DesktopSettingsToggleRow(
         title = stringResource(Res.string.email_include_logo_label),
         description = stringResource(Res.string.email_include_logo_description),
@@ -2605,22 +2189,11 @@ private fun DesktopEmailTemplateSettings(
         enabled = editable,
     )
 
-    if (includeLogo) {
-        EmailLogoUploadSection(
-            platformContext = platformContext,
-            logoPath = emailLogoUri,
-            onLogoPathChanged = { path ->
-                if (!editable) return@EmailLogoUploadSection
-                emailLogoUri = path
-                settingsManager.saveEmailLogoUri(path)
-                val bytes = if (path.isBlank()) {
-                    null
-                } else {
-                    PlatformFileManager(platformContext).readEmailLogoBytes()
-                }
-                onInstitutionLogoBytes(bytes)
-            },
-            modifier = Modifier.fillMaxWidth(),
+    if (includeLogo && emailLogoUri.isBlank()) {
+        Text(
+            stringResource(Res.string.email_logo_missing_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
         )
     }
 
@@ -2668,101 +2241,6 @@ private fun DesktopEmailTemplateSettings(
         Icon(Icons.Default.Refresh, contentDescription = null)
         Spacer(Modifier.width(8.dp))
         Text("${stringResource(Res.string.email_reset_to_defaults)} (${tabLabels[selectedTab]})")
-    }
-}
-
-@Composable
-private fun DesktopWalletPassCertificateSettings(
-    settingsManager: SettingsManager,
-    platformContext: com.eventmanager.app.platform.PlatformContext,
-) {
-    val scope = rememberCoroutineScope()
-    val fileManager = remember(platformContext) { com.eventmanager.app.platform.PlatformFileManager(platformContext) }
-    var certPassword by remember { mutableStateOf(settingsManager.getWalletPassCertificatePassword()) }
-    var certConfigured by remember { mutableStateOf(fileManager.getWalletPassCertificateFile()?.exists() == true) }
-    val signingReady = remember(certConfigured, certPassword) {
-        com.eventmanager.app.wallet.WalletPassService.isAppleWalletSigningConfigured(
-            settingsManager,
-            fileManager.getWalletPassCertificateFile()?.readBytes(),
-        )
-    }
-    val signingConfig = remember(signingReady, certPassword) {
-        if (!signingReady) null else com.eventmanager.app.wallet.WalletPassSigningConfigLoader.fromSettings(
-            settingsManager,
-            fileManager.getWalletPassCertificateFile()?.readBytes(),
-        )
-    }
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-    ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(
-                stringResource(Res.string.email_wallet_pass_cert_title),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                stringResource(Res.string.email_wallet_pass_cert_description),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            OutlinedButton(
-                onClick = {
-                    scope.launch {
-                        val bytes = fileManager.pickWalletPassCertificateFile()
-                        if (bytes != null && fileManager.saveWalletPassCertificate(bytes)) {
-                            certConfigured = true
-                            val info = com.eventmanager.app.wallet.PkPassCertificateParser.loadPkcs12(
-                                bytes,
-                                certPassword.toCharArray(),
-                            )
-                            info?.passTypeIdentifier?.let {
-                                if (settingsManager.getWalletPassTypeIdentifier().isBlank()) {
-                                    settingsManager.saveWalletPassTypeIdentifier(it)
-                                }
-                            }
-                            info?.teamIdentifier?.let {
-                                if (settingsManager.getWalletPassTeamIdentifier().isBlank()) {
-                                    settingsManager.saveWalletPassTeamIdentifier(it)
-                                }
-                            }
-                        }
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Icon(Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(Res.string.email_wallet_pass_cert_upload))
-            }
-            OutlinedTextField(
-                value = certPassword,
-                onValueChange = {
-                    certPassword = it
-                    settingsManager.saveWalletPassCertificatePassword(it)
-                },
-                label = { Text(stringResource(Res.string.email_wallet_pass_cert_password_label)) },
-                placeholder = { Text(stringResource(Res.string.email_wallet_pass_cert_password_hint)) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-            )
-            val statusText = if (signingReady && signingConfig != null) {
-                stringResource(
-                    Res.string.email_wallet_pass_cert_configured,
-                    signingConfig.passTypeIdentifier,
-                    signingConfig.teamIdentifier,
-                )
-            } else {
-                stringResource(Res.string.email_wallet_pass_cert_missing)
-            }
-            Text(
-                statusText,
-                style = MaterialTheme.typography.bodySmall,
-                color = if (signingReady) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-            )
-        }
     }
 }
 
@@ -3056,239 +2534,6 @@ private fun DesktopDeveloperSettings(
 }
 
 @Composable
-private fun DesktopGmailOAuthInstructionsDialog(
-    showServiceAccountHelp: Boolean = true,
-    onDismiss: () -> Unit,
-) {
-    var selectedTab by remember { mutableStateOf(GmailHelpTab.OAuth) }
-    val scrollState = rememberScrollState()
-
-    LaunchedEffect(selectedTab) {
-        scrollState.scrollTo(0)
-    }
-    LaunchedEffect(showServiceAccountHelp) {
-        if (!showServiceAccountHelp && selectedTab == GmailHelpTab.ServiceAccount) {
-            selectedTab = GmailHelpTab.OAuth
-        }
-    }
-
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        Surface(
-            shape = RoundedCornerShape(20.dp),
-            tonalElevation = 6.dp,
-            modifier = Modifier
-                .fillMaxWidth(0.55f)
-                .fillMaxHeight(0.75f)
-        ) {
-            Column(Modifier.fillMaxSize()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Text(
-                        text = stringResource(Res.string.email_gmail_oauth_help_title),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                if (showServiceAccountHelp) {
-                    GmailHelpTabRow(
-                        selectedTab = selectedTab,
-                        onTabSelected = { selectedTab = it }
-                    )
-                }
-
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .verticalScroll(scrollState)
-                        .padding(horizontal = 20.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    when (selectedTab) {
-                        GmailHelpTab.OAuth -> GmailHelpOAuthTab()
-                        GmailHelpTab.ServiceAccount -> if (showServiceAccountHelp) {
-                            GmailHelpServiceAccountTab()
-                        } else {
-                            GmailHelpOAuthTab()
-                        }
-                    }
-                }
-
-                HorizontalDivider()
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    TextButton(onClick = onDismiss) {
-                        Text(stringResource(Res.string.got_it))
-                    }
-                }
-            }
-        }
-    }
-}
-
-private enum class GmailHelpTab { OAuth, ServiceAccount }
-
-@Composable
-private fun GmailHelpTabRow(
-    selectedTab: GmailHelpTab,
-    onTabSelected: (GmailHelpTab) -> Unit,
-) {
-    val tabs = listOf(
-        GmailHelpTab.OAuth to stringResource(Res.string.email_gmail_help_tab_oauth),
-        GmailHelpTab.ServiceAccount to stringResource(Res.string.email_gmail_help_tab_service_account),
-    )
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        tabs.forEach { (tab, label) ->
-            GmailHelpTabChip(
-                label = label,
-                selected = selectedTab == tab,
-                onClick = { onTabSelected(tab) },
-                modifier = Modifier.weight(1f)
-            )
-        }
-    }
-}
-
-@Composable
-private fun GmailHelpTabChip(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .background(
-                color = if (selected) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
-                },
-                shape = RoundedCornerShape(10.dp)
-            )
-            .clickable(onClick = onClick)
-            .padding(vertical = 10.dp, horizontal = 8.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = if (selected) {
-                MaterialTheme.colorScheme.onPrimary
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-            textAlign = TextAlign.Center,
-            maxLines = 2
-        )
-    }
-}
-
-@Composable
-private fun GmailHelpOAuthTab() {
-    Text(
-        text = stringResource(Res.string.email_gmail_oauth_help_intro),
-        fontWeight = FontWeight.SemiBold
-    )
-    OutlinedButton(
-        onClick = { openUrl("https://console.cloud.google.com/") },
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(8.dp))
-        Text(stringResource(Res.string.open_google_cloud_console))
-    }
-    val steps = listOf(
-        Res.string.email_gmail_oauth_step_1_title to Res.string.email_gmail_oauth_step_1_description,
-        Res.string.email_gmail_oauth_step_2_title to Res.string.email_gmail_oauth_step_2_description,
-        Res.string.email_gmail_oauth_step_3_title to Res.string.email_gmail_oauth_step_3_description,
-        Res.string.email_gmail_oauth_step_4_title to Res.string.email_gmail_oauth_step_4_description,
-        Res.string.email_gmail_oauth_step_5_title to Res.string.email_gmail_oauth_step_5_description,
-        Res.string.email_gmail_oauth_step_6_title to Res.string.email_gmail_oauth_step_6_description,
-    )
-    steps.forEachIndexed { index, (titleRes, descRes) ->
-        DesktopInstructionStep(
-            number = (index + 1).toString(),
-            title = stringResource(titleRes),
-            description = stringResource(descRes)
-        )
-    }
-}
-
-@Composable
-private fun GmailHelpServiceAccountTab() {
-    Text(
-        text = stringResource(Res.string.email_gmail_service_account_help_intro),
-        fontWeight = FontWeight.SemiBold
-    )
-    GmailHelpSection(
-        title = stringResource(Res.string.email_gmail_service_account_help_sender_title),
-        body = stringResource(Res.string.email_gmail_service_account_help_sender_body)
-    )
-    GmailHelpSection(
-        title = stringResource(Res.string.email_gmail_service_account_help_not_title),
-        body = stringResource(Res.string.email_gmail_service_account_help_not_body)
-    )
-    GmailHelpSection(
-        title = stringResource(Res.string.email_gmail_service_account_help_requirements_title),
-        body = stringResource(Res.string.email_gmail_service_account_help_requirements_body)
-    )
-    val steps = listOf(
-        Res.string.email_gmail_service_account_help_step_1_title to Res.string.email_gmail_service_account_help_step_1_description,
-        Res.string.email_gmail_service_account_help_step_2_title to Res.string.email_gmail_service_account_help_step_2_description,
-        Res.string.email_gmail_service_account_help_step_3_title to Res.string.email_gmail_service_account_help_step_3_description,
-    )
-    steps.forEachIndexed { index, (titleRes, descRes) ->
-        DesktopInstructionStep(
-            number = (index + 1).toString(),
-            title = stringResource(titleRes),
-            description = stringResource(descRes)
-        )
-    }
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.65f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
-    ) {
-        Text(
-            text = stringResource(Res.string.email_gmail_service_account_help_no_workspace),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
-        )
-    }
-}
-
-@Composable
-private fun GmailHelpSection(title: String, body: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-        Text(
-            body,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
 private fun DesktopGoogleSheetsInstructionsDialog(onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -3390,68 +2635,6 @@ private fun DesktopLogViewerDialog(content: String, onDismiss: () -> Unit) {
                         style = MaterialTheme.typography.bodySmall,
                         fontFamily = FontFamily.Monospace,
                         modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun DesktopServiceAccountKeyInfoPanel(
-    keyInfo: ServiceAccountKeyInfo?,
-    modifier: Modifier = Modifier,
-) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = if (keyInfo != null) {
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-            } else {
-                MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
-            }
-        )
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            Icon(
-                imageVector = if (keyInfo != null) Icons.Default.CheckCircle else Icons.Default.Warning,
-                contentDescription = null,
-                tint = if (keyInfo != null) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.error
-                }
-            )
-            Spacer(Modifier.width(12.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = if (keyInfo != null) {
-                        stringResource(Res.string.service_account_key_found)
-                    } else {
-                        stringResource(Res.string.service_account_key_required)
-                    },
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold
-                )
-                if (keyInfo != null) {
-                    Text(
-                        text = stringResource(Res.string.email_colon, keyInfo.clientEmail),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = stringResource(Res.string.project_colon, keyInfo.projectId),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                } else {
-                    Text(
-                        text = stringResource(Res.string.upload_key_file_description),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }

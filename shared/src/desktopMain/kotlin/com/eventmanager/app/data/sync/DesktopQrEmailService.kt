@@ -15,7 +15,6 @@ import com.eventmanager.app.platform.PlatformFileManager
 import com.eventmanager.app.platform.appDataDir
 import com.eventmanager.app.wallet.WalletPassRequest
 import com.eventmanager.app.wallet.WalletPassService
-import com.google.api.client.auth.oauth2.Credential
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
@@ -53,42 +52,7 @@ class DesktopQrEmailService(private val context: PlatformContext) {
     private val fileManager = PlatformFileManager(context)
     private val cacheDir = File(context.appDataDir, "cache").also { it.mkdirs() }
 
-    suspend fun sendViaGmailApi(
-        profile: QrEmailProfile,
-        settingsManager: SettingsManager,
-        recipientEmail: String,
-        recipientName: String,
-        qrPayload: String,
-        template: DesktopQrEmailTemplateStrings,
-        codes: List<QrEmailRecipientCode> = emptyList(),
-    ): Boolean {
-        val gmailAuth = DesktopGmailAuth(context)
-        if (!gmailAuth.isSignedIn()) return false
-        val credential = gmailAuth.loadRequestInitializer() ?: return false
-
-        val prepared = prepareEmail(
-            profile = profile,
-            settingsManager = settingsManager,
-            recipientEmail = recipientEmail,
-            recipientName = recipientName,
-            qrPayload = qrPayload,
-            template = template,
-            forManualSend = false,
-            codes = codes,
-        )
-
-        return DesktopGmailSendService(context).sendMimeEmail(
-            requestInitializer = credential,
-            userId = gmailAuth.getSendUserId(),
-            to = recipientEmail,
-            mimeMessage = prepared.mimeMessage,
-        )
-    }
-
-    /**
-     * Same message as [sendViaGmailApi], handed to the site (SiteMailRelay) for devices without a
-     * Gmail account. Gmail on the device keeps priority: callers only use this when it is absent.
-     */
+    /** The finished QR e-mail, handed to the association's site (SiteMailRelay), which sends it. */
     suspend fun sendViaSite(
         profile: QrEmailProfile,
         settingsManager: SettingsManager,

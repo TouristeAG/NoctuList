@@ -10,10 +10,6 @@
     <string name="settings_logout_description">स्वागत स्क्रीन पर लौटें. प्रबंधन सुविधाओं तक पहुँचने के लिए आपको व्यवस्थापक के रूप में फिर से साइन इन करना होगा।</string>
 
     <!-- Google Sheets Configuration -->
-    <string name="google_sheets_config_title">Google शीट कॉन्फ़िगरेशन</string>
-    <string name="view_setup_instructions">सेटअप निर्देश देखें</string>
-    <string name="spreadsheet_id_label">स्प्रेडशीट आईडी</string>
-    <string name="spreadsheet_id_hint">इसे अपने Google शीट्स URL से प्राप्त करें: https://docs.google.com/spreadshields/d/SPREADSHEET_ID/edit</string>
     <string name="guest_list_sheet_label">अतिथि सूची पत्रक</string>
     <string name="volunteer_sheet_label">स्वयंसेवक पत्रक</string>
     <string name="shifts_sheet_label">शिफ्ट शीट</string>
@@ -37,32 +33,22 @@
     <string name="admin_label">व्यवस्थापक</string>
     <string name="admin_yes">हाँ</string>
     <string name="admin_no">नहीं</string>
-    <string name="save_settings">सेटिंग्स सहेजें</string>
     <string name="test_connection">परीक्षण कनेक्शन</string>
     
     <!-- Service Account Configuration -->
-    <string name="service_account_config_title">सेवा खाता कॉन्फ़िगरेशन</string>
-    <string name="service_account_key_found">सेवा खाता कुंजी मिली</string>
-    <string name="service_account_key_required">सेवा खाता कुंजी आवश्यक है</string>
     <string name="email_label">ईमेल: %s</string>
     <string name="project_label">प्रोजेक्ट: %s</string>
     <string name="email_colon">ईमेल: %s</string>
     <string name="project_colon">प्रोजेक्ट: %s</string>
     <string name="upload_key_file_description">अपना Google सेवा खाता JSON कुंजी फ़ाइल अपलोड करें</string>
-    <string name="upload_key_description">अपना Google सेवा खाता JSON कुंजी फ़ाइल अपलोड करें</string>
     <string name="replace_key_file">कुंजी फ़ाइल बदलें</string>
     <string name="upload_key_file">कुंजी फ़ाइल अपलोड करें</string>
     
     <!-- Sync Configuration -->
-    <string name="sync_config_title">सिंक कॉन्फ़िगरेशन</string>
-    <string name="sync_interval_label">सिंक अंतराल (मिनट)</string>
-    <string name="sync_interval_hint">Google शीट के साथ कितनी बार सिंक करना है (1-60 मिनट)</string>
-    <string name="test_sync_status">सिंक स्थिति का परीक्षण करें</string>
     <string name="sync_status_dialog_title">तुल्यकालन स्थिति</string>
     <string name="sync_status_configured">Google शीट कॉन्फ़िगर हो गई है और सिंक के लिए तैयार है</string>
     <string name="sync_status_not_configured">Google शीट कॉन्फ़िगर नहीं है. कृपया अपनी सेटिंग जांचें.</string>
     <string name="sync_status_error">सिंक स्थिति का परीक्षण करने में त्रुटि: %s</string>
-    <string name="manual_sync_now">अभी मैन्युअल सिंक करें</string>
     <string name="view_active_volunteers">सक्रिय स्वयंसेवकों को देखें</string>
     <string name="cleanup_inactive_volunteers">सफ़ाई निष्क्रिय स्वयंसेवक</string>
     <string name="cleanup_choose_duration">चुनें कि हटाए जाने के लिए स्वयंसेवकों को कितने समय तक निष्क्रिय रहना होगा:</string>
@@ -1098,7 +1084,6 @@
     <string name="seasonal_fun_description">विशेष मौसमी सुविधाएँ और सजावट सक्षम करें</string>
     
     <!-- Settings Categories -->
-    <string name="settings_category_sync">सिंक &amp; डेटा</string>
     <string name="settings_category_appearance">उपस्थिति &amp; प्रदर्शन</string>
     <string name="settings_category_localization">स्थानीयकरण</string>
     <string name="settings_category_animations">एनिमेशन &amp; प्रभाव</string>
@@ -1493,4 +1478,8 @@
     <string name="guest_form_project_id_hint">YOUR_PROJECT_ID को सेटिंग्स → Firebase के Project ID से बदलें।</string>
     <string name="guest_form_offered_access_pick_venue">पहले एक स्थान चुनें।</string>
     <string name="guest_form_offered_access_empty">इस स्थान के लिए कोई विशेष पहुँच नहीं।</string>
+    <string name="settings_category_association">संस्था</string>
+    <string name="association_logo_title">संस्था का लोगो</string>
+    <string name="association_logo_used_by">ई-मेल, कलाकार अतिथि सूची फ़ॉर्म और स्वयंसेवक प्लेटफ़ॉर्म में इस्तेमाल होता है।</string>
+    <string name="email_logo_missing_hint">अभी कोई लोगो नहीं है। इसे सेटिंग्स, संस्था में जोड़ें।</string>
 </resources>

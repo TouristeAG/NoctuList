@@ -10,10 +10,6 @@
     <string name="settings_logout_description">Volver a la pantalla de bienvenida. Deberás iniciar sesión de nuevo como administrador para acceder a la gestión.</string>
 
     <!-- Google Sheets Configuration -->
-    <string name="google_sheets_config_title">Configuración de Google Sheets</string>
-    <string name="view_setup_instructions">Ver instrucciones de configuración</string>
-    <string name="spreadsheet_id_label">ID de hoja de cálculo</string>
-    <string name="spreadsheet_id_hint">Obtén esto desde la URL de tu Google Sheets: https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/edit</string>
     <string name="guest_list_sheet_label">Hoja de lista de invitados</string>
     <string name="volunteer_sheet_label">Hoja de voluntarios</string>
     <string name="shifts_sheet_label">Hoja de turnos</string>
@@ -41,32 +37,22 @@
     <string name="admin_label">Administrador</string>
     <string name="admin_yes">Sí</string>
     <string name="admin_no">No</string>
-    <string name="save_settings">Guardar configuración</string>
     <string name="test_connection">Probar conexión</string>
     
     <!-- Service Account Configuration -->
-    <string name="service_account_config_title">Configuración de cuenta de servicio</string>
-    <string name="service_account_key_found">Clave de cuenta de servicio encontrada</string>
-    <string name="service_account_key_required">Se requiere clave de cuenta de servicio</string>
     <string name="email_label">Email: %s</string>
     <string name="project_label">Proyecto: %s</string>
     <string name="email_colon">Email: %s</string>
     <string name="project_colon">Proyecto: %s</string>
     <string name="upload_key_file_description">Sube tu archivo de clave JSON de cuenta de servicio de Google</string>
-    <string name="upload_key_description">Sube tu archivo de clave JSON de cuenta de servicio de Google</string>
     <string name="replace_key_file">Reemplazar archivo de clave</string>
     <string name="upload_key_file">Subir archivo de clave</string>
     
     <!-- Sync Configuration -->
-    <string name="sync_config_title">Configuración de sincronización</string>
-    <string name="sync_interval_label">Intervalo de sincronización (minutos)</string>
-    <string name="sync_interval_hint">Con qué frecuencia sincronizar con Google Sheets (1-60 minutos)</string>
-    <string name="test_sync_status">Probar estado de sincronización</string>
     <string name="sync_status_dialog_title">Estado de sincronización</string>
     <string name="sync_status_configured">Google Sheets está configurado y listo para sincronizar</string>
     <string name="sync_status_not_configured">Google Sheets no está configurado. Por favor, verifica tu configuración.</string>
     <string name="sync_status_error">Error al probar estado de sincronización: %s</string>
-    <string name="manual_sync_now">Sincronizar manualmente ahora</string>
     <string name="view_active_volunteers">Ver voluntarios activos</string>
     <string name="cleanup_inactive_volunteers">Limpiar voluntarios inactivos</string>
     <string name="cleanup_choose_duration">Elige cuánto tiempo deben estar inactivos los voluntarios para ser eliminados:</string>
@@ -1060,7 +1046,6 @@
     <string name="seasonal_fun_description">Habilitar características y decoraciones estacionales especiales</string>
     
     <!-- Settings Categories -->
-    <string name="settings_category_sync">Sincronización y datos</string>
     <string name="settings_category_appearance">Apariencia y visualización</string>
     <string name="settings_category_localization">Localización</string>
     <string name="settings_category_animations">Animaciones y efectos</string>
@@ -1488,4 +1473,8 @@
     <string name="guest_form_project_id_hint">Sustituid YOUR_PROJECT_ID por el Project ID de Ajustes → Firebase.</string>
     <string name="guest_form_offered_access_pick_venue">Elige primero un lugar.</string>
     <string name="guest_form_offered_access_empty">Este lugar no tiene accesos especiales.</string>
+    <string name="settings_category_association">Asociación</string>
+    <string name="association_logo_title">Logotipo de la asociación</string>
+    <string name="association_logo_used_by">Se usa en los correos, los formularios de lista de invitados y la plataforma de voluntarios.</string>
+    <string name="email_logo_missing_hint">Todavía no hay logotipo. Añádalo en Ajustes, Asociación.</string>
 </resources>

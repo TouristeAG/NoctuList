@@ -10,10 +10,6 @@
     <string name="settings_logout_description">Redi ad\'tentorium\'gratissimum. Vos mos postulo ut re-authenticas\'Admin administratione accedere.</string>
 
     <!-- Google Sheets Configuration -->
-    <string name="google_sheets_config_title">Configuratio Google Sheets</string>
-    <string name="view_setup_instructions">Vide instructiones configuration</string>
-    <string name="spreadsheet_id_label">ID schedae computensis</string>
-    <string name="spreadsheet_id_hint">Get hoc a\'Domicilium Google schedae tuae: https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/edit</string>
     <string name="guest_list_sheet_label">Scheda indici hospitum</string>
     <string name="volunteer_sheet_label">Scheda voluntariorum</string>
     <string name="shifts_sheet_label">Scheda ex Munera</string>
@@ -37,32 +33,22 @@
     <string name="admin_label">Administrator</string>
     <string name="admin_yes">Ita</string>
     <string name="admin_no">Non</string>
-    <string name="save_settings">Serva optioes</string>
     <string name="test_connection">Proba connexionem</string>
     
     <!-- Service Account Configuration -->
-    <string name="service_account_config_title">Configuratio ex ratio ministerii</string>
-    <string name="service_account_key_found">Clavis rationis ministerii inventa</string>
-    <string name="service_account_key_required">Clavis rationis ministerii requiriture</string>
     <string name="email_label">Epistula: %s</string>
     <string name="project_label">Projectum: %s</string>
     <string name="email_colon">Epistula: %s</string>
     <string name="project_colon">Projectum: %s</string>
     <string name="upload_key_file_description">Deprome fasciculum clavis JSON rationis ministerii Google tuum</string>
-    <string name="upload_key_description">Deprome fasciculum clavis JSON rationis ministerii Google tuum</string>
     <string name="replace_key_file">Substitue fasciculum clavis</string>
     <string name="upload_key_file">Deprome fasciculum clavis</string>
     
     <!-- Sync Configuration -->
-    <string name="sync_config_title">Configuratio synchronizationis</string>
-    <string name="sync_interval_label">Intervallum synchronizationis (minuta)</string>
-    <string name="sync_interval_hint">Quoties sync cum Google schedae (1-60 minuta)</string>
-    <string name="test_sync_status">Proba status synchronizationis</string>
     <string name="sync_status_dialog_title">Status synchronizationis</string>
     <string name="sync_status_configured">Google schedae ad syncm erecta et parata sunt</string>
     <string name="sync_status_not_configured">Google Sheets non configuratum est. Quaeso optiones tuas inspice.</string>
     <string name="sync_status_error">Error sync probatio status: %s</string>
-    <string name="manual_sync_now">Synchroniza manu nunc</string>
     <string name="view_active_volunteers">Vide voluntarii actifves</string>
     <string name="cleanup_inactive_volunteers">Nettoyer voluntarii inactifves</string>
     <string name="cleanup_choose_duration">Elige quam diu voluntarii torpescere debent deleri:</string>
@@ -1098,7 +1084,6 @@
     <string name="seasonal_fun_description">Admitte speciales temporis features et ornamenta</string>
     
     <!-- Settings Categories -->
-    <string name="settings_category_sync">Synchronisation &amp; Data</string>
     <string name="settings_category_appearance">Apparence &amp; Affichage</string>
     <string name="settings_category_localization">Localisation</string>
     <string name="settings_category_animations">Animations &amp; Effets</string>
@@ -1493,4 +1478,8 @@
     <string name="guest_form_project_id_hint">YOUR_PROJECT_ID substitue Project ID ex Optiones → Firebase.</string>
     <string name="guest_form_offered_access_pick_venue">Prius locum elige.</string>
     <string name="guest_form_offered_access_empty">Huic loco nulli accessus speciales.</string>
+    <string name="settings_category_association">Societas</string>
+    <string name="association_logo_title">Signum societatis</string>
+    <string name="association_logo_used_by">Adhibetur in epistulis, formulis indicis hospitum et suggestu voluntariorum.</string>
+    <string name="email_logo_missing_hint">Nullum signum adhuc. Adde in Optionibus, Societas.</string>
 </resources>

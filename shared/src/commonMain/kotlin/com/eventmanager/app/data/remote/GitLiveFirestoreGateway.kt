@@ -433,6 +433,15 @@ class GitLiveFirestoreGateway(
         }
     }
 
+    internal suspend fun listMemberRecords(orgId: String): List<FirestoreMemberRecord> {
+        val firestore = db() ?: error("Firestore is not initialized")
+        if (orgId.isBlank() || isFirebaseOrgAllSentinel(orgId)) return emptyList()
+        val query = firestore.collection("orgs").document(orgId).collection("members")
+        // Server only: mutations must never act on a cached member list.
+        val snap = query.get(source = Source.SERVER)
+        return snap.documents.map { doc -> memberRecordFromSnapshot(doc) }
+    }
+
     private fun memberListingFromSnapshot(
         doc: dev.gitlive.firebase.firestore.DocumentSnapshot,
     ): FirebaseTeamMemberListing {

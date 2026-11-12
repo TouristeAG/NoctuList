@@ -31,7 +31,6 @@ import com.eventmanager.app.data.models.VolunteerRank
 import com.eventmanager.app.data.sync.DateFormatUtils
 import com.eventmanager.app.data.sync.SettingsManager
 import com.eventmanager.app.platform.PlatformContext
-import com.eventmanager.app.platform.createGmailAuth
 import com.eventmanager.app.resources.Res
 import com.eventmanager.app.resources.*
 import com.eventmanager.app.ui.platform.showPlatformToast
@@ -357,18 +356,14 @@ fun DesktopEmailConfirmDialog(
     /** More than one entry turns the mail into a grouped artist guest list. */
     codes: List<QrEmailRecipientCode> = emptyList(),
 ) {
-    val gmailAuth = remember(platformContext) { createGmailAuth(platformContext) }
     val emailService = remember(platformContext) { DesktopQrEmailService(platformContext) }
-    var isSignedIn by remember { mutableStateOf(gmailAuth.isSignedIn) }
-    // Without a Gmail account here, the site's server can send the same mail (Gmail stays first).
+    // On a computer the association's site sends the mail; Gmail sign-in stays on phones.
     val siteAvailable = remember { SiteMailRelay.isAvailable() }
     var isSending by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     val successMsg = stringResource(Res.string.email_api_success)
-    val notAuthMsg = stringResource(Res.string.email_api_not_authenticated)
-    val oauthMissingMsg = stringResource(Res.string.email_gmail_oauth_client_missing)
-    val sendFailedMsg = stringResource(Res.string.email_api_error_message, "Unknown error")
+    val siteUnavailableMsg = stringResource(Res.string.email_site_unavailable)
     val manualFailedMsg = stringResource(Res.string.email_error_message, "Unknown error")
     val siteNoAnswerMsg = stringResource(Res.string.email_site_no_answer)
     val siteTooLargeMsg = stringResource(Res.string.email_site_too_large)
@@ -445,12 +440,12 @@ fun DesktopEmailConfirmDialog(
                 }
                 }
 
-                if (isSignedIn) {
+                if (siteAvailable) {
                     Button(
                         onClick = {
                             scope.launch {
                                 isSending = true
-                                val sent = emailService.sendViaGmailApi(
+                                val result = emailService.sendViaSite(
                                     profile = profile,
                                     settingsManager = settingsManager,
                                     recipientEmail = recipientEmail,
@@ -460,11 +455,15 @@ fun DesktopEmailConfirmDialog(
                                     codes = codes,
                                 )
                                 isSending = false
-                                if (sent) {
-                                    showPlatformToast(platformContext, successMsg)
-                                    onSent()
-                                } else {
-                                    showPlatformToast(platformContext, sendFailedMsg)
+                                when (result) {
+                                    SiteMailResult.Sent -> {
+                                        showPlatformToast(platformContext, successMsg)
+                                        onSent()
+                                    }
+                                    SiteMailResult.TooLarge -> showPlatformToast(platformContext, siteTooLargeMsg)
+                                    SiteMailResult.Rejected -> showPlatformToast(platformContext, siteRejectedMsg)
+                                    SiteMailResult.NoAnswer,
+                                    SiteMailResult.Unavailable -> showPlatformToast(platformContext, siteNoAnswerMsg)
                                 }
                             }
                         },
@@ -480,11 +479,11 @@ fun DesktopEmailConfirmDialog(
                             Spacer(Modifier.height(4.dp))
                             Text(
                                 if (isSending) stringResource(Res.string.email_sending)
-                                else stringResource(Res.string.email_send_api),
+                                else stringResource(Res.string.email_send_site),
                                 style = MaterialTheme.typography.titleSmall
                             )
                             Text(
-                                stringResource(Res.string.email_send_api_description),
+                                stringResource(Res.string.email_send_site_description),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
                                 textAlign = TextAlign.Center
@@ -492,91 +491,17 @@ fun DesktopEmailConfirmDialog(
                         }
                     }
                 } else {
-                    if (siteAvailable) {
-                        Button(
-                            onClick = {
-                                scope.launch {
-                                    isSending = true
-                                    val result = emailService.sendViaSite(
-                                        profile = profile,
-                                        settingsManager = settingsManager,
-                                        recipientEmail = recipientEmail,
-                                        recipientName = recipientName,
-                                        qrPayload = qrPayload,
-                                        template = template,
-                                        codes = codes,
-                                    )
-                                    isSending = false
-                                    when (result) {
-                                        SiteMailResult.Sent -> {
-                                            showPlatformToast(platformContext, successMsg)
-                                            onSent()
-                                        }
-                                        SiteMailResult.TooLarge -> showPlatformToast(platformContext, siteTooLargeMsg)
-                                        SiteMailResult.Rejected -> showPlatformToast(platformContext, siteRejectedMsg)
-                                        SiteMailResult.NoAnswer,
-                                        SiteMailResult.Unavailable -> showPlatformToast(platformContext, siteNoAnswerMsg)
-                                    }
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            enabled = !isSending
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(8.dp)) {
-                                if (isSending) {
-                                    CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                                } else {
-                                    Icon(Icons.Default.CloudUpload, contentDescription = null)
-                                }
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    if (isSending) stringResource(Res.string.email_sending)
-                                    else stringResource(Res.string.email_send_site),
-                                    style = MaterialTheme.typography.titleSmall
-                                )
-                                Text(
-                                    stringResource(Res.string.email_send_site_description),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
-                                    textAlign = TextAlign.Center
-                                )
-                            }
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                        Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.Info, contentDescription = null)
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                siteUnavailableMsg,
+                                style = MaterialTheme.typography.bodySmall,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
-                    } else {
-                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-                            Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Default.Info, contentDescription = null)
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    notAuthMsg,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    textAlign = TextAlign.Center,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                    OutlinedButton(
-                        onClick = {
-                            scope.launch {
-                                isSending = true
-                                val ok = gmailAuth.signIn()
-                                isSignedIn = ok && gmailAuth.isSignedIn
-                                isSending = false
-                                if (!isSignedIn) {
-                                    val message = when (gmailAuth.lastSignInError) {
-                                        "missing_oauth_client" -> oauthMissingMsg
-                                        null, "" -> notAuthMsg
-                                        else -> gmailAuth.lastSignInError ?: notAuthMsg
-                                    }
-                                    showPlatformToast(platformContext, message)
-                                }
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isSending
-                    ) {
-                        Text(stringResource(Res.string.email_gmail_sign_in))
                     }
                 }
             }

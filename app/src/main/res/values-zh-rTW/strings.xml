@@ -10,10 +10,6 @@
     <string name="settings_logout_description">返回歡迎畫面。再次使用管理功能前須重新以管理員身分驗證。</string>
 
     <!-- Google Sheets Configuration -->
-    <string name="google_sheets_config_title">Google Sheets 配置</string>
-    <string name="view_setup_instructions">查看設定說明</string>
-    <string name="spreadsheet_id_label">試算表 ID</string>
-    <string name="spreadsheet_id_hint">從您的 Google Sheets 網址獲取：https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/edit</string>
     <string name="guest_list_sheet_label">賓客名單工作表</string>
     <string name="volunteer_sheet_label">志工工作表</string>
     <string name="shifts_sheet_label">班次工作表</string>
@@ -41,32 +37,22 @@
     <string name="admin_label">管理員</string>
     <string name="admin_yes">是</string>
     <string name="admin_no">否</string>
-    <string name="save_settings">儲存設定</string>
     <string name="test_connection">測試連接</string>
     
     <!-- Service Account Configuration -->
-    <string name="service_account_config_title">服務帳號配置</string>
-    <string name="service_account_key_found">已找到服務帳號金鑰</string>
-    <string name="service_account_key_required">需要服務帳號金鑰</string>
     <string name="email_label">電子郵件：%s</string>
     <string name="project_label">專案：%s</string>
     <string name="email_colon">電子郵件：%s</string>
     <string name="project_colon">專案：%s</string>
     <string name="upload_key_file_description">上傳您的 Google 服務帳號 JSON 金鑰檔案</string>
-    <string name="upload_key_description">上傳您的 Google 服務帳號 JSON 金鑰檔案</string>
     <string name="replace_key_file">替換金鑰檔案</string>
     <string name="upload_key_file">上傳金鑰檔案</string>
     
     <!-- Sync Configuration -->
-    <string name="sync_config_title">同步配置</string>
-    <string name="sync_interval_label">同步間隔（分鐘）</string>
-    <string name="sync_interval_hint">與 Google Sheets 同步的頻率（1-60 分鐘）</string>
-    <string name="test_sync_status">測試同步狀態</string>
     <string name="sync_status_dialog_title">同步狀態</string>
     <string name="sync_status_configured">Google Sheets 已配置並準備同步</string>
     <string name="sync_status_not_configured">Google Sheets 未配置。請檢查您的設定。</string>
     <string name="sync_status_error">測試同步狀態時發生錯誤：%s</string>
-    <string name="manual_sync_now">立即手動同步</string>
     <string name="view_active_volunteers">查看活躍志工</string>
     <string name="cleanup_inactive_volunteers">清理非活躍志工</string>
     <string name="cleanup_choose_duration">選擇志工需保持非活躍多久才會被刪除：</string>
@@ -1060,7 +1046,6 @@
     <string name="seasonal_fun_description">啟用特殊季節功能和裝飾</string>
     
     <!-- Settings Categories -->
-    <string name="settings_category_sync">同步與資料</string>
     <string name="settings_category_appearance">外觀與顯示</string>
     <string name="settings_category_localization">本地化</string>
     <string name="settings_category_animations">動畫與效果</string>
@@ -1488,4 +1473,8 @@
     <string name="guest_form_project_id_hint">將 YOUR_PROJECT_ID 替換為設定 → Firebase 中的 Project ID。</string>
     <string name="guest_form_offered_access_pick_venue">請先選擇場地。</string>
     <string name="guest_form_offered_access_empty">此場地沒有特殊通行權限。</string>
+    <string name="settings_category_association">協會</string>
+    <string name="association_logo_title">協會標誌</string>
+    <string name="association_logo_used_by">用於電子郵件、藝人賓客名單表單和志工平台。</string>
+    <string name="email_logo_missing_hint">還沒有標誌。請在「設定 > 協會」中新增。</string>
 </resources>
