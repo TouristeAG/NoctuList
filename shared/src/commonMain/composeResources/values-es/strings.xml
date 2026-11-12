@@ -2503,4 +2503,5 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="portal_access_google_err_save">No se pudo guardar, inténtalo de nuevo.</string>
     <string name="portal_access_google_remove_title">¿Quitar la cuenta de Google?</string>
     <string name="portal_access_google_remove_body">%1$s ya no podrá iniciar sesión con %2$s. El inicio de sesión con contraseña sigue funcionando.</string>
+    <string name="settings_help_cd">Ayuda</string>
 </resources>

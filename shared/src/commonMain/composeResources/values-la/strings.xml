@@ -2508,4 +2508,5 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="portal_access_google_err_save">Servare non potuit, iterum conare.</string>
     <string name="portal_access_google_remove_title">Rationem Google removere?</string>
     <string name="portal_access_google_remove_body">%1$s non iam per %2$s intrare poterit. Aditus per tesseram manet.</string>
+    <string name="settings_help_cd">Auxilium</string>
 </resources>

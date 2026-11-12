@@ -2505,4 +2505,5 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="portal_access_google_err_save">Saving failed, please try again.</string>
     <string name="portal_access_google_remove_title">Remove the Google account?</string>
     <string name="portal_access_google_remove_body">%1$s will no longer be able to sign in with %2$s. Their password sign-in still works.</string>
+    <string name="settings_help_cd">Help</string>
 </resources>

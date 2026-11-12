@@ -2502,4 +2502,5 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="portal_access_google_err_save">L\'enregistrement a échoué, réessayez.</string>
     <string name="portal_access_google_remove_title">Retirer le compte Google ?</string>
     <string name="portal_access_google_remove_body">%1$s ne pourra plus se connecter avec %2$s. La connexion par mot de passe reste possible.</string>
+    <string name="settings_help_cd">Aide</string>
 </resources>

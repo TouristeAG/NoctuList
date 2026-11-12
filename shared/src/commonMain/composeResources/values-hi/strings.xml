@@ -2508,4 +2508,5 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="portal_access_google_err_save">सहेजना विफल रहा, कृपया फिर से प्रयास करें।</string>
     <string name="portal_access_google_remove_title">Google खाता हटाएं?</string>
     <string name="portal_access_google_remove_body">%1$s अब %2$s से साइन इन नहीं कर पाएगा। पासवर्ड से साइन-इन अब भी काम करता है।</string>
+    <string name="settings_help_cd">सहायता</string>
 </resources>
