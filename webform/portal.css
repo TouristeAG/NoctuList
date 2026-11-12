@@ -531,6 +531,7 @@ details.fold[open] summary { color: var(--on); }
 .google-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* "My QR" button and full-screen code */
+.qr-block .qr-open { margin-top: 4px; }
 .qr-open { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
 dialog.qr-dialog {
   width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh;
@@ -545,3 +546,14 @@ dialog.qr-dialog::backdrop { background: #fff; }
 .qr-assoc { margin: 0; font-size: 1rem; font-weight: 700; color: #555; text-align: center; }
 .qr-assoc:empty { display: none; }
 dialog.qr-dialog .primary { margin-top: 14px; min-width: 160px; }
+
+.qr-block .link-small {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin: 10px 0 0; padding: 4px 2px; min-height: 0;
+  background: none; border: 0; box-shadow: none;
+  color: var(--muted); font-size: 0.8rem; font-weight: 600;
+  text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
+}
+.qr-block .link-small:hover:not(:disabled) { color: var(--text, inherit); }
+.qr-block .link-small:disabled { opacity: 0.5; cursor: default; text-decoration: none; }
+.qr-block .small-note, .qr-block .notice, .qr-block .success, .qr-block .error { font-size: 0.8rem; }

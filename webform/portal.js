@@ -902,13 +902,21 @@ function profileTile() {
   // QR code by e-mail: the wallet code itself never appears on this page.
   const qr = el("div", { class: "qr-block" });
   qr.append(el("div", { class: "tile-head" }, icon("qr", 18), el("h2", { text: t("qrTitle") })));
+  if (qrDoc) {
+    const shown = { payload: qrDoc.payload, name: qrDoc.name || projection?.firstName || "", association: projection?.association || "" };
+    qr.append(el("button", {
+      type: "button",
+      class: "primary qr-open",
+      onclick: () => openQrDialog(shown),
+    }, icon("qr", 18), el("span", { text: t("myQr") })));
+  }
   if (!p.qrEmailAllowed) {
-    qr.append(el("p", { class: "small-note", text: t("qrNotAllowed") }));
+    if (!qrDoc) qr.append(el("p", { class: "small-note", text: t("qrNotAllowed") }));
   } else {
-    qr.append(el("p", { class: "muted left", text: t("qrBody", { email: p.email }) }));
+    if (!qrDoc) qr.append(el("p", { class: "muted left", text: t("qrBody", { email: p.email }) }));
     const r = requests.QR_EMAIL;
     const cooldown = requestCooldownMinutes("QR_EMAIL");
-    const btn = el("button", { type: "button", class: "tonal", onclick: onQrClick }, icon("mail", 16), t("qrButton"));
+    const btn = el("button", { type: "button", class: qrDoc ? "link-small" : "tonal", onclick: onQrClick }, icon("mail", qrDoc ? 14 : 16), t("qrButton"));
     const waiting = isWaiting(r);
     if (waiting) {
       qr.append(el("p", { class: "notice", text: t("qrPending") }));
@@ -1406,14 +1414,6 @@ function renderDashboard() {
     dash.append(tiles.history);
   } else {
     dash.append(col("profile", "info", "upcoming"), col("benefits", "wallet"), col("history"));
-  }
-  if (qrDoc) {
-    const shown = { payload: qrDoc.payload, name: qrDoc.name || projection.firstName || "", association: projection.association || "" };
-    dash.prepend(el("button", {
-      type: "button",
-      class: "primary full qr-open",
-      onclick: () => openQrDialog(shown),
-    }, icon("qr", 18), el("span", { text: t("myQr") })));
   }
   ensurePhoto();
 }
