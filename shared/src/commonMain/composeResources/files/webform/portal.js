@@ -66,6 +66,11 @@ const ADMIN_MATCH_KEYS = { NO_MATCH: "googleNoMatch", DOMAIN: "googleDomain" };
 const LINK_CODE_KEYS = { CODE: "googleCode", TAKEN: "googleTaken", ALREADY_LINKED: "googleAlreadyLinked", DOMAIN: "googleDomain" };
 /** Same as the rules: a PROCESSING claim this old was abandoned and the request can be sent again. */
 const PROCESSING_STALE_MS = 5 * 60_000;
+/**
+ * A QR e-mail request nobody took for this long is given up: only the server or a phone can send
+ * the mail, so an old one (sent before mail worked, for example) would otherwise read "received" forever.
+ */
+const QR_PENDING_STALE_MS = 15 * 60_000;
 /** Without any answer from Firestore for this long, a QR stored on the device is shown alone. */
 const OFFLINE_FALLBACK_MS = 4000;
 
@@ -834,7 +839,12 @@ async function sendRequest(type, extra = {}) {
 
 /** The request waits for an answer: pending, or claimed less than 5 minutes ago. */
 function isWaiting(r) {
-  if (r?.status === "PENDING") return true;
+  if (r?.status === "PENDING") {
+    if (r.type !== "QR_EMAIL") return true;
+    // No time yet: just written, the server timestamp is still on its way.
+    const at = millisOf(r.requestedAt);
+    return !at || Date.now() - at <= QR_PENDING_STALE_MS;
+  }
   if (r?.status !== "PROCESSING") return false;
   const at = millisOf(r.processingAt);
   return !at || Date.now() - at <= PROCESSING_STALE_MS;

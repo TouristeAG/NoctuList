@@ -34,6 +34,25 @@ actual object ProfilePhotoCodec {
             maxBytes = GUEST_FORM_LOGO_MAX_JPEG_BYTES,
         )
 
+    actual fun compressToGuestFormLogoPng(sourceBytes: ByteArray): ByteArray? {
+        if (sourceBytes.isEmpty()) return null
+        val decoded = runCatching { ImageIO.read(ByteArrayInputStream(sourceBytes)) }.getOrNull() ?: return null
+        val longest = max(decoded.width, decoded.height)
+        val scale = if (longest <= GUEST_FORM_LOGO_MAX_EDGE_PX) 1f else GUEST_FORM_LOGO_MAX_EDGE_PX.toFloat() / longest
+        val w = (decoded.width * scale).toInt().coerceAtLeast(1)
+        val h = (decoded.height * scale).toInt().coerceAtLeast(1)
+        // ARGB keeps the transparent areas of the logo transparent.
+        val argb = BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB)
+        val g = argb.createGraphics()
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+        g.drawImage(decoded, 0, 0, w, h, null)
+        g.dispose()
+        val out = ByteArrayOutputStream()
+        val ok = runCatching { ImageIO.write(argb, "png", out) }.getOrDefault(false)
+        val bytes = out.toByteArray()
+        return bytes.takeIf { ok && it.isNotEmpty() && it.size <= GUEST_FORM_LOGO_MAX_PNG_BYTES }
+    }
+
     private fun compress(
         sourceBytes: ByteArray,
         maxEdge: Int,
@@ -62,6 +81,9 @@ actual object ProfilePhotoCodec {
             } else {
                 val converted = BufferedImage(scaled.width, scaled.height, BufferedImage.TYPE_INT_RGB)
                 val g = converted.createGraphics()
+                // JPEG has no transparency: transparent areas become white instead of black.
+                g.color = java.awt.Color.WHITE
+                g.fillRect(0, 0, scaled.width, scaled.height)
                 g.drawImage(scaled, 0, 0, null)
                 g.dispose()
                 converted
@@ -86,6 +108,8 @@ actual object ProfilePhotoCodec {
         val scaled = BufferedImage(w, h, BufferedImage.TYPE_INT_RGB)
         val g = scaled.createGraphics()
         g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+        g.color = java.awt.Color.WHITE
+        g.fillRect(0, 0, w, h)
         g.drawImage(image, 0, 0, w, h, null)
         g.dispose()
         return scaled

@@ -9,6 +9,8 @@ expect object ProfilePhotoCodec {
     fun compressToThumbnailJpeg(sourceBytes: ByteArray): ByteArray?
     /** Small JPEG for public guest-form headers — must fit a Firestore string field. */
     fun compressToGuestFormLogoJpeg(sourceBytes: ByteArray): ByteArray?
+    /** Same size limit as the JPEG logo, as a PNG that keeps transparent areas transparent. */
+    fun compressToGuestFormLogoPng(sourceBytes: ByteArray): ByteArray?
 }
 
 const val PROFILE_PHOTO_MAX_EDGE_PX = 1024
@@ -24,3 +26,5 @@ const val PROFILE_PHOTO_THUMB_MAX_BYTES = 48 * 1024
 const val GUEST_FORM_LOGO_MAX_EDGE_PX = 384
 const val GUEST_FORM_LOGO_JPEG_QUALITY = 75
 const val GUEST_FORM_LOGO_MAX_JPEG_BYTES = 120 * 1024
+/** A shrunk PNG stays under the public pages' 300 000-character data URI once base64-encoded. */
+const val GUEST_FORM_LOGO_MAX_PNG_BYTES = 200 * 1024

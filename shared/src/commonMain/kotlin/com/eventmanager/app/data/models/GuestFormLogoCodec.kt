@@ -16,6 +16,11 @@ object GuestFormLogoCodec {
         if (uri.isEmpty()) return ""
         if (uri.length <= MAX_DATA_URI_CHARS) return uri
         val bytes = decodeBytes(uri) ?: return ""
+        // A smaller PNG first: it keeps transparent areas transparent. JPEG only as a last resort.
+        ProfilePhotoCodec.compressToGuestFormLogoPng(bytes)?.let { png ->
+            val pngUri = "data:image/png;base64,${InstitutionLogoStore.encode(png)}"
+            if (pngUri.length <= MAX_DATA_URI_CHARS) return pngUri
+        }
         val jpeg = ProfilePhotoCodec.compressToGuestFormLogoJpeg(bytes) ?: run {
             println("Guest form logo dropped: could not compress a ${uri.length}-char payload")
             return ""
