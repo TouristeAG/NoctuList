@@ -2538,4 +2538,9 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="sync_sheets_every_minute">Cada minuto</string>
     <string name="sync_sheets_every_minutes">Cada %1$d minutos</string>
     <string name="sync_sheets_saved">Guardado</string>
+    <string name="settings_category_association">Asociación</string>
+    <string name="association_logo_title">Logotipo de la asociación</string>
+    <string name="association_logo_used_by">Se usa en los correos, los formularios de lista de invitados y la plataforma de voluntarios.</string>
+    <string name="email_logo_missing_hint">Todavía no hay logotipo. Añádalo en Ajustes, Asociación.</string>
+    <string name="email_site_unavailable">Desde un ordenador, el envío pasa por el sitio de la asociación, que no está disponible aquí. Use el envío manual.</string>
 </resources>

@@ -2538,4 +2538,9 @@
     <string name="sync_sheets_every_minute">每分鐘</string>
     <string name="sync_sheets_every_minutes">每 %1$d 分鐘</string>
     <string name="sync_sheets_saved">已儲存</string>
+    <string name="settings_category_association">協會</string>
+    <string name="association_logo_title">協會標誌</string>
+    <string name="association_logo_used_by">用於電子郵件、藝人賓客名單表單和志工平台。</string>
+    <string name="email_logo_missing_hint">還沒有標誌。請在「設定 > 協會」中新增。</string>
+    <string name="email_site_unavailable">在電腦上寄送需要透過協會網站，但這裡無法使用。請使用手動寄送。</string>
 </resources>

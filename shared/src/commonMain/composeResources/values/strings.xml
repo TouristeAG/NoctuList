@@ -2540,4 +2540,9 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="sync_sheets_every_minute">Every minute</string>
     <string name="sync_sheets_every_minutes">Every %1$d minutes</string>
     <string name="sync_sheets_saved">Saved</string>
+    <string name="settings_category_association">Association</string>
+    <string name="association_logo_title">Association logo</string>
+    <string name="association_logo_used_by">Used in e-mails, artist guest list forms and the volunteer portal.</string>
+    <string name="email_logo_missing_hint">No logo yet. Add it in Settings, Association.</string>
+    <string name="email_site_unavailable">Sending from this computer goes through the association's site, which is not available here. Use manual sending.</string>
 </resources>

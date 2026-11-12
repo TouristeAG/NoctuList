@@ -1477,4 +1477,8 @@
     <string name="guest_form_project_id_hint">Remplacez YOUR_PROJECT_ID par le Project ID affiché dans Réglages → Firebase.</string>
     <string name="guest_form_offered_access_pick_venue">Choisissez d\'abord un lieu.</string>
     <string name="guest_form_offered_access_empty">Aucun accès spécial pour ce lieu.</string>
+    <string name="settings_category_association">Association</string>
+    <string name="association_logo_title">Logo de l\'association</string>
+    <string name="association_logo_used_by">Utilisé dans les e-mails, les formulaires de guestlist et la plateforme bénévole.</string>
+    <string name="email_logo_missing_hint">Pas encore de logo. Ajoutez-le dans Paramètres, Association.</string>
 </resources>

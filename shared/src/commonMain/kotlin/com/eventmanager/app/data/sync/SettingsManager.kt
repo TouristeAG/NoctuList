@@ -177,6 +177,7 @@ class SettingsManager(private val storage: AppStorage) {
         private const val KEY_EMAIL_GMAIL_USE_SERVICE_ACCOUNT = "email_gmail_use_service_account"
         private const val KEY_EMAIL_GMAIL_SERVICE_ACCOUNT_SENDER = "email_gmail_service_account_sender"
         private const val KEY_CATEGORY_EMAIL_EXPANDED = "category_email_expanded"
+        private const val KEY_CATEGORY_ASSOCIATION_EXPANDED = "category_association_expanded"
         
         // Guest Email Settings Keys
         private const val KEY_GUEST_EMAIL_SUBJECT = "guest_email_subject"
@@ -2201,6 +2202,12 @@ class SettingsManager(private val storage: AppStorage) {
     
     fun setCategoryEmailExpanded(expanded: Boolean) {
         storage.putBoolean(KEY_CATEGORY_EMAIL_EXPANDED, expanded)
+    }
+
+    fun isCategoryAssociationExpanded(): Boolean = storage.getBoolean(KEY_CATEGORY_ASSOCIATION_EXPANDED, false)
+
+    fun setCategoryAssociationExpanded(expanded: Boolean) {
+        storage.putBoolean(KEY_CATEGORY_ASSOCIATION_EXPANDED, expanded)
     }
     
     // Guest Email Settings Configuration

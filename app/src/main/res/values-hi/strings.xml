@@ -1478,4 +1478,8 @@
     <string name="guest_form_project_id_hint">YOUR_PROJECT_ID को सेटिंग्स → Firebase के Project ID से बदलें।</string>
     <string name="guest_form_offered_access_pick_venue">पहले एक स्थान चुनें।</string>
     <string name="guest_form_offered_access_empty">इस स्थान के लिए कोई विशेष पहुँच नहीं।</string>
+    <string name="settings_category_association">संस्था</string>
+    <string name="association_logo_title">संस्था का लोगो</string>
+    <string name="association_logo_used_by">ई-मेल, कलाकार अतिथि सूची फ़ॉर्म और स्वयंसेवक प्लेटफ़ॉर्म में इस्तेमाल होता है।</string>
+    <string name="email_logo_missing_hint">अभी कोई लोगो नहीं है। इसे सेटिंग्स, संस्था में जोड़ें।</string>
 </resources>

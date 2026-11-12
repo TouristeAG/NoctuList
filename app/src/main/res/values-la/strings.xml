@@ -1478,4 +1478,8 @@
     <string name="guest_form_project_id_hint">YOUR_PROJECT_ID substitue Project ID ex Optiones → Firebase.</string>
     <string name="guest_form_offered_access_pick_venue">Prius locum elige.</string>
     <string name="guest_form_offered_access_empty">Huic loco nulli accessus speciales.</string>
+    <string name="settings_category_association">Societas</string>
+    <string name="association_logo_title">Signum societatis</string>
+    <string name="association_logo_used_by">Adhibetur in epistulis, formulis indicis hospitum et suggestu voluntariorum.</string>
+    <string name="email_logo_missing_hint">Nullum signum adhuc. Adde in Optionibus, Societas.</string>
 </resources>

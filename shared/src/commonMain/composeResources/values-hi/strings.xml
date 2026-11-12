@@ -2543,4 +2543,9 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="sync_sheets_every_minute">हर मिनट</string>
     <string name="sync_sheets_every_minutes">हर %1$d मिनट</string>
     <string name="sync_sheets_saved">सहेजा गया</string>
+    <string name="settings_category_association">संस्था</string>
+    <string name="association_logo_title">संस्था का लोगो</string>
+    <string name="association_logo_used_by">ई-मेल, कलाकार अतिथि सूची फ़ॉर्म और स्वयंसेवक प्लेटफ़ॉर्म में इस्तेमाल होता है।</string>
+    <string name="email_logo_missing_hint">अभी कोई लोगो नहीं है। इसे सेटिंग्स, संस्था में जोड़ें।</string>
+    <string name="email_site_unavailable">कंप्यूटर से भेजना संस्था की साइट के ज़रिए होता है, जो यहाँ उपलब्ध नहीं है। मैन्युअल भेजना इस्तेमाल करें।</string>
 </resources>

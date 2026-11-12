@@ -16,7 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.unit.dp
-import com.eventmanager.app.data.sync.DesktopGmailAuth
 import com.eventmanager.app.platform.PlatformContext
 import com.eventmanager.app.platform.PlatformFileManager
 import com.eventmanager.app.resources.Res
@@ -66,49 +65,6 @@ actual fun ServiceAccountKeyUploadButton(
         Icon(Icons.Default.Upload, contentDescription = null)
         Spacer(Modifier.width(8.dp))
         Text(stringResource(Res.string.upload_key_file))
-    }
-}
-
-@Composable
-fun GmailOAuthClientUploadButton(
-    platformContext: PlatformContext,
-    onStatusUpdate: (String) -> Unit,
-    onConfiguredChanged: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val scope = rememberCoroutineScope()
-    val fileManager = remember(platformContext) { PlatformFileManager(platformContext) }
-    val selectingFile = stringResource(Res.string.selecting_file)
-    val cancelled = stringResource(Res.string.action_cancelled)
-    val validatingFile = stringResource(Res.string.validating_file)
-    val invalidJson = stringResource(Res.string.invalid_gmail_oauth_client_json)
-    val uploadedSuccess = stringResource(Res.string.file_uploaded_successfully)
-    val uploadFailed = stringResource(Res.string.upload_failed_generic)
-
-    OutlinedButton(
-        onClick = {
-            scope.launch {
-                onStatusUpdate(selectingFile)
-                val json = fileManager.pickGmailOAuthClientJsonFile()
-                if (json == null) {
-                    onStatusUpdate(cancelled)
-                    return@launch
-                }
-                onStatusUpdate(validatingFile)
-                if (!DesktopGmailAuth.isValidGmailOAuthClientJson(json)) {
-                    onStatusUpdate(invalidJson)
-                    return@launch
-                }
-                val saved = withContext(Dispatchers.IO) { fileManager.saveGmailOAuthClientJson(json) }
-                onConfiguredChanged(saved && fileManager.getGmailOAuthClientFile() != null)
-                onStatusUpdate(if (saved) uploadedSuccess else uploadFailed)
-            }
-        },
-        modifier = modifier
-    ) {
-        Icon(Icons.Default.Upload, contentDescription = null)
-        Spacer(Modifier.width(8.dp))
-        Text(stringResource(Res.string.email_gmail_oauth_client_upload))
     }
 }
 

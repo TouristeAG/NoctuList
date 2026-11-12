@@ -1473,4 +1473,8 @@
     <string name="guest_form_project_id_hint">將 YOUR_PROJECT_ID 替換為設定 → Firebase 中的 Project ID。</string>
     <string name="guest_form_offered_access_pick_venue">請先選擇場地。</string>
     <string name="guest_form_offered_access_empty">此場地沒有特殊通行權限。</string>
+    <string name="settings_category_association">協會</string>
+    <string name="association_logo_title">協會標誌</string>
+    <string name="association_logo_used_by">用於電子郵件、藝人賓客名單表單和志工平台。</string>
+    <string name="email_logo_missing_hint">還沒有標誌。請在「設定 > 協會」中新增。</string>
 </resources>

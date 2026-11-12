@@ -2538,4 +2538,9 @@
     <string name="sync_sheets_every_minute">每分钟</string>
     <string name="sync_sheets_every_minutes">每 %1$d 分钟</string>
     <string name="sync_sheets_saved">已保存</string>
+    <string name="settings_category_association">协会</string>
+    <string name="association_logo_title">协会标志</string>
+    <string name="association_logo_used_by">用于邮件、艺人宾客名单表单和志愿者平台。</string>
+    <string name="email_logo_missing_hint">还没有标志。请在“设置 > 协会”中添加。</string>
+    <string name="email_site_unavailable">在电脑上发送需要通过协会网站，但这里无法使用。请使用手动发送。</string>
 </resources>

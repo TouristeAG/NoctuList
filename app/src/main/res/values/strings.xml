@@ -1478,4 +1478,8 @@
     <string name="guest_form_project_id_hint">Replace YOUR_PROJECT_ID with the Project ID from Settings → Firebase.</string>
     <string name="guest_form_offered_access_pick_venue">Pick a venue first.</string>
     <string name="guest_form_offered_access_empty">No special accesses for this venue.</string>
+    <string name="settings_category_association">Association</string>
+    <string name="association_logo_title">Association logo</string>
+    <string name="association_logo_used_by">Used in e-mails, artist guest list forms and the volunteer portal.</string>
+    <string name="email_logo_missing_hint">No logo yet. Add it in Settings, Association.</string>
 </resources>

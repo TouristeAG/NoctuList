@@ -2543,4 +2543,9 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="sync_sheets_every_minute">Singulis minutis</string>
     <string name="sync_sheets_every_minutes">Singulis %1$d minutis</string>
     <string name="sync_sheets_saved">Servatum</string>
+    <string name="settings_category_association">Societas</string>
+    <string name="association_logo_title">Signum societatis</string>
+    <string name="association_logo_used_by">Adhibetur in epistulis, formulis indicis hospitum et suggestu voluntariorum.</string>
+    <string name="email_logo_missing_hint">Nullum signum adhuc. Adde in Optionibus, Societas.</string>
+    <string name="email_site_unavailable">Ex computatro mittitur per situm societatis, qui hic praesto non est. Utere missione manuali.</string>
 </resources>

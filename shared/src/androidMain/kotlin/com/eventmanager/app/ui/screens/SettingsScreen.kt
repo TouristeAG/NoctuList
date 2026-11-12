@@ -561,6 +561,129 @@ private fun ExpandableSettingsCategory(
  * and improve performance by only loading settings when needed.
  * Now includes tabbed interface for Volunteer and Guest email settings.
  */
+/**
+ * The association's logo, set once here. E-mails, artist guest list forms, the volunteer portal
+ * and Wallet passes all use it, so it no longer lives in the e-mail settings.
+ */
+@Composable
+private fun AssociationLogoContent(
+    settingsManager: SettingsManager,
+    context: android.content.Context,
+    editable: Boolean,
+    onInstitutionLogoBytes: (ByteArray?) -> Unit,
+) {
+    var logoUri by remember { mutableStateOf(settingsManager.getEmailLogoUri()) }
+    // Logo picker launcher
+    val logoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (!editable) return@rememberLauncherForActivityResult
+        uri?.let { selectedUri ->
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    selectedUri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (e: Exception) {
+                // Ignore if permission already taken or not available
+            }
+            logoUri = selectedUri.toString()
+            settingsManager.saveEmailLogoUri(selectedUri.toString())
+            val bytes = runCatching {
+                context.contentResolver.openInputStream(selectedUri)?.use { it.readBytes() }
+            }.getOrNull()
+            onInstitutionLogoBytes(bytes)
+        }
+    }
+    
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = context.getString(R.string.association_logo_title),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            text = context.getString(R.string.association_logo_used_by),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    if (logoUri.isNotEmpty()) {
+                        Text(
+                            text = context.getString(R.string.email_logo_preview),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        val parsedLogo = remember(logoUri) { Uri.parse(logoUri) }
+                        Image(
+                            painter = rememberAsyncImagePainter(parsedLogo),
+                            contentDescription = context.getString(R.string.email_logo_preview),
+                            modifier = Modifier
+                                .size(100.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.surface)
+                        )
+                        
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = { logoPickerLauncher.launch(arrayOf("image/*")) }
+                            ) {
+                                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(context.getString(R.string.email_logo_change))
+                            }
+                            
+                            OutlinedButton(
+                                onClick = {
+                                    logoUri = ""
+                                    settingsManager.saveEmailLogoUri("")
+                                    onInstitutionLogoBytes(null)
+                                },
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.error
+                                )
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(context.getString(R.string.email_logo_remove))
+                            }
+                        }
+                    } else {
+                        Icon(
+                            Icons.Default.Image,
+                            contentDescription = null,
+                            modifier = Modifier.size(48.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = { logoPickerLauncher.launch(arrayOf("image/*")) }
+                        ) {
+                            Icon(Icons.Default.Upload, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(context.getString(R.string.email_logo_upload))
+                        }
+                    }
+                }
+            }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EmailSettingsContent(
@@ -570,8 +693,6 @@ private fun EmailSettingsContent(
     editable: Boolean = true,
     /** The artist guest list tab only exists on Firebase, like the rest of the feature. */
     temporaryFeaturesEnabled: Boolean = false,
-    /** Keep the e-mail logo and the institution / form logo in sync. */
-    onInstitutionLogoBytes: (ByteArray?) -> Unit = {},
 ) {
     // Cache string resources to avoid repeated lookups
     val strings = remember {
@@ -717,29 +838,6 @@ private fun EmailSettingsContent(
             kotlinx.coroutines.delay(500) // 500ms debounce
             block()
             onSyncedSettingChanged()
-        }
-    }
-    
-    // Logo picker launcher
-    val logoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
-        if (!editable) return@rememberLauncherForActivityResult
-        uri?.let { selectedUri ->
-            try {
-                context.contentResolver.takePersistableUriPermission(
-                    selectedUri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
-            } catch (e: Exception) {
-                // Ignore if permission already taken or not available
-            }
-            emailLogoUri = selectedUri.toString()
-            settingsManager.saveEmailLogoUri(selectedUri.toString())
-            val bytes = runCatching {
-                context.contentResolver.openInputStream(selectedUri)?.use { it.readBytes() }
-            }.getOrNull()
-            onInstitutionLogoBytes(bytes)
         }
     }
     
@@ -1018,84 +1116,14 @@ private fun EmailSettingsContent(
             )
         }
         
-        // Logo Upload (only visible when toggle is on)
-        if (emailIncludeLogo) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    if (emailLogoUri.isNotEmpty()) {
-                        Text(
-                            text = strings.logoPreview,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        val logoUri = remember(emailLogoUri) { Uri.parse(emailLogoUri) }
-                        Image(
-                            painter = rememberAsyncImagePainter(logoUri),
-                            contentDescription = strings.logoPreview,
-                            modifier = Modifier
-                                .size(100.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.surface)
-                        )
-                        
-                        Spacer(modifier = Modifier.height(12.dp))
-                        
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = { logoPickerLauncher.launch(arrayOf("image/*")) }
-                            ) {
-                                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(strings.logoChange)
-                            }
-                            
-                            OutlinedButton(
-                                onClick = {
-                                    emailLogoUri = ""
-                                    settingsManager.saveEmailLogoUri("")
-                                    onInstitutionLogoBytes(null)
-                                },
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = MaterialTheme.colorScheme.error
-                                )
-                            ) {
-                                Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(strings.logoRemove)
-                            }
-                        }
-                    } else {
-                        Icon(
-                            Icons.Default.Image,
-                            contentDescription = null,
-                            modifier = Modifier.size(48.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(
-                            onClick = { logoPickerLauncher.launch(arrayOf("image/*")) }
-                        ) {
-                            Icon(Icons.Default.Upload, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(strings.logoUpload)
-                        }
-                    }
-                }
-            }
+        if (emailIncludeLogo && emailLogoUri.isEmpty()) {
+            Text(
+                text = context.getString(R.string.email_logo_missing_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
         }
-        
+
         HorizontalDivider()
         
         // Gmail OAuth Authentication Section
@@ -1866,6 +1894,7 @@ actual fun SettingsScreen(
     var showSyncBackupSettings by remember { mutableStateOf(settingsManager.isCategorySyncBackupExpanded()) }
     var showSyncSheetsSettings by remember { mutableStateOf(settingsManager.isCategorySyncSheetsExpanded()) }
     var showEmailSettings by remember { mutableStateOf(settingsManager.isCategoryEmailExpanded()) }
+    var showAssociationSettings by remember { mutableStateOf(settingsManager.isCategoryAssociationExpanded()) }
     var showAppearanceSettings by remember { mutableStateOf(settingsManager.isCategoryAppearanceExpanded()) }
     var showLocalizationSettings by remember { mutableStateOf(settingsManager.isCategoryLocalizationExpanded()) }
     var showAnnouncementsSettings by remember { mutableStateOf(settingsManager.isCategoryAnnouncementsExpanded()) }
@@ -2241,6 +2270,27 @@ actual fun SettingsScreen(
         
         Spacer(modifier = Modifier.height(24.dp))
         
+        if (variant == SettingsScreenVariant.Full) {
+            ExpandableSettingsCategory(
+                title = context.getString(R.string.settings_category_association),
+                icon = Icons.Default.Business,
+                isExpanded = showAssociationSettings,
+                onToggleExpanded = {
+                    showAssociationSettings = !showAssociationSettings
+                    settingsManager.setCategoryAssociationExpanded(showAssociationSettings)
+                }
+            ) {
+                AssociationLogoContent(
+                    settingsManager = settingsManager,
+                    context = context,
+                    editable = canEditInstitutionSettings,
+                    onInstitutionLogoBytes = { viewModel.setInstitutionLogo(it) },
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+
         // Email Settings Category (admin + Billeterie — Gmail API & templates for volunteer QR emails)
         ExpandableSettingsCategory(
             title = context.getString(R.string.settings_category_email),
@@ -2257,7 +2307,6 @@ actual fun SettingsScreen(
                 onSyncedSettingChanged = { viewModel.backupInstitutionSettingsToSheets() },
                 editable = canEditInstitutionSettings,
                 temporaryFeaturesEnabled = viewModel.isTemporaryGuestFeaturesEnabled(),
-                onInstitutionLogoBytes = { viewModel.setInstitutionLogo(it) },
             )
         }
 

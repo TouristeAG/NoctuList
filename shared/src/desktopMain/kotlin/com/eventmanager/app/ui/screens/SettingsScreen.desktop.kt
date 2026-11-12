@@ -46,7 +46,6 @@ import com.eventmanager.app.platform.DesktopAppEraser
 import com.eventmanager.app.platform.LocalPlatformContext
 import com.eventmanager.app.platform.createAppStorage
 import com.eventmanager.app.platform.createBiometricAuth
-import com.eventmanager.app.platform.createGmailAuth
 import com.eventmanager.app.platform.AppBuildInfo
 import com.eventmanager.app.platform.hardware.DesktopBleReaderScanner
 import com.eventmanager.app.platform.hardware.DesktopExternalNfcReader
@@ -66,7 +65,6 @@ import com.eventmanager.app.ui.components.CleanupInactiveVolunteersDialog
 import com.eventmanager.app.ui.components.SyncStatusDialog
 import com.eventmanager.app.ui.components.TemporaryGuestAccessSettingsSection
 import com.eventmanager.app.ui.platform.ServiceAccountKeyUploadButton
-import com.eventmanager.app.ui.platform.GmailOAuthClientUploadButton
 import com.eventmanager.app.ui.platform.EmailLogoUploadSection
 import com.eventmanager.app.platform.PlatformFileManager
 import com.eventmanager.app.ui.platform.AppAppearanceState
@@ -95,6 +93,7 @@ private enum class DesktopSettingsNav {
     SyncOnline,
     SyncBackup,
     SyncSheets,
+    Association,
     Email,
     Maintenance,
     Catalog,
@@ -127,7 +126,6 @@ actual fun SettingsScreen(
     val platformContext = LocalPlatformContext.current
     val settingsManager = remember(platformContext) { SettingsManager(createAppStorage(platformContext)) }
     val scope = rememberCoroutineScope()
-    val gmailAuth = remember(platformContext) { createGmailAuth(platformContext) }
 
     var spreadsheetId by remember { mutableStateOf(settingsManager.getSpreadsheetId()) }
     var guestListSheet by remember { mutableStateOf(settingsManager.getGuestListSheet()) }
@@ -150,24 +148,8 @@ actual fun SettingsScreen(
     val temporaryGuestCreditsEnabled by viewModel.temporaryGuestCreditsEnabled.collectAsState()
     val temporaryGuestFeaturesEnabled = viewModel.isTemporaryGuestFeaturesEnabled()
     var migrationWizard by remember { mutableStateOf<com.eventmanager.app.data.remote.MigrationDirection?>(null) }
-    var gmailLoading by remember { mutableStateOf(false) }
-    var gmailSignedIn by remember { mutableStateOf(gmailAuth.isSignedIn) }
-    var gmailEmail by remember { mutableStateOf(gmailAuth.accountEmail) }
-    var gmailOAuthConfigured by remember(platformContext) {
-        mutableStateOf(PlatformFileManager(platformContext).getGmailOAuthClientFile() != null)
-    }
-    var gmailOAuthUploadStatus by remember { mutableStateOf<String?>(null) }
-    var gmailUseServiceAccount by remember { mutableStateOf(settingsManager.isGmailUseServiceAccount()) }
-    var gmailServiceAccountSender by remember { mutableStateOf(settingsManager.getGmailServiceAccountSenderEmail()) }
     val isFirebaseBackend =
         settingsManager.getBackendType() == com.eventmanager.app.data.remote.BackendType.FIREBASE
-    // Firebase has no Sheets service account — keep Gmail on OAuth only.
-    LaunchedEffect(isFirebaseBackend) {
-        if (isFirebaseBackend && gmailUseServiceAccount) {
-            gmailUseServiceAccount = false
-            settingsManager.setGmailUseServiceAccount(false)
-        }
-    }
     val platformFileManager = remember(platformContext) { PlatformFileManager(platformContext) }
     val serviceAccountConfigured = platformFileManager.getServiceAccountFile() != null
 
@@ -197,7 +179,6 @@ actual fun SettingsScreen(
     var nfcAdvancedExpanded by remember { mutableStateOf(false) }
 
     var showInstructions by remember { mutableStateOf(false) }
-    var showGmailOAuthHelp by remember { mutableStateOf(false) }
     var showCleanupDialog by remember { mutableStateOf(false) }
     var showActiveVolunteersDialog by remember { mutableStateOf(false) }
     var showFactoryResetDialog by remember { mutableStateOf(false) }
@@ -239,6 +220,7 @@ actual fun SettingsScreen(
             } else {
                 add(DesktopSettingsNavItem(DesktopSettingsNav.SyncSheets, stringResource(Res.string.sync_sheets_page_title), Icons.Default.Sync))
             }
+            add(DesktopSettingsNavItem(DesktopSettingsNav.Association, stringResource(Res.string.settings_category_association), Icons.Default.Business))
             add(DesktopSettingsNavItem(DesktopSettingsNav.Email, stringResource(Res.string.settings_category_email), Icons.Default.Email))
             add(DesktopSettingsNavItem(DesktopSettingsNav.Maintenance, stringResource(Res.string.settings_category_maintenance), Icons.Default.Build))
             add(DesktopSettingsNavItem(DesktopSettingsNav.Catalog, stringResource(Res.string.settings_category_catalog), Icons.Default.Category))
@@ -283,25 +265,7 @@ actual fun SettingsScreen(
     val guestFormsEnabled by viewModel.guestFormsEnabled.collectAsState()
     val billeterieSendEnabled by viewModel.announcementsBilleterieSendEnabled.collectAsState()
 
-    val gmailAuthSuccessMsg = stringResource(Res.string.email_gmail_auth_success)
-    val gmailNotSignedInMsg = stringResource(Res.string.email_gmail_not_signed_in)
-    val gmailRevokedMsg = stringResource(Res.string.email_gmail_auth_revoked)
-    val gmailOAuthMissingMsg = stringResource(Res.string.email_gmail_oauth_client_missing)
-    val gmailOAuthInvalidMsg = stringResource(Res.string.invalid_gmail_oauth_client_json)
-    val gmailServiceAccountMissingMsg = stringResource(Res.string.email_gmail_service_account_missing)
-    val gmailSenderMissingMsg = stringResource(Res.string.email_gmail_service_account_sender_label)
-    val gmailInvalidServiceAccountMsg = stringResource(Res.string.invalid_service_account_json)
     val readerClearedToast = stringResource(Res.string.external_reader_cleared_toast)
-
-    fun resolveGmailSignInErrorMessage(errorCode: String?): String = when (errorCode) {
-        "missing_oauth_client" -> gmailOAuthMissingMsg
-        "invalid_oauth_client" -> gmailOAuthInvalidMsg
-        "missing_service_account" -> gmailServiceAccountMissingMsg
-        "missing_sender_email" -> gmailSenderMissingMsg
-        "invalid_service_account" -> gmailInvalidServiceAccountMsg
-        null, "" -> gmailNotSignedInMsg
-        else -> errorCode
-    }
 
     fun saveSheetsConfig() {
         settingsManager.saveSpreadsheetId(spreadsheetId.trim())
@@ -465,6 +429,21 @@ actual fun SettingsScreen(
             }
         }
 
+        if (variant == SettingsScreenVariant.Full) {
+            DesktopSettingsCategory(
+                section = DesktopSettingsNav.Association,
+                selectedSection = selectedSection,
+                title = stringResource(Res.string.settings_category_association),
+                icon = Icons.Default.Business,
+            ) {
+                DesktopAssociationLogoSettings(
+                    settingsManager = settingsManager,
+                    editable = canEditInstitutionSettings,
+                    onInstitutionLogoBytes = { viewModel.setInstitutionLogo(it) },
+                )
+            }
+        }
+
         if (variant == SettingsScreenVariant.Full || variant == SettingsScreenVariant.BilleterieBasic || variant == SettingsScreenVariant.PosBasic) {
             DesktopSettingsCategory(
             section = DesktopSettingsNav.Email,
@@ -472,178 +451,6 @@ actual fun SettingsScreen(
             title = stringResource(Res.string.settings_category_email),
             icon = Icons.Default.Email,
         ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = stringResource(Res.string.email_gmail_auth_title),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.weight(1f)
-                    )
-                    IconButton(
-                        onClick = { showGmailOAuthHelp = true },
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Help,
-                            contentDescription = stringResource(Res.string.email_gmail_oauth_help_title),
-                            modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-                Text(
-                    text = stringResource(Res.string.email_gmail_auth_description),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(8.dp))
-                if (!isFirebaseBackend) {
-                    DesktopSettingsToggleRow(
-                        title = stringResource(Res.string.email_gmail_use_service_account),
-                        description = stringResource(Res.string.email_gmail_use_service_account_description),
-                        checked = gmailUseServiceAccount,
-                        onCheckedChange = { enabled ->
-                            gmailUseServiceAccount = enabled
-                            settingsManager.setGmailUseServiceAccount(enabled)
-                            scope.launch {
-                                gmailAuth.signOut()
-                                settingsManager.clearGmailAuth()
-                                gmailSignedIn = false
-                                gmailEmail = null
-                            }
-                        }
-                    )
-                    Spacer(Modifier.height(8.dp))
-                }
-                if (!isFirebaseBackend && gmailUseServiceAccount) {
-                    Text(
-                        text = if (serviceAccountConfigured) {
-                            stringResource(Res.string.email_gmail_service_account_configured)
-                        } else {
-                            stringResource(Res.string.email_gmail_service_account_missing)
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (serviceAccountConfigured) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.error
-                        }
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = gmailServiceAccountSender,
-                        onValueChange = {
-                            gmailServiceAccountSender = it
-                            settingsManager.saveGmailServiceAccountSenderEmail(it)
-                        },
-                        label = { Text(stringResource(Res.string.email_gmail_service_account_sender_label)) },
-                        supportingText = {
-                            Text(stringResource(Res.string.email_gmail_service_account_sender_description))
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        enabled = !gmailSignedIn
-                    )
-                } else {
-                    Text(
-                        text = stringResource(Res.string.email_gmail_oauth_client_description),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    GmailOAuthClientUploadButton(
-                        platformContext = platformContext,
-                        onStatusUpdate = { gmailOAuthUploadStatus = it },
-                        onConfiguredChanged = { gmailOAuthConfigured = it },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Text(
-                        text = if (gmailOAuthConfigured) {
-                            stringResource(Res.string.email_gmail_oauth_client_configured)
-                        } else {
-                            stringResource(Res.string.email_gmail_oauth_client_missing)
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (gmailOAuthConfigured) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.error
-                        }
-                    )
-                    gmailOAuthUploadStatus?.let { status ->
-                        Text(
-                            text = status,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                Spacer(Modifier.height(12.dp))
-
-                if (gmailSignedIn && gmailEmail != null) {
-                    Text(
-                        text = stringResource(Res.string.email_gmail_signed_in_as, gmailEmail!!),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    OutlinedButton(
-                        onClick = {
-                            scope.launch {
-                                gmailLoading = true
-                                gmailAuth.signOut()
-                                settingsManager.clearGmailAuth()
-                                gmailSignedIn = false
-                                gmailEmail = null
-                                gmailLoading = false
-                                showPlatformToast(platformContext, gmailRevokedMsg)
-                            }
-                        },
-                        enabled = !gmailLoading
-                    ) {
-                        Text(stringResource(Res.string.email_gmail_sign_out))
-                    }
-                } else {
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                gmailLoading = true
-                                if (!isFirebaseBackend && gmailUseServiceAccount) {
-                                    settingsManager.saveGmailServiceAccountSenderEmail(gmailServiceAccountSender.trim())
-                                }
-                                val ok = gmailAuth.signIn()
-                                gmailSignedIn = ok
-                                gmailEmail = gmailAuth.accountEmail
-                                gmailLoading = false
-                                if (ok) {
-                                    gmailEmail?.let { settingsManager.saveGmailAccount(it) }
-                                    showPlatformToast(platformContext, gmailAuthSuccessMsg)
-                                } else {
-                                    val errorMsg = resolveGmailSignInErrorMessage(gmailAuth.lastSignInError)
-                                    showPlatformToast(platformContext, errorMsg)
-                                }
-                            }
-                        },
-                        enabled = !gmailLoading && (
-                            if (!isFirebaseBackend && gmailUseServiceAccount) {
-                                serviceAccountConfigured && gmailServiceAccountSender.isNotBlank()
-                            } else {
-                                gmailOAuthConfigured
-                            }
-                            )
-                    ) {
-                        if (gmailLoading) {
-                            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                        } else {
-                            Text(stringResource(Res.string.email_gmail_sign_in))
-                        }
-                    }
-                }
-
-                HorizontalDivider()
-
                 DesktopEmailTemplateSettings(
                     settingsManager,
                     onSyncedSettingChanged = {
@@ -651,7 +458,6 @@ actual fun SettingsScreen(
                     },
                     editable = canEditInstitutionSettings,
                     temporaryFeaturesEnabled = temporaryGuestFeaturesEnabled,
-                    onInstitutionLogoBytes = { viewModel.setInstitutionLogo(it) },
                 )
             }
         }
@@ -1445,12 +1251,6 @@ actual fun SettingsScreen(
         }
     }
 
-    if (showGmailOAuthHelp) {
-        DesktopGmailOAuthInstructionsDialog(
-            showServiceAccountHelp = !isFirebaseBackend,
-            onDismiss = { showGmailOAuthHelp = false },
-        )
-    }
 
     if (showCleanupDialog) {
         val volunteers by viewModel.volunteers.collectAsState()
@@ -1986,6 +1786,44 @@ private fun DesktopDateChangeOffset(
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
+/**
+ * The association's logo, set once here. E-mails, artist guest list forms, the volunteer portal
+ * and Wallet passes all use it, so it no longer lives in the e-mail settings.
+ */
+@Composable
+private fun DesktopAssociationLogoSettings(
+    settingsManager: SettingsManager,
+    editable: Boolean,
+    onInstitutionLogoBytes: (ByteArray?) -> Unit,
+) {
+    val platformContext = LocalPlatformContext.current
+    var logoPath by remember { mutableStateOf(settingsManager.getEmailLogoUri()) }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            stringResource(Res.string.association_logo_title),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            stringResource(Res.string.association_logo_used_by),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        EmailLogoUploadSection(
+            platformContext = platformContext,
+            logoPath = logoPath,
+            onLogoPathChanged = { path ->
+                if (!editable) return@EmailLogoUploadSection
+                logoPath = path
+                settingsManager.saveEmailLogoUri(path)
+                val bytes = if (path.isBlank()) null else PlatformFileManager(platformContext).readEmailLogoBytes()
+                onInstitutionLogoBytes(bytes)
+            },
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
 @Composable
 private fun DesktopEmailTemplateSettings(
     settingsManager: SettingsManager,
@@ -1993,8 +1831,6 @@ private fun DesktopEmailTemplateSettings(
     editable: Boolean = true,
     /** The artist guest list tab only exists on Firebase, like the rest of the feature. */
     temporaryFeaturesEnabled: Boolean = false,
-    /** Keep the e-mail logo and the institution / form logo in sync. */
-    onInstitutionLogoBytes: (ByteArray?) -> Unit = {},
 ) {
     fun persistSynced(block: () -> Unit) {
         if (!editable) return
@@ -2342,9 +2178,6 @@ private fun DesktopEmailTemplateSettings(
         },
         enabled = editable,
     )
-    if (includeWalletPass) {
-        DesktopWalletPassCertificateSettings(settingsManager = settingsManager, platformContext = platformContext)
-    }
     DesktopSettingsToggleRow(
         title = stringResource(Res.string.email_include_logo_label),
         description = stringResource(Res.string.email_include_logo_description),
@@ -2356,22 +2189,11 @@ private fun DesktopEmailTemplateSettings(
         enabled = editable,
     )
 
-    if (includeLogo) {
-        EmailLogoUploadSection(
-            platformContext = platformContext,
-            logoPath = emailLogoUri,
-            onLogoPathChanged = { path ->
-                if (!editable) return@EmailLogoUploadSection
-                emailLogoUri = path
-                settingsManager.saveEmailLogoUri(path)
-                val bytes = if (path.isBlank()) {
-                    null
-                } else {
-                    PlatformFileManager(platformContext).readEmailLogoBytes()
-                }
-                onInstitutionLogoBytes(bytes)
-            },
-            modifier = Modifier.fillMaxWidth(),
+    if (includeLogo && emailLogoUri.isBlank()) {
+        Text(
+            stringResource(Res.string.email_logo_missing_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
         )
     }
 
@@ -2419,101 +2241,6 @@ private fun DesktopEmailTemplateSettings(
         Icon(Icons.Default.Refresh, contentDescription = null)
         Spacer(Modifier.width(8.dp))
         Text("${stringResource(Res.string.email_reset_to_defaults)} (${tabLabels[selectedTab]})")
-    }
-}
-
-@Composable
-private fun DesktopWalletPassCertificateSettings(
-    settingsManager: SettingsManager,
-    platformContext: com.eventmanager.app.platform.PlatformContext,
-) {
-    val scope = rememberCoroutineScope()
-    val fileManager = remember(platformContext) { com.eventmanager.app.platform.PlatformFileManager(platformContext) }
-    var certPassword by remember { mutableStateOf(settingsManager.getWalletPassCertificatePassword()) }
-    var certConfigured by remember { mutableStateOf(fileManager.getWalletPassCertificateFile()?.exists() == true) }
-    val signingReady = remember(certConfigured, certPassword) {
-        com.eventmanager.app.wallet.WalletPassService.isAppleWalletSigningConfigured(
-            settingsManager,
-            fileManager.getWalletPassCertificateFile()?.readBytes(),
-        )
-    }
-    val signingConfig = remember(signingReady, certPassword) {
-        if (!signingReady) null else com.eventmanager.app.wallet.WalletPassSigningConfigLoader.fromSettings(
-            settingsManager,
-            fileManager.getWalletPassCertificateFile()?.readBytes(),
-        )
-    }
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-    ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(
-                stringResource(Res.string.email_wallet_pass_cert_title),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                stringResource(Res.string.email_wallet_pass_cert_description),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            OutlinedButton(
-                onClick = {
-                    scope.launch {
-                        val bytes = fileManager.pickWalletPassCertificateFile()
-                        if (bytes != null && fileManager.saveWalletPassCertificate(bytes)) {
-                            certConfigured = true
-                            val info = com.eventmanager.app.wallet.PkPassCertificateParser.loadPkcs12(
-                                bytes,
-                                certPassword.toCharArray(),
-                            )
-                            info?.passTypeIdentifier?.let {
-                                if (settingsManager.getWalletPassTypeIdentifier().isBlank()) {
-                                    settingsManager.saveWalletPassTypeIdentifier(it)
-                                }
-                            }
-                            info?.teamIdentifier?.let {
-                                if (settingsManager.getWalletPassTeamIdentifier().isBlank()) {
-                                    settingsManager.saveWalletPassTeamIdentifier(it)
-                                }
-                            }
-                        }
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Icon(Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(Res.string.email_wallet_pass_cert_upload))
-            }
-            OutlinedTextField(
-                value = certPassword,
-                onValueChange = {
-                    certPassword = it
-                    settingsManager.saveWalletPassCertificatePassword(it)
-                },
-                label = { Text(stringResource(Res.string.email_wallet_pass_cert_password_label)) },
-                placeholder = { Text(stringResource(Res.string.email_wallet_pass_cert_password_hint)) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-            )
-            val statusText = if (signingReady && signingConfig != null) {
-                stringResource(
-                    Res.string.email_wallet_pass_cert_configured,
-                    signingConfig.passTypeIdentifier,
-                    signingConfig.teamIdentifier,
-                )
-            } else {
-                stringResource(Res.string.email_wallet_pass_cert_missing)
-            }
-            Text(
-                statusText,
-                style = MaterialTheme.typography.bodySmall,
-                color = if (signingReady) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-            )
-        }
     }
 }
 
@@ -2803,239 +2530,6 @@ private fun DesktopDeveloperSettings(
             biometricEnabled = true
             showPlatformToast(platformContext, enrollmentSuccessMsg)
         }
-    }
-}
-
-@Composable
-private fun DesktopGmailOAuthInstructionsDialog(
-    showServiceAccountHelp: Boolean = true,
-    onDismiss: () -> Unit,
-) {
-    var selectedTab by remember { mutableStateOf(GmailHelpTab.OAuth) }
-    val scrollState = rememberScrollState()
-
-    LaunchedEffect(selectedTab) {
-        scrollState.scrollTo(0)
-    }
-    LaunchedEffect(showServiceAccountHelp) {
-        if (!showServiceAccountHelp && selectedTab == GmailHelpTab.ServiceAccount) {
-            selectedTab = GmailHelpTab.OAuth
-        }
-    }
-
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        Surface(
-            shape = RoundedCornerShape(20.dp),
-            tonalElevation = 6.dp,
-            modifier = Modifier
-                .fillMaxWidth(0.55f)
-                .fillMaxHeight(0.75f)
-        ) {
-            Column(Modifier.fillMaxSize()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Text(
-                        text = stringResource(Res.string.email_gmail_oauth_help_title),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                if (showServiceAccountHelp) {
-                    GmailHelpTabRow(
-                        selectedTab = selectedTab,
-                        onTabSelected = { selectedTab = it }
-                    )
-                }
-
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .verticalScroll(scrollState)
-                        .padding(horizontal = 20.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    when (selectedTab) {
-                        GmailHelpTab.OAuth -> GmailHelpOAuthTab()
-                        GmailHelpTab.ServiceAccount -> if (showServiceAccountHelp) {
-                            GmailHelpServiceAccountTab()
-                        } else {
-                            GmailHelpOAuthTab()
-                        }
-                    }
-                }
-
-                HorizontalDivider()
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    TextButton(onClick = onDismiss) {
-                        Text(stringResource(Res.string.got_it))
-                    }
-                }
-            }
-        }
-    }
-}
-
-private enum class GmailHelpTab { OAuth, ServiceAccount }
-
-@Composable
-private fun GmailHelpTabRow(
-    selectedTab: GmailHelpTab,
-    onTabSelected: (GmailHelpTab) -> Unit,
-) {
-    val tabs = listOf(
-        GmailHelpTab.OAuth to stringResource(Res.string.email_gmail_help_tab_oauth),
-        GmailHelpTab.ServiceAccount to stringResource(Res.string.email_gmail_help_tab_service_account),
-    )
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        tabs.forEach { (tab, label) ->
-            GmailHelpTabChip(
-                label = label,
-                selected = selectedTab == tab,
-                onClick = { onTabSelected(tab) },
-                modifier = Modifier.weight(1f)
-            )
-        }
-    }
-}
-
-@Composable
-private fun GmailHelpTabChip(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .background(
-                color = if (selected) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
-                },
-                shape = RoundedCornerShape(10.dp)
-            )
-            .clickable(onClick = onClick)
-            .padding(vertical = 10.dp, horizontal = 8.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = if (selected) {
-                MaterialTheme.colorScheme.onPrimary
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-            textAlign = TextAlign.Center,
-            maxLines = 2
-        )
-    }
-}
-
-@Composable
-private fun GmailHelpOAuthTab() {
-    Text(
-        text = stringResource(Res.string.email_gmail_oauth_help_intro),
-        fontWeight = FontWeight.SemiBold
-    )
-    OutlinedButton(
-        onClick = { openUrl("https://console.cloud.google.com/") },
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(8.dp))
-        Text(stringResource(Res.string.open_google_cloud_console))
-    }
-    val steps = listOf(
-        Res.string.email_gmail_oauth_step_1_title to Res.string.email_gmail_oauth_step_1_description,
-        Res.string.email_gmail_oauth_step_2_title to Res.string.email_gmail_oauth_step_2_description,
-        Res.string.email_gmail_oauth_step_3_title to Res.string.email_gmail_oauth_step_3_description,
-        Res.string.email_gmail_oauth_step_4_title to Res.string.email_gmail_oauth_step_4_description,
-        Res.string.email_gmail_oauth_step_5_title to Res.string.email_gmail_oauth_step_5_description,
-        Res.string.email_gmail_oauth_step_6_title to Res.string.email_gmail_oauth_step_6_description,
-    )
-    steps.forEachIndexed { index, (titleRes, descRes) ->
-        DesktopInstructionStep(
-            number = (index + 1).toString(),
-            title = stringResource(titleRes),
-            description = stringResource(descRes)
-        )
-    }
-}
-
-@Composable
-private fun GmailHelpServiceAccountTab() {
-    Text(
-        text = stringResource(Res.string.email_gmail_service_account_help_intro),
-        fontWeight = FontWeight.SemiBold
-    )
-    GmailHelpSection(
-        title = stringResource(Res.string.email_gmail_service_account_help_sender_title),
-        body = stringResource(Res.string.email_gmail_service_account_help_sender_body)
-    )
-    GmailHelpSection(
-        title = stringResource(Res.string.email_gmail_service_account_help_not_title),
-        body = stringResource(Res.string.email_gmail_service_account_help_not_body)
-    )
-    GmailHelpSection(
-        title = stringResource(Res.string.email_gmail_service_account_help_requirements_title),
-        body = stringResource(Res.string.email_gmail_service_account_help_requirements_body)
-    )
-    val steps = listOf(
-        Res.string.email_gmail_service_account_help_step_1_title to Res.string.email_gmail_service_account_help_step_1_description,
-        Res.string.email_gmail_service_account_help_step_2_title to Res.string.email_gmail_service_account_help_step_2_description,
-        Res.string.email_gmail_service_account_help_step_3_title to Res.string.email_gmail_service_account_help_step_3_description,
-    )
-    steps.forEachIndexed { index, (titleRes, descRes) ->
-        DesktopInstructionStep(
-            number = (index + 1).toString(),
-            title = stringResource(titleRes),
-            description = stringResource(descRes)
-        )
-    }
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.65f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
-    ) {
-        Text(
-            text = stringResource(Res.string.email_gmail_service_account_help_no_workspace),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
-        )
-    }
-}
-
-@Composable
-private fun GmailHelpSection(title: String, body: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-        Text(
-            body,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 

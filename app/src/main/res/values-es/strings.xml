@@ -1473,4 +1473,8 @@
     <string name="guest_form_project_id_hint">Sustituid YOUR_PROJECT_ID por el Project ID de Ajustes → Firebase.</string>
     <string name="guest_form_offered_access_pick_venue">Elige primero un lugar.</string>
     <string name="guest_form_offered_access_empty">Este lugar no tiene accesos especiales.</string>
+    <string name="settings_category_association">Asociación</string>
+    <string name="association_logo_title">Logotipo de la asociación</string>
+    <string name="association_logo_used_by">Se usa en los correos, los formularios de lista de invitados y la plataforma de voluntarios.</string>
+    <string name="email_logo_missing_hint">Todavía no hay logotipo. Añádalo en Ajustes, Asociación.</string>
 </resources>
