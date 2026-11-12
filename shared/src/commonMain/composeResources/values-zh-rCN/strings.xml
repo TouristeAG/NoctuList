@@ -10,7 +10,6 @@
     <string name="settings_logout_description">返回欢迎界面。再次使用管理功能前需要重新以管理员身份验证。</string>
 
     <!-- Google Sheets Configuration -->
-    <string name="google_sheets_config_title">Google Sheets 配置</string>
     <string name="view_setup_instructions">查看设置说明</string>
     <string name="spreadsheet_id_label">电子表格 ID</string>
     <string name="spreadsheet_id_hint">从您的 Google Sheets 网址获取：https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/edit</string>
@@ -36,27 +35,21 @@
     <string name="admin_label">管理员</string>
     <string name="admin_yes">是</string>
     <string name="admin_no">否</string>
-    <string name="save_settings">保存设置</string>
     <string name="test_connection">测试连接</string>
     
     <!-- Service Account Configuration -->
-    <string name="service_account_config_title">服务账号配置</string>
     <string name="service_account_key_found">已找到服务账号密钥</string>
     <string name="service_account_key_required">需要服务账号密钥</string>
     <string name="email_label">电子邮件：%1$s</string>
     <string name="project_label">项目：%1$s</string>
     <string name="email_colon">电子邮件：%1$s</string>
     <string name="project_colon">项目：%1$s</string>
-    <string name="upload_key_file_description">上传您的 Google 服务账号 JSON 密钥文件</string>
     <string name="upload_key_description">上传您的 Google 服务账号 JSON 密钥文件</string>
     <string name="replace_key_file">替换密钥文件</string>
     <string name="upload_key_file">上传密钥文件</string>
     
     <!-- Sync Configuration -->
-    <string name="sync_config_title">同步配置</string>
-    <string name="sync_interval_label">同步间隔（分钟）</string>
     <string name="sync_interval_hint">与 Google Sheets 同步的频率（1-60 分钟）。更改会自动保存并生效。</string>
-    <string name="save_sheets_config">保存表格配置</string>
     <string name="test_sync_status">测试同步状态</string>
     <string name="sync_status_dialog_title">同步状态</string>
     <string name="sync_status_configured">Google Sheets 已配置并准备同步</string>
@@ -804,9 +797,7 @@
     <string name="profile_photo_preview_hint">这是照片在个人资料上的显示效果。点击圆圈或下方按钮选择图片。</string>
     <string name="profile_photo_too_large">图片过大（压缩后最大 2 MB）。</string>
     <string name="profile_photo_upload_failed">无法上传个人资料照片。已保存该人员且不含照片。</string>
-    <string name="profile_photos_settings_title">个人资料照片（可选）</string>
     <string name="profile_photos_settings_body">使用 Firebase Storage，可能需要付费 Blaze 方案。保持关闭即可留在免费 Spark 方案。跳过 Storage 不会阻止应用的其余功能。管理员开启后，机构内所有设备都会开启。</string>
-    <string name="profile_photos_enable">启用个人资料照片</string>
     <string name="add_nfc_card_uid_title">添加 NFC 卡 UID</string>
     <string name="enter_uid_manually">手动输入 UID</string>
     <string name="read_uid_with_phone_nfc">使用手机读取 UID（NFC）</string>
@@ -1320,7 +1311,6 @@
     <string name="seasonal_fun_description">启用特殊季节功能和装饰</string>
     
     <!-- Settings Categories -->
-    <string name="settings_category_sync">同步与数据</string>
     <string name="setup_choose_backend_title">此设备如何连接？</string>
     <string name="setup_choose_backend_description">加入现有组织，或配置 Firebase 或 Google 表格。</string>
     <string name="setup_backend_sheets">Google Sheets（经典）</string>
@@ -1347,14 +1337,6 @@
     <string name="admin_org_picker_message">Admin 中不可用合并视图。请选择要管理的机构。</string>
     <string name="firebase_sync_title">Firebase 同步</string>
     <string name="firebase_sync_subtitle">宾客、志愿者、收银和门禁设备的实时同步。</string>
-    <string name="firebase_settings_intro">请按以下步骤操作。如需 Firebase 控制台帮助，请使用 ? 指南。</string>
-    <string name="firebase_settings_section_setup">设置</string>
-    <string name="firebase_settings_section_devices">其他设备</string>
-    <string name="firebase_settings_section_access">访问与团队</string>
-    <string name="firebase_settings_section_optional">可选</string>
-    <string name="firebase_status_ready">就绪 — 已登录并连接</string>
-    <string name="firebase_status_need_sign_in">即将就绪 — 请使用 Google 登录</string>
-    <string name="firebase_status_need_config">设置未完成 — 请填写下方字段</string>
     <string name="firebase_status_signed_in_as">已登录为 %1$s</string>
     <string name="firebase_status_not_signed_in">未登录</string>
     <string name="firebase_step_org_title">1. 您的组织</string>
@@ -1417,53 +1399,27 @@
     <string name="firebase_project_configured_hidden">Firebase 项目已配置（详情已隐藏）</string>
     <string name="firebase_project_secrets_restricted">仅当您既是本地管理员又是 Firebase 组织管理员时，才能查看项目密钥。请使用具有 Firebase 管理员角色的 Google 账号登录。</string>
     <string name="firebase_join_qr_restricted">只有同时具备 Firebase 组织管理员身份的本地管理员才能显示加入二维码和邀请码。</string>
-    <string name="firebase_team_title">邀请同事（角色与权限）</string>
-    <string name="firebase_team_body">每位使用 Firebase 的人员必须注册为带角色的组织成员。否则 Google 登录会成功，但 Firestore 将阻止所有读写。</string>
-    <string name="firebase_team_steps">1. 请对方在本应用中使用 Google 登录一次。\n2. 在 Firebase 控制台 → Authentication → 用户 中复制其 User UID（NoctuList 中永不显示）。\n3. 在下方粘贴 UID，若组织限制邮箱域名则填写 Google 邮箱，然后点击角色按钮。您必须以 Firebase 组织管理员身份登录。</string>
-    <string name="firebase_team_roles_heading">各角色允许的权限</string>
     <string name="firebase_team_role_admin_desc">管理员 — 完整设置、迁移、邀请他人、全部数据。</string>
     <string name="firebase_team_role_door_desc">门禁 / 售票 — 宾客名单、任务、场地（Billeterie）。</string>
     <string name="firebase_team_role_pos_desc">收银 — 销售、账户余额、转账（caisse）。</string>
     <string name="firebase_team_show">邀请他人 / 分配角色</string>
-    <string name="firebase_team_not_domains">与上方「允许的 Google 邮箱域名」不同：域名仅过滤登录；此部分授予 Firestore 中机构数据的访问权限。</string>
     <string name="firebase_team_role_member_desc">成员 — 团队设备的同步访问。打开管理模式仍需要本地管理员卡。</string>
-    <string name="firebase_team_admins_heading">Firebase 组织管理员</string>
-    <string name="firebase_team_admins_empty">此组织未找到 Firebase 管理员。首次创建组织的 Google 账号应出现在此处。</string>
-    <string name="firebase_team_members_heading">其他成员</string>
-    <string name="firebase_team_refresh">刷新列表</string>
-    <string name="firebase_team_assign_busy">正在将角色保存到 Firestore…</string>
-    <string name="firebase_team_assign_success_admin">已保存。此 Google 账号现在是 Firebase 组织管理员。</string>
-    <string name="firebase_team_assign_success_member">已保存。此 Google 账号现在是团队成员。</string>
     <string name="firebase_team_error_no_org">请先选择单个组织（不要选「全部」）。</string>
-    <string name="firebase_team_error_blank_uid">请输入 Firebase 控制台中 Firebase Authentication 的 User UID（不是邮箱）。</string>
     <string name="firebase_team_error_email_required">此组织限制邮箱域名。请同时填写其 Google 邮箱。</string>
     <string name="firebase_team_error_permission">Firestore 拒绝了此更改。请用已具有 Firebase 管理员角色的 Google 账号登录后再试。</string>
     <string name="firebase_team_load_error">无法加载成员列表。请确认您已以组织成员身份登录。</string>
-    <string name="firebase_team_working_org">这些更改将应用于组织：%1$s</string>
     <string name="firebase_team_error_not_ready">Firebase 尚未就绪。请使用 Google 登录，并等到连接显示为就绪。</string>
     <string name="firebase_team_uid_short">UID %1$s</string>
     <string name="firebase_role_member">成员</string>
-    <string name="firebase_email_domains_title">允许的 Google 邮箱域名</string>
     <string name="firebase_email_domains_body">仅地址以这些域名之一结尾的 Google 账号可登录并访问组织数据。留空则允许任意邮箱。</string>
-    <string name="firebase_email_domains_empty">无限制 — 任意 Google 邮箱可登录（若已邀请 / bootstrap）。</string>
     <string name="firebase_email_domains_label">域名</string>
     <string name="firebase_email_domains_hint">示例：example.ch 或 @example.ch</string>
-    <string name="firebase_email_domains_add">添加域名</string>
-    <string name="firebase_email_domains_remove">移除</string>
-    <string name="firebase_section_show">显示</string>
-    <string name="firebase_section_hide">隐藏</string>
-    <string name="firebase_member_uid_label">同事的 Firebase User UID</string>
-    <string name="firebase_member_uid_hint">仅从 Firebase 控制台 → Authentication → 用户 复制。UID 永不在 NoctuList 中列出 — 授予角色需要 Firebase 控制台访问权限。</string>
-    <string name="firebase_member_email_label">Google 邮箱（如需要）</string>
-    <string name="firebase_member_email_hint">仅当组织限制邮箱域名时必填。显示在成员列表中；不能替代 UID。</string>
     <string name="firebase_member_unknown_email">Google 账号（邮箱未知）</string>
     <string name="firebase_role_admin">管理员</string>
     <string name="firebase_role_door">门禁</string>
     <string name="firebase_role_pos">收银</string>
     <string name="firebase_tools_title">附加功能</string>
     <string name="firebase_tools_body">可选工具，不会改变当前活跃后端。</string>
-    <string name="firebase_migrate_section_title">更改同步后端</string>
-    <string name="firebase_migrate_section_body">将所有机构数据迁移到另一后端，并提示其他设备重新连接。仅管理员 — 请选择空闲时段。</string>
     <string name="firebase_migrate_to_sheets">切换到 Google Sheets…</string>
     <string name="sheets_migrate_to_firebase">切换到 Firebase…</string>
     <string name="sheets_migrate_card_title">升级到 Firebase</string>
@@ -1512,15 +1468,9 @@
     <string name="backend_mismatch_open_admin">打开 Admin</string>
     <string name="backend_mismatch_later">稍后</string>
     <string name="backend_mismatch_soft_lock">后端迁移待处理时编辑已锁定。打开 Admin 以重新连接。</string>
-    <string name="sheets_mirror_export_now">立即导出 Sheets 镜像</string>
     <string name="sheets_mirror_section_title">Google Sheets 镜像</string>
     <string name="sheets_mirror_section_body">Firebase 为活跃后端时，可选单向导出到单独电子表格。</string>
-    <string name="sheets_mirror_enabled_label">启用 Sheets 镜像导出</string>
-    <string name="sheets_mirror_configure_drawer">镜像 Sheets 配置</string>
     <string name="sheets_mirror_spreadsheet_id_label">镜像电子表格 ID</string>
-    <string name="sheets_mirror_interval_label">自动导出间隔（分钟）</string>
-    <string name="sheets_mirror_interval_hint">0 = 仅手动导出。启用自动导出时最少 5 分钟。</string>
-    <string name="sheets_mirror_last_export">上次镜像导出：%1$s</string>
     <string name="settings_category_appearance">外观与显示</string>
     <string name="settings_category_localization">本地化</string>
     <string name="settings_category_animations">动画与效果</string>
@@ -1852,7 +1802,6 @@
     <string name="dropdown_no_volunteers_found">未找到志愿者</string>
     <string name="open_in_browser">在浏览器中打开：%1$s</string>
     <string name="desktop_app_icon_unavailable">桌面版不支持自定义应用图标。</string>
-    <string name="minutes_short">分钟</string>
     <string name="selecting_file">正在选择文件…</string>
     <string name="action_cancelled">已取消</string>
     <string name="invalid_service_account_json">无效的服务账号 JSON</string>
@@ -2222,11 +2171,7 @@
     <string name="guest_form_review_reject">拒绝</string>
     <string name="guest_form_review_empty">这份回答里没有名字。</string>
     <string name="guest_form_person_n">第 %1$d 人</string>
-    <string name="guest_form_settings_title">艺人嘉宾名单表单（可选）</string>
     <string name="guest_form_settings_body">艺人在公开页面提交嘉宾名单（Firebase Hosting，免费）。在 Firebase 设置页面中发布一次网站即可。</string>
-    <string name="guest_form_enable">启用艺人嘉宾名单表单</string>
-    <string name="guest_form_billeterie_validate">允许票务处审核表单</string>
-    <string name="guest_form_site_url">站点：%1$s</string>
     <string name="guest_form_export">导出表单站点</string>
     <string name="guest_form_export_done">压缩包已保存。解压后运行下方命令。</string>
     <string name="guest_form_export_android">发布需在电脑上完成。在桌面版 NoctuList 打开本指南，导出压缩包，然后从第 3 步继续。</string>
@@ -2308,7 +2253,6 @@
     <string name="drive_import_match_ambiguous">请选择志愿者</string>
     <string name="drive_import_match_none">未找到匹配档案</string>
     <string name="drive_import_match_manual">手动选择</string>
-    <string name="drive_import_settings_title">从 Google 文档导入班次</string>
     <string name="drive_import_settings_description">允许管理员从 Google Docs 或 Sheets 创建班次。Google 登录还会请求访问 Drive、Docs、Sheets 和通讯录：请先在您的 Google Cloud 项目中启用 Drive、Docs、Sheets 和 People API，并在 OAuth 同意屏幕上声明这些范围。</string>
     <string name="drive_import_settings_scope_error">上次登录未能获得 Google Drive 访问权限：%1$s</string>
     <string name="drive_import_duplicate_volunteer">此志愿者已在另一行被选中。</string>
@@ -2348,25 +2292,16 @@
     <string name="profile_photo_request_hint">可以关闭此窗口：只要此设备上的 NoctuList 保持打开，照片到达后仍会自动添加。</string>
     <string name="portal_settings_title">志愿者门户</string>
     <string name="portal_settings_body">每位志愿者在表单网站上拥有个人空间：资料、班次、福利和钱包。请先在 Firebase 设置页面中完成准备（登录方式、规则、表单网站），然后在这里开启。加上可选的自动处理，请求会在几秒内处理。</string>
-    <string name="portal_enable">启用志愿者门户</string>
     <string name="portal_google_title">使用 Google 账号登录</string>
     <string name="portal_google_domains_label">志愿者的 Google Workspace 域名</string>
-    <string name="portal_google_domain_hint">域名（例如 association.ch）</string>
-    <string name="portal_google_verify_add">验证并添加</string>
-    <string name="portal_google_domain_remove">移除域名</string>
     <string name="portal_google_other">此域名未使用 Google Workspace</string>
     <string name="portal_google_not_found">找不到该域名</string>
     <string name="portal_google_error">无法验证，请重试</string>
-    <string name="portal_google_enable">允许志愿者使用 Google 账号登录</string>
     <string name="portal_google_needs_domain">请先添加由 Google Workspace 管理的域名，才能启用此选项</string>
     <string name="portal_show_logo">显示协会标志</string>
-    <string name="portal_show_logo_hint">显示在志愿者平台顶部的协会名称旁边。使用的是“设置 > 邮件”中设定的标志。</string>
     <string name="setup_google_redirects">已获授权的重定向 URI</string>
     <string name="setup_google_origins">已获授权的 JavaScript 来源</string>
     <string name="setup_google_test">测试时，请使用在“设置 > Firebase > 志愿者平台”中已验证域名的账号登录。gmail.com 账号始终会被拒绝。</string>
-    <string name="portal_sign_in_url">登录页面：%1$s</string>
-    <string name="portal_server_active">自动处理已开启。上次运行：%1$s</string>
-    <string name="portal_server_inactive">尚未发现自动处理。NoctuList 设备在线时会处理请求。</string>
     <string name="portal_add_choice_title">添加志愿者</string>
     <string name="portal_add_choice_fill">自己填写资料</string>
     <string name="portal_add_choice_fill_desc">现在填写信息，可同时开通其门户访问。</string>

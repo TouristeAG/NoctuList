@@ -10,7 +10,6 @@
     <string name="settings_logout_description">Redi ad domum screen. Opus est re-authenticare ut admin ad administrationem accessum.</string>
 
     <!-- Google Sheets Configuration -->
-    <string name="google_sheets_config_title">Configuratio Google Sheets</string>
     <string name="view_setup_instructions">Vide instructiones configuration</string>
     <string name="spreadsheet_id_label">ID schedae computensis</string>
     <string name="spreadsheet_id_hint">Accipe hoc ex schedae Google URL: https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/edit</string>
@@ -37,27 +36,21 @@
     <string name="admin_label">Administrator</string>
     <string name="admin_yes">Ita</string>
     <string name="admin_no">Non</string>
-    <string name="save_settings">Serva optioes</string>
     <string name="test_connection">Proba connexionem</string>
     
     <!-- Service Account Configuration -->
-    <string name="service_account_config_title">Configuratio ex ratio ministerii</string>
     <string name="service_account_key_found">Clavis rationis ministerii inventa</string>
     <string name="service_account_key_required">Clavis rationis ministerii requiriture</string>
     <string name="email_label">Epistula: %1$s</string>
     <string name="project_label">Projectum: %1$s</string>
     <string name="email_colon">Epistula: %1$s</string>
     <string name="project_colon">Projectum: %1$s</string>
-    <string name="upload_key_file_description">Deprome fasciculum clavis JSON rationis ministerii Google tuum</string>
     <string name="upload_key_description">Deprome fasciculum clavis JSON rationis ministerii Google tuum</string>
     <string name="replace_key_file">Substitue fasciculum clavis</string>
     <string name="upload_key_file">Deprome fasciculum clavis</string>
     
     <!-- Sync Configuration -->
-    <string name="sync_config_title">Configuratio synchronizationis</string>
-    <string name="sync_interval_label">Intervallum synchronizationis (minuta)</string>
     <string name="sync_interval_hint">Synchronisation frequentia cum Google schedae (1-60 minutae). Mutationes automatice salvae sunt.</string>
-    <string name="save_sheets_config">Serva configuration Sheets</string>
     <string name="test_sync_status">Proba status synchronizationis</string>
     <string name="sync_status_dialog_title">Status synchronizationis</string>
     <string name="sync_status_configured">Google schedae ad syncm erecta et parata sunt</string>
@@ -942,9 +935,7 @@
     <string name="profile_photo_preview_hint">Sic photographema in profilo apparebit. Circulum vel puga pyram infra tange ut imaginem eligas.</string>
     <string name="profile_photo_too_large">Imago nimis magna est (max. 2 MB post compressionem).</string>
     <string name="profile_photo_upload_failed">Photographemma profili mitti non potuit. Persona sine imagine servata est.</string>
-    <string name="profile_photos_settings_title">Photogrammæ profili (facultativum)</string>
     <string name="profile_photos_settings_body">Firebase Storage utitur et planum Blaze (solvendum) exigere potest. Relinque inactivum ut in plano gratuito Spark maneas. Storage omittere ceteram app numquam impedit. Si administrator hoc activat, in omnibus institutionis machinis activatur.</string>
-    <string name="profile_photos_enable">Photogrammæ profili activare</string>
     <string name="add_nfc_card_uid_title">AjouterUID carte NFC</string>
     <string name="enter_uid_manually">EntrerUID manu</string>
     <string name="read_uid_with_phone_nfc">Legere UID cum telephono (NFC)</string>
@@ -1458,7 +1449,6 @@
     <string name="seasonal_fun_description">Admitte speciales temporis features et ornamenta</string>
     
     <!-- Settings Categories -->
-    <string name="settings_category_sync">Synchronisation &amp; Data</string>
     <string name="setup_choose_backend_title">Quomodo hoc instrumentum connectit?</string>
     <string name="setup_choose_backend_description">Iunge organisationem existentem, vel configura Firebase vel Google Sheets.</string>
     <string name="setup_backend_sheets">Google Sheets (classicus)</string>
@@ -1485,14 +1475,6 @@
     <string name="admin_org_picker_message">Modus combinatus in Admin non praesto est. Elige organizationem administrandam.</string>
     <string name="firebase_sync_title">Sync Firebase</string>
     <string name="firebase_sync_subtitle">Sync tempore reali pro hospitibus, voluntariis, POS et instrumentis portae.</string>
-    <string name="firebase_settings_intro">Sequere gradus infra. Utere guide ? si opus est auxilium in Firebase Console.</string>
-    <string name="firebase_settings_section_setup">Configuratio</string>
-    <string name="firebase_settings_section_devices">Alia instrumenta</string>
-    <string name="firebase_settings_section_access">Accessus &amp; turma</string>
-    <string name="firebase_settings_section_optional">Optionale</string>
-    <string name="firebase_status_ready">Paratus — sign in et connecté</string>
-    <string name="firebase_status_need_sign_in">Fere paratus — sign in cum Google</string>
-    <string name="firebase_status_need_config">Configuratio incompleta — imple campos infra</string>
     <string name="firebase_status_signed_in_as">Sign in ut %1$s</string>
     <string name="firebase_status_not_signed_in">Non sign in</string>
     <string name="firebase_step_org_title">1. Organisatio tua</string>
@@ -1555,53 +1537,27 @@
     <string name="firebase_project_configured_hidden">Projectum Firebase configuratum (details celati)</string>
     <string name="firebase_project_secrets_restricted">Secreta projecti solum videntur si et admin localis et admin Firebase organisationis es. Intra cum ratione Google quae munus admin Firebase habet.</string>
     <string name="firebase_join_qr_restricted">Solum admines locales qui etiam admines Firebase organisationis sunt QR coniunctionis et codicem invitationis ostendere possunt.</string>
-    <string name="firebase_team_title">Invita collegas (roles &amp; permissiones)</string>
-    <string name="firebase_team_body">Quisque qui Firebase utitur debet registrari ut membrum org cum role. Sine hoc Google Sign-In succedit sed Firestore omnes lectiones et scripturas bloqueat.</string>
-    <string name="firebase_team_steps">1. Rogo sign in cum Google in hac app semel.\n2. In Console Firebase → Authentication → Users, copia User UID (numquam in NoctuList ostenditur).\n3. Colla UID infra, adde email Google si org dominia restringit, deinde tange buttonem role. Te ut admin Firebase organisationis signatum esse oportet.</string>
-    <string name="firebase_team_roles_heading">Quid permittit quaeque role</string>
     <string name="firebase_team_role_admin_desc">Admin — optiones plenae, migratio, invitare alios, omnia data.</string>
     <string name="firebase_team_role_door_desc">Porta / billetterie — index hospitum, jobs, loci (Billetterie).</string>
     <string name="firebase_team_role_pos_desc">POS — venditiones, saldi rationum, transfers (caisse).</string>
     <string name="firebase_team_show">Invita aliquem / assigna role</string>
-    <string name="firebase_team_not_domains">Non idem ac «Allowed Google email domains» supra: domaines solum filtrant sign in; haec sectio dat accessum ad data institutionis in Firestore.</string>
     <string name="firebase_team_role_member_desc">Sodalis — accessus sync pro instrumentis turmae. Modus Admin adhuc chartam admin localem requirit.</string>
-    <string name="firebase_team_admins_heading">Administratores Firebase institutionis</string>
-    <string name="firebase_team_admins_empty">Nulli admins Firebase huius institutionis inventi. Prima ratio Google quae org creavit hic apparere debet.</string>
-    <string name="firebase_team_members_heading">Ceteri sodales</string>
-    <string name="firebase_team_refresh">Renova indicem</string>
-    <string name="firebase_team_assign_busy">Munus in Firestore servatur…</string>
-    <string name="firebase_team_assign_success_admin">Servatum. Haec ratio Google nunc admin Firebase institutionis est.</string>
-    <string name="firebase_team_assign_success_member">Servatum. Haec ratio Google nunc sodalis turmae est.</string>
     <string name="firebase_team_error_no_org">Prius elige unam institutionem (non «Omnes»).</string>
-    <string name="firebase_team_error_blank_uid">Insere User UID Firebase Authentication ex Console Firebase (non email).</string>
     <string name="firebase_team_error_email_required">Haec institutio domaines email restringit. Insere etiam email Google eorum.</string>
     <string name="firebase_team_error_permission">Firestore hanc mutationem recusavit. Signa in ratione Google quae iam munus admin Firebase habet, deinde iterum tenta.</string>
     <string name="firebase_team_load_error">Index sodalium caricare non potuit. Confirma te sodalem org esse.</string>
-    <string name="firebase_team_working_org">Hae mutationes ad organizationem pertinent: %1$s</string>
     <string name="firebase_team_error_not_ready">Firebase nondum paratum est. Cum Google intra et dum conexio parata ostendatur exspecta.</string>
     <string name="firebase_team_uid_short">UID %1$s</string>
     <string name="firebase_role_member">Sodalis</string>
-    <string name="firebase_email_domains_title">Domaines email Google permittiti</string>
     <string name="firebase_email_domains_body">Solum rationes Google quarum inscriptio in uno horum domainum finit potest sign in et accedere ad data org. Relinque vacuum ut quaelibet email permittatur.</string>
-    <string name="firebase_email_domains_empty">Nulla restrictio — quaelibet email Google potest sign in (si invitatus / bootstrap).</string>
     <string name="firebase_email_domains_label">Domaine</string>
     <string name="firebase_email_domains_hint">Exemplum: aliquid.ch vel @aliquid.ch</string>
-    <string name="firebase_email_domains_add">Adde domaine</string>
-    <string name="firebase_email_domains_remove">Aufer</string>
-    <string name="firebase_section_show">Monstra</string>
-    <string name="firebase_section_hide">Celare</string>
-    <string name="firebase_member_uid_label">User UID Firebase collegae</string>
-    <string name="firebase_member_uid_hint">Copia tantum ex Console Firebase → Authentication → Users. UID numquam in NoctuList enumerantur — role dare postulat accessum Console Firebase.</string>
-    <string name="firebase_member_email_label">Email Google (si opus)</string>
-    <string name="firebase_member_email_hint">Tantum si org dominia email restringit. In indice membrorum ostenditur; UID non substituit.</string>
     <string name="firebase_member_unknown_email">Ratio Google (email ignotum)</string>
     <string name="firebase_role_admin">Administrator</string>
     <string name="firebase_role_door">Porta</string>
     <string name="firebase_role_pos">Caisse (POS)</string>
     <string name="firebase_tools_title">Instrumenta extra</string>
     <string name="firebase_tools_body">Instrumenta optionalia quae non mutant backend vivum tuum.</string>
-    <string name="firebase_migrate_section_title">Mutare backend sync</string>
-    <string name="firebase_migrate_section_body">Movet omnia data institutionis ad alium backend et rogat alia instrumenta reconnectere. Solum admin — elige momentum quietum.</string>
     <string name="firebase_migrate_to_sheets">Transire ad Google Sheets…</string>
     <string name="sheets_migrate_to_firebase">Transire ad Firebase…</string>
     <string name="sheets_migrate_card_title">Mise ad niveau Firebase</string>
@@ -1650,15 +1606,9 @@
     <string name="backend_mismatch_open_admin">Aperi Admin</string>
     <string name="backend_mismatch_later">Postea</string>
     <string name="backend_mismatch_soft_lock">Editing clausum dum migratio backend pendet. Aperi Admin ut reconnectas.</string>
-    <string name="sheets_mirror_export_now">Exporta mirror Sheets nunc</string>
     <string name="sheets_mirror_section_title">Mirror Google Sheets</string>
     <string name="sheets_mirror_section_body">Export unidirectionalis optionale ad spreadsheet separatum dum Firebase est backend vivum.</string>
-    <string name="sheets_mirror_enabled_label">Activa export mirror Sheets</string>
-    <string name="sheets_mirror_configure_drawer">Configuratio mirror Sheets</string>
     <string name="sheets_mirror_spreadsheet_id_label">ID schedae mirror</string>
-    <string name="sheets_mirror_interval_label">Intervallum export auto (minuta)</string>
-    <string name="sheets_mirror_interval_hint">0 = export manualis solum. Minimum 5 minuta cum export auto activatus.</string>
-    <string name="sheets_mirror_last_export">Ultimus export mirror: %1$s</string>
     <string name="settings_category_appearance">Apparence &amp; Affichage</string>
     <string name="settings_category_localization">Localisation</string>
     <string name="settings_category_animations">Animations &amp; Effets</string>
@@ -2042,7 +1992,6 @@ Solum iungere non sufficit — sine Management Tool nexus saepe conectitur deind
     <string name="dropdown_no_volunteers_found">Non voluntarios invenerunt</string>
     <string name="open_in_browser">Aperi in navigateur: %1$s</string>
     <string name="desktop_app_icon_unavailable">personususalizatio deicon applicationis n'est pas praesto in ordinateur.</string>
-    <string name="minutes_short">min</string>
     <string name="selecting_file">Discriptis tabella…</string>
     <string name="action_cancelled">Pax</string>
     <string name="invalid_service_account_json">Fasciculus JSON ratio ministerii invalidum</string>
@@ -2227,11 +2176,7 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="guest_form_review_reject">Recusare</string>
     <string name="guest_form_review_empty">Nulla nomina in hoc responso.</string>
     <string name="guest_form_person_n">Persona %1$d</string>
-    <string name="guest_form_settings_title">Formulæ invitatorum (optio)</string>
     <string name="guest_form_settings_body">Artifices indicem invitatorum in pagina publica mittunt (Firebase Hosting, gratis). Situm semel ex pagina configurationis Firebase divulga.</string>
-    <string name="guest_form_enable">Formulas invitatorum accendere</string>
-    <string name="guest_form_billeterie_validate">Billetteriam formulas confirmare sinere</string>
-    <string name="guest_form_site_url">Situs: %1$s</string>
     <string name="guest_form_export">Situm formularum exportare</string>
     <string name="guest_form_export_done">Fasciculus servatus. Extrahe, deinde mandata infra exsequere.</string>
     <string name="guest_form_export_android">Promulgatio computatrum exigit. Hunc ducem in NoctuList in computatro aperi, fasciculum exporta, a gradu 3 perge.</string>
@@ -2313,7 +2258,6 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="drive_import_match_ambiguous">Voluntarium elige</string>
     <string name="drive_import_match_none">Nullum consimile inventum</string>
     <string name="drive_import_match_manual">Manu electum</string>
-    <string name="drive_import_settings_title">Vices ex documentis Google importare</string>
     <string name="drive_import_settings_description">Administratoribus permittit vices ex Google Docs vel Sheets creare. Ingressus Google etiam accessum ad Drive, Docs, Sheets et Contactus petet: prius API Drive, Docs, Sheets et People in tuo Google Cloud incepto activa et illos ambitus in pagina consensus OAuth declara.</string>
     <string name="drive_import_settings_scope_error">Ultimus ingressus accessum ad Google Drive obtinere non potuit: %1$s</string>
     <string name="drive_import_duplicate_volunteer">Hic voluntarius iam in alia linea electus est.</string>
@@ -2353,25 +2297,16 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="profile_photo_request_hint">Hanc fenestram claudere potes: photographema tamen addetur cum advenerit, dum NoctuList in hoc instrumento apertum est.</string>
     <string name="portal_settings_title">Porta voluntariorum</string>
     <string name="portal_settings_body">Quisque voluntarius spatium personale in situ formularum accipit: profilum, vices, commoda et crumenam. Primum in pagina configurationis Firebase para (modi aditus, regulae, situs formularum), deinde hic accende. Tractationem automaticam optionalem adde ut petitiones intra secundas tractentur.</string>
-    <string name="portal_enable">Portam voluntariorum accende</string>
     <string name="portal_google_title">Aditus per rationem Google</string>
     <string name="portal_google_domains_label">Dominia Google Workspace voluntariorum</string>
-    <string name="portal_google_domain_hint">Dominium (e.g. association.ch)</string>
-    <string name="portal_google_verify_add">Proba et adde</string>
-    <string name="portal_google_domain_remove">Dominium remove</string>
     <string name="portal_google_other">Hoc dominium Google Workspace non adhibet</string>
     <string name="portal_google_not_found">Dominium non inventum</string>
     <string name="portal_google_error">Probatio fieri non potuit, iterum conare</string>
-    <string name="portal_google_enable">Voluntariis permitte ut per rationem Google introeant</string>
     <string name="portal_google_needs_domain">Adde dominium a Google Workspace administratum ut haec optio accendatur</string>
     <string name="portal_show_logo">Monstra signum societatis</string>
-    <string name="portal_show_logo_hint">Iuxta nomen societatis, in summa parte suggestus voluntariorum. Signum est quod in Optionibus, Epistula positum est.</string>
     <string name="setup_google_redirects">URI redirectionis permissae</string>
     <string name="setup_google_origins">Origines JavaScript permissae</string>
     <string name="setup_google_test">Ad probandum, introi ratione dominii in Optionibus, Firebase, Suggestu voluntariorum probati. Rationes gmail.com semper recusantur.</string>
-    <string name="portal_sign_in_url">Pagina aditus: %1$s</string>
-    <string name="portal_server_active">Processus automaticus activus est. Ultimum cursum: %1$s</string>
-    <string name="portal_server_inactive">Nullus processus automaticus adhuc visus est. Instrumentum NoctuList petitiones tractat cum in linea est.</string>
     <string name="portal_add_choice_title">Voluntarium adde</string>
     <string name="portal_add_choice_fill">Profilum ipse imple</string>
     <string name="portal_add_choice_fill_desc">Data nunc insere. Aditum ad portam simul aperire potes.</string>

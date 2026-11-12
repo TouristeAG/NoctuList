@@ -5,14 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.OutlinedButton
-import com.eventmanager.app.data.remote.BackendType
-import com.eventmanager.app.resources.Res
-import com.eventmanager.app.resources.firebase_tutorial_title
-import com.eventmanager.app.resources.view_setup_instructions
-import org.jetbrains.compose.resources.stringResource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.filled.CheckCircle
@@ -160,23 +153,3 @@ fun GuidedChecklistItem(
     }
 }
 
-@Composable
-fun SyncSetupInstructionsButton(
-    backendType: BackendType,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier.fillMaxWidth(),
-) {
-    val label = when (backendType) {
-        BackendType.FIREBASE -> stringResource(Res.string.firebase_tutorial_title)
-        BackendType.SHEETS -> stringResource(Res.string.view_setup_instructions)
-    }
-    OutlinedButton(onClick = onClick, modifier = modifier) {
-        Icon(
-            Icons.AutoMirrored.Outlined.HelpOutline,
-            contentDescription = null,
-            modifier = Modifier.size(18.dp),
-        )
-        Spacer(Modifier.size(8.dp))
-        Text(label)
-    }
-}

@@ -10,10 +10,6 @@
     <string name="settings_logout_description">返回欢迎界面。再次使用管理功能前需要重新以管理员身份验证。</string>
 
     <!-- Google Sheets Configuration -->
-    <string name="google_sheets_config_title">Google Sheets 配置</string>
-    <string name="view_setup_instructions">查看设置说明</string>
-    <string name="spreadsheet_id_label">电子表格 ID</string>
-    <string name="spreadsheet_id_hint">从您的 Google Sheets 网址获取：https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/edit</string>
     <string name="guest_list_sheet_label">来宾名单工作表</string>
     <string name="volunteer_sheet_label">志愿者工作表</string>
     <string name="shifts_sheet_label">班次工作表</string>
@@ -41,32 +37,22 @@
     <string name="admin_label">管理员</string>
     <string name="admin_yes">是</string>
     <string name="admin_no">否</string>
-    <string name="save_settings">保存设置</string>
     <string name="test_connection">测试连接</string>
     
     <!-- Service Account Configuration -->
-    <string name="service_account_config_title">服务账号配置</string>
-    <string name="service_account_key_found">已找到服务账号密钥</string>
-    <string name="service_account_key_required">需要服务账号密钥</string>
     <string name="email_label">电子邮件：%s</string>
     <string name="project_label">项目：%s</string>
     <string name="email_colon">电子邮件：%s</string>
     <string name="project_colon">项目：%s</string>
     <string name="upload_key_file_description">上传您的 Google 服务账号 JSON 密钥文件</string>
-    <string name="upload_key_description">上传您的 Google 服务账号 JSON 密钥文件</string>
     <string name="replace_key_file">替换密钥文件</string>
     <string name="upload_key_file">上传密钥文件</string>
     
     <!-- Sync Configuration -->
-    <string name="sync_config_title">同步配置</string>
-    <string name="sync_interval_label">同步间隔（分钟）</string>
-    <string name="sync_interval_hint">与 Google Sheets 同步的频率（1-60 分钟）</string>
-    <string name="test_sync_status">测试同步状态</string>
     <string name="sync_status_dialog_title">同步状态</string>
     <string name="sync_status_configured">Google Sheets 已配置并准备同步</string>
     <string name="sync_status_not_configured">Google Sheets 未配置。请检查您的设置。</string>
     <string name="sync_status_error">测试同步状态时出错：%s</string>
-    <string name="manual_sync_now">立即手动同步</string>
     <string name="view_active_volunteers">查看活跃志愿者</string>
     <string name="cleanup_inactive_volunteers">清理非活跃志愿者</string>
     <string name="cleanup_choose_duration">选择志愿者需保持非活跃多久才会被删除：</string>
@@ -1060,7 +1046,6 @@
     <string name="seasonal_fun_description">启用特殊季节功能和装饰</string>
     
     <!-- Settings Categories -->
-    <string name="settings_category_sync">同步与数据</string>
     <string name="settings_category_appearance">外观与显示</string>
     <string name="settings_category_localization">本地化</string>
     <string name="settings_category_animations">动画与效果</string>

@@ -10,10 +10,6 @@
     <string name="settings_logout_description">Retour à l\'écran d\'accueil. Vous devrez vous authentifier à nouveau en tant qu\'admin pour accéder à la gestion.</string>
 
     <!-- Google Sheets Configuration -->
-    <string name="google_sheets_config_title">Configuration Google Sheets</string>
-    <string name="view_setup_instructions">Voir les instructions de configuration</string>
-    <string name="spreadsheet_id_label">ID de la feuille de calcul</string>
-    <string name="spreadsheet_id_hint">Obtenez ceci depuis l\'URL de votre Google Sheets : https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/edit</string>
     <string name="guest_list_sheet_label">Feuille liste des invité·e·s</string>
     <string name="volunteer_sheet_label">Feuille des bénévoles</string>
     <string name="shifts_sheet_label">Feuille des Shifts</string>
@@ -46,32 +42,22 @@
     <string name="admin_label">Admin</string>
     <string name="admin_yes">Oui</string>
     <string name="admin_no">Non</string>
-    <string name="save_settings">Enregistrer les paramètres</string>
     <string name="test_connection">Tester la connexion</string>
     
     <!-- Service Account Configuration -->
-    <string name="service_account_config_title">Configuration du compte de service</string>
-    <string name="service_account_key_found">Clé de compte de service trouvée</string>
-    <string name="service_account_key_required">Clé de compte de service requise</string>
     <string name="email_label">Email : %s</string>
     <string name="project_label">Projet : %s</string>
     <string name="email_colon">Email : %s</string>
     <string name="project_colon">Projet : %s</string>
     <string name="upload_key_file_description">Téléchargez votre fichier de clé JSON du compte de service Google</string>
-    <string name="upload_key_description">Téléchargez votre fichier de clé JSON du compte de service Google</string>
     <string name="replace_key_file">Remplacer le fichier de clé</string>
     <string name="upload_key_file">Télécharger le fichier de clé</string>
     
     <!-- Sync Configuration -->
-    <string name="sync_config_title">Configuration de synchronisation</string>
-    <string name="sync_interval_label">Intervalle de synchronisation (minutes)</string>
-    <string name="sync_interval_hint">À quelle fréquence synchroniser avec Google Sheets (1-60 minutes)</string>
-    <string name="test_sync_status">Tester le statut de synchronisation</string>
     <string name="sync_status_dialog_title">Statut de synchronisation</string>
     <string name="sync_status_configured">Google Sheets est configuré et prêt pour la synchronisation</string>
     <string name="sync_status_not_configured">Google Sheets n\'est pas configuré. Veuillez vérifier vos paramètres.</string>
     <string name="sync_status_error">Erreur lors du test du statut de synchronisation : %s</string>
-    <string name="manual_sync_now">Synchronisation manuelle maintenant</string>
     <string name="view_active_volunteers">Voir les bénévoles actif·ve·s</string>
     <string name="cleanup_inactive_volunteers">Nettoyer les bénévoles inactif·ve·s</string>
     <string name="cleanup_choose_duration">Choisissez depuis combien de temps les bénévoles doivent être inactif·ve·s pour être supprimé·e·s :</string>
@@ -1171,7 +1157,6 @@
     <string name="enhanced_touch_targets">Cibles tactiles améliorées pour une meilleure interaction</string>
     
     <!-- Settings Categories -->
-    <string name="settings_category_sync">Synchronisation &amp; Données</string>
     <string name="settings_category_appearance">Apparence &amp; Affichage</string>
     <string name="settings_category_localization">Localisation</string>
     <string name="institution_settings_firebase_admin_only">Les paramètres d\'institution synchronisés (devise, e-mails, tampon de crédit, photos, miroir) ne peuvent être modifiés que par un admin Firebase de l\'organisation.</string>

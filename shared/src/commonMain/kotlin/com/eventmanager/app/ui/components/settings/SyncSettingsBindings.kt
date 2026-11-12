@@ -1,15 +1,15 @@
 package com.eventmanager.app.ui.components.settings
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import com.eventmanager.app.data.remote.BackendType
 import com.eventmanager.app.data.remote.FirebaseAuthResult
 import com.eventmanager.app.data.remote.FirebaseConfiguredOrg
@@ -23,7 +23,6 @@ import com.eventmanager.app.data.sync.SettingsManager
 import com.eventmanager.app.platform.PlatformContext
 import com.eventmanager.app.portal.DomainCheck
 import com.eventmanager.app.portal.PortalServerStatus
-import com.eventmanager.app.ui.components.FirebaseSyncSettingsSection
 import com.eventmanager.app.ui.viewmodel.EventManagerViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -32,8 +31,6 @@ import kotlinx.coroutines.launch
  * Everything the sync settings pages read and do. Built once per screen by
  * [rememberSyncSettingsBindings] so the desktop and Android screens share one copy of the
  * sign-in, sign-out, allowed-domains publish, project field and organisation callbacks.
- *
- * The first group mirrors the parameters of [FirebaseSyncSettingsSection] (same names).
  */
 class SyncSettingsBindings(
     val configuredOrgs: List<FirebaseConfiguredOrg>,
@@ -81,7 +78,7 @@ class SyncSettingsBindings(
     val onAddVolunteerPortalGoogleDomain: suspend (String) -> DomainCheck,
     val onRemoveVolunteerPortalGoogleDomain: (String) -> Unit,
     // Added for the pages.
-    /** Same check as the section: [FirebaseOrgAdminAccess.currentUserIsOrgAdmin]. */
+    /** [FirebaseOrgAdminAccess.currentUserIsOrgAdmin], checked on the Firebase backend only. */
     val isOrgAdmin: Boolean,
     val onOpenFirebaseGuide: () -> Unit,
     val onOpenMigration: (MigrationDirection) -> Unit,
@@ -291,60 +288,5 @@ fun rememberSyncSettingsBindings(
         lastSyncAt = lastSyncAt,
         onSyncNow = onSyncNowOverride ?: { viewModel.performFullSync() },
         scope = scope,
-    )
-}
-
-/**
- * The current Firebase sync section fed from [SyncSettingsBindings]. Temporary: the screens use it
- * until they switch to the new pages.
- */
-@Composable
-fun LegacyFirebaseSyncSettings(b: SyncSettingsBindings) {
-    FirebaseSyncSettingsSection(
-        isFirebaseOrgAdminOverride = b.isOrgAdmin,
-        configuredOrgs = b.configuredOrgs,
-        onConfiguredOrgsChange = b.onConfiguredOrgsChange,
-        onOrgIdCommitted = b.onOrgIdCommitted,
-        authEmail = b.authEmail,
-        onSignIn = b.onSignIn,
-        onSignOut = b.onSignOut,
-        onMigrateToSheets = b.onMigrateToSheets,
-        onMirrorExport = b.onMirrorExport,
-        platformContext = b.platformContext,
-        onMirrorSettingsChanged = b.onMirrorSettingsChanged,
-        settingsManager = b.settingsManager,
-        projectId = b.projectId,
-        apiKey = b.apiKey,
-        applicationId = b.applicationId,
-        webClientId = b.webClientId,
-        webClientSecret = b.webClientSecret,
-        onProjectIdChange = b.onProjectIdChange,
-        onApiKeyChange = b.onApiKeyChange,
-        onApplicationIdChange = b.onApplicationIdChange,
-        onWebClientIdChange = b.onWebClientIdChange,
-        onWebClientSecretChange = b.onWebClientSecretChange,
-        allowedEmailDomains = b.allowedEmailDomains,
-        onAllowedEmailDomainsChange = b.onAllowedEmailDomainsChange,
-        signInFeedback = b.signInFeedback,
-        profilePhotosEnabled = b.profilePhotosEnabled,
-        onProfilePhotosEnabledChange = b.onProfilePhotosEnabledChange,
-        driveImportEnabled = b.driveImportEnabled,
-        onDriveImportEnabledChange = b.onDriveImportEnabledChange,
-        guestFormsEnabled = b.guestFormsEnabled,
-        onGuestFormsEnabledChange = b.onGuestFormsEnabledChange,
-        guestFormsBilleterieValidateEnabled = b.guestFormsBilleterieValidateEnabled,
-        onGuestFormsBilleterieValidateEnabledChange = b.onGuestFormsBilleterieValidateEnabledChange,
-        guestFormSiteOrigin = b.guestFormSiteOrigin,
-        volunteerPortalEnabled = b.volunteerPortalEnabled,
-        portalServerStatus = b.portalServerStatus,
-        onVolunteerPortalEnabledChange = b.onVolunteerPortalEnabledChange,
-        volunteerPortalUrl = b.volunteerPortalUrl,
-        volunteerPortalGoogleEnabled = b.volunteerPortalGoogleEnabled,
-        onVolunteerPortalGoogleEnabledChange = b.onVolunteerPortalGoogleEnabledChange,
-        volunteerPortalShowLogo = b.volunteerPortalShowLogo,
-        onVolunteerPortalShowLogoChange = b.onVolunteerPortalShowLogoChange,
-        volunteerPortalGoogleDomains = b.volunteerPortalGoogleDomains,
-        onAddVolunteerPortalGoogleDomain = b.onAddVolunteerPortalGoogleDomain,
-        onRemoveVolunteerPortalGoogleDomain = b.onRemoveVolunteerPortalGoogleDomain,
     )
 }

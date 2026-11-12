@@ -10,7 +10,6 @@
     <string name="settings_logout_description">Return to the welcome screen. You will need to sign in again as admin to access management features.</string>
 
     <!-- Google Sheets Configuration -->
-    <string name="google_sheets_config_title">Google Sheets Configuration</string>
     <string name="view_setup_instructions">View Setup Instructions</string>
     <string name="spreadsheet_id_label">Spreadsheet ID</string>
     <string name="spreadsheet_id_hint">Get this from your Google Sheets URL: https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/edit</string>
@@ -37,27 +36,21 @@
     <string name="admin_label">Admin</string>
     <string name="admin_yes">Yes</string>
     <string name="admin_no">No</string>
-    <string name="save_settings">Save Settings</string>
     <string name="test_connection">Test Connection</string>
     
     <!-- Service Account Configuration -->
-    <string name="service_account_config_title">Service Account Configuration</string>
     <string name="service_account_key_found">Service Account Key Found</string>
     <string name="service_account_key_required">Service Account Key Required</string>
     <string name="email_label">Email: %1$s</string>
     <string name="project_label">Project: %1$s</string>
     <string name="email_colon">Email: %1$s</string>
     <string name="project_colon">Project: %1$s</string>
-    <string name="upload_key_file_description">Upload your Google Service Account JSON key file</string>
     <string name="upload_key_description">Upload your Google Service Account JSON key file</string>
     <string name="replace_key_file">Replace Key File</string>
     <string name="upload_key_file">Upload Key File</string>
     
     <!-- Sync Configuration -->
-    <string name="sync_config_title">Sync Configuration</string>
-    <string name="sync_interval_label">Sync Interval (minutes)</string>
     <string name="sync_interval_hint">How often to sync with Google Sheets (1-60 minutes). Changes apply automatically.</string>
-    <string name="save_sheets_config">Save Sheets Configuration</string>
     <string name="test_sync_status">Test Sync Status</string>
     <string name="sync_status_dialog_title">Synchronisation Status</string>
     <string name="sync_status_configured">Google Sheets is configured and ready for sync</string>
@@ -942,9 +935,7 @@
     <string name="profile_photo_preview_hint">This is how the photo will appear on the profile. Tap the circle or the button below to choose an image.</string>
     <string name="profile_photo_too_large">That image is too large (max 2 MB after compression).</string>
     <string name="profile_photo_upload_failed">The profile photo could not be uploaded. The person was saved without a photo.</string>
-    <string name="profile_photos_settings_title">Profile photos (optional)</string>
     <string name="profile_photos_settings_body">Uses Firebase Storage and may require a paid Blaze plan. Leave this off to stay on the free Spark plan. Skipping Storage never blocks the rest of the app. When an admin turns this on, every device in the organization gets it.</string>
-    <string name="profile_photos_enable">Enable profile photos</string>
     <string name="add_nfc_card_uid_title">Add NFC card UID</string>
     <string name="enter_uid_manually">Enter UID manually</string>
     <string name="read_uid_with_phone_nfc">Read UID with phone (NFC)</string>
@@ -1458,7 +1449,6 @@
     <string name="seasonal_fun_description">Enable special seasonal features and decorations</string>
     
     <!-- Settings Categories -->
-    <string name="settings_category_sync">Sync &amp; Data</string>
     <string name="setup_choose_backend_title">How will this device connect?</string>
     <string name="setup_choose_backend_description">Join an existing organization, or set up Firebase or Google Sheets.</string>
     <string name="setup_backend_sheets">Google Sheets (classic)</string>
@@ -1485,15 +1475,7 @@
     <string name="admin_org_picker_message">Combined view is not available in Admin. Select which organization to manage.</string>
     <string name="firebase_sync_title">Firebase sync</string>
     <string name="firebase_sync_subtitle">Realtime sync for guests, volunteers, POS and door devices.</string>
-    <string name="firebase_settings_intro">Follow the steps below. Use the ? guide if you need help in Firebase Console.</string>
-    <string name="firebase_settings_section_setup">Setup</string>
-    <string name="firebase_settings_section_devices">Other devices</string>
-    <string name="firebase_settings_section_access">Access &amp; team</string>
-    <string name="firebase_settings_section_optional">Optional</string>
     <string name="institution_settings_firebase_admin_only">Synced institution settings (currency, emails, credit buffer, photos, mirror) can only be changed by a Firebase org admin.</string>
-    <string name="firebase_status_ready">Ready — signed in and connected</string>
-    <string name="firebase_status_need_sign_in">Almost ready — sign in with Google</string>
-    <string name="firebase_status_need_config">Setup incomplete — fill the fields below</string>
     <string name="firebase_status_signed_in_as">Signed in as %1$s</string>
     <string name="firebase_status_not_signed_in">Not signed in</string>
     <string name="firebase_step_org_title">1. Your organization</string>
@@ -1556,53 +1538,27 @@
     <string name="firebase_project_configured_hidden">Firebase project configured (details hidden)</string>
     <string name="firebase_project_secrets_restricted">Project secrets are visible only if you are a local admin and a Firebase organization admin. Sign in with a Google account that has the Firebase admin role.</string>
     <string name="firebase_join_qr_restricted">Only local admins who also have Firebase organization admin can show the join QR and invitation code.</string>
-    <string name="firebase_team_title">Invite colleagues (roles &amp; permissions)</string>
-    <string name="firebase_team_body">Each person who uses Firebase must be registered as an org member with a role. Without this, Google Sign-In succeeds but Firestore blocks all reads and writes.</string>
-    <string name="firebase_team_steps">1. Ask them to sign in with Google in this app once.\n2. In Firebase Console → Authentication → Users, copy their User UID (never shown in NoctuList).\n3. Paste the UID below, add their Google email if your org restricts domains, then tap a role button. You must be signed in as a Firebase organization admin.</string>
-    <string name="firebase_team_roles_heading">What each role allows</string>
     <string name="firebase_team_role_admin_desc">Admin — full settings, migration, inviting others, all data.</string>
     <string name="firebase_team_role_door_desc">Door / ticketing — guest list, jobs, venues (Billeterie).</string>
     <string name="firebase_team_role_pos_desc">POS — sales, account balances, transfers (caisse).</string>
     <string name="firebase_team_role_member_desc">Member — sync access for team devices. Opening Admin mode still requires a local admin card.</string>
     <string name="firebase_team_show">Invite someone / assign role</string>
-    <string name="firebase_team_not_domains">Not the same as “Allowed Google email domains” above: domains only filter sign-in; this section grants access to institution data in Firestore.</string>
-    <string name="firebase_team_admins_heading">Firebase organization admins</string>
-    <string name="firebase_team_admins_empty">No Firebase admins found for this organization. The first Google account to set up the org should appear here.</string>
-    <string name="firebase_team_members_heading">Other members</string>
-    <string name="firebase_team_refresh">Refresh list</string>
-    <string name="firebase_team_assign_busy">Saving role in Firestore…</string>
-    <string name="firebase_team_assign_success_admin">Saved. This Google account is now a Firebase organization admin.</string>
-    <string name="firebase_team_assign_success_member">Saved. This Google account is now a team member.</string>
     <string name="firebase_team_error_no_org">Select a single organization first (not “All”).</string>
-    <string name="firebase_team_error_blank_uid">Enter the Firebase Authentication User UID from Firebase Console (not an email).</string>
     <string name="firebase_team_error_email_required">This organization restricts email domains. Enter their Google email too.</string>
     <string name="firebase_team_error_permission">Firestore refused this change. Sign in with a Google account that already has the Firebase admin role, then try again.</string>
     <string name="firebase_team_load_error">Could not load the member list. Check that you are signed in as an org member.</string>
-    <string name="firebase_team_working_org">These changes apply to organization: %1$s</string>
     <string name="firebase_team_error_not_ready">Firebase is not ready. Sign in with Google and wait until the connection shows as ready.</string>
     <string name="firebase_team_uid_short">UID %1$s</string>
     <string name="firebase_role_member">Member</string>
-    <string name="firebase_email_domains_title">Allowed Google email domains</string>
     <string name="firebase_email_domains_body">Only Google accounts whose address ends with one of these domains can sign in and access org data. Leave empty to allow any email.</string>
-    <string name="firebase_email_domains_empty">No restriction — any Google email can sign in (if invited / bootstrap).</string>
     <string name="firebase_email_domains_label">Domain</string>
     <string name="firebase_email_domains_hint">Example: quelquechose.ch or @quelquechose.ch</string>
-    <string name="firebase_email_domains_add">Add domain</string>
-    <string name="firebase_email_domains_remove">Remove</string>
-    <string name="firebase_section_show">Show</string>
-    <string name="firebase_section_hide">Hide</string>
-    <string name="firebase_member_uid_label">Colleague Firebase User UID</string>
-    <string name="firebase_member_uid_hint">Copy from Firebase Console → Authentication → Users only. UIDs are never listed in NoctuList — granting a role requires Firebase Console access.</string>
-    <string name="firebase_member_email_label">Their Google email (if required)</string>
-    <string name="firebase_member_email_hint">Required only when your org restricts email domains. Shown in the member list; never replaces the UID.</string>
     <string name="firebase_member_unknown_email">Google account (email unknown)</string>
     <string name="firebase_role_admin">Admin</string>
     <string name="firebase_role_door">Door</string>
     <string name="firebase_role_pos">POS</string>
     <string name="firebase_tools_title">Extras</string>
     <string name="firebase_tools_body">Optional tools that do not change your live backend.</string>
-    <string name="firebase_migrate_section_title">Change sync backend</string>
-    <string name="firebase_migrate_section_body">Moves all institution data to another backend and asks every other device to reconnect. Admin only — plan a quiet moment.</string>
     <string name="firebase_migrate_to_sheets">Switch to Google Sheets…</string>
     <string name="sheets_migrate_to_firebase">Switch to Firebase…</string>
     <string name="sheets_migrate_card_title">Upgrade to Firebase</string>
@@ -1651,15 +1607,9 @@
     <string name="backend_mismatch_open_admin">Open Admin</string>
     <string name="backend_mismatch_later">Later</string>
     <string name="backend_mismatch_soft_lock">Editing is locked while a backend migration is pending. Open Admin to reconnect.</string>
-    <string name="sheets_mirror_export_now">Export Sheets mirror now</string>
     <string name="sheets_mirror_section_title">Google Sheets mirror</string>
     <string name="sheets_mirror_section_body">Optional one-way export to a separate spreadsheet while Firebase is your live backend.</string>
-    <string name="sheets_mirror_enabled_label">Enable Sheets mirror export</string>
-    <string name="sheets_mirror_configure_drawer">Mirror Sheets configuration</string>
     <string name="sheets_mirror_spreadsheet_id_label">Mirror spreadsheet ID</string>
-    <string name="sheets_mirror_interval_label">Auto-export interval (minutes)</string>
-    <string name="sheets_mirror_interval_hint">0 = manual export only. Minimum 5 minutes when auto-export is enabled.</string>
-    <string name="sheets_mirror_last_export">Last mirror export: %1$s</string>
     <string name="settings_category_appearance">Appearance &amp; Display</string>
     <string name="settings_category_localization">Localization</string>
     <string name="settings_category_animations">Animations &amp; Effects</string>
@@ -2044,7 +1994,6 @@
     <string name="dropdown_no_volunteers_found">No volunteers found</string>
     <string name="open_in_browser">Open in browser: %1$s</string>
     <string name="desktop_app_icon_unavailable">App icon customization is not available on desktop.</string>
-    <string name="minutes_short">min</string>
     <string name="selecting_file">Selecting file…</string>
     <string name="action_cancelled">Cancelled</string>
     <string name="invalid_service_account_json">Invalid service account JSON</string>
@@ -2224,11 +2173,7 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="guest_form_review_reject">Refuse</string>
     <string name="guest_form_review_empty">No names in this answer.</string>
     <string name="guest_form_person_n">Person %1$d</string>
-    <string name="guest_form_settings_title">Artist guest list forms (optional)</string>
     <string name="guest_form_settings_body">Artists submit their guest list on a public page (Firebase Hosting, free). Publish the site once from the Firebase setup page.</string>
-    <string name="guest_form_enable">Enable artist guest list forms</string>
-    <string name="guest_form_billeterie_validate">Let the ticket desk validate forms</string>
-    <string name="guest_form_site_url">Site: %1$s</string>
     <string name="guest_form_export">Export the form site</string>
     <string name="guest_form_export_done">Zip saved. Unzip it, then run the commands below.</string>
     <string name="guest_form_export_android">Publishing requires a computer. Open this guide in NoctuList on desktop, export the zip, then continue from step 3.</string>
@@ -2310,7 +2255,6 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="drive_import_match_ambiguous">Choose a volunteer</string>
     <string name="drive_import_match_none">No match found</string>
     <string name="drive_import_match_manual">Chosen manually</string>
-    <string name="drive_import_settings_title">Import shifts from Google documents</string>
     <string name="drive_import_settings_description">Lets admins create shifts from a Google Doc or Sheet. Google Sign-In will also ask for access to Drive, Docs, Sheets and Contacts, so enable the Drive, Docs, Sheets and People APIs in your Google Cloud project and declare those scopes on your OAuth consent screen first.</string>
     <string name="drive_import_settings_scope_error">Last sign-in could not obtain Google Drive access: %1$s</string>
     <string name="drive_import_duplicate_volunteer">This volunteer is already selected on another line.</string>
@@ -2350,25 +2294,16 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="profile_photo_request_hint">You can close this window: the photo is still added when it arrives, as long as NoctuList is open on this device.</string>
     <string name="portal_settings_title">Volunteer portal</string>
     <string name="portal_settings_body">Each volunteer gets a personal web space on the form site: profile, shifts, benefits and wallet. Set it up first on the Firebase setup page (sign-in methods, rules, forms site), then turn it on here. Add the optional automatic processing so requests are handled in seconds.</string>
-    <string name="portal_enable">Enable the volunteer portal</string>
     <string name="portal_google_title">Sign in with a Google account</string>
     <string name="portal_google_domains_label">Volunteer Google Workspace domains</string>
-    <string name="portal_google_domain_hint">Domain (e.g. association.ch)</string>
-    <string name="portal_google_verify_add">Verify and add</string>
-    <string name="portal_google_domain_remove">Remove domain</string>
     <string name="portal_google_other">This domain does not use Google Workspace</string>
     <string name="portal_google_not_found">Domain not found</string>
     <string name="portal_google_error">Could not verify, please try again</string>
-    <string name="portal_google_enable">Let volunteers sign in with a Google account</string>
     <string name="portal_google_needs_domain">Add a domain managed by Google Workspace to turn this option on</string>
     <string name="portal_show_logo">Show the association logo</string>
-    <string name="portal_show_logo_hint">Next to the association name at the top of the volunteer portal. The logo is the one set in Settings, E-mail.</string>
     <string name="setup_google_redirects">Authorized redirect URIs</string>
     <string name="setup_google_origins">Authorized JavaScript origins</string>
     <string name="setup_google_test">To test, sign in with an account from a domain verified in Settings, Firebase, Volunteer portal. gmail.com accounts are always refused.</string>
-    <string name="portal_sign_in_url">Sign-in page: %1$s</string>
-    <string name="portal_server_active">Automatic processing is on. Last run: %1$s</string>
-    <string name="portal_server_inactive">No automatic processing seen yet. A NoctuList device handles requests when it is online.</string>
     <string name="portal_add_choice_title">Add a volunteer</string>
     <string name="portal_add_choice_fill">Fill in the profile myself</string>
     <string name="portal_add_choice_fill_desc">Enter the details now. You can open their portal access at the same time.</string>

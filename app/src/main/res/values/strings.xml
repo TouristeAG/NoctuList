@@ -10,10 +10,6 @@
     <string name="settings_logout_description">Return to the welcome screen. You will need to sign in again as admin to access management features.</string>
 
     <!-- Google Sheets Configuration -->
-    <string name="google_sheets_config_title">Google Sheets Configuration</string>
-    <string name="view_setup_instructions">View Setup Instructions</string>
-    <string name="spreadsheet_id_label">Spreadsheet ID</string>
-    <string name="spreadsheet_id_hint">Get this from your Google Sheets URL: https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/edit</string>
     <string name="guest_list_sheet_label">Guest List Sheet</string>
     <string name="volunteer_sheet_label">Volunteer Sheet</string>
     <string name="shifts_sheet_label">Shifts Sheet</string>
@@ -37,32 +33,22 @@
     <string name="admin_label">Admin</string>
     <string name="admin_yes">Yes</string>
     <string name="admin_no">No</string>
-    <string name="save_settings">Save Settings</string>
     <string name="test_connection">Test Connection</string>
     
     <!-- Service Account Configuration -->
-    <string name="service_account_config_title">Service Account Configuration</string>
-    <string name="service_account_key_found">Service Account Key Found</string>
-    <string name="service_account_key_required">Service Account Key Required</string>
     <string name="email_label">Email: %s</string>
     <string name="project_label">Project: %s</string>
     <string name="email_colon">Email: %s</string>
     <string name="project_colon">Project: %s</string>
     <string name="upload_key_file_description">Upload your Google Service Account JSON key file</string>
-    <string name="upload_key_description">Upload your Google Service Account JSON key file</string>
     <string name="replace_key_file">Replace Key File</string>
     <string name="upload_key_file">Upload Key File</string>
     
     <!-- Sync Configuration -->
-    <string name="sync_config_title">Sync Configuration</string>
-    <string name="sync_interval_label">Sync Interval (minutes)</string>
-    <string name="sync_interval_hint">How often to sync with Google Sheets (1-60 minutes)</string>
-    <string name="test_sync_status">Test Sync Status</string>
     <string name="sync_status_dialog_title">Synchronisation Status</string>
     <string name="sync_status_configured">Google Sheets is configured and ready for sync</string>
     <string name="sync_status_not_configured">Google Sheets is not configured. Please check your settings.</string>
     <string name="sync_status_error">Error testing sync status: %s</string>
-    <string name="manual_sync_now">Manual Sync Now</string>
     <string name="view_active_volunteers">View Active Volunteers</string>
     <string name="cleanup_inactive_volunteers">Cleanup Inactive Volunteers</string>
     <string name="cleanup_choose_duration">Choose how long volunteers must be inactive to be deleted:</string>
@@ -1098,7 +1084,6 @@
     <string name="seasonal_fun_description">Enable special seasonal features and decorations</string>
     
     <!-- Settings Categories -->
-    <string name="settings_category_sync">Sync &amp; Data</string>
     <string name="settings_category_appearance">Appearance &amp; Display</string>
     <string name="settings_category_localization">Localization</string>
     <string name="institution_settings_firebase_admin_only">Synced institution settings (currency, emails, credit buffer, photos, mirror) can only be changed by a Firebase org admin.</string>
