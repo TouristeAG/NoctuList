@@ -50,7 +50,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.InputChip
 import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -74,8 +73,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -113,7 +110,11 @@ object SettingsKitDefaults {
     val BlockShape = RoundedCornerShape(16.dp)
     val BlockSpacing = 28.dp
     val PageMaxWidth = 720.dp
+    /** Space under the sub-options revealed by [SettingsSwitchRow], before the next divider. */
+    val SubOptionBottomPadding = 6.dp
+
     internal val RowMinHeight = 56.dp
+    internal const val DisabledAlpha = 0.6f
 }
 
 data class HelpContent(val title: String, val body: String)
@@ -205,7 +206,7 @@ fun SettingsBlock(
                 modifier = Modifier.weight(1f),
             )
             if (help != null) {
-                IconButton(onClick = { showHelp = true }, modifier = Modifier.size(40.dp)) {
+                IconButton(onClick = { showHelp = true }) {
                     Icon(
                         Icons.AutoMirrored.Outlined.HelpOutline,
                         contentDescription = stringResource(Res.string.settings_help_cd),
@@ -256,6 +257,8 @@ private fun RowTexts(title: String, subtitle: String?, modifier: Modifier = Modi
 /**
  * A row: title, optional effect line (only when it says something the title does not), control at
  * the end. When [onClick] is set the whole row is clickable and, without [trailing], shows a chevron.
+ * When [enabled] is false the row is not clickable and its texts are dimmed; [trailing] controls
+ * handle their own enabled state.
  */
 @Composable
 fun SettingsRow(
@@ -263,11 +266,18 @@ fun SettingsRow(
     subtitle: String? = null,
     onClick: (() -> Unit)? = null,
     trailing: @Composable (() -> Unit)? = null,
+    enabled: Boolean = true,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+                } else {
+                    Modifier
+                },
+            )
             .heightIn(min = SettingsKitDefaults.RowMinHeight)
             .padding(
                 horizontal = SettingsKitDefaults.RowHorizontalPadding,
@@ -275,7 +285,13 @@ fun SettingsRow(
             ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RowTexts(title, subtitle, Modifier.weight(1f))
+        RowTexts(
+            title,
+            subtitle,
+            Modifier
+                .weight(1f)
+                .alpha(if (enabled) 1f else SettingsKitDefaults.DisabledAlpha),
+        )
         when {
             trailing != null -> {
                 Spacer(Modifier.width(16.dp))
@@ -331,7 +347,7 @@ fun SettingsSwitchRow(
                 subtitle,
                 Modifier
                     .weight(1f)
-                    .alpha(if (enabled) 1f else 0.6f),
+                    .alpha(if (enabled) 1f else SettingsKitDefaults.DisabledAlpha),
             )
             Spacer(Modifier.width(16.dp))
             Switch(checked = checked, onCheckedChange = null, enabled = enabled)
@@ -345,7 +361,7 @@ fun SettingsSwitchRow(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = SettingsKitDefaults.SubOptionIndent, bottom = 6.dp),
+                        .padding(start = SettingsKitDefaults.SubOptionIndent, bottom = SettingsKitDefaults.SubOptionBottomPadding),
                     content = expanded,
                 )
             }
@@ -464,7 +480,7 @@ private fun ChoiceCard(
     val borderWidth = if (selected) 2.dp else 1.dp
     Surface(
         modifier = modifier
-            .alpha(if (enabled) 1f else 0.6f)
+            .alpha(if (enabled) 1f else SettingsKitDefaults.DisabledAlpha)
             .selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onClick),
         shape = SettingsKitDefaults.BlockShape,
         color = containerColor,
@@ -506,7 +522,8 @@ private fun ChoiceCard(
 }
 
 /**
- * Domain list as removable input chips plus a "+ Ajouter" chip that opens an inline field.
+ * Domain list as chips removable from their × only, plus an add chip (the `add` string, "Ajouter"
+ * in French) that opens an inline field.
  * [onAdd] receives the trimmed text and returns an error message to show, or null on success.
  * When [enabled] is false the chips are read-only and the add chip is hidden.
  */
@@ -557,23 +574,14 @@ fun DomainChips(
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             domains.forEach { domain ->
-                InputChip(
-                    selected = false,
-                    onClick = { onRemove(domain) },
-                    enabled = enabled,
-                    label = { Text("@$domain") },
-                    trailingIcon = if (enabled) {
-                        {
-                            Icon(
-                                Icons.Filled.Close,
-                                contentDescription = null,
-                                modifier = Modifier.size(InputChipDefaults.IconSize),
-                            )
-                        }
+                DomainChip(
+                    domain = domain,
+                    removeDescription = "$removeLabel @$domain",
+                    onRemove = if (enabled) {
+                        { onRemove(domain) }
                     } else {
                         null
                     },
-                    modifier = Modifier.semantics { contentDescription = "$removeLabel @$domain" },
                 )
             }
             if (enabled && !adding) {
@@ -591,7 +599,10 @@ fun DomainChips(
             enter = expandVertically(animationSpec = tween(200)) + fadeIn(animationSpec = tween(200)),
             exit = fadeOut(animationSpec = tween(120)) + shrinkVertically(animationSpec = tween(180)),
         ) {
-            LaunchedEffect(Unit) { focusRequester.requestFocus() }
+            LaunchedEffect(Unit) {
+                // The field may not be attached yet on the first frame; never let focus crash the page.
+                runCatching { focusRequester.requestFocus() }
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Top,
@@ -627,6 +638,46 @@ fun DomainChips(
                     IconButton(onClick = { closeField() }, enabled = !busy) {
                         Icon(Icons.Filled.Close, contentDescription = stringResource(Res.string.cancel))
                     }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * One domain: an inert label, and when [onRemove] is set, an × that is its own control. The chip
+ * itself is not clickable, so a stray tap on the label never removes a domain.
+ */
+@Composable
+private fun DomainChip(domain: String, removeDescription: String, onRemove: (() -> Unit)?) {
+    val scheme = MaterialTheme.colorScheme
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = Color.Transparent,
+        border = BorderStroke(1.dp, scheme.outlineVariant),
+        contentColor = scheme.onSurfaceVariant,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "@$domain",
+                style = MaterialTheme.typography.labelLarge,
+                color = scheme.onSurface,
+                maxLines = 1,
+                modifier = Modifier.padding(
+                    start = 12.dp,
+                    end = if (onRemove != null) 0.dp else 12.dp,
+                    top = 6.dp,
+                    bottom = 6.dp,
+                ),
+            )
+            if (onRemove != null) {
+                // 32 dp visually; Compose hit testing extends it to the 48 dp minimum touch target.
+                IconButton(onClick = onRemove, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        Icons.Filled.Close,
+                        contentDescription = removeDescription,
+                        modifier = Modifier.size(InputChipDefaults.IconSize),
+                    )
                 }
             }
         }
