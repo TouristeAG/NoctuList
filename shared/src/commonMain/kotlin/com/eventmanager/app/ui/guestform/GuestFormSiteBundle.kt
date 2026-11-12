@@ -45,6 +45,10 @@ object GuestFormSiteBundle {
         "portal.css",
         "portal-i18n.js",
         "portal-common.js",
+        // Offline QR code in the volunteer space and the service worker that keeps it.
+        "portal-qr.js",
+        "portal-sw.js",
+        "vendor/qrcode.js",
         "manifest.webmanifest",
         // Cloud Functions (portal server): sources are prebuilt into lib/index.js.
         "functions/package.json",
