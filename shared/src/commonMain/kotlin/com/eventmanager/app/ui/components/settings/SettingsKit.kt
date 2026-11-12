@@ -182,11 +182,13 @@ fun SettingsPage(
 /**
  * A block: title with an optional "?" opening [HelpDialog], then a single `surfaceContainerLow`
  * surface (16 dp corners, no elevation) holding the rows. Separate rows with [SettingsDivider].
+ * [headerAction] is an optional small control (for example a text button) placed before the "?".
  */
 @Composable
 fun SettingsBlock(
     title: String,
     help: HelpContent? = null,
+    headerAction: @Composable (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     var showHelp by remember { mutableStateOf(false) }
@@ -205,6 +207,7 @@ fun SettingsBlock(
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f),
             )
+            headerAction?.invoke()
             if (help != null) {
                 IconButton(onClick = { showHelp = true }) {
                     Icon(

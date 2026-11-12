@@ -2,6 +2,8 @@ package com.eventmanager.app.ui.components.settings
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class SyncSettingsModelTest {
     @Test
@@ -53,5 +55,29 @@ class SyncSettingsModelTest {
         assertEquals(SyncConnectionState.NEEDS_CONFIG, syncConnectionState(orgReady = false, projectReady = true, signedIn = true))
         assertEquals(SyncConnectionState.NEEDS_CONFIG, syncConnectionState(orgReady = true, projectReady = false, signedIn = true))
         assertEquals(SyncConnectionState.NEEDS_CONFIG, syncConnectionState(orgReady = false, projectReady = false, signedIn = false))
+    }
+
+    @Test
+    fun nonAdminSeesNoMemberActions() {
+        assertFalse(memberActionsAllowed(isOrgAdmin = false, memberEmail = "jean@asso.ch", selfEmail = "admin@asso.ch"))
+        assertFalse(memberActionsAllowed(isOrgAdmin = false, memberEmail = "jean@asso.ch", selfEmail = null))
+    }
+
+    @Test
+    fun ownRowHasNoActions() {
+        assertFalse(memberActionsAllowed(isOrgAdmin = true, memberEmail = "admin@asso.ch", selfEmail = "admin@asso.ch"))
+        // Same address written differently is still one's own row.
+        assertFalse(memberActionsAllowed(isOrgAdmin = true, memberEmail = " Admin@Asso.CH ", selfEmail = "admin@asso.ch"))
+    }
+
+    @Test
+    fun blankMemberEmailHasNoActions() {
+        assertFalse(memberActionsAllowed(isOrgAdmin = true, memberEmail = null, selfEmail = "admin@asso.ch"))
+        assertFalse(memberActionsAllowed(isOrgAdmin = true, memberEmail = "  ", selfEmail = "admin@asso.ch"))
+    }
+
+    @Test
+    fun adminCanActOnAnotherMember() {
+        assertTrue(memberActionsAllowed(isOrgAdmin = true, memberEmail = "jean@asso.ch", selfEmail = "admin@asso.ch"))
     }
 }

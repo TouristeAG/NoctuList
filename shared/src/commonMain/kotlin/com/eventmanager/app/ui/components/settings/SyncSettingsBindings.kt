@@ -88,6 +88,8 @@ class SyncSettingsBindings(
     val lastSyncAt: Long,
     /** Sheets only. */
     val onSyncNow: () -> Unit,
+    /** Screen-level scope for long network actions, so they outlive a dialog or a page. */
+    val scope: CoroutineScope,
 )
 
 /**
@@ -280,6 +282,7 @@ fun rememberSyncSettingsBindings(
         onOpenMigration = onOpenMigration,
         lastSyncAt = lastSyncAt,
         onSyncNow = { viewModel.performFullSync() },
+        scope = scope,
     )
 }
 

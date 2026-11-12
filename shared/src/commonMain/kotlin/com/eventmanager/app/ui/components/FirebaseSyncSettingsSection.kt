@@ -279,20 +279,7 @@ fun FirebaseSyncSettingsSection(
                         settingsManager.setFirebaseBootstrapCode(code)
                     },
                     onRotateBootstrapCode = if (isFirebaseOrgAdmin && platformContext != null) {
-                        {
-                            val org = settingsManager.resolveWritableFirebaseOrgId()
-                            val gateway = com.eventmanager.app.data.remote.createFirestoreGateway(
-                                platformContext,
-                                settingsManager,
-                            )
-                            val code = com.eventmanager.app.data.remote.MemberRoleAdmin.rotateBootstrapCode(
-                                gateway = gateway,
-                                orgId = org,
-                                allowedEmailDomains = settingsManager.getAllowedEmailDomains(),
-                            )
-                            settingsManager.setFirebaseBootstrapCode(code)
-                            code
-                        }
+                        { rotateFirebaseInvitationCode(platformContext, settingsManager) }
                     } else {
                         null
                     },

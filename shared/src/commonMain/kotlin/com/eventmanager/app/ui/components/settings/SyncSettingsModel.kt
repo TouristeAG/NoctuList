@@ -36,3 +36,16 @@ fun syncConnectionState(orgReady: Boolean, projectReady: Boolean, signedIn: Bool
         !signedIn -> SyncConnectionState.NEEDS_SIGN_IN
         else -> SyncConnectionState.READY
     }
+
+/**
+ * Whether the Équipe page offers role and removal actions on a member row: only to an org admin,
+ * never on one's own row (e-mails compared trimmed and case-insensitively), and never on a member
+ * without a known e-mail. The Firestore rules remain the real barrier.
+ */
+fun memberActionsAllowed(isOrgAdmin: Boolean, memberEmail: String?, selfEmail: String?): Boolean {
+    if (!isOrgAdmin) return false
+    val member = memberEmail?.trim()?.lowercase().orEmpty()
+    if (member.isEmpty()) return false
+    val self = selfEmail?.trim()?.lowercase().orEmpty()
+    return member != self
+}

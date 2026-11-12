@@ -30,8 +30,11 @@ import com.eventmanager.app.data.remote.FirebaseJoinImport
 import com.eventmanager.app.data.remote.FirebaseJoinImportProblem
 import com.eventmanager.app.data.remote.FirebaseJoinImportResult
 import com.eventmanager.app.data.remote.FirebaseJoinPayload
+import com.eventmanager.app.data.remote.MemberRoleAdmin
+import com.eventmanager.app.data.remote.createFirestoreGateway
 import com.eventmanager.app.data.sync.SettingsManager
 import com.eventmanager.app.data.security.firebaseOAuthCredentialsReady
+import com.eventmanager.app.platform.PlatformContext
 import com.eventmanager.app.resources.Res
 import com.eventmanager.app.resources.firebase_api_key_label
 import com.eventmanager.app.resources.firebase_application_id_label
@@ -307,7 +310,7 @@ fun FirebaseAdminJoinQrCard(
     var rotateError by remember { mutableStateOf<String?>(null) }
     var revealInvite by remember { mutableStateOf(false) }
 
-    val payload = remember(
+    val encoded = remember(
         allowProjectSecrets,
         orgId,
         projectId,
@@ -318,21 +321,15 @@ fun FirebaseAdminJoinQrCard(
         bootstrapCode,
     ) {
         if (!allowProjectSecrets) return@remember null
-        FirebaseJoinPayload(
-            orgId = orgId.trim(),
-            projectId = projectId.trim(),
-            applicationId = applicationId.trim(),
-            apiKey = apiKey.trim(),
-            webClientId = webClientId.trim(),
-            webClientSecret = webClientSecret.trim(),
-            bootstrapCode = bootstrapCode.trim(),
-        ).takeIf {
-            it.hasJoinSecrets() &&
-                firebaseOAuthCredentialsReady(webClientId.trim(), webClientSecret.trim())
-        }
-    }
-    val encoded = remember(payload) {
-        payload?.let { runCatching { FirebaseJoinCodec.encode(it) }.getOrNull() }
+        firebaseJoinConfigCode(
+            orgId = orgId,
+            projectId = projectId,
+            applicationId = applicationId,
+            apiKey = apiKey,
+            webClientId = webClientId,
+            webClientSecret = webClientSecret,
+            bootstrapCode = bootstrapCode,
+        )
     }
     val qrBitmap = remember(encoded) {
         encoded?.let { QRCodeUtils.generateQrImageBitmap(it, 512) }
@@ -476,6 +473,51 @@ fun FirebaseAdminJoinQrCard(
             }
         }
     }
+}
+
+/**
+ * The join configuration code (what the QR holds) for these project values, or null when the
+ * project, the Google Sign-In credentials or the invitation code are incomplete.
+ */
+internal fun firebaseJoinConfigCode(
+    orgId: String,
+    projectId: String,
+    applicationId: String,
+    apiKey: String,
+    webClientId: String,
+    webClientSecret: String,
+    bootstrapCode: String,
+): String? {
+    val payload = FirebaseJoinPayload(
+        orgId = orgId.trim(),
+        projectId = projectId.trim(),
+        applicationId = applicationId.trim(),
+        apiKey = apiKey.trim(),
+        webClientId = webClientId.trim(),
+        webClientSecret = webClientSecret.trim(),
+        bootstrapCode = bootstrapCode.trim(),
+    ).takeIf {
+        it.hasJoinSecrets() && firebaseOAuthCredentialsReady(webClientId.trim(), webClientSecret.trim())
+    } ?: return null
+    return runCatching { FirebaseJoinCodec.encode(payload) }.getOrNull()
+}
+
+/**
+ * Creates or replaces the org invitation code (older QR codes stop working), publishes its hash
+ * and stores the new code on this device. Org admins only; Firestore refuses anyone else.
+ */
+internal suspend fun rotateFirebaseInvitationCode(
+    platformContext: PlatformContext,
+    settingsManager: SettingsManager,
+): String {
+    val gateway = createFirestoreGateway(platformContext, settingsManager)
+    val code = MemberRoleAdmin.rotateBootstrapCode(
+        gateway = gateway,
+        orgId = settingsManager.resolveWritableFirebaseOrgId(),
+        allowedEmailDomains = settingsManager.getAllowedEmailDomains(),
+    )
+    settingsManager.setFirebaseBootstrapCode(code)
+    return code
 }
 
 /** Wizard helper: project config + join QR in one block. */
