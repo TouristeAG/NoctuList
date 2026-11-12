@@ -2573,4 +2573,19 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="sync_online_profile_photos">प्रोफ़ाइल फ़ोटो</string>
     <string name="sync_online_photos_hint">Firebase Storage का उपयोग करता है, जिसके लिए Blaze प्लान (सशुल्क) ज़रूरी हो सकता है</string>
     <string name="sync_online_drive_import">Google Drive इम्पोर्ट</string>
+    <string name="sync_backup_page_title">बैकअप</string>
+    <string name="sync_backup_page_subtitle">आपके डेटा की एक प्रति Google Sheets स्प्रेडशीट में</string>
+    <string name="sync_backup_switch_title">Google Sheets में बैकअप प्रति</string>
+    <string name="sync_backup_frequency">आवृत्ति</string>
+    <string name="sync_backup_freq_hourly">हर घंटे</string>
+    <string name="sync_backup_freq_daily">हर दिन</string>
+    <string name="sync_backup_freq_manual">केवल मैन्युअल</string>
+    <string name="sync_backup_export_now">अभी एक्सपोर्ट करें</string>
+    <string name="sync_backup_last_export_now">अंतिम एक्सपोर्ट अभी हुआ</string>
+    <string name="sync_backup_last_export_minutes">अंतिम एक्सपोर्ट %1$d मिनट पहले</string>
+    <string name="sync_backup_last_export_hours">अंतिम एक्सपोर्ट %1$d घंटे पहले</string>
+    <string name="sync_backup_last_export_days">अंतिम एक्सपोर्ट %1$d दिन पहले</string>
+    <string name="sync_backup_key_missing">इस डिवाइस पर अभी कोई सर्विस अकाउंट कुंजी नहीं है।</string>
+    <string name="sync_backup_sheet_names">शीट के नाम</string>
+    <string name="sync_backup_storage_title">स्टोरेज बदलें</string>
 </resources>

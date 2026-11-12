@@ -75,3 +75,19 @@ fun portalGoogleDomainSuggestions(teamDomains: List<String>, verifiedDomains: Li
         .filter { it.isNotBlank() && it.contains('.') && it !in verified }
         .distinct()
 }
+
+/** How long ago the last mirror export ran, in the unit the page shows. */
+enum class ExportAgeUnit { NOW, MINUTES, HOURS, DAYS }
+
+data class ExportAge(val unit: ExportAgeUnit, val count: Int)
+
+/** Coarse "x ago" for the last mirror export: under a minute is [ExportAgeUnit.NOW], then minutes, hours, days. */
+fun exportAge(lastExportAt: Long, nowMillis: Long): ExportAge {
+    val minutes = ((nowMillis - lastExportAt).coerceAtLeast(0L) / 60_000L).toInt()
+    return when {
+        minutes < 1 -> ExportAge(ExportAgeUnit.NOW, 0)
+        minutes < 60 -> ExportAge(ExportAgeUnit.MINUTES, minutes)
+        minutes < 1440 -> ExportAge(ExportAgeUnit.HOURS, minutes / 60)
+        else -> ExportAge(ExportAgeUnit.DAYS, minutes / 1440)
+    }
+}

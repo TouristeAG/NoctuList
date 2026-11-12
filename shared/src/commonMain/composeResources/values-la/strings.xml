@@ -2573,4 +2573,19 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="sync_online_profile_photos">Imagines personales</string>
     <string name="sync_online_photos_hint">Firebase Storage adhibet, quod rationem Blaze (solutam) requirere potest</string>
     <string name="sync_online_drive_import">Importatio ex Google Drive</string>
+    <string name="sync_backup_page_title">Tabula salutis</string>
+    <string name="sync_backup_page_subtitle">Exemplar datorum tuorum in tabula Google Sheets</string>
+    <string name="sync_backup_switch_title">Exemplar salutis in Google Sheets</string>
+    <string name="sync_backup_frequency">Frequentia</string>
+    <string name="sync_backup_freq_hourly">Omni hora</string>
+    <string name="sync_backup_freq_daily">Cotidie</string>
+    <string name="sync_backup_freq_manual">Manu tantum</string>
+    <string name="sync_backup_export_now">Nunc exporta</string>
+    <string name="sync_backup_last_export_now">Ultima exportatio modo</string>
+    <string name="sync_backup_last_export_minutes">Ultima exportatio ante %1$d min</string>
+    <string name="sync_backup_last_export_hours">Ultima exportatio ante %1$d h</string>
+    <string name="sync_backup_last_export_days">Ultima exportatio ante %1$d d</string>
+    <string name="sync_backup_key_missing">Nulla clavis rationis servitii in hoc instrumento adhuc est.</string>
+    <string name="sync_backup_sheet_names">Nomina paginarum</string>
+    <string name="sync_backup_storage_title">Repositorium muta</string>
 </resources>

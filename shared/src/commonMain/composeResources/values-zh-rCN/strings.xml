@@ -2568,4 +2568,19 @@
     <string name="sync_online_profile_photos">头像</string>
     <string name="sync_online_photos_hint">使用 Firebase Storage，可能需要 Blaze 付费方案</string>
     <string name="sync_online_drive_import">Google Drive 导入</string>
+    <string name="sync_backup_page_title">备份</string>
+    <string name="sync_backup_page_subtitle">将数据复制到 Google Sheets 电子表格</string>
+    <string name="sync_backup_switch_title">Google Sheets 备份副本</string>
+    <string name="sync_backup_frequency">频率</string>
+    <string name="sync_backup_freq_hourly">每小时</string>
+    <string name="sync_backup_freq_daily">每天</string>
+    <string name="sync_backup_freq_manual">仅手动</string>
+    <string name="sync_backup_export_now">立即导出</string>
+    <string name="sync_backup_last_export_now">上次导出：刚刚</string>
+    <string name="sync_backup_last_export_minutes">上次导出：%1$d 分钟前</string>
+    <string name="sync_backup_last_export_hours">上次导出：%1$d 小时前</string>
+    <string name="sync_backup_last_export_days">上次导出：%1$d 天前</string>
+    <string name="sync_backup_key_missing">此设备上还没有服务账号密钥。</string>
+    <string name="sync_backup_sheet_names">工作表名称</string>
+    <string name="sync_backup_storage_title">更改存储方式</string>
 </resources>

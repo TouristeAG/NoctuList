@@ -119,4 +119,15 @@ class SyncSettingsModelTest {
         assertEquals(emptyList<String>(), portalGoogleDomainSuggestions(listOf("", " ", "localhost", "@"), emptyList()))
         assertEquals(emptyList<String>(), portalGoogleDomainSuggestions(emptyList(), emptyList()))
     }
+
+    @Test
+    fun exportAgeUsesTheCoarsestUnit() {
+        val now = 10_000_000_000L
+        assertEquals(ExportAge(ExportAgeUnit.NOW, 0), exportAge(now - 30_000L, now))
+        assertEquals(ExportAge(ExportAgeUnit.NOW, 0), exportAge(now + 5_000L, now))
+        assertEquals(ExportAge(ExportAgeUnit.MINUTES, 5), exportAge(now - 5 * 60_000L, now))
+        assertEquals(ExportAge(ExportAgeUnit.HOURS, 1), exportAge(now - 60 * 60_000L, now))
+        assertEquals(ExportAge(ExportAgeUnit.HOURS, 23), exportAge(now - 23 * 3_600_000L - 59 * 60_000L, now))
+        assertEquals(ExportAge(ExportAgeUnit.DAYS, 2), exportAge(now - 49 * 3_600_000L, now))
+    }
 }

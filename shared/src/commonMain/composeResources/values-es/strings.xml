@@ -2568,4 +2568,19 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="sync_online_profile_photos">Fotos de perfil</string>
     <string name="sync_online_photos_hint">Usa Firebase Storage, que puede requerir el plan Blaze (de pago)</string>
     <string name="sync_online_drive_import">Importación desde Google Drive</string>
+    <string name="sync_backup_page_title">Copia de seguridad</string>
+    <string name="sync_backup_page_subtitle">Una copia de sus datos en una hoja de Google Sheets</string>
+    <string name="sync_backup_switch_title">Copia de seguridad en Google Sheets</string>
+    <string name="sync_backup_frequency">Frecuencia</string>
+    <string name="sync_backup_freq_hourly">Cada hora</string>
+    <string name="sync_backup_freq_daily">Cada día</string>
+    <string name="sync_backup_freq_manual">Solo manual</string>
+    <string name="sync_backup_export_now">Exportar ahora</string>
+    <string name="sync_backup_last_export_now">Última exportación hace un momento</string>
+    <string name="sync_backup_last_export_minutes">Última exportación hace %1$d min</string>
+    <string name="sync_backup_last_export_hours">Última exportación hace %1$d h</string>
+    <string name="sync_backup_last_export_days">Última exportación hace %1$d d</string>
+    <string name="sync_backup_key_missing">Aún no hay clave de cuenta de servicio en este dispositivo.</string>
+    <string name="sync_backup_sheet_names">Nombres de las hojas</string>
+    <string name="sync_backup_storage_title">Cambiar el almacenamiento</string>
 </resources>
