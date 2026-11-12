@@ -49,3 +49,14 @@ fun memberActionsAllowed(isOrgAdmin: Boolean, memberEmail: String?, selfEmail: S
     val self = selfEmail?.trim()?.lowercase().orEmpty()
     return member != self
 }
+
+/**
+ * Whether the org's `metadata/config` already holds an invitation code: the hashed field
+ * `bootstrapCodeHash` or the legacy `bootstrapCode`, non-empty (the same test as the Firestore
+ * rules). When it does, a device without the code must not create one silently, because a new code
+ * disables every QR already shared.
+ */
+fun orgConfigHasInvitationCode(config: Map<String, Any?>): Boolean =
+    listOf("bootstrapCodeHash", "bootstrapCode").any { key ->
+        (config[key] as? String)?.isNotBlank() == true
+    }

@@ -2548,4 +2548,8 @@
     <string name="sync_team_error_self">您无法更改自己的访问权限。</string>
     <string name="sync_team_error_domain">%1$s 不在允许的地址中。您可以移除此人，但不能更改其角色。</string>
     <string name="sync_team_domains_none">暂无域名：任何扫描二维码的人都可以加入团队。</string>
+    <string name="sync_team_invite_not_on_device">此设备上没有组织的邀请码。新代码会使已分享的二维码失效。</string>
+    <string name="sync_team_invite_create_new">创建新代码</string>
+    <string name="sync_team_invite_check_failed">无法检查组织的邀请码。请检查网络连接后重试。</string>
+    <string name="sync_team_retry">重试</string>
 </resources>

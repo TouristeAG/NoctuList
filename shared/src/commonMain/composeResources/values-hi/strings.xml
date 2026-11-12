@@ -2553,4 +2553,8 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="sync_team_error_self">आप अपनी खुद की पहुँच नहीं बदल सकते।</string>
     <string name="sync_team_error_domain">%1$s अनुमत पतों में नहीं है। आप इस व्यक्ति को हटा सकते हैं, लेकिन उसकी भूमिका नहीं बदल सकते।</string>
     <string name="sync_team_domains_none">अभी कोई डोमेन नहीं: QR स्कैन करने वाला कोई भी व्यक्ति टीम में शामिल हो सकता है।</string>
+    <string name="sync_team_invite_not_on_device">संगठन का आमंत्रण कोड इस डिवाइस पर नहीं है। नया कोड पहले से साझा किए गए QR बंद कर देता है।</string>
+    <string name="sync_team_invite_create_new">नया कोड बनाएँ</string>
+    <string name="sync_team_invite_check_failed">संगठन का आमंत्रण कोड जाँचा नहीं जा सका। कनेक्शन जाँचें, फिर दोबारा कोशिश करें।</string>
+    <string name="sync_team_retry">दोबारा कोशिश करें</string>
 </resources>

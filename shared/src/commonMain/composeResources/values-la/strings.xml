@@ -2553,4 +2553,8 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="sync_team_error_self">Aditum tuum ipse mutare non potes.</string>
     <string name="sync_team_error_domain">%1$s inter inscriptiones permissas non est. Hanc personam removere potes, sed munus eius mutare non potes.</string>
     <string name="sync_team_domains_none">Nondum dominia: quilibet qui QR legit turmae se adiungere potest.</string>
+    <string name="sync_team_invite_not_on_device">Codex invitationis ordinationis in hoc instrumento non est. Novus codex QR iam communicatos exstinguit.</string>
+    <string name="sync_team_invite_create_new">Novum codicem crea</string>
+    <string name="sync_team_invite_check_failed">Codex invitationis ordinationis inspici non potuit. Conexionem inspice, deinde iterum conare.</string>
+    <string name="sync_team_retry">Iterum conare</string>
 </resources>

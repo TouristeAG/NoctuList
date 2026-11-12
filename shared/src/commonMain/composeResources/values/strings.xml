@@ -2550,4 +2550,8 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="sync_team_error_self">You cannot change your own access.</string>
     <string name="sync_team_error_domain">%1$s is not one of the allowed addresses. You can remove this person, but not change their role.</string>
     <string name="sync_team_domains_none">No domain yet: anyone who scans the QR code can join the team.</string>
+    <string name="sync_team_invite_not_on_device">The organization's invitation code is not on this device. A new code disables the QR codes already shared.</string>
+    <string name="sync_team_invite_create_new">Create a new code</string>
+    <string name="sync_team_invite_check_failed">Could not check the organization's invitation code. Check the connection, then try again.</string>
+    <string name="sync_team_retry">Try again</string>
 </resources>

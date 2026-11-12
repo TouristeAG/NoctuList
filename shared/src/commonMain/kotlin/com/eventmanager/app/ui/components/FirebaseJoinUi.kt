@@ -35,6 +35,7 @@ import com.eventmanager.app.data.remote.createFirestoreGateway
 import com.eventmanager.app.data.sync.SettingsManager
 import com.eventmanager.app.data.security.firebaseOAuthCredentialsReady
 import com.eventmanager.app.platform.PlatformContext
+import com.eventmanager.app.ui.components.settings.orgConfigHasInvitationCode
 import com.eventmanager.app.resources.Res
 import com.eventmanager.app.resources.firebase_api_key_label
 import com.eventmanager.app.resources.firebase_application_id_label
@@ -500,6 +501,24 @@ internal fun firebaseJoinConfigCode(
         it.hasJoinSecrets() && firebaseOAuthCredentialsReady(webClientId.trim(), webClientSecret.trim())
     } ?: return null
     return runCatching { FirebaseJoinCodec.encode(payload) }.getOrNull()
+}
+
+/**
+ * Reads the org's `metadata/config` from the server and says whether it already has an
+ * invitation code. Throws when Firebase is not ready or the read fails; a missing document
+ * also throws, because the desktop gateway returns null for an unreachable server too, and a
+ * code must never be created on a guess.
+ */
+internal suspend fun orgHasInvitationCodeOnServer(
+    platformContext: PlatformContext,
+    settingsManager: SettingsManager,
+): Boolean {
+    val org = settingsManager.resolveWritableFirebaseOrgId()
+    if (org.isBlank()) error("NO_ORG")
+    val gateway = createFirestoreGateway(platformContext, settingsManager)
+    if (!gateway.isAvailable()) error("NOT_READY")
+    val config = gateway.getDocumentFromServer(org, "metadata", "config") ?: error("CONFIG_UNREADABLE")
+    return orgConfigHasInvitationCode(config)
 }
 
 /**

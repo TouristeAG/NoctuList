@@ -2547,4 +2547,8 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="sync_team_error_self">Vous ne pouvez pas modifier votre propre accès.</string>
     <string name="sync_team_error_domain">%1$s ne fait pas partie des adresses autorisées. Vous pouvez retirer cette personne, mais pas changer son rôle.</string>
     <string name="sync_team_domains_none">Aucun domaine pour l'instant : toute personne qui scanne le QR peut rejoindre l'équipe.</string>
+    <string name="sync_team_invite_not_on_device">Le code d'invitation de l'organisation n'est pas sur cet appareil. Un nouveau code désactive les QR déjà partagés.</string>
+    <string name="sync_team_invite_create_new">Créer un nouveau code</string>
+    <string name="sync_team_invite_check_failed">Impossible de vérifier le code d'invitation de l'organisation. Vérifiez la connexion, puis réessayez.</string>
+    <string name="sync_team_retry">Réessayer</string>
 </resources>

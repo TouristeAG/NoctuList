@@ -2548,4 +2548,8 @@
     <string name="sync_team_error_self">您無法變更自己的存取權限。</string>
     <string name="sync_team_error_domain">%1$s 不在允許的地址中。您可以移除此人，但不能變更其角色。</string>
     <string name="sync_team_domains_none">尚無網域：任何掃描 QR 碼的人都可以加入團隊。</string>
+    <string name="sync_team_invite_not_on_device">此裝置上沒有組織的邀請碼。新代碼會使已分享的 QR 碼失效。</string>
+    <string name="sync_team_invite_create_new">建立新代碼</string>
+    <string name="sync_team_invite_check_failed">無法檢查組織的邀請碼。請檢查網路連線後重試。</string>
+    <string name="sync_team_retry">重試</string>
 </resources>

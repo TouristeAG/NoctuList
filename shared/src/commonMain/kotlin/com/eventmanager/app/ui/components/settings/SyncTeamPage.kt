@@ -30,6 +30,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -56,9 +57,12 @@ import com.eventmanager.app.data.remote.removeMemberByEmail
 import com.eventmanager.app.data.remote.setRoleByEmail
 import com.eventmanager.app.resources.*
 import com.eventmanager.app.ui.components.firebaseJoinConfigCode
+import com.eventmanager.app.ui.components.orgHasInvitationCodeOnServer
 import com.eventmanager.app.ui.components.rotateFirebaseInvitationCode
 import com.eventmanager.app.utils.QRCodeUtils
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlin.coroutines.cancellation.CancellationException
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -115,6 +119,48 @@ private class InvitationCodeState(initialCode: String) {
     var code by mutableStateOf(initialCode)
     var busy by mutableStateOf(false)
     var error by mutableStateOf<String?>(null)
+
+    /** True once the server said the org already has a code that this device does not hold. */
+    var orgHasCode by mutableStateOf(false)
+}
+
+/**
+ * Called when this device holds no invitation code. Creates one only if the org has none on the
+ * server. If the org already has a code, or the server cannot be read, nothing is created: a new
+ * code would disable every QR already shared, so that needs the user's explicit confirmation.
+ */
+private fun ensureInvitation(
+    b: SyncSettingsBindings,
+    invitation: InvitationCodeState,
+    texts: TeamErrorTexts,
+    checkFailed: String,
+) {
+    if (invitation.busy) return
+    invitation.busy = true
+    invitation.error = null
+    b.scope.launch {
+        var checked = false
+        try {
+            val orgHasCode = orgHasInvitationCodeOnServer(b.platformContext, b.settingsManager)
+            checked = true
+            invitation.orgHasCode = orgHasCode
+            if (!orgHasCode) {
+                invitation.code = rotateFirebaseInvitationCode(b.platformContext, b.settingsManager)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            invitation.error = mapTeamError(
+                e,
+                texts,
+                email = null,
+                allowedDomains = emptyList(),
+                unknown = if (checked) null else checkFailed,
+            )
+        } finally {
+            invitation.busy = false
+        }
+    }
 }
 
 /** Creates or replaces the invitation code in the screen scope (older QR codes stop working). */
@@ -124,7 +170,10 @@ private fun rotateInvitation(b: SyncSettingsBindings, invitation: InvitationCode
     invitation.error = null
     b.scope.launch {
         runCatching { rotateFirebaseInvitationCode(b.platformContext, b.settingsManager) }
-            .onSuccess { invitation.code = it }
+            .onSuccess {
+                invitation.code = it
+                invitation.orgHasCode = false
+            }
             .onFailure { invitation.error = mapTeamError(it, texts, email = null, allowedDomains = emptyList()) }
         invitation.busy = false
     }
@@ -132,16 +181,18 @@ private fun rotateInvitation(b: SyncSettingsBindings, invitation: InvitationCode
 
 /**
  * The join QR (240 dp) with its configuration code to copy, and a menu to disable older QR codes.
- * Creates the invitation code on open when this device has none (org admins only).
+ * When this device has no invitation code, it checks the org on the server first and creates a code
+ * only if the org has none (org admins only); see [ensureInvitation].
  */
 @Composable
 private fun AddPersonDialog(b: SyncSettingsBindings, invitation: InvitationCodeState, onDismiss: () -> Unit) {
     val texts = rememberTeamErrorTexts()
+    val checkFailed = stringResource(Res.string.sync_team_invite_check_failed)
     var menuOpen by remember { mutableStateOf(false) }
     var confirmDisable by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        if (invitation.code.isBlank() && b.isOrgAdmin) rotateInvitation(b, invitation, texts)
+        if (invitation.code.isBlank() && b.isOrgAdmin) ensureInvitation(b, invitation, texts, checkFailed)
     }
 
     val orgId = b.configuredOrgs.firstOrNull { it.orgId.isNotBlank() }?.orgId.orEmpty()
@@ -197,7 +248,13 @@ private fun AddPersonDialog(b: SyncSettingsBindings, invitation: InvitationCodeS
                     invitation.busy -> Box(Modifier.size(240.dp), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }
-                    invitation.code.isBlank() -> Unit
+                    invitation.code.isBlank() -> if (invitation.orgHasCode) {
+                        Text(
+                            stringResource(Res.string.sync_team_invite_not_on_device),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                     encoded == null || qrBitmap == null -> Text(
                         stringResource(Res.string.firebase_join_qr_need_config),
                         style = MaterialTheme.typography.bodyMedium,
@@ -226,9 +283,15 @@ private fun AddPersonDialog(b: SyncSettingsBindings, invitation: InvitationCodeS
                         modifier = Modifier.fillMaxWidth(),
                     )
                     if (invitation.code.isBlank() && !invitation.busy) {
-                        TextButton(onClick = { rotateInvitation(b, invitation, texts) }) {
-                            Text(stringResource(Res.string.firebase_join_invite_create))
+                        TextButton(onClick = { ensureInvitation(b, invitation, texts, checkFailed) }) {
+                            Text(stringResource(Res.string.sync_team_retry))
                         }
+                    }
+                }
+                // Replacing the org's code is always an explicit, confirmed choice.
+                if (invitation.code.isBlank() && !invitation.busy && (invitation.orgHasCode || invitation.error != null)) {
+                    OutlinedButton(onClick = { confirmDisable = true }) {
+                        Text(stringResource(Res.string.sync_team_invite_create_new))
                     }
                 }
             }
@@ -388,6 +451,7 @@ private fun mapTeamError(
     texts: TeamErrorTexts,
     email: String?,
     allowedDomains: List<String>,
+    unknown: String? = null,
 ): String {
     val raw = throwable.message.orEmpty()
     return when {
@@ -400,7 +464,7 @@ private fun mapTeamError(
         raw.contains("EMAIL_REQUIRED") -> texts.emailRequired
         raw.contains("NOT_READY") || raw.contains("not initialized", ignoreCase = true) -> texts.notReady
         raw.contains("PERMISSION") || raw.contains("permission-denied", ignoreCase = true) -> texts.permission
-        else -> raw.ifBlank { throwable::class.simpleName.orEmpty() }
+        else -> unknown ?: raw.ifBlank { throwable::class.simpleName.orEmpty() }
     }
 }
 
@@ -409,19 +473,34 @@ private class TeamMembersState {
     var members by mutableStateOf<List<FirebaseTeamMemberListing>>(emptyList())
     var loading by mutableStateOf(true)
     var error by mutableStateOf<String?>(null)
+
+    /** The load in flight; a new load cancels it so an older result never overwrites a newer one. */
+    var job: Job? = null
+    var generation = 0
 }
 
-private suspend fun reloadMembers(b: SyncSettingsBindings, state: TeamMembersState, texts: TeamErrorTexts, loadError: String) {
+/**
+ * Reloads the member list in the screen scope. Any load still running is cancelled, and only the
+ * latest load may write its result. Failures with no specific message show [loadError] rather
+ * than raw Firestore text.
+ */
+private fun reloadMembers(b: SyncSettingsBindings, state: TeamMembersState, texts: TeamErrorTexts, loadError: String) {
+    state.job?.cancel()
+    val generation = ++state.generation
     state.loading = true
     state.error = null
-    FirebaseTeamActions.loadMembers(b.platformContext, b.settingsManager).fold(
-        onSuccess = { state.members = it },
-        onFailure = {
-            state.members = emptyList()
-            state.error = mapTeamError(it, texts, email = null, allowedDomains = emptyList()).ifBlank { loadError }
-        },
-    )
-    state.loading = false
+    state.job = b.scope.launch {
+        val result = FirebaseTeamActions.loadMembers(b.platformContext, b.settingsManager)
+        if (generation != state.generation) return@launch
+        result.fold(
+            onSuccess = { state.members = it },
+            onFailure = {
+                state.members = emptyList()
+                state.error = mapTeamError(it, texts, email = null, allowedDomains = emptyList(), unknown = loadError)
+            },
+        )
+        state.loading = false
+    }
 }
 
 /** Role change or removal in flight for the open [MemberDialog]. */
@@ -459,6 +538,8 @@ private fun MembersBlock(b: SyncSettingsBindings) {
                 onFailure = {
                     action.error = mapTeamError(it, texts, email, b.allowedEmailDomains)
                     action.busy = false
+                    // The member is gone on the server: refresh so the list matches.
+                    if (it.message == "NOT_FOUND") reloadMembers(b, state, texts, loadError)
                 },
             )
         }
@@ -471,7 +552,7 @@ private fun MembersBlock(b: SyncSettingsBindings) {
         help = HelpContent(title = title, body = roleHelp),
         headerAction = {
             TextButton(
-                onClick = { b.scope.launch { reloadMembers(b, state, texts, loadError) } },
+                onClick = { reloadMembers(b, state, texts, loadError) },
                 enabled = !state.loading,
             ) { Text(stringResource(Res.string.refresh)) }
         },

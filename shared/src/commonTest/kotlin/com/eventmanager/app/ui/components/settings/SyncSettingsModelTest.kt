@@ -80,4 +80,20 @@ class SyncSettingsModelTest {
     fun adminCanActOnAnotherMember() {
         assertTrue(memberActionsAllowed(isOrgAdmin = true, memberEmail = "jean@asso.ch", selfEmail = "admin@asso.ch"))
     }
+
+    @Test
+    fun orgWithHashedCodeHasInvitationCode() {
+        assertTrue(orgConfigHasInvitationCode(mapOf("bootstrapCodeHash" to "abc123")))
+    }
+
+    @Test
+    fun orgWithLegacyCodeHasInvitationCode() {
+        assertTrue(orgConfigHasInvitationCode(mapOf("bootstrapCode" to "abc123")))
+    }
+
+    @Test
+    fun orgWithoutCodeHasNoInvitationCode() {
+        assertFalse(orgConfigHasInvitationCode(mapOf("backendType" to "FIREBASE")))
+        assertFalse(orgConfigHasInvitationCode(mapOf("bootstrapCodeHash" to "", "bootstrapCode" to null)))
+    }
 }
