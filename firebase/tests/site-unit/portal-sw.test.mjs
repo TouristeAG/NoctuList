@@ -53,9 +53,23 @@ test("routesNavigationUnderVOnly", () => {
   assert.equal(sw.routeFor({ method: "GET", url: `${ORIGIN}/__/auth/handler`, mode: "navigate" }, ORIGIN), null);
 });
 
-test("cachesSiteFilesAndFirebaseSdk", () => {
-  assert.equal(sw.routeFor({ method: "GET", url: `${ORIGIN}/portal.js?v=qr-2`, mode: "cors" }, ORIGIN), "cache");
-  assert.equal(sw.routeFor({ method: "GET", url: `${CDN}/firebase-app.js`, mode: "cors" }, ORIGIN), "cache");
+test("siteFilesNetworkFirstPinnedSdkCacheFirst", () => {
+  for (const path of ["/portal.js?v=qr-2", "/portal-i18n.js?v=qr-3", "/vendor/qrcode.js", "/fonts/nunito-400.ttf", "/manifest.webmanifest", "/icons/icon-192.png"]) {
+    assert.equal(sw.routeFor({ method: "GET", url: `${ORIGIN}${path}`, mode: "cors" }, ORIGIN), "asset", path);
+  }
+  assert.equal(sw.routeFor({ method: "GET", url: `${CDN}/firebase-app.js`, mode: "cors" }, ORIGIN), "sdk");
+  assert.equal(sw.routeFor({ method: "GET", url: "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js", mode: "cors" }, ORIGIN), "asset");
+});
+
+test("cacheNameBumped", () => {
+  assert.equal(vm.runInContext("CACHE", sw), "portal-v2");
+});
+
+test("i18nImportedWithOneSpecifier", () => {
+  const specs = ["portal.js", "signup.js"].map((f) =>
+    readFileSync(new URL(`../site/${f}`, import.meta.url), "utf8").match(/"\.\/portal-i18n\.js(\?v=[\w-]+)?"/)[0]);
+  assert.equal(specs[0], specs[1]);
+  assert.ok(specs[0].includes("?v="), specs[0]);
 });
 
 test("leavesFirebaseServicesAndWritesAlone", () => {

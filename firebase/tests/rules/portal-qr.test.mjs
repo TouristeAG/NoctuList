@@ -86,6 +86,17 @@ describe("volunteerPortalQr", () => {
     await setSetting("volunteer_portal_enabled", "false");
     await assertFails(getDoc(doc(portal("vol1").firestore(), QR)));
   });
+  test("googleLinkedToOtherVolunteerCannotReadQr", async () => {
+    await seed((db) => setDoc(doc(db, path("portalGoogleAccounts/g2")), {
+      volunteerUid: "vol2", email: "g2@asso.example", linkedBy: "LINK_CODE", linkedAt: Date.now(),
+    }));
+    await assertSucceeds(getDoc(doc(google("g2").firestore(), path("volunteerPortalQr/vol2"))));
+    await assertFails(getDoc(doc(google("g2").firestore(), QR)));
+  });
+  test("linkedGoogleBlockedWhenSettingFalse", async () => {
+    await setSetting("volunteer_portal_qr_enabled", "false");
+    await assertFails(getDoc(doc(google("g1").firestore(), QR)));
+  });
   test("ownerCannotListOrWrite", async () => {
     const db = portal("vol1").firestore();
     await assertFails(getDocs(collection(db, path("volunteerPortalQr"))));
