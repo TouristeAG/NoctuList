@@ -39,6 +39,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 import { EMULATOR_PORTS, isLocalDev, loadConfig, parseOrgPath } from "./firebase-env.js?v=portal-2";
 import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=google-2";
+import { clearQr, openQrDialog, readCachedQr, storeQr } from "./portal-qr.js?v=qr-1";
 import {
   EMAIL_RE,
   authErrorKey,
@@ -76,6 +77,7 @@ let user = null;
 /** Portal account the page reads and writes for: the signed-in uid, or the volunteer a Google account is linked to. */
 let portalUid = "";
 let projection = null;
+let qrDoc = null;
 let projectionUpdatedAt = 0;
 let photoUrl = "";
 let photoVersionLoaded = "";
@@ -608,9 +610,11 @@ async function doSignOut(reasonKey) {
   if ($("account-dialog").open) $("account-dialog").close();
   disposeLinkSession();
   stopListeners();
+  clearQr(path.orgId);
   portalUid = "";
   unlinkSent = false;
   projection = null;
+  qrDoc = null;
   photoUrl = "";
   photoVersionLoaded = "";
   await signOut(auth).catch(() => {});
@@ -644,6 +648,13 @@ async function onUser(next) {
   googleSession = false;
   armIdleTimer();
   portalUid = "";
+  const cachedUid = path ? readCachedQr(path.orgId)?.uid : "";
+  // Google sessions are keyed by the linked volunteer uid (portalUid), not by next.uid: watchProjection replaces the copy.
+  if (cachedUid && next && !isGoogleUser(next) && cachedUid !== next.uid) {
+    // Another account signed in on this device: its QR must not stay behind.
+    clearQr(path.orgId);
+    qrDoc = null;
+  }
   if (!user) {
     $("signin-email").value = $("signin-email").value || "";
     return showView("view-signin");
@@ -692,6 +703,25 @@ function watchProjection() {
     } else if (String(error?.code).includes("permission-denied")) {
       $("disabled-error").classList.add("hidden");
       showView("view-disabled");
+    }
+  }));
+  const uidAtStart = portalUid;
+  const qrRef = doc(db, "orgs", path.orgId, "volunteerPortalQr", portalUid);
+  unsubscribers.push(onSnapshot(qrRef, (snap) => {
+    if (snap.exists() && snap.data().payload) {
+      const data = snap.data();
+      qrDoc = { payload: data.payload, name: data.name || "" };
+      storeQr(path.orgId, { uid: uidAtStart, payload: data.payload, name: qrDoc.name, association: projection?.association || "" });
+    } else {
+      qrDoc = null;
+      clearQr(path.orgId);
+    }
+    if (projection) renderDashboard();
+  }, (error) => {
+    if (String(error?.code).includes("permission-denied")) {
+      qrDoc = null;
+      clearQr(path.orgId);
+      if (projection) renderDashboard();
     }
   }));
   REQUEST_TYPES.forEach((type) => {
@@ -1337,6 +1367,14 @@ function renderDashboard() {
     dash.append(tiles.history);
   } else {
     dash.append(col("profile", "info", "upcoming"), col("benefits", "wallet"), col("history"));
+  }
+  if (qrDoc) {
+    const shown = { payload: qrDoc.payload, name: qrDoc.name || projection.firstName || "", association: projection.association || "" };
+    dash.prepend(el("button", {
+      type: "button",
+      class: "primary full qr-open",
+      onclick: () => openQrDialog(shown),
+    }, icon("qr", 18), el("span", { text: t("myQr") })));
   }
   ensurePhoto();
 }
