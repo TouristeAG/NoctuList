@@ -155,6 +155,8 @@ fun FirebaseSyncSettingsSection(
     onVolunteerPortalGoogleEnabledChange: (Boolean) -> Unit = {},
     volunteerPortalShowLogo: Boolean = true,
     onVolunteerPortalShowLogoChange: (Boolean) -> Unit = {},
+    volunteerPortalQrEnabled: Boolean = true,
+    onVolunteerPortalQrEnabledChange: (Boolean) -> Unit = {},
     volunteerPortalGoogleDomains: List<String> = emptyList(),
     onAddVolunteerPortalGoogleDomain: suspend (String) -> com.eventmanager.app.portal.DomainCheck =
         { com.eventmanager.app.portal.DomainCheck.ERROR },
@@ -351,6 +353,8 @@ fun FirebaseSyncSettingsSection(
                     suggestedGoogleDomain = allowedEmailDomains.firstOrNull().orEmpty(),
                     showLogo = volunteerPortalShowLogo,
                     onShowLogoChange = onVolunteerPortalShowLogoChange,
+                    qrEnabled = volunteerPortalQrEnabled,
+                    onQrEnabledChange = onVolunteerPortalQrEnabledChange,
                 )
                 GuidedStepCard(
                     title = stringResource(Res.string.profile_photos_settings_title),

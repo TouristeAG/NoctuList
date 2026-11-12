@@ -2361,6 +2361,7 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="portal_google_needs_domain">Añada un dominio gestionado por Google Workspace para activar esta opción</string>
     <string name="portal_show_logo">Mostrar el logotipo de la asociación</string>
     <string name="portal_show_logo_hint">Junto al nombre de la asociación, arriba en la plataforma de voluntarios. Es el logotipo definido en Ajustes, Correo.</string>
+    <string name="volunteer_portal_qr_enabled">Mostrar el código QR en el espacio de voluntarios</string>
     <string name="setup_google_redirects">URI de redireccionamiento autorizados</string>
     <string name="setup_google_origins">Orígenes autorizados de JavaScript</string>
     <string name="setup_google_test">Para probar, inicie sesión con una cuenta de un dominio verificado en Ajustes, Firebase, Plataforma de voluntarios. Las cuentas gmail.com siempre se rechazan.</string>

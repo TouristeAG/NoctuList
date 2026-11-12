@@ -2361,6 +2361,7 @@
     <string name="portal_google_needs_domain">请先添加由 Google Workspace 管理的域名，才能启用此选项</string>
     <string name="portal_show_logo">显示协会标志</string>
     <string name="portal_show_logo_hint">显示在志愿者平台顶部的协会名称旁边。使用的是“设置 > 邮件”中设定的标志。</string>
+    <string name="volunteer_portal_qr_enabled">在志愿者空间显示二维码</string>
     <string name="setup_google_redirects">已获授权的重定向 URI</string>
     <string name="setup_google_origins">已获授权的 JavaScript 来源</string>
     <string name="setup_google_test">测试时，请使用在“设置 > Firebase > 志愿者平台”中已验证域名的账号登录。gmail.com 账号始终会被拒绝。</string>

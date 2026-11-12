@@ -120,6 +120,7 @@ import com.eventmanager.app.resources.portal_google_error
 import com.eventmanager.app.resources.portal_google_needs_domain
 import com.eventmanager.app.resources.portal_show_logo
 import com.eventmanager.app.resources.portal_show_logo_hint
+import com.eventmanager.app.resources.volunteer_portal_qr_enabled
 import com.eventmanager.app.resources.portal_google_not_found
 import com.eventmanager.app.resources.portal_google_other
 import com.eventmanager.app.resources.portal_google_title
@@ -180,6 +181,8 @@ fun VolunteerPortalSettingsCard(
     suggestedGoogleDomain: String = "",
     showLogo: Boolean = true,
     onShowLogoChange: (Boolean) -> Unit = {},
+    qrEnabled: Boolean = true,
+    onQrEnabledChange: (Boolean) -> Unit = {},
 ) {
     GuidedStepCard(
         title = stringResource(Res.string.portal_settings_title),
@@ -230,6 +233,18 @@ fun VolunteerPortalSettingsCard(
                     )
                 }
                 Switch(checked = showLogo, onCheckedChange = onShowLogoChange, enabled = canEdit)
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    stringResource(Res.string.volunteer_portal_qr_enabled),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f).padding(end = 8.dp),
+                )
+                Switch(checked = qrEnabled, onCheckedChange = onQrEnabledChange, enabled = canEdit)
             }
         }
         if (enabled) {

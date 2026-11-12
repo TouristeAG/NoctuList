@@ -2361,6 +2361,7 @@
     <string name="portal_google_needs_domain">請先新增由 Google Workspace 管理的網域，才能啟用此選項</string>
     <string name="portal_show_logo">顯示協會標誌</string>
     <string name="portal_show_logo_hint">顯示在志工平台頂端的協會名稱旁邊。使用的是「設定 > 電子郵件」中設定的標誌。</string>
+    <string name="volunteer_portal_qr_enabled">在志工空間顯示 QR 碼</string>
     <string name="setup_google_redirects">已授權的重新導向 URI</string>
     <string name="setup_google_origins">已授權的 JavaScript 來源</string>
     <string name="setup_google_test">測試時，請使用在「設定 > Firebase > 志工平台」中已驗證網域的帳號登入。gmail.com 帳號一律會被拒絕。</string>

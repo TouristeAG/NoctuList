@@ -2360,6 +2360,7 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="portal_google_needs_domain">Ajoutez un domaine géré par Google Workspace pour activer cette option</string>
     <string name="portal_show_logo">Afficher le logo de l\'association</string>
     <string name="portal_show_logo_hint">À côté du nom de l\'association, en haut de la plateforme bénévole. C\'est le logo défini dans Réglages, E-mail.</string>
+    <string name="volunteer_portal_qr_enabled">Afficher le QR dans l\'espace bénévole</string>
     <string name="setup_google_redirects">URI de redirection autorisés</string>
     <string name="setup_google_origins">Origines JavaScript autorisées</string>
     <string name="setup_google_test">Pour tester, connectez-vous avec un compte d\'un domaine vérifié dans Paramètres, Firebase, Plateforme bénévole. Les comptes gmail.com sont toujours refusés.</string>
