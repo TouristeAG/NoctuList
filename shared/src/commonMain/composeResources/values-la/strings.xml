@@ -2084,7 +2084,7 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
 
     <!-- Temporary guests (Firebase) -->
     <string name="temp_guest_access_settings_title">Aditus hospitum temporariorum</string>
-    <string name="temp_guest_access_settings_description">Statue aditus speciales (scaenam, post scaenam, VIP…) pro singulis locis. Tantum in Firebase praesto sunt.</string>
+    <string name="temp_guest_access_settings_description">Aditus speciales (scaena, post scaenam, VIP…) qui hospitibus temporariis in hoc loco dari possunt.</string>
     <string name="temp_guest_access_no_venue">Nullus locus activus adhuc. Crea unum ut aditus statuas.</string>
     <string name="temp_guest_access_venue_empty">Nullus aditus specialis huic loco.</string>
     <string name="temp_guest_access_venue_count">%1$d aditus constituti.</string>

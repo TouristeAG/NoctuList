@@ -86,9 +86,15 @@ private fun FeaturesBlock(b: SyncSettingsBindings, canEdit: Boolean) {
     val portal = stringResource(Res.string.portal_settings_title)
     val photos = stringResource(Res.string.sync_online_profile_photos)
     val drive = stringResource(Res.string.sync_online_drive_import)
+    val tempCredits = stringResource(Res.string.temp_guest_credits_setting_title)
     // One help for the block: each feature's former explanation, under its name.
-    val helpBody = listOf(
+    val helpBody = listOfNotNull(
         guestForms to stringResource(Res.string.guest_form_settings_body),
+        if (b.temporaryGuestCreditsAvailable) {
+            tempCredits to stringResource(Res.string.temp_guest_credits_setting_description)
+        } else {
+            null
+        },
         portal to stringResource(Res.string.portal_settings_body),
         photos to stringResource(Res.string.profile_photos_settings_body),
         drive to stringResource(Res.string.drive_import_settings_description),
@@ -112,6 +118,16 @@ private fun FeaturesBlock(b: SyncSettingsBindings, canEdit: Boolean) {
             },
         )
         SettingsDivider()
+        if (b.temporaryGuestCreditsAvailable) {
+            SettingsSwitchRow(
+                title = tempCredits,
+                subtitle = null,
+                checked = b.temporaryGuestCreditsEnabled,
+                enabled = canEdit,
+                onCheckedChange = b.onTemporaryGuestCreditsEnabledChange,
+            )
+            SettingsDivider()
+        }
         SettingsSwitchRow(
             title = portal,
             subtitle = null,

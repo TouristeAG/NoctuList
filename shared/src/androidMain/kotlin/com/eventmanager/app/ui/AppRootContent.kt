@@ -71,6 +71,7 @@ import com.eventmanager.app.data.utils.GuestListOccupancy
 import com.eventmanager.app.data.utils.VolunteerActivityManager
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -152,6 +153,7 @@ import com.eventmanager.app.ui.transitions.SpaceEntrance
 import com.eventmanager.app.ui.viewmodel.EventManagerViewModel
 import com.eventmanager.app.data.sync.SettingsManager
 import com.eventmanager.app.data.sync.settingsManagerFor
+import com.eventmanager.app.ui.components.rememberVenueAccessBindings
 import com.eventmanager.app.platform.createPlatformContext
 import com.eventmanager.app.ui.utils.*
 import com.eventmanager.app.ui.components.AppBackgroundAnimation
@@ -243,6 +245,12 @@ actual fun AppRootContent(
     var showGuestFormManagement by rememberSaveable { mutableStateOf(false) }
     var showPosAccountingReport by rememberSaveable { mutableStateOf(false) }
     var showQRScanner by rememberSaveable { mutableStateOf(false) }
+    // Keeps the settings screen's scroll position while a management screen is open on top of
+    // it, so closing that screen lands back where the user was. Leaving the tab starts fresh.
+    val settingsStateHolder = rememberSaveableStateHolder()
+    LaunchedEffect(selectedTab) {
+        if (selectedTab != 5) settingsStateHolder.removeState("settings")
+    }
     var showVolunteerBenefits: Volunteer? by remember { mutableStateOf(null) }
     var showScannedGuestDetail: Guest? by remember { mutableStateOf(null) }
     
@@ -1365,40 +1373,42 @@ if (pageAnimationsEnabled) {
                             screenState == "tab:3" -> key("jobs") { JobTrackingScreenWithViewModel(viewModel) }
                             screenState == "tab:4" -> key("benefits") { BenefitsScreenWithViewModel(viewModel) }
                             screenState == "tab:5" -> key("settings") {
-                                SettingsScreen(
-                                    viewModel = viewModel,
-                                    onNavigateToJobTypeManagement = { 
-                                        println("Navigating to Job Type Management - triggering job types sync")
-                                        viewModel.syncJobTypesOnly()
-                                        showJobTypeManagement = true 
-                                    },
-                                    onNavigateToVenueManagement = { 
-                                        println("Navigating to Venue Management")
-                                        viewModel.syncVenuesWithTargetedUpdates()
-                                        showVenueManagement = true 
-                                    },
-                                    onNavigateToSalesSheetItemManagement = {
-                                        println("Navigating to Sales Sheet Item Management")
-                                        viewModel.syncSalesSheetItemsWithTargetedUpdates()
-                                        showSalesSheetItemManagement = true
-                                    },
-                                    onNavigateToGuestFormManagement = {
-                                        viewModel.refreshGuestFormsFromRemote()
-                                        showGuestFormManagement = true
-                                    },
-                                    onFactoryResetComplete = {
-                                        showJobTypeManagement = false
-                                        showVenueManagement = false
-                                        showSalesSheetItemManagement = false
-                                        showGuestFormManagement = false
-                                        showPosAccountingReport = false
-                                        showWelcome = false
-                                        showAdminAuth = false
-                                        showTicketCheck = false
-                                        selectedTab = 0
-                                        showSetupWizard = true
-                                    },
-                                )
+                                settingsStateHolder.SaveableStateProvider("settings") {
+                                    SettingsScreen(
+                                        viewModel = viewModel,
+                                        onNavigateToJobTypeManagement = { 
+                                            println("Navigating to Job Type Management - triggering job types sync")
+                                            viewModel.syncJobTypesOnly()
+                                            showJobTypeManagement = true 
+                                        },
+                                        onNavigateToVenueManagement = { 
+                                            println("Navigating to Venue Management")
+                                            viewModel.syncVenuesWithTargetedUpdates()
+                                            showVenueManagement = true 
+                                        },
+                                        onNavigateToSalesSheetItemManagement = {
+                                            println("Navigating to Sales Sheet Item Management")
+                                            viewModel.syncSalesSheetItemsWithTargetedUpdates()
+                                            showSalesSheetItemManagement = true
+                                        },
+                                        onNavigateToGuestFormManagement = {
+                                            viewModel.refreshGuestFormsFromRemote()
+                                            showGuestFormManagement = true
+                                        },
+                                        onFactoryResetComplete = {
+                                            showJobTypeManagement = false
+                                            showVenueManagement = false
+                                            showSalesSheetItemManagement = false
+                                            showGuestFormManagement = false
+                                            showPosAccountingReport = false
+                                            showWelcome = false
+                                            showAdminAuth = false
+                                            showTicketCheck = false
+                                            selectedTab = 0
+                                            showSetupWizard = true
+                                        },
+                                    )
+                                }
                             }
                         }
                     }
@@ -1461,40 +1471,42 @@ if (pageAnimationsEnabled) {
                         selectedTab == 3 -> key("jobs") { JobTrackingScreenWithViewModel(viewModel) }
                         selectedTab == 4 -> key("benefits") { BenefitsScreenWithViewModel(viewModel) }
                         selectedTab == 5 -> key("settings") {
-                            SettingsScreen(
-                                viewModel = viewModel,
-                                onNavigateToJobTypeManagement = { 
-                                    println("Navigating to Job Type Management - triggering job types sync")
-                                    viewModel.syncJobTypesOnly()
-                                    showJobTypeManagement = true 
-                                },
-                                onNavigateToVenueManagement = { 
-                                    println("Navigating to Venue Management")
-                                    viewModel.syncVenuesWithTargetedUpdates()
-                                    showVenueManagement = true 
-                                },
-                                onNavigateToSalesSheetItemManagement = {
-                                    println("Navigating to Sales Sheet Item Management")
-                                    viewModel.syncSalesSheetItemsWithTargetedUpdates()
-                                    showSalesSheetItemManagement = true
-                                },
-                                onNavigateToGuestFormManagement = {
-                                    viewModel.refreshGuestFormsFromRemote()
-                                    showGuestFormManagement = true
-                                },
-                                onFactoryResetComplete = {
-                                    showJobTypeManagement = false
-                                    showVenueManagement = false
-                                    showSalesSheetItemManagement = false
-                                    showGuestFormManagement = false
-                                    showPosAccountingReport = false
-                                    showWelcome = false
-                                    showAdminAuth = false
-                                    showTicketCheck = false
-                                    selectedTab = 0
-                                    showSetupWizard = true
-                                },
-                            )
+                            settingsStateHolder.SaveableStateProvider("settings") {
+                                SettingsScreen(
+                                    viewModel = viewModel,
+                                    onNavigateToJobTypeManagement = { 
+                                        println("Navigating to Job Type Management - triggering job types sync")
+                                        viewModel.syncJobTypesOnly()
+                                        showJobTypeManagement = true 
+                                    },
+                                    onNavigateToVenueManagement = { 
+                                        println("Navigating to Venue Management")
+                                        viewModel.syncVenuesWithTargetedUpdates()
+                                        showVenueManagement = true 
+                                    },
+                                    onNavigateToSalesSheetItemManagement = {
+                                        println("Navigating to Sales Sheet Item Management")
+                                        viewModel.syncSalesSheetItemsWithTargetedUpdates()
+                                        showSalesSheetItemManagement = true
+                                    },
+                                    onNavigateToGuestFormManagement = {
+                                        viewModel.refreshGuestFormsFromRemote()
+                                        showGuestFormManagement = true
+                                    },
+                                    onFactoryResetComplete = {
+                                        showJobTypeManagement = false
+                                        showVenueManagement = false
+                                        showSalesSheetItemManagement = false
+                                        showGuestFormManagement = false
+                                        showPosAccountingReport = false
+                                        showWelcome = false
+                                        showAdminAuth = false
+                                        showTicketCheck = false
+                                        selectedTab = 0
+                                        showSetupWizard = true
+                                    },
+                                )
+                            }
                         }
                     }
                 }
@@ -3234,7 +3246,8 @@ fun VenueManagementScreenWithViewModel(
                 }
             }
         },
-        onBack = _onBack
+        onBack = _onBack,
+        venueAccesses = rememberVenueAccessBindings(viewModel),
     )
 }
 

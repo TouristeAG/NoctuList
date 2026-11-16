@@ -80,7 +80,6 @@ import com.eventmanager.app.data.models.Volunteer
 import com.eventmanager.app.ui.viewmodel.EventManagerViewModel
 import com.eventmanager.app.ui.platform.AppAppearanceState
 import com.eventmanager.app.ui.components.FactoryResetSettingsSection
-import com.eventmanager.app.ui.components.TemporaryGuestAccessSettingsSection
 import com.eventmanager.app.ui.components.BackgroundAnimationSettingsSection
 import com.eventmanager.app.ui.components.BackgroundAnimationSettingsTarget
 import com.eventmanager.app.ui.components.ColorThemePicker
@@ -1774,11 +1773,6 @@ actual fun SettingsScreen(
     var firebaseAuthEmail by firebaseAuthEmailState
     val firebaseSignInFeedbackState = remember { mutableStateOf<String?>(null) }
     var firebaseSignInFeedback by firebaseSignInFeedbackState
-    val catalogVenues by viewModel.venues.collectAsState()
-    val activeVenues = remember(catalogVenues) { catalogVenues.filter { it.isActive } }
-    val temporaryGuestAccesses by viewModel.temporaryGuestVenueAccesses.collectAsState()
-    val temporaryGuestCreditsEnabled by viewModel.temporaryGuestCreditsEnabled.collectAsState()
-    val temporaryGuestFeaturesEnabled = viewModel.isTemporaryGuestFeaturesEnabled()
     val firebaseAuthService = remember {
         com.eventmanager.app.data.remote.createFirebaseAuthService(platformContext)
             as? com.eventmanager.app.data.remote.AndroidFirebaseAuthService
@@ -4282,60 +4276,6 @@ actual fun SettingsScreen(
                         Icon(Icons.Default.Settings, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(context.getString(R.string.guest_form_manage))
-                    }
-                }
-            }
-        }
-
-        if (temporaryGuestFeaturesEnabled) {
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Default.VpnKey,
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = context.getString(R.string.temp_guest_access_settings_title),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    TemporaryGuestAccessSettingsSection(
-                        activeVenues = activeVenues,
-                        accesses = temporaryGuestAccesses,
-                        creditsEnabled = temporaryGuestCreditsEnabled,
-                        canEdit = canEditInstitutionSettings,
-                        onAddAccess = { venueName, name ->
-                            viewModel.addTemporaryGuestVenueAccess(venueName, name)
-                        },
-                        onRemoveAccess = { viewModel.removeTemporaryGuestVenueAccess(it) },
-                        onCreditsEnabledChange = { viewModel.setTemporaryGuestCreditsEnabled(it) },
-                    )
-
-                    if (!canEditInstitutionSettings) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = context.getString(R.string.institution_settings_firebase_admin_only),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
                 }
             }

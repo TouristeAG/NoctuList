@@ -604,16 +604,53 @@ class VolunteerPortalService(
         }
     }
 
-    /** The volunteer was deleted: its Google account loses access. Best effort. */
-    suspend fun forgetGoogleAlias(volunteer: Volunteer) {
-        val googleUid = volunteer.portalGoogleUid
-        if (googleUid.isBlank()) return
-        try {
-            gateway.deleteDocument(orgId, PortalGoogleAccount.COLLECTION, googleUid)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            println("Portal: Google alias not deleted: ${e.message}")
+    /**
+     * The volunteer was deleted: removes what the portal kept for them right away, without waiting
+     * for the next publish, which only cleans pages this device published itself. Best effort per
+     * item; a failed QR delete is left to the next publish.
+     */
+    suspend fun forgetVolunteer(volunteer: Volunteer) {
+        if (volunteer.firebaseOrgId.isNotBlank() && volunteer.firebaseOrgId != orgId) return
+        val googleUid = volunteer.portalGoogleUid.trim()
+        if (googleUid.isNotBlank()) {
+            // Alias first, so the Google account loses access before anything else.
+            runCatchingLogged("Google alias delete") { gateway.deleteDocument(orgId, PortalGoogleAccount.COLLECTION, googleUid) }
+            runCatchingLogged("Google claim delete") { gateway.deleteDocument(orgId, PortalGoogleClaim.COLLECTION, googleUid) }
+        }
+        val uid = volunteer.portalUid.trim()
+        if (uid.isBlank()) return
+        mutex.withLock {
+            val key = "$orgId/$uid"
+            val qrKey = "$key$QR_SUFFIX"
+            val hashes = host.loadPublishedHashes().toMutableMap()
+            try {
+                gateway.deleteDocument(orgId, PortalProjection.COLLECTION, uid)
+                hashes.remove(key)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // The key stays, so the next publish sees a stale page and deletes it.
+                println("Portal: page delete failed for a deleted volunteer: ${e.message}")
+            }
+            runCatchingLogged("portal photo delete") { host.deleteStorage(portalPhotoPath(uid)) }
+            runCatchingLogged("portal upload delete") { host.deleteStorage(portalUploadPath(uid)) }
+            hashes.remove("$key#photo")
+            try {
+                gateway.deleteDocument(orgId, PortalQrDocument.COLLECTION, uid)
+                hashes.remove(qrKey)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                hashes[qrKey] = QR_RETRY
+                println("Portal: QR delete failed for a deleted volunteer: ${e.message}")
+            }
+            // Old requests keep the e-mail, name and phone the volunteer sent.
+            for (type in PortalRequestType.entries) {
+                runCatchingLogged("request delete") {
+                    gateway.deleteDocument(orgId, PortalRequest.COLLECTION, "${uid}_${type.name}")
+                }
+            }
+            host.savePublishedHashes(hashes)
         }
     }
 

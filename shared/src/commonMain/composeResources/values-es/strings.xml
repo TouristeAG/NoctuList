@@ -2079,7 +2079,7 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
 
     <!-- Temporary guests (Firebase) -->
     <string name="temp_guest_access_settings_title">Accesos de invitados temporales</string>
-    <string name="temp_guest_access_settings_description">Define los accesos especiales (escenario, backstage, VIP…) que se pueden conceder por local. Solo disponibles con Firebase.</string>
+    <string name="temp_guest_access_settings_description">Accesos especiales (escenario, backstage, VIP…) que se pueden conceder a los invitados temporales en este local.</string>
     <string name="temp_guest_access_no_venue">Aún no hay ningún local activo. Crea uno para definir sus accesos.</string>
     <string name="temp_guest_access_venue_empty">Ningún acceso especial para este local.</string>
     <string name="temp_guest_access_venue_count">%1$d acceso(s) configurado(s).</string>

@@ -23,7 +23,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.eventmanager.app.data.models.VenueEntity
+import com.eventmanager.app.data.models.VenueAccessCatalog
 import com.eventmanager.app.ui.components.SearchBarWithFilter
+import com.eventmanager.app.ui.components.VenueAccessBindings
+import com.eventmanager.app.ui.components.VenueAccessDraft
+import com.eventmanager.app.ui.components.VenueAccessEditor
 import com.eventmanager.app.ui.utils.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,7 +38,9 @@ fun VenueManagementScreen(
     onUpdateVenue: (VenueEntity) -> Unit,
     onDeleteVenue: (VenueEntity) -> Unit,
     onUpdateVenueStatus: (Long, Boolean) -> Unit,
-    onBack: () -> Unit = {}
+    onBack: () -> Unit = {},
+    /** Temporary guest accesses, edited per venue. Null on the Sheets backend. */
+    venueAccesses: VenueAccessBindings? = null,
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
     var showEditDialog by remember { mutableStateOf<VenueEntity?>(null) }
@@ -213,6 +219,7 @@ fun VenueManagementScreen(
     showEditDialog?.let { venue ->
         EditVenueConfigDialog(
             venue = venue,
+            venueAccesses = venueAccesses,
             onDismiss = { showEditDialog = null },
             onConfirm = { updatedVenue ->
                 onUpdateVenue(updatedVenue)
@@ -449,10 +456,15 @@ fun AddVenueConfigDialog(
 fun EditVenueConfigDialog(
     venue: VenueEntity,
     onDismiss: () -> Unit,
-    onConfirm: (VenueEntity) -> Unit
+    onConfirm: (VenueEntity) -> Unit,
+    venueAccesses: VenueAccessBindings? = null,
 ) {
     var name by remember { mutableStateOf(venue.name) }
     var description by remember { mutableStateOf(venue.description) }
+    // Accesses are stored by venue name, so the draft and its changes use the saved name.
+    val accessDraft = remember(venue.name) {
+        VenueAccessDraft(VenueAccessCatalog.forVenue(venueAccesses?.accesses.orEmpty(), venue.name))
+    }
 
     val isCompact = isCompactScreen()
     val scrollState = rememberScrollState()
@@ -530,6 +542,15 @@ fun EditVenueConfigDialog(
                         placeholder = { Text(stringResource(Res.string.venue_description_placeholder)) },
                         maxLines = 3
                     )
+
+                    if (venueAccesses != null) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                        VenueAccessEditor(
+                            venueName = venue.name,
+                            draft = accessDraft,
+                            canEdit = venueAccesses.canEdit,
+                        )
+                    }
                 }
                 
                 // Action Buttons
@@ -552,6 +573,9 @@ fun EditVenueConfigDialog(
                                 name = name,
                                 description = description
                             )
+                            if (venueAccesses != null && venueAccesses.canEdit) {
+                                accessDraft.apply(venue.name, venueAccesses)
+                            }
                             onConfirm(updatedVenue)
                         },
                         enabled = name.isNotBlank(),

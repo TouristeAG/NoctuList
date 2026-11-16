@@ -74,6 +74,10 @@ class SyncSettingsBindings(
     val guestFormsBilleterieValidateEnabled: Boolean,
     val onGuestFormsBilleterieValidateEnabledChange: (Boolean) -> Unit,
     val guestFormSiteOrigin: String,
+    /** False on the Sheets backend, where temporary guests have no credit accounts. */
+    val temporaryGuestCreditsAvailable: Boolean,
+    val temporaryGuestCreditsEnabled: Boolean,
+    val onTemporaryGuestCreditsEnabledChange: (Boolean) -> Unit,
     val volunteerPortalEnabled: Boolean,
     val portalServerStatus: PortalServerStatus?,
     val onVolunteerPortalEnabledChange: (Boolean) -> Unit,
@@ -160,6 +164,7 @@ fun rememberSyncSettingsBindings(
     val profilePhotosEnabled by viewModel.profilePhotosUploadEnabled.collectAsState()
     val guestFormsEnabled by viewModel.guestFormsEnabled.collectAsState()
     val guestFormsBilleterieValidateEnabled by viewModel.guestFormsBilleterieValidateEnabled.collectAsState()
+    val temporaryGuestCreditsEnabled by viewModel.temporaryGuestCreditsEnabled.collectAsState()
     val volunteerPortalEnabled by viewModel.volunteerPortalEnabled.collectAsState()
     val volunteerPortalGoogleEnabled by viewModel.volunteerPortalGoogleEnabled.collectAsState()
     val volunteerPortalShowLogo by viewModel.volunteerPortalShowLogo.collectAsState()
@@ -303,6 +308,9 @@ fun rememberSyncSettingsBindings(
         guestFormsBilleterieValidateEnabled = guestFormsBilleterieValidateEnabled,
         onGuestFormsBilleterieValidateEnabledChange = { viewModel.setGuestFormsBilleterieValidateEnabled(it) },
         guestFormSiteOrigin = viewModel.guestFormSiteOrigin(),
+        temporaryGuestCreditsAvailable = viewModel.isTemporaryGuestFeaturesEnabled(),
+        temporaryGuestCreditsEnabled = temporaryGuestCreditsEnabled,
+        onTemporaryGuestCreditsEnabledChange = { viewModel.setTemporaryGuestCreditsEnabled(it) },
         volunteerPortalEnabled = volunteerPortalEnabled,
         portalServerStatus = portalServerStatus,
         onVolunteerPortalEnabledChange = { viewModel.setVolunteerPortalEnabled(it) },

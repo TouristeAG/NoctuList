@@ -2860,12 +2860,15 @@ class EventManagerViewModel(
         return service.removeGoogleAccount(tagVolunteerWithActiveOrg(volunteer))
     }
 
-    /** A deleted volunteer's Google account must lose portal access. No portal service: nothing to do. */
-    private suspend fun forgetPortalGoogleAlias(volunteer: Volunteer) {
+    /**
+     * A deleted volunteer loses portal access and the portal forgets them (page, QR, photos,
+     * requests, Google link). No portal service: nothing to do.
+     */
+    private suspend fun forgetPortalVolunteer(volunteer: Volunteer) {
         val current = repository.getVolunteerById(volunteer.id) ?: volunteer
-        if (current.portalGoogleUid.isBlank()) return
+        if (current.portalGoogleUid.isBlank() && current.portalUid.isBlank()) return
         ensureVolunteerPortalService()
-        volunteerPortalService?.forgetGoogleAlias(current)
+        volunteerPortalService?.forgetVolunteer(current)
     }
 
     suspend fun revokeVolunteerPortalAccess(volunteer: Volunteer): Boolean {
@@ -3019,9 +3022,17 @@ class EventManagerViewModel(
                     }
                 }
                 
+                // Same photo cleanup as cleanupInactiveVolunteers(); the path holds the volunteer id.
+                val stored = repository.getVolunteerById(volunteer.id) ?: volunteer
+                deleteStoredProfilePhoto(
+                    path = stored.profilePhotoPath,
+                    url = stored.profilePhotoUrl,
+                    resolvedPath = stored.resolvedProfilePhotoPath(),
+                )
+
                 // Track the deletion
                 deletionTracker?.trackVolunteerDeletion(volunteer.id, volunteer.sheetsId)
-                forgetPortalGoogleAlias(volunteer)
+                forgetPortalVolunteer(volunteer)
                 
                 // Delete from local database
                 repository.deleteVolunteer(volunteer)
@@ -7004,7 +7015,7 @@ class EventManagerViewModel(
                         )
                         
                         deletionTracker?.trackVolunteerDeletion(volunteer.id, volunteer.sheetsId)
-                        forgetPortalGoogleAlias(volunteer)
+                        forgetPortalVolunteer(volunteer)
                         repository.deleteVolunteer(volunteer)
                         volunteersDeleted++
                         

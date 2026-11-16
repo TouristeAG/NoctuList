@@ -2079,7 +2079,7 @@
 
     <!-- Temporary guests (Firebase) -->
     <string name="temp_guest_access_settings_title">臨時嘉賓權限</string>
-    <string name="temp_guest_access_settings_description">為每個場地定義可授予的特殊權限（舞台、後台、VIP…）。僅在 Firebase 後端可用。</string>
+    <string name="temp_guest_access_settings_description">可在此場地授予臨時嘉賓的特殊權限（舞台、後台、VIP…）。</string>
     <string name="temp_guest_access_no_venue">尚無啟用的場地。先建立一個再定義其權限。</string>
     <string name="temp_guest_access_venue_empty">此場地沒有特殊權限。</string>
     <string name="temp_guest_access_venue_count">已設定 %1$d 項權限。</string>

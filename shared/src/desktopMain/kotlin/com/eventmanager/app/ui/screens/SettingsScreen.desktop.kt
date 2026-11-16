@@ -7,6 +7,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -63,7 +64,6 @@ import com.eventmanager.app.resources.*
 import com.eventmanager.app.ui.components.ActiveVolunteersDialog
 import com.eventmanager.app.ui.components.CleanupInactiveVolunteersDialog
 import com.eventmanager.app.ui.components.SyncStatusDialog
-import com.eventmanager.app.ui.components.TemporaryGuestAccessSettingsSection
 import com.eventmanager.app.ui.platform.ServiceAccountKeyUploadButton
 import com.eventmanager.app.ui.platform.EmailLogoUploadSection
 import com.eventmanager.app.platform.PlatformFileManager
@@ -142,10 +142,6 @@ actual fun SettingsScreen(
     val firebaseSignInFeedbackState = remember { mutableStateOf<String?>(null) }
     val firebaseAuthEmailState = remember { mutableStateOf(settingsManager.getFirebaseAuthEmail()) }
     var firebaseAuthEmail by firebaseAuthEmailState
-    val venues by viewModel.venues.collectAsState()
-    val activeVenues = remember(venues) { venues.filter { it.isActive } }
-    val temporaryGuestAccesses by viewModel.temporaryGuestVenueAccesses.collectAsState()
-    val temporaryGuestCreditsEnabled by viewModel.temporaryGuestCreditsEnabled.collectAsState()
     val temporaryGuestFeaturesEnabled = viewModel.isTemporaryGuestFeaturesEnabled()
     var migrationWizard by remember { mutableStateOf<com.eventmanager.app.data.remote.MigrationDirection?>(null) }
     val isFirebaseBackend =
@@ -239,7 +235,7 @@ actual fun SettingsScreen(
             add(DesktopSettingsNavItem(DesktopSettingsNav.About, stringResource(Res.string.app_info_title), Icons.Default.Info))
         }
     }
-    var selectedSection by remember(variant) {
+    var selectedSection by rememberSaveable(variant) {
         mutableStateOf(
             when (variant) {
                 SettingsScreenVariant.BilleterieBasic, SettingsScreenVariant.PosBasic -> DesktopSettingsNav.Appearance
@@ -563,31 +559,6 @@ actual fun SettingsScreen(
                         buttonLabel = stringResource(Res.string.guest_form_manage),
                         onClick = onNavigateToGuestFormManagement,
                     )
-                }
-                if (temporaryGuestFeaturesEnabled) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = stringResource(Res.string.temp_guest_access_settings_title),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    TemporaryGuestAccessSettingsSection(
-                        activeVenues = activeVenues,
-                        accesses = temporaryGuestAccesses,
-                        creditsEnabled = temporaryGuestCreditsEnabled,
-                        canEdit = canEditInstitutionSettings,
-                        onAddAccess = { venueName, name ->
-                            viewModel.addTemporaryGuestVenueAccess(venueName, name)
-                        },
-                        onRemoveAccess = { viewModel.removeTemporaryGuestVenueAccess(it) },
-                        onCreditsEnabledChange = { viewModel.setTemporaryGuestCreditsEnabled(it) },
-                    )
-                    if (!canEditInstitutionSettings) {
-                        Text(
-                            text = stringResource(Res.string.institution_settings_firebase_admin_only),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
                 }
             }
         }

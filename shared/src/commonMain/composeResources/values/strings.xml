@@ -2082,7 +2082,7 @@ Place a card on the reader and test again to read a UID.</string>
 
     <!-- Temporary guests (Firebase) -->
     <string name="temp_guest_access_settings_title">Temporary guest accesses</string>
-    <string name="temp_guest_access_settings_description">Define the special accesses (stage, backstage, VIP…) that can be granted per venue. They are only available on the Firebase backend.</string>
+    <string name="temp_guest_access_settings_description">Special accesses (stage, backstage, VIP…) that temporary guests can be granted at this venue.</string>
     <string name="temp_guest_access_no_venue">No active venue yet. Create one to define its accesses.</string>
     <string name="temp_guest_access_venue_empty">No special access for this venue.</string>
     <string name="temp_guest_access_venue_count">%1$d access(es) configured.</string>

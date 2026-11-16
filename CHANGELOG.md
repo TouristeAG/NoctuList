@@ -4,7 +4,7 @@ All notable changes to NoctuList are documented here. Version numbers follow [Se
 
 ---
 
-## Unreleased
+## 3.0.0 — 2026-11-16
 
 New, optional: a personal web space for volunteers, and a refreshed look for every public page.
 
@@ -25,7 +25,12 @@ New, optional: a personal web space for volunteers, and a refreshed look for eve
 - **QR code in the volunteer space.** The "My QR code" block has a "My QR" button that opens the code full screen, with "Send me my QR code" as a small link under it. Once the space is installed on the home screen it works offline, and the QR code stays on the device until sign-out. Never shown for admin volunteers. Settings, Firebase, Volunteer portal: "Show the QR code in the volunteer space", on by default. Needs the Firestore rules **v16** and a redeploy of the form site. Wallet passes are unchanged.
 - **Rank removed from the volunteer space.** Volunteers no longer see their rank.
 - **Sign in with an association Google account (optional).** Associations with Google Workspace list their domains in Settings, Firebase, Volunteer portal (each checked by a DNS lookup; gmail.com is refused), then turn on "Connexion avec un compte Google". The admin sets the "Compte Google associatif" on the volunteer record and the volunteer links it at first sign-in, or, if none is set, links it themselves from "Mon compte" with "Associer mon compte Google" and can remove only a link they made. The Google account stays a separate Firebase account, so staff who are also volunteers keep their staff rights. E-mail and password sign-in still works.
+- **Temporary guest accesses per venue.** The special accesses (stage, backstage, VIP…) are now edited in each venue's edit dialog instead of a separate settings card. The temporary guest credits switch moved to Settings, sync, Fonctions en ligne.
 - **Sync settings in four pages.** Settings, sync is now split into Connexion, Équipe, Fonctions en ligne and Sauvegarde (Connexion and Synchronisation with Google Sheets). Each page shows its title once, each block keeps its explanation behind a "?", the "last sync" and "last export" times stay current while the page is open, and "Enregistrer" on the Google Sheets page confirms in place. A Sheets sync interval that is not in the menu (for example 10 minutes) is shown as it is.
+
+### Fixes
+
+- **Deleting a volunteer** now also removes, right away, their portal page, QR code, portal photos, pending requests and Google link, instead of waiting for the next publish.
 
 ### Security
 
@@ -35,8 +40,9 @@ New, optional: a personal web space for volunteers, and a refreshed look for eve
 
 ### Upgrade notes
 
+- **Version code:** 44 (`3.0.0`). Minimum supported code remains **27** (2.1.0). The update is optional, but recommended on every device of a team that turns the portal on.
 - **Database:** Room 51 to 52 (volunteer `portalEnabled`, `portalUid`), then 52 to 53 (`portalGoogleEmail`, `portalGoogleUid`, `portalGoogleLinkedBy`).
-- **Firestore and Storage rules:** republish both (`NOCTULIST_RULES_VERSION = 15`).
+- **Firestore and Storage rules:** republish both (`NOCTULIST_RULES_VERSION = 16`).
 - **Hosting:** export the form site again from the app and redeploy it (new security headers).
 - **All devices:** update NoctuList on every device. Older versions publish the old page format and do not wait for the server.
 - **Automatic processing (optional):** Blaze plan, Gmail app password, then `firebase deploy --only hosting,functions` from the exported folder (see FIREBASE_SETUP.md). Redeploy after this update: the new `onMailOutboxWritten` function sends the app's QR e-mails and the new `portalGoogleClaims` trigger links Google accounts.

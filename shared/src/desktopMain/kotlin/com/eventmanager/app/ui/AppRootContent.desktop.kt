@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,6 +66,7 @@ import com.eventmanager.app.data.repository.EventManagerRepository
 import com.eventmanager.app.data.sync.GoogleSheetsService
 import com.eventmanager.app.data.sync.SettingsManager
 import com.eventmanager.app.data.sync.settingsManagerFor
+import com.eventmanager.app.ui.components.rememberVenueAccessBindings
 import com.eventmanager.app.data.update.UpdateCheckResult
 import com.eventmanager.app.data.sync.DateFormatUtils
 import com.eventmanager.app.platform.LocalPlatformContext
@@ -148,6 +150,12 @@ actual fun AppRootContent(
         var showGuestFormManagement by nav::showGuestFormManagement
         var showPosAccountingReport by nav::showPosAccountingReport
         var showQRScanner by nav::showQRScanner
+        // Keeps the settings screen's section and scroll position while a management screen is
+        // open on top of it, so closing that screen lands back where the user was.
+        val settingsStateHolder = rememberSaveableStateHolder()
+        LaunchedEffect(selectedTab) {
+            if (selectedTab != AdminTab.Settings.index) settingsStateHolder.removeState("settings")
+        }
         var showVolunteerBenefits by remember { mutableStateOf<Volunteer?>(null) }
         var showScannedGuestDetail by remember { mutableStateOf<Guest?>(null) }
         var searchFocusTick by remember { mutableIntStateOf(0) }
@@ -671,41 +679,43 @@ actual fun AppRootContent(
                                         jobTypeConfigs = jobTypeConfigs,
                                         scrollBehavior = settingsManager.getScrollBehavior()
                                     )
-                                    AdminTab.Settings -> SettingsScreen(
-                                        viewModel = viewModel,
-                                        onNavigateToJobTypeManagement = {
-                                            viewModel.syncJobTypesOnly()
-                                            showJobTypeManagement = true
-                                        },
-                                        onNavigateToVenueManagement = {
-                                            viewModel.syncVenuesWithTargetedUpdates()
-                                            showVenueManagement = true
-                                        },
-                                        onNavigateToSalesSheetItemManagement = {
-                                            viewModel.syncSalesSheetItemsWithTargetedUpdates()
-                                            showSalesSheetItemManagement = true
-                                        },
-                                        onNavigateToGuestFormManagement = {
-                                            viewModel.refreshGuestFormsFromRemote()
-                                            showGuestFormManagement = true
-                                        },
-                                        onDesktopAdminNavLayoutChanged = { refreshAdminNavPreferences() },
-                                        onFactoryResetComplete = {
-                                            showJobTypeManagement = false
-                                            showVenueManagement = false
-                                            showSalesSheetItemManagement = false
-                                            showGuestFormManagement = false
-                                            showPosAccountingReport = false
-                                            showQRScanner = false
-                                            showAdminAuth = false
-                                            showTicketCheck = false
-                                            showPos = false
-                                            showWelcome = false
-                                            selectedTab = AdminTab.Dashboard.index
-                                            showSetupWizard = true
-                                        },
-                                        modifier = Modifier.fillMaxSize()
-                                    )
+                                    AdminTab.Settings -> settingsStateHolder.SaveableStateProvider("settings") {
+                                        SettingsScreen(
+                                            viewModel = viewModel,
+                                            onNavigateToJobTypeManagement = {
+                                                viewModel.syncJobTypesOnly()
+                                                showJobTypeManagement = true
+                                            },
+                                            onNavigateToVenueManagement = {
+                                                viewModel.syncVenuesWithTargetedUpdates()
+                                                showVenueManagement = true
+                                            },
+                                            onNavigateToSalesSheetItemManagement = {
+                                                viewModel.syncSalesSheetItemsWithTargetedUpdates()
+                                                showSalesSheetItemManagement = true
+                                            },
+                                            onNavigateToGuestFormManagement = {
+                                                viewModel.refreshGuestFormsFromRemote()
+                                                showGuestFormManagement = true
+                                            },
+                                            onDesktopAdminNavLayoutChanged = { refreshAdminNavPreferences() },
+                                            onFactoryResetComplete = {
+                                                showJobTypeManagement = false
+                                                showVenueManagement = false
+                                                showSalesSheetItemManagement = false
+                                                showGuestFormManagement = false
+                                                showPosAccountingReport = false
+                                                showQRScanner = false
+                                                showAdminAuth = false
+                                                showTicketCheck = false
+                                                showPos = false
+                                                showWelcome = false
+                                                selectedTab = AdminTab.Dashboard.index
+                                                showSetupWizard = true
+                                            },
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
                                 }
                             }
 
@@ -1340,7 +1350,8 @@ private fun DesktopVenueManagement(viewModel: EventManagerViewModel, onBack: () 
                 venues.find { it.id == id }?.let { viewModel.updateVenue(it.copy(isActive = active)) }
             }
         },
-        onBack = onBack
+        onBack = onBack,
+        venueAccesses = rememberVenueAccessBindings(viewModel),
     )
 }
 

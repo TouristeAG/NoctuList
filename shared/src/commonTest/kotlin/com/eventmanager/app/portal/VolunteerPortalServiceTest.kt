@@ -856,8 +856,64 @@ class VolunteerPortalServiceTest {
                 .copy(portalGoogleEmail = "jean@asso.ch", portalGoogleUid = GOOGLE_UID, portalGoogleLinkedBy = "ADMIN"),
         ))
         gateway.docs["portalGoogleAccounts/$GOOGLE_UID"] = mapOf("volunteerUid" to UID)
-        service(gateway, host).forgetGoogleAlias(host.volunteers.single())
+        service(gateway, host).forgetVolunteer(host.volunteers.single())
         assertNull(gateway.docs["portalGoogleAccounts/$GOOGLE_UID"])
+    }
+
+    @Test
+    fun forgettingADeletedVolunteerRemovesEverythingThePortalKept() = runBlocking {
+        val gateway = FakeGateway()
+        val deleted = volunteer("V1", "lea@example.org", enabled = true, uid = UID)
+            .copy(portalGoogleEmail = "jean@asso.ch", portalGoogleUid = GOOGLE_UID, portalGoogleLinkedBy = "ADMIN")
+        val host = FakeHost(emptyList())
+        // Written by the signup function: this device never published them, so it has no hash.
+        gateway.docs["volunteerPortal/$UID"] = mapOf("payload" to "{}")
+        gateway.docs["volunteerPortalQr/$UID"] = mapOf("payload" to "V1")
+        gateway.docs["portalGoogleAccounts/$GOOGLE_UID"] = mapOf("volunteerUid" to UID)
+        gateway.docs["portalGoogleClaims/$GOOGLE_UID"] = mapOf("status" to "DONE", "email" to "jean@asso.ch")
+        PortalRequestType.entries.forEach {
+            gateway.docs["portalRequests/${UID}_${it.name}"] = mapOf("status" to "DONE", "phone" to "+41 79 000 00 00")
+        }
+        val service = service(gateway, host)
+        host.storage[service.portalPhotoPath(UID)] = byteArrayOf(1)
+        host.storage[service.portalUploadPath(UID)] = byteArrayOf(2)
+        // A second volunteer's documents must stay.
+        gateway.docs["volunteerPortal/OtherUid0000000000000001"] = mapOf("payload" to "{}")
+        gateway.docs["portalRequests/OtherUid0000000000000001_PROFILE"] = mapOf("status" to "DONE")
+
+        service.forgetVolunteer(deleted)
+
+        assertEquals(
+            setOf("volunteerPortal/OtherUid0000000000000001", "portalRequests/OtherUid0000000000000001_PROFILE"),
+            gateway.docs.keys,
+        )
+        assertTrue(host.storage.isEmpty())
+        assertTrue(host.loadPublishedHashes().keys.none { it.contains(UID) })
+    }
+
+    @Test
+    fun forgettingRetriesAFailedQrDeleteLater() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(emptyList())
+        gateway.docs["volunteerPortalQr/$UID"] = mapOf("payload" to "V1")
+        gateway.qrDeleteFailures = 1
+        val service = service(gateway, host)
+        service.forgetVolunteer(volunteer("V1", "lea@example.org", enabled = true, uid = UID))
+        assertEquals("retry", host.loadPublishedHashes()["$ORG/$UID#qr"])
+        service.start(MutableStateFlow(emptyList()), MutableStateFlow(emptyList<Job>()),
+            MutableStateFlow(emptyList<AccountTransfer>()), MutableStateFlow(emptyList<JobTypeConfig>()))
+        withTimeout(5_000) { while (gateway.docs["volunteerPortalQr/$UID"] != null) delay(20) }
+    }
+
+    @Test
+    fun forgettingSkipsAVolunteerOfAnotherOrganization() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(emptyList())
+        gateway.docs["volunteerPortal/$UID"] = mapOf("payload" to "{}")
+        service(gateway, host).forgetVolunteer(
+            volunteer("V1", "lea@example.org", enabled = true, uid = UID).copy(firebaseOrgId = "org-b"),
+        )
+        assertTrue(gateway.docs.containsKey("volunteerPortal/$UID"))
     }
 
     @Test
