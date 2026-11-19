@@ -53,6 +53,7 @@ import com.eventmanager.app.setup.LoginChallenge
 import com.eventmanager.app.setup.MailMode
 import com.eventmanager.app.setup.MailSetup
 import com.eventmanager.app.setup.SetupErrorId
+import com.eventmanager.app.setup.SetupValidators
 import com.eventmanager.app.setup.RepairNote
 import com.eventmanager.app.setup.SetupAutomation
 import com.eventmanager.app.setup.SetupStepId
@@ -70,7 +71,9 @@ private val RERUNNABLE = setOf(SetupStepId.PROJECT, SetupStepId.RULES, SetupStep
 internal val optionalSteps = SetupStepId.entries.filter { it.optional }
 
 /** Errors of the test mail: Retry sends the test again instead of deploying the server again. */
-private val TEST_MAIL_ERRORS = setOf(SetupErrorId.MAIL_DELEGATION_MISSING, SetupErrorId.MAIL_TEST_FAILED, SetupErrorId.MAIL_TEST_UNAVAILABLE)
+private val TEST_MAIL_ERRORS = setOf(SetupErrorId.MAIL_DELEGATION_MISSING, SetupErrorId.MAIL_TEST_FAILED, SetupErrorId.MAIL_TEST_UNAVAILABLE,
+    SetupErrorId.MAIL_TEST_NO_ORGANIZATION,
+)
 
 internal fun stepTitle(step: SetupStepId): StringResource = when (step) {
     SetupStepId.TOOLS -> Res.string.setup_step_tools_title
@@ -350,12 +353,19 @@ private fun StepControls(
             }
             SetupStepId.SERVER -> {
                 val info by automation.info.collectAsState()
-                val suggested = MailSetup.suggestedMode(account)
-                var mode by remember(account) { mutableStateOf(suggested) }
-                var gmail by remember { mutableStateOf("") }
+                // One sending address for both modes: its domain suggests the mode until the admin picks one.
+                var sender by remember(account) { mutableStateOf(if (MailSetup.suggestedMode(account) == MailMode.WORKSPACE) account else "") }
+                var from by remember(account) { mutableStateOf(sender) }
                 var password by remember { mutableStateOf("") }
-                var sender by remember(account) { mutableStateOf(if (suggested == MailMode.WORKSPACE) account else "") }
-                var from by remember(sender) { mutableStateOf(sender) }
+                var modePicked by remember { mutableStateOf(false) }
+                var mode by remember(account) { mutableStateOf(MailSetup.suggestedMode(sender.ifBlank { account })) }
+                LaunchedEffect(info.mailServiceAccount) { if (info.mailServiceAccount != null && !modePicked) mode = MailMode.WORKSPACE }
+                val onSender: (String) -> Unit = { typed ->
+                    val next = typed.trim()
+                    from = MailSetup.followSender(sender, next, from)
+                    sender = next
+                    if (!modePicked && SetupValidators.gmail(next)) mode = MailSetup.suggestedMode(next)
+                }
                 BillingOffer(step, automation, projectId, retryInputs, retryEnabled, open)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OpenButton(Res.string.setup_open_blaze, SetupLinks.blaze(projectId))
@@ -369,14 +379,14 @@ private fun StepControls(
                         MailMode.WORKSPACE to Res.string.setup_mail_mode_workspace,
                     )) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            RadioButton(selected = mode == option, onClick = { mode = option }, enabled = !busy)
+                            RadioButton(selected = mode == option, onClick = { mode = option; modePicked = true }, enabled = !busy)
                             Text(stringResource(label))
                         }
                     }
                 }
                 if (mode == MailMode.APP_PASSWORD) {
                     OutlinedTextField(
-                        gmail, { gmail = it.trim() },
+                        sender, onSender,
                         label = { Text(stringResource(Res.string.setup_gmail)) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
@@ -391,7 +401,7 @@ private fun StepControls(
                     )
                 } else {
                     OutlinedTextField(
-                        sender, { sender = it.trim() },
+                        sender, onSender,
                         label = { Text(stringResource(Res.string.setup_mail_sender)) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
@@ -407,9 +417,9 @@ private fun StepControls(
                 }
                 if (region.isNotBlank()) Text(stringResource(Res.string.setup_region, region), style = MaterialTheme.typography.bodySmall)
                 if (mode == MailMode.APP_PASSWORD) {
-                    RunButton(enabled = gmail.isNotBlank() && password.isNotBlank()) {
+                    RunButton(enabled = sender.isNotBlank() && password.isNotBlank()) {
                         val input = StepInput(
-                            gmailUser = gmail,
+                            gmailUser = sender,
                             appPassword = password.filterNot { it == ' ' }.toCharArray(),
                             mailMode = MailMode.APP_PASSWORD,
                         )

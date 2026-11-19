@@ -34,6 +34,7 @@ fun errorTitle(id: SetupErrorId): StringResource = when (id) {
     SetupErrorId.MAIL_DELEGATION_MISSING -> Res.string.setup_err_mail_delegation_missing_title
     SetupErrorId.MAIL_TEST_FAILED -> Res.string.setup_err_mail_test_failed_title
     SetupErrorId.MAIL_TEST_UNAVAILABLE -> Res.string.setup_err_mail_test_unavailable_title
+    SetupErrorId.MAIL_TEST_NO_ORGANIZATION -> Res.string.setup_err_mail_test_no_organization_title
     SetupErrorId.TIMEOUT -> Res.string.setup_err_timeout_title
     SetupErrorId.QUOTA -> Res.string.setup_err_quota_title
     SetupErrorId.NETWORK -> Res.string.setup_err_network_title
@@ -69,6 +70,7 @@ fun errorCause(id: SetupErrorId): StringResource = when (id) {
     SetupErrorId.MAIL_DELEGATION_MISSING -> Res.string.setup_err_mail_delegation_missing_cause
     SetupErrorId.MAIL_TEST_FAILED -> Res.string.setup_err_mail_test_failed_cause
     SetupErrorId.MAIL_TEST_UNAVAILABLE -> Res.string.setup_err_mail_test_unavailable_cause
+    SetupErrorId.MAIL_TEST_NO_ORGANIZATION -> Res.string.setup_err_mail_test_no_organization_cause
     SetupErrorId.TIMEOUT -> Res.string.setup_err_timeout_cause
     SetupErrorId.QUOTA -> Res.string.setup_err_quota_cause
     SetupErrorId.NETWORK -> Res.string.setup_err_network_cause
@@ -104,6 +106,7 @@ fun errorSteps(id: SetupErrorId): StringResource = when (id) {
     SetupErrorId.MAIL_DELEGATION_MISSING -> Res.string.setup_err_mail_delegation_missing_steps
     SetupErrorId.MAIL_TEST_FAILED -> Res.string.setup_err_mail_test_failed_steps
     SetupErrorId.MAIL_TEST_UNAVAILABLE -> Res.string.setup_err_mail_test_unavailable_steps
+    SetupErrorId.MAIL_TEST_NO_ORGANIZATION -> Res.string.setup_err_mail_test_no_organization_steps
     SetupErrorId.TIMEOUT -> Res.string.setup_err_timeout_steps
     SetupErrorId.QUOTA -> Res.string.setup_err_quota_steps
     SetupErrorId.NETWORK -> Res.string.setup_err_network_steps

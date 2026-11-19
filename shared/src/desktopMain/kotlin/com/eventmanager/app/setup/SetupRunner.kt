@@ -56,7 +56,7 @@ class SetupRunner(
     private val _states = MutableStateFlow(initialStates(_progress.value))
     override val states: StateFlow<Map<SetupStepId, StepState>> = _states.asStateFlow()
 
-    private val _info = MutableStateFlow(SetupInfo(mailTestOk = settings.mailTestOk))
+    private val _info = MutableStateFlow(SetupInfo(mailTestOk = mailTestOk()))
     override val info: StateFlow<SetupInfo> = _info.asStateFlow()
 
     private var job: Job? = null
@@ -141,10 +141,19 @@ class SetupRunner(
         check(SetupStepId.SITE) { requireOps(SetupStepId.SITE).hostingLive(pid) }?.let { tick(SetupStepId.SITE, it) }
         check(SetupStepId.SERVER) { requireOps(SetupStepId.SERVER).functions(pid, CODEBASE) }?.let { functions ->
             val active = functionsActive(functions)
-            _info.update { it.copy(serverDeployed = active, mailTestOk = settings.mailTestOk) }
-            tick(SetupStepId.SERVER, active && settings.mailTestOk)
+            _info.update { it.copy(serverDeployed = active, mailTestOk = mailTestOk()) }
+            tick(SetupStepId.SERVER, active && mailTestOk())
+        }
+        // After a restart the client ID box needs the service account again (idempotent on Google's side).
+        if (settings.mailWorkspaceProject == pid && _info.value.mailServiceAccount == null) {
+            check(SetupStepId.SERVER) { requireOps(SetupStepId.SERVER).ensureMailServiceAccount(pid) }
+                ?.takeIf { it.email.isNotBlank() }
+                ?.let { sa -> _info.update { it.copy(mailServiceAccount = MailServiceAccountInfo(sa.email, sa.clientId)) } }
         }
     }
+
+    /** A test mail only counts for the project it was sent from. */
+    private fun mailTestOk(): Boolean = settings.projectId.isNotBlank() && settings.mailTestProject == settings.projectId
 
     private fun functionsActive(functions: List<FunctionState>): Boolean =
         SERVER_FUNCTIONS.all { name -> functions.any { it.name == name && it.state == "ACTIVE" } }
@@ -560,7 +569,7 @@ class SetupRunner(
         val db = c.databases(pid).firstOrNull { it.name == DEFAULT_DB } ?: throw IllegalStateException("no database")
         val region = RegionMapper.functionsRegion(db.locationId)
         _info.update { it.copy(region = region) }
-        settings.mailTestOk = false
+        settings.mailTestProject = ""
         _info.update { it.copy(mailTestOk = false, serverDeployed = false) }
         val sa = if (mode == MailMode.WORKSPACE) {
             val ops = requireOps(step)
@@ -573,6 +582,8 @@ class SetupRunner(
         }
         val dir = workspace.prepare(pid, withStorage = storageOn())
         workspace.writeFunctionParams(dir, pid, gmail, region, mode, from, sa)
+        settings.mailWorkspaceProject = if (mode == MailMode.WORKSPACE) pid else ""
+        if (mode == MailMode.APP_PASSWORD) _info.update { it.copy(mailServiceAccount = null) }
         c.setSecret(pid, dir, SECRET_NAME, secret) { log(step, it) }
         c.npmInstall(dir.resolve("functions")) { log(step, it) }
         grantBuildRole(step, force = false)
@@ -592,12 +603,12 @@ class SetupRunner(
         log(step, "Sending a test e-mail to the signed-in account")
         val outcome = mailTester.sendTest(to)
         val ok = outcome.result == SiteMailResult.Sent
-        settings.mailTestOk = ok
+        settings.mailTestProject = if (ok) projectId() else ""
         _info.update { it.copy(mailTestOk = ok) }
         if (ok) return markDone(step)
         forgetDone(step)
         val (id, headline) = when (outcome.result) {
-            SiteMailResult.Unavailable -> SetupErrorId.MAIL_TEST_UNAVAILABLE to "No organization or signed-in team account on this device"
+            SiteMailResult.Unavailable -> SetupErrorId.MAIL_TEST_NO_ORGANIZATION to "No organization or signed-in team account on this device"
             SiteMailResult.NoAnswer -> SetupErrorId.MAIL_TEST_UNAVAILABLE to "The server did not answer in time"
             else -> {
                 val code = outcome.failure.trim()
@@ -692,6 +703,8 @@ class SetupRunner(
     /** Ticks belong to one project: choosing another keeps only the computer-wide steps. */
     private fun switchProject(id: String) {
         saveProgress { it.copy(projectId = id, done = it.done.filter { s -> s in MACHINE_STEPS }.toSet(), confirmed = emptySet()) }
+        // Mail state belongs to the old project's server: the new one shows its own after a refresh.
+        _info.update { it.copy(mailServiceAccount = null, mailTestOk = false, serverDeployed = false) }
         _states.update { states ->
             states.mapValues { (step, state) ->
                 if (step in MACHINE_STEPS || state is StepState.Running || state is StepState.WaitingRetry) state else StepState.Todo

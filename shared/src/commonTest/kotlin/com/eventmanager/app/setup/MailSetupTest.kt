@@ -54,4 +54,11 @@ class MailSetupTest {
         val head = raw.substringBefore("\r\n\r\n")
         assertTrue(head.lines().none { it.startsWith("Bcc") })
     }
+
+    @Test
+    fun fromFollowsTheSenderUntilEdited() {
+        assertEquals("b@x.ch", MailSetup.followSender(previousSender = "a@x.ch", sender = "b@x.ch", from = "a@x.ch"))
+        assertEquals("b@x.ch", MailSetup.followSender(previousSender = "a@x.ch", sender = "b@x.ch", from = ""))
+        assertEquals("no-reply@x.ch", MailSetup.followSender(previousSender = "a@x.ch", sender = "b@x.ch", from = "no-reply@x.ch"))
+    }
 }

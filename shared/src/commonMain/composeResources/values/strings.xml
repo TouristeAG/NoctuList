@@ -2659,6 +2659,9 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="setup_err_mail_test_unavailable_title">The test email could not be started</string>
     <string name="setup_err_mail_test_unavailable_cause">The server did not answer, so the app cannot tell whether sending works.</string>
     <string name="setup_err_mail_test_unavailable_steps">1. Wait a minute for the server to start.\n2. Click Retry.</string>
+    <string name="setup_err_mail_test_no_organization_title">The organization is not set up on this computer yet</string>
+    <string name="setup_err_mail_test_no_organization_cause">The test e-mail goes through the NoctuList organization, which does not exist here yet or whose team account is not signed in.</string>
+    <string name="setup_err_mail_test_no_organization_steps">1. Open Settings, Firebase, and create or join the organization.\n2. Come back here and click Send a test e-mail.</string>
     <string name="setup_err_timeout_title">The command stopped answering</string>
     <string name="setup_err_timeout_cause">A command took too long and the app stopped it.</string>
     <string name="setup_err_timeout_steps">1. Check the internet connection.\n2. Click Retry.\n3. If the error comes back, copy the report and send it to the person helping you.</string>

@@ -55,6 +55,9 @@ interface SetupSettings {
     fun saveProgress(json: String)
     fun enableProfilePhotos()
 
-    /** The last test mail of the server step went through; reset by every new server deploy. */
-    var mailTestOk: Boolean
+    /** Project whose last test mail went through ("" for none); reset by every new server deploy. */
+    var mailTestProject: String
+
+    /** Project whose server was last deployed in Workspace mode ("" for none). */
+    var mailWorkspaceProject: String
 }

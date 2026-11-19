@@ -27,7 +27,8 @@ private class FakeSettings : SetupSettings {
     var clientSecret = ""
     var progressJson = ""
     var photosEnabled = false
-    override var mailTestOk = false
+    override var mailTestProject = ""
+    override var mailWorkspaceProject = ""
     override fun setWebConfig(apiKey: String, appId: String) { this.apiKey = apiKey; this.appId = appId }
     override fun setWebClient(id: String, secret: String) { clientId = id; clientSecret = secret }
     override fun hasWebClient() = clientId.isNotBlank() && clientSecret.isNotBlank()
@@ -777,7 +778,7 @@ class SetupRunnerTest {
     @Test
     fun refreshTicksServerWhenAllFunctionsAreActive(): Unit = runBlocking {
         ops.functions = activeFunctions()
-        settings.mailTestOk = true
+        settings.mailTestProject = "demo-project"
         val r = refreshRunner()
         r.refresh()
         assertEquals(StepState.Done, r.states.value[SetupStepId.SERVER])
@@ -1233,18 +1234,18 @@ class SetupRunnerTest {
 
     @Test
     fun serverNotDoneUntilTestMailSent(): Unit = runBlocking {
-        settings.mailTestOk = true // from an earlier deploy: a new deploy needs a new test
+        settings.mailTestProject = "demo-project" // from an earlier deploy: a new deploy needs a new test
         signedIn()
         runner.run(SetupStepId.SERVER, workspaceInput())
         awaitServerDeployed()
-        assertFalse(settings.mailTestOk)
+        assertEquals("", settings.mailTestProject)
         assertFalse(runner.info.value.mailTestOk)
         assertTrue(SetupStepId.SERVER !in runner.progress.value.done)
         assertTrue(mailer.sent.isEmpty())
         runner.sendTestMail()
         awaitState(SetupStepId.SERVER) { it == StepState.Done }
         assertEquals(listOf("admin@example.org"), mailer.sent)
-        assertTrue(settings.mailTestOk)
+        assertEquals("demo-project", settings.mailTestProject)
         assertTrue(runner.info.value.mailTestOk)
         assertTrue(SetupStepId.SERVER in runner.progress.value.done)
     }
@@ -1262,17 +1263,77 @@ class SetupRunnerTest {
         assertTrue("delegation:unauthorized_client" in error.headline, error.headline)
         assertTrue("delegation:unauthorized_client" in runner.report(SetupStepId.SERVER))
         assertEquals(1, cli.calls.count { it.startsWith("setSecret") })
-        assertFalse(settings.mailTestOk)
+        assertEquals("", settings.mailTestProject)
         assertTrue(SetupStepId.SERVER !in runner.progress.value.done)
     }
 
     @Test
-    fun testMailWithoutOrganizationIsUnavailable(): Unit = runBlocking {
+    fun testMailWithoutOrganizationSaysSo(): Unit = runBlocking {
         mailer.outcome = SiteMailOutcome(SiteMailResult.Unavailable, "")
         signedIn()
         runner.sendTestMail()
         val state = awaitState(SetupStepId.SERVER) { it is StepState.Error }
+        assertEquals(SetupErrorId.MAIL_TEST_NO_ORGANIZATION, (state as StepState.Error).error.id)
+    }
+
+    @Test
+    fun testMailWithoutAnswerIsUnavailable(): Unit = runBlocking {
+        mailer.outcome = SiteMailOutcome(SiteMailResult.NoAnswer, "")
+        signedIn()
+        runner.sendTestMail()
+        val state = awaitState(SetupStepId.SERVER) { it is StepState.Error }
         assertEquals(SetupErrorId.MAIL_TEST_UNAVAILABLE, (state as StepState.Error).error.id)
+    }
+
+    @Test
+    fun switchingProjectRequiresANewTestMail(): Unit = runBlocking {
+        ops.functions = activeFunctions()
+        signedIn()
+        runner.run(SetupStepId.SERVER, workspaceInput())
+        awaitServerDeployed()
+        runner.sendTestMail()
+        awaitState(SetupStepId.SERVER) { it == StepState.Done }
+        runner.run(SetupStepId.PROJECT, StepInput(projectId = "other-project"))
+        awaitState(SetupStepId.PROJECT) { it == StepState.Done }
+        runner.refresh()
+        assertEquals(StepState.Todo, runner.states.value[SetupStepId.SERVER])
+        assertFalse(runner.info.value.mailTestOk)
+        assertEquals(null, runner.info.value.mailServiceAccount)
+    }
+
+    @Test
+    fun workspaceDeployIsRememberedPerProject(): Unit = runBlocking {
+        ready()
+        runner.run(SetupStepId.SERVER, workspaceInput())
+        awaitServerDeployed()
+        assertEquals("demo-project", settings.mailWorkspaceProject)
+        runner.run(SetupStepId.SERVER, serverInput())
+        withTimeout(5_000) { while (cli.calls.count { it.startsWith("setpolicy") } < 2) kotlinx.coroutines.delay(10) }
+        awaitState(SetupStepId.SERVER) { it == StepState.Todo }
+        assertEquals("", settings.mailWorkspaceProject)
+    }
+
+    @Test
+    fun refreshShowsTheClientIdOfAWorkspaceProject(): Unit = runBlocking {
+        ops.functions = activeFunctions()
+        settings.mailWorkspaceProject = "demo-project"
+        val r = refreshRunner()
+        r.refresh()
+        assertEquals(
+            MailServiceAccountInfo("noctulist-mail@demo-project.iam.gserviceaccount.com", "1234567890"),
+            r.info.value.mailServiceAccount,
+        )
+        r.refresh()
+        assertEquals(1, ops.calls.count { it == "ensureMailServiceAccount" })
+    }
+
+    @Test
+    fun refreshLeavesAppPasswordProjectsAlone(): Unit = runBlocking {
+        ops.functions = activeFunctions()
+        val r = refreshRunner()
+        r.refresh()
+        assertTrue("ensureMailServiceAccount" !in ops.calls)
+        assertEquals(null, r.info.value.mailServiceAccount)
     }
 
     @Test

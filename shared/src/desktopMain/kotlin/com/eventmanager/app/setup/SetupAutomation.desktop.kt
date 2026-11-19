@@ -96,7 +96,11 @@ class SettingsManagerSetupSettings(private val s: SettingsManager) : SetupSettin
     override fun saveProgress(json: String) = s.saveSetupProgressJson(json)
     override fun enableProfilePhotos() = s.setProfilePhotosEnabled(true)
 
-    override var mailTestOk: Boolean
-        get() = s.isSetupMailTestOk()
-        set(value) = s.setSetupMailTestOk(value)
+    override var mailTestProject: String
+        get() = s.getSetupMailTestProject()
+        set(value) = s.setSetupMailTestProject(value)
+
+    override var mailWorkspaceProject: String
+        get() = s.getSetupMailWorkspaceProject()
+        set(value) = s.setSetupMailWorkspaceProject(value)
 }

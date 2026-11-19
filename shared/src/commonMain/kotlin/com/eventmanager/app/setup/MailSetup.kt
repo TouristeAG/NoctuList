@@ -27,6 +27,10 @@ object MailSetup {
         return if (domain in CONSUMER_DOMAINS) MailMode.APP_PASSWORD else MailMode.WORKSPACE
     }
 
+    /** The displayed address follows the sending account while it is blank or still the previous one. */
+    fun followSender(previousSender: String, sender: String, from: String): String =
+        if (from.isBlank() || from.equals(previousSender, ignoreCase = true)) sender else from
+
     /** The catalogue error for a `failure` code the server wrote on a refused test mail. */
     fun failureToError(code: String): SetupErrorId = when (code.trim()) {
         "delegation:unauthorized_client", "delegation:access_denied" -> SetupErrorId.MAIL_DELEGATION_MISSING
