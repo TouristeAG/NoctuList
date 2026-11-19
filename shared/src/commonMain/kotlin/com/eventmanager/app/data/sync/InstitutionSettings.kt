@@ -106,6 +106,16 @@ object InstitutionSettingsKeys {
      */
     const val VOLUNTEER_PORTAL_GOOGLE_ANY_ACCOUNT = "volunteer_portal_google_any_account"
 
+    /** `"true"`: every volunteer added in the app gets portal access right away. Off by default. */
+    const val VOLUNTEER_PORTAL_AUTO_ACCESS = "volunteer_portal_auto_access"
+
+    /**
+     * `"true"`: a newly opened portal access gets its Google address from
+     * [VOLUNTEER_PORTAL_GOOGLE_TEMPLATE] (see `PortalGoogleAddressTemplate`). Off by default.
+     */
+    const val VOLUNTEER_PORTAL_GOOGLE_AUTO = "volunteer_portal_google_auto"
+    const val VOLUNTEER_PORTAL_GOOGLE_TEMPLATE = "volunteer_portal_google_template"
+
     /** Show the association logo next to its name at the top of the volunteer portal. On by default. */
     const val VOLUNTEER_PORTAL_SHOW_LOGO = "volunteer_portal_show_logo"
 
@@ -204,6 +214,9 @@ object InstitutionSettingsKeys {
         VOLUNTEER_PORTAL_QR_ENABLED,
         VOLUNTEER_PORTAL_GOOGLE_DOMAINS,
         VOLUNTEER_PORTAL_GOOGLE_ANY_ACCOUNT,
+        VOLUNTEER_PORTAL_AUTO_ACCESS,
+        VOLUNTEER_PORTAL_GOOGLE_AUTO,
+        VOLUNTEER_PORTAL_GOOGLE_TEMPLATE,
     ) + TEMP_GUEST_KEYS + GUEST_FORM_KEYS + BACKEND_KEYS + SHEETS_MIRROR_KEYS
 
     /**
@@ -220,6 +233,9 @@ object InstitutionSettingsKeys {
         VOLUNTEER_PORTAL_QR_ENABLED,
         VOLUNTEER_PORTAL_GOOGLE_DOMAINS,
         VOLUNTEER_PORTAL_GOOGLE_ANY_ACCOUNT,
+        VOLUNTEER_PORTAL_AUTO_ACCESS,
+        VOLUNTEER_PORTAL_GOOGLE_AUTO,
+        VOLUNTEER_PORTAL_GOOGLE_TEMPLATE,
     ) + TEMP_GUEST_KEYS + GUEST_FORM_KEYS
 
     fun isSyncedToSheets(key: String): Boolean = key !in FIREBASE_ONLY_KEYS
