@@ -21,4 +21,5 @@ actual fun createSetupAutomation(context: PlatformContext, settings: SettingsMan
         override fun setExtra(step: SetupStepId, enabled: Boolean) = Unit
         override fun cancel() = Unit
         override fun close() = Unit
+        override fun report(step: SetupStepId) = ""
     }

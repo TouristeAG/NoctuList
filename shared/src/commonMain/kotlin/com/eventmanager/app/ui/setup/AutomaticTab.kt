@@ -40,8 +40,8 @@ import androidx.compose.ui.unit.dp
 import com.eventmanager.app.platform.LocalPlatformContext
 import com.eventmanager.app.platform.openExternalUrl
 import com.eventmanager.app.resources.*
-import com.eventmanager.app.setup.SetupErrorId
 import com.eventmanager.app.setup.LoginChallenge
+import com.eventmanager.app.setup.RepairNote
 import com.eventmanager.app.setup.SetupAutomation
 import com.eventmanager.app.setup.SetupStepId
 import com.eventmanager.app.setup.StepInput
@@ -85,21 +85,6 @@ private fun stepPurpose(step: SetupStepId): StringResource = when (step) {
     SetupStepId.GOOGLE -> Res.string.setup_step_google_purpose
 }
 
-@Composable
-internal fun errorMessage(id: SetupErrorId): String = stringResource(
-    when (id) {
-        SetupErrorId.BUILD_SA_PERMISSION, SetupErrorId.PERMISSION_DENIED, SetupErrorId.NO_PROJECT_CREATOR ->
-            Res.string.setup_err_permission
-        SetupErrorId.BILLING_REQUIRED -> Res.string.setup_err_billing
-        SetupErrorId.API_NOT_ENABLED, SetupErrorId.SECRET_REFUSED -> Res.string.setup_err_api
-        SetupErrorId.EVENTARC_NOT_READY -> Res.string.setup_err_eventarc
-        SetupErrorId.NETWORK, SetupErrorId.DOWNLOAD_FAILED -> Res.string.setup_err_network
-        SetupErrorId.QUOTA, SetupErrorId.PROJECT_QUOTA -> Res.string.setup_err_quota
-        SetupErrorId.LOGIN_EXPIRED, SetupErrorId.LOGIN_CODE_INVALID -> Res.string.setup_err_not_logged_in
-        else -> Res.string.setup_err_unknown
-    },
-)
-
 /** Console links for the steps only a person can do. */
 internal object SetupLinks {
     fun providers(id: String) = "https://console.firebase.google.com/project/$id/authentication/providers"
@@ -121,6 +106,8 @@ fun AutomaticTab(
     val progress by automation.progress.collectAsState()
     val info by automation.info.collectAsState()
     LaunchedEffect(automation) { automation.refresh() }
+    // What each step was last run with, so Retry repeats it. Passwords and codes are not kept.
+    val lastInputs = remember { mutableMapOf<SetupStepId, StepInput>() }
     val pid = progress.projectId.ifBlank { projectId }
 
     LazyColumn(
@@ -129,8 +116,8 @@ fun AutomaticTab(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         items(requiredSteps, key = { it.name }) { step ->
-            Card(step, states[step] ?: StepState.Todo, onShowManual) {
-                StepControls(step, automation, pid, info.projects.map { it.id }, info.locations, info.account, info.region, info.siteUrl, info.toolsProgress, info.tools, progress.confirmed, info.loginChallenge)
+            Card(step, states[step] ?: StepState.Todo, onShowManual, automation, info.repairs[step].orEmpty(), lastInputs) {
+                StepControls(step, automation, pid, info.projects.map { it.id }, info.locations, info.account, info.region, info.siteUrl, info.toolsProgress, info.tools, progress.confirmed, info.loginChallenge, { st, input -> lastInputs[st] = input })
             }
         }
         item(key = "extras") {
@@ -149,8 +136,8 @@ fun AutomaticTab(
                     Switch(checked = enabled, onCheckedChange = { automation.setExtra(step, it) })
                 }
                 if (enabled) {
-                    Card(step, states[step] ?: StepState.Todo, onShowManual) {
-                        StepControls(step, automation, pid, info.projects.map { it.id }, info.locations, info.account, info.region, info.siteUrl, info.toolsProgress, info.tools, progress.confirmed, info.loginChallenge)
+                    Card(step, states[step] ?: StepState.Todo, onShowManual, automation, info.repairs[step].orEmpty(), lastInputs) {
+                        StepControls(step, automation, pid, info.projects.map { it.id }, info.locations, info.account, info.region, info.siteUrl, info.toolsProgress, info.tools, progress.confirmed, info.loginChallenge, { st, input -> lastInputs[st] = input })
                     }
                 }
             }
@@ -159,7 +146,16 @@ fun AutomaticTab(
 }
 
 @Composable
-private fun Card(step: SetupStepId, state: StepState, onShowManual: (SetupStepId) -> Unit, content: @Composable () -> Unit) {
+private fun Card(
+    step: SetupStepId,
+    state: StepState,
+    onShowManual: (SetupStepId) -> Unit,
+    automation: SetupAutomation,
+    repairs: List<RepairNote>,
+    lastInputs: Map<SetupStepId, StepInput>,
+    content: @Composable () -> Unit,
+) {
+    val platform = LocalPlatformContext.current
     StepCard(
         step = step,
         state = state,
@@ -167,6 +163,12 @@ private fun Card(step: SetupStepId, state: StepState, onShowManual: (SetupStepId
         purpose = stringResource(stepPurpose(step)),
         onShowManual = onShowManual,
         rerunnable = step in RERUNNABLE,
+        repairs = repairs,
+        onRetry = if (step == SetupStepId.SERVER) null else {
+            { automation.run(step, lastInputs[step] ?: StepInput()) }
+        },
+        onOpenLink = { openExternalUrl(platform, it) },
+        report = { automation.report(step) },
         content = content,
     )
 }
@@ -186,6 +188,7 @@ private fun StepControls(
     toolsState: ToolsState,
     confirmed: Set<SetupStepId>,
     loginChallenge: LoginChallenge?,
+    remember: (SetupStepId, StepInput) -> Unit,
 ) {
     val platform = LocalPlatformContext.current
     val open: (String) -> Unit = { openExternalUrl(platform, it) }
@@ -197,7 +200,17 @@ private fun StepControls(
     @Composable
     fun RunButton(enabled: Boolean = true, input: () -> StepInput = { StepInput() }) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { automation.run(step, input()) }, enabled = enabled && !busy) { Text("▶  $runLabel") }
+            Button(
+                onClick = {
+                    val given = input()
+                    remember(
+                        step,
+                        StepInput(given.projectId, given.newProjectName, given.location, given.gmailUser, null, given.webClientId, given.webClientSecret),
+                    )
+                    automation.run(step, given)
+                },
+                enabled = enabled && !busy,
+            ) { Text("▶  $runLabel") }
             if (busy) TextButton(onClick = { automation.cancel() }) { Text(stringResource(Res.string.setup_btn_cancel)) }
         }
     }

@@ -43,6 +43,9 @@ interface SetupAutomation {
     /** Stops everything; called when the setup page closes. */
     fun close()
 
+    /** Text of the failed [step] for the admin to copy: no secret in it. Empty where there is no setup engine. */
+    fun report(step: SetupStepId): String
+
     /** Values the UI shows, such as the signed-in account or the project list. */
     val info: StateFlow<SetupInfo>
 }
@@ -60,7 +63,12 @@ data class SetupInfo(
     val tools: ToolsState = ToolsState.MISSING,
     /** Set while the admin signs in: open [LoginChallenge.url], then paste the code. */
     val loginChallenge: LoginChallenge? = null,
+    /** What the app fixed by itself before a step failed, shown in the error box. */
+    val repairs: Map<SetupStepId, List<RepairNote>> = emptyMap(),
 )
+
+/** One repair the app ran for a step, with what it found. */
+data class RepairNote(val repair: Repair, val detail: String)
 
 data class LoginChallenge(val sessionId: String, val url: String)
 

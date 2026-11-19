@@ -14,6 +14,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -29,11 +33,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.eventmanager.app.resources.Res
 import com.eventmanager.app.resources.setup_btn_details
+import com.eventmanager.app.resources.setup_err_copy_report
+import com.eventmanager.app.resources.setup_err_open_page
+import com.eventmanager.app.resources.setup_err_report_copied
+import com.eventmanager.app.resources.setup_err_repairs_header
+import com.eventmanager.app.resources.setup_err_retry
 import com.eventmanager.app.resources.setup_btn_hide_details
 import com.eventmanager.app.resources.setup_btn_manual
 import com.eventmanager.app.resources.setup_btn_run_again
@@ -42,6 +53,7 @@ import com.eventmanager.app.resources.setup_state_error
 import com.eventmanager.app.resources.setup_state_running
 import com.eventmanager.app.resources.setup_state_todo
 import com.eventmanager.app.resources.setup_state_waiting
+import com.eventmanager.app.setup.RepairNote
 import com.eventmanager.app.setup.SetupStepId
 import com.eventmanager.app.setup.SetupErrorId
 import com.eventmanager.app.setup.StepState
@@ -57,6 +69,10 @@ fun StepCard(
     onShowManual: (SetupStepId) -> Unit,
     modifier: Modifier = Modifier,
     rerunnable: Boolean = false,
+    repairs: List<RepairNote> = emptyList(),
+    onRetry: (() -> Unit)? = null,
+    onOpenLink: (String) -> Unit = {},
+    report: () -> String = { "" },
     content: @Composable () -> Unit,
 ) {
     val done = state == StepState.Done
@@ -86,7 +102,7 @@ fun StepCard(
             }
             when (state) {
                 is StepState.Running -> LogArea(state.log)
-                is StepState.Error -> ErrorBox(state, onShowManual = { onShowManual(step) })
+                is StepState.Error -> ErrorBox(state, repairs, onRetry, onOpenLink, report, onShowManual = { onShowManual(step) })
                 else -> Unit
             }
         }
@@ -143,38 +159,67 @@ private fun LogArea(lines: List<String>) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ErrorBox(state: StepState.Error, onShowManual: () -> Unit) {
+private fun ErrorBox(
+    state: StepState.Error,
+    repairs: List<RepairNote>,
+    onRetry: (() -> Unit)?,
+    onOpenLink: (String) -> Unit,
+    report: () -> String,
+    onShowManual: () -> Unit,
+) {
+    val error = state.error
+    val ink = MaterialTheme.colorScheme.onErrorContainer
     var showDetails by remember { mutableStateOf(false) }
+    var copied by remember { mutableStateOf(false) }
+    val clipboard = LocalClipboardManager.current
+    val unknown = error.id == SetupErrorId.UNKNOWN
     Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.errorContainer) {
-        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                errorMessage(state.error.id),
-                color = MaterialTheme.colorScheme.onErrorContainer,
-                style = MaterialTheme.typography.bodyMedium,
+                if (unknown && error.headline.isNotBlank()) error.headline else stringResource(errorTitle(error.id)),
+                color = ink,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
             )
-            if (state.error.id == SetupErrorId.UNKNOWN && state.error.headline.isNotBlank()) {
-                Text(
-                    state.error.headline,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    style = MaterialTheme.typography.bodySmall,
-                )
+            Text(stringResource(errorCause(error.id)), color = ink, style = MaterialTheme.typography.bodyMedium)
+            if (repairs.isNotEmpty()) {
+                Text(stringResource(Res.string.setup_err_repairs_header), color = ink, style = MaterialTheme.typography.labelLarge)
+                repairs.forEach { note ->
+                    val done = stringResource(repairDone(note.repair))
+                    Text(
+                        "- " + if (note.detail.isBlank()) done else "$done (${note.detail})",
+                        color = ink,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+            Text(stringResource(errorSteps(error.id)), color = ink, style = MaterialTheme.typography.bodyMedium)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                error.link?.let { link ->
+                    OutlinedButton(onClick = { onOpenLink(link) }) { Text(stringResource(Res.string.setup_err_open_page)) }
+                }
+                onRetry?.let { Button(onClick = it) { Text(stringResource(Res.string.setup_err_retry)) } }
+                OutlinedButton(onClick = {
+                    clipboard.setText(AnnotatedString(report()))
+                    copied = true
+                }) { Text(stringResource(if (copied) Res.string.setup_err_report_copied else Res.string.setup_err_copy_report)) }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = onShowManual) { Text(stringResource(Res.string.setup_btn_manual)) }
-                if (state.error.details.isNotBlank()) {
+                if (error.details.isNotBlank() || error.headline.isNotBlank()) {
                     TextButton(onClick = { showDetails = !showDetails }) {
                         Text(stringResource(if (showDetails) Res.string.setup_btn_hide_details else Res.string.setup_btn_details))
                     }
                 }
             }
             if (showDetails) {
-                Text(
-                    state.error.details.takeLast(4_000),
-                    style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                )
+                val shown = buildString {
+                    if (!unknown && error.headline.isNotBlank()) appendLine(error.headline).appendLine()
+                    append(error.details.takeLast(4_000))
+                }
+                Text(shown, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace, color = ink)
             }
         }
     }

@@ -29,6 +29,7 @@ class SetupRunner(
     private val settings: SetupSettings,
     private val sleep: suspend (Long) -> Unit = { delay(it) },
     private val secrets: ActiveSecrets = ActiveSecrets(),
+    private val redactor: OutputRedactor = OutputRedactor { secrets.current() },
 ) : SetupAutomation {
     override val available = true
 
@@ -127,6 +128,14 @@ class SetupRunner(
             jobs.removeAll { !it.isActive }
             jobs += next
         }
+    }
+
+    override fun report(step: SetupStepId): String {
+        val error = (_states.value[step] as? StepState.Error)?.error ?: return ""
+        val os = "${System.getProperty("os.name")} ${System.getProperty("os.version")}"
+        val versions = "Node.js ${ToolsManifest.NODE_VERSION}, firebase-tools ${ToolsManifest.FIREBASE_TOOLS_VERSION}"
+        val raw = SetupReport.build(step, error, _info.value.repairs[step].orEmpty(), os, versions)
+        return redactor.redact(raw)
     }
 
     override fun confirm(step: SetupStepId) {
