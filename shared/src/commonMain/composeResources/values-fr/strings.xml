@@ -2669,4 +2669,5 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="setup_repair_relogin">Connexion Google refaite</string>
     <string name="setup_billing_offer">Le serveur et les photos demandent le forfait Blaze (paiement à l'usage). L'app peut relier ce projet au compte de facturation « %1$s ». Vous pouvez fixer un budget dans la console Google Cloud.</string>
     <string name="setup_billing_link">Activer Blaze avec ce compte</string>
+    <string name="setup_billing_password">Saisissez à nouveau le mot de passe d'application, puis cliquez sur Activer Blaze avec ce compte.</string>
 </resources>

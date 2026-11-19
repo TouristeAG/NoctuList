@@ -115,7 +115,8 @@ private class FakeOps : GoogleOps {
     }
 
     override suspend fun checkAuth() = "admin@example.org"
-    override suspend fun projectNumber(projectId: String) = "123".also { rec("projectNumber") }
+    var number = "123"
+    override suspend fun projectNumber(projectId: String) = number.also { rec("projectNumber") }
     override suspend fun missingPermissions(projectId: String, permissions: List<String>) =
         missing.also { rec("missingPermissions ${permissions.joinToString(",")}") }
     override suspend fun enableApis(projectId: String, apis: List<String>) {
@@ -754,6 +755,7 @@ class SetupRunnerTest {
 
     @Test
     fun httpsToBackgroundErrorRepairsThenRetriesOnce(): Unit = runBlocking {
+        ops.functions = listOf(FunctionState("onMailOutboxWritten", "europe-west6", "ACTIVE", emptyList()))
         ready()
         cli.deployFailures += SetupErrorFixtures.HTTPS_TO_BACKGROUND
         runner.run(SetupStepId.SERVER, serverInput())
@@ -764,6 +766,7 @@ class SetupRunnerTest {
 
     @Test
     fun secondFailureAfterRepairIsShown(): Unit = runBlocking {
+        ops.functions = listOf(FunctionState("onMailOutboxWritten", "europe-west6", "ACTIVE", emptyList()))
         ready()
         cli.deployFailures += listOf(SetupErrorFixtures.HTTPS_TO_BACKGROUND, SetupErrorFixtures.HTTPS_TO_BACKGROUND)
         runner.run(SetupStepId.SERVER, serverInput())
@@ -896,5 +899,51 @@ class SetupRunnerTest {
         assertEquals(SetupErrorId.PERMISSION_DENIED, error.id)
         assertTrue("firebaserules.releases.create" in error.headline, error.headline)
         assertTrue("missingPermissions firebaserules.releases.create,firebasehosting.sites.update,firebasestorage.buckets.get" in ops.calls)
+    }
+
+    @Test
+    fun typeChangeOfAnotherCodebaseDeletesNothing(): Unit = runBlocking {
+        ops.functions = listOf(FunctionState("onMailOutboxWritten", "europe-west6", "ACTIVE", emptyList()))
+        ready()
+        cli.deployFailures += "Error: [other:onFoo(europe-west6)] Changing from an HTTPS function to a background triggered function is not allowed."
+        runner.run(SetupStepId.SERVER, serverInput())
+        val state = awaitState(SetupStepId.SERVER) { it is StepState.Error }
+        assertEquals(SetupErrorId.FUNCTIONS_FAILED_STATE, (state as StepState.Error).error.id)
+        assertTrue(cli.calls.none { it.startsWith("deleteFunctions") })
+        assertEquals(1, cli.calls.count { it == "deploy hosting,functions" })
+    }
+
+    @Test
+    fun typeChangeOfAFunctionGoogleDoesNotListDeletesNothing(): Unit = runBlocking {
+        ready()
+        cli.deployFailures += SetupErrorFixtures.HTTPS_TO_BACKGROUND
+        runner.run(SetupStepId.SERVER, serverInput())
+        awaitState(SetupStepId.SERVER) { it is StepState.Error }
+        assertTrue(cli.calls.none { it.startsWith("deleteFunctions") })
+    }
+
+    @Test
+    fun functionWithoutRegionIsSkipped(): Unit = runBlocking {
+        ops.functions = listOf(
+            FunctionState("onSignupWritten", "", "FAILED", emptyList()),
+            FunctionState("onMailOutboxWritten", "europe-west6", "FAILED", emptyList()),
+        )
+        ready()
+        runner.run(SetupStepId.SERVER, serverInput())
+        awaitState(SetupStepId.SERVER) { it == StepState.Done }
+        assertEquals(listOf("deleteFunctions onMailOutboxWritten europe-west6"), cli.calls.filter { it.startsWith("deleteFunctions") })
+    }
+
+    @Test
+    fun invalidProjectNumberGrantsNothing(): Unit = runBlocking {
+        ops.number = "12 3;x"
+        ready()
+        runner.run(SetupStepId.SERVER, serverInput())
+        val state = awaitState(SetupStepId.SERVER) { it is StepState.Error }
+        val error = (state as StepState.Error).error
+        assertEquals(SetupErrorId.UNKNOWN, error.id)
+        assertTrue("project number" in error.headline, error.headline)
+        assertTrue(ops.calls.none { it.startsWith("ensureRole") })
+        assertTrue(cli.calls.none { it.startsWith("deploy") })
     }
 }

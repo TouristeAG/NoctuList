@@ -174,7 +174,9 @@ class SetupRunner(
         } catch (e: CliException) {
             val repair = e.error.repair
             if (e.error.retry != RetryPolicy.AFTER_REPAIR || repair !in AUTOMATIC_REPAIRS) throw e
-            attempt(step) { repair(step, repair!!, e.error) }
+            var repaired = false
+            attempt(step) { repaired = repair(step, repair!!, e.error) }
+            if (!repaired) throw e // nothing the app may fix: running again would only fail the same way
             setState(step, StepState.Running(emptyList()))
             attempt(step) { execute(step, input, reinstall) }
         }
@@ -193,14 +195,13 @@ class SetupRunner(
         }
     }
 
-    private suspend fun repair(step: SetupStepId, repair: Repair, error: SetupError) {
-        when (repair) {
-            Repair.ENABLE_APIS -> enableApis(step)
-            Repair.GRANT_BUILD_ROLE -> grantBuildRole(step, force = true)
-            Repair.DELETE_FAILED_FUNCTIONS -> deleteFailedFunctions(step, error.details)
-            // The Hosting site is created inside the deploy (see deployTo); the other two need the admin.
-            Repair.CREATE_HOSTING_SITE, Repair.REINSTALL_TOOLS, Repair.RELOGIN -> Unit
-        }
+    /** Returns false when the repair found nothing to change. */
+    private suspend fun repair(step: SetupStepId, repair: Repair, error: SetupError): Boolean = when (repair) {
+        Repair.ENABLE_APIS -> { enableApis(step); true }
+        Repair.GRANT_BUILD_ROLE -> { grantBuildRole(step, force = true); true }
+        Repair.DELETE_FAILED_FUNCTIONS -> deleteFailedFunctions(step, error.details)
+        // The Hosting site is created inside the deploy (see deployTo); the other two need the admin.
+        Repair.CREATE_HOSTING_SITE, Repair.REINSTALL_TOOLS, Repair.RELOGIN -> false
     }
 
     private suspend fun enableApis(step: SetupStepId) {
@@ -212,25 +213,35 @@ class SetupRunner(
     private suspend fun grantBuildRole(step: SetupStepId, force: Boolean) {
         val pid = projectId()
         val number = requireOps(step).projectNumber(pid)
+        if (!PROJECT_NUMBER.matches(number)) {
+            val message = "Google returned an invalid project number for $pid: \"${number.take(40)}\""
+            throw CliException(SetupError(SetupErrorId.UNKNOWN, step, RetryPolicy.NONE, null, null, message, message))
+        }
         val changed = requireOps(step).ensureRole(pid, "serviceAccount:$number-compute@developer.gserviceaccount.com", BUILD_ROLE)
         if (changed || force) note(step, Repair.GRANT_BUILD_ROLE, BUILD_ROLE)
     }
 
     /**
      * A function left FAILED by an earlier deploy, or one that cannot change type (HTTPS to background),
-     * blocks the deploy until it is deleted. [failure] is the deploy output naming the latter.
+     * blocks the deploy until it is deleted. [failure] is the deploy output naming the latter. Only functions
+     * Google lists in the NoctuList codebase are deleted. Returns false when there was nothing to delete.
      */
-    private suspend fun deleteFailedFunctions(step: SetupStepId, failure: String = "") {
+    private suspend fun deleteFailedFunctions(step: SetupStepId, failure: String = ""): Boolean {
         val pid = projectId()
-        val failed = requireOps(step).functions(pid, CODEBASE).filter { it.state == "FAILED" }.map { it.name to it.region }
-        val blocked = TYPE_CHANGE.findAll(failure).map { it.groupValues[1] to it.groupValues[2] }.toList()
+        val ours = requireOps(step).functions(pid, CODEBASE)
+        val (located, noRegion) = ours.partition { it.region.isNotBlank() }
+        noRegion.forEach { log(step, "Function ${it.name} has no region, not deleted") }
+        val known = located.map { it.name to it.region }.toSet()
+        val failed = located.filter { it.state == "FAILED" }.map { it.name to it.region }
+        val blocked = TYPE_CHANGE.findAll(failure).map { it.groupValues[1] to it.groupValues[2] }.filter { it in known }.toList()
         val targets = (failed + blocked).distinct()
-        if (targets.isEmpty()) return
+        if (targets.isEmpty()) return false
         val c = requireCli()
         targets.groupBy({ it.second }, { it.first }).forEach { (region, names) ->
             c.deleteFunctions(pid, names, region) { log(step, it) }
         }
         note(step, Repair.DELETE_FAILED_FUNCTIONS, targets.joinToString(", ") { it.first })
+        return true
     }
 
     /** Nothing is linked here: the admin chooses the account (see [confirmBilling]). Returns false when billing is off. */
@@ -630,7 +641,8 @@ class SetupRunner(
         // Signing in again and reinstalling the tools need the admin; the Hosting site is made by deployTo.
         val AUTOMATIC_REPAIRS = setOf(Repair.ENABLE_APIS, Repair.GRANT_BUILD_ROLE, Repair.DELETE_FAILED_FUNCTIONS)
         // "[noctulist:onMailOutboxWritten(europe-west6)] Changing from an HTTPS function ..."
-        val TYPE_CHANGE = Regex("""\[[A-Za-z0-9_-]+:([A-Za-z][A-Za-z0-9_-]*)\(([a-z]+-[a-z]+[0-9]+)\)] Changing from an HTTPS function""")
+        val PROJECT_NUMBER = Regex("^[0-9]+$")
+        val TYPE_CHANGE = Regex("""\[noctulist:([A-Za-z][A-Za-z0-9_-]*)\(([a-z]+-[a-z]+[0-9]+)\)] Changing from an HTTPS function""")
 
         fun initialStates(progress: SetupProgress): Map<SetupStepId, StepState> =
             SetupStepId.entries.associateWith { step ->

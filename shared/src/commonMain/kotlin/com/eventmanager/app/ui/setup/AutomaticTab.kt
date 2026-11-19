@@ -401,7 +401,8 @@ private fun BillingOffer(
                 }
             }
             if (!canRun && step == SetupStepId.SERVER) {
-                Text(stringResource(Res.string.setup_err_retry_password), style = MaterialTheme.typography.bodySmall)
+                val hint = if (account != null) Res.string.setup_billing_password else Res.string.setup_err_retry_password
+                Text(stringResource(hint), style = MaterialTheme.typography.bodySmall)
             }
         }
     }
