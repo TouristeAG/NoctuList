@@ -45,6 +45,32 @@ actual fun createSetupAutomation(context: PlatformContext, settings: SettingsMan
     )
 }
 
+/**
+ * Copies the bundled Google helper to `<appData>/setup/helper/` when it is missing or changed.
+ * Called lazily on first use, not at app start.
+ */
+@OptIn(ExperimentalResourceApi::class)
+suspend fun extractGoogleHelper(root: java.io.File): java.io.File {
+    val target = root.resolve("setup/helper/noctulist-gcp.cjs")
+    val bytes = Res.readBytes("files/setup/noctulist-gcp.cjs")
+    if (!target.isFile || !target.readBytes().contentEquals(bytes)) {
+        target.parentFile.mkdirs()
+        target.writeBytes(bytes)
+    }
+    return target
+}
+
+/** Builds the Google operations for the runner (wired in by the runner task). */
+fun googleOpsFactory(
+    root: java.io.File,
+    runner: ProcessRunner,
+    environment: SetupEnvironment,
+    logs: SetupLogFiles,
+    redactor: OutputRedactor,
+): suspend (ToolPaths) -> HelperGoogleOps = { paths ->
+    HelperGoogleOps(runner, paths, extractGoogleHelper(root), environment, logs, redactor)
+}
+
 /** Adapts [SettingsManager] to what the assistant needs. */
 class SettingsManagerSetupSettings(private val s: SettingsManager) : SetupSettings {
     override var projectId: String
