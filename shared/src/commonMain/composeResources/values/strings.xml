@@ -2363,6 +2363,9 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="setup_btn_open">Open</string>
     <string name="setup_btn_done">I did it</string>
     <string name="setup_btn_cancel">Cancel</string>
+    <string name="setup_tools_reinstall">Reinstall</string>
+    <string name="setup_tools_update">Update</string>
+    <string name="setup_tools_broken">The tools no longer respond. Reinstall them.</string>
     <string name="setup_btn_manual">See the manual step</string>
     <string name="setup_btn_details">Show details</string>
     <string name="setup_btn_hide_details">Hide details</string>

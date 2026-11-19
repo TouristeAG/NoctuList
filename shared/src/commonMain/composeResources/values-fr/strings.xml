@@ -2360,6 +2360,9 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="setup_btn_open">Ouvrir</string>
     <string name="setup_btn_done">C'est fait</string>
     <string name="setup_btn_cancel">Annuler</string>
+    <string name="setup_tools_reinstall">Réinstaller</string>
+    <string name="setup_tools_update">Mettre à jour</string>
+    <string name="setup_tools_broken">Les outils ne répondent plus. Réinstallez-les.</string>
     <string name="setup_btn_manual">Voir l'étape manuelle</string>
     <string name="setup_btn_details">Afficher les détails</string>
     <string name="setup_btn_hide_details">Masquer les détails</string>

@@ -21,19 +21,16 @@ actual fun createSetupAutomation(context: PlatformContext, settings: SettingsMan
     val root = context.appDataDir
     val runner = RealProcessRunner()
     val os = System.getProperty("os.name").orEmpty()
-    val installer = ToolsInstaller(
+    val environment = SetupEnvironment(root, SystemProxy.detect())
+    val tools = ToolsInstaller(
         toolsDir = SetupPaths.tools(root),
         runner = runner,
         http = JdkToolsHttp(),
         os = os,
         arch = System.getProperty("os.arch").orEmpty(),
+        environment = environment,
     )
-    val tools = object : SetupTools {
-        override suspend fun detect() = installer.detect(System.getenv("PATH").orEmpty())
-        override suspend fun install(onProgress: (Float, String) -> Unit) = installer.install(onProgress)
-    }
     val secrets = ActiveSecrets()
-    val environment = SetupEnvironment(root, null)
     val redactor = OutputRedactor { secrets.current() }
     val logs = SetupLogFiles(environment.logDir, redactor) { System.currentTimeMillis() }
     logs.prune()

@@ -69,10 +69,26 @@ private class FakeCli : SetupCli {
     override suspend fun setArtifactPolicy(projectId: String, region: String, onLine: (String) -> Unit) { calls += "setpolicy $region" }
 }
 
-private class FakeTools(var installed: Boolean = false) : SetupTools {
-    override suspend fun detect(): ToolPaths? = if (installed) ToolPaths(File("/n"), File("/npm"), File("/fb"), File("/bin")) else null
-    override suspend fun install(onProgress: (Float, String) -> Unit): ToolPaths =
-        ToolPaths(File("/n"), File("/npm"), File("/fb"), File("/bin"))
+private class FakeTools(var status: ToolsStatus = ToolsStatus.Missing) : SetupTools {
+    constructor(installed: Boolean) : this(if (installed) ToolsStatus.Ready(FAKE_PATHS) else ToolsStatus.Missing)
+
+    val calls = mutableListOf<String>()
+    override suspend fun status(): ToolsStatus = status
+    override suspend fun install(onProgress: (Float, String) -> Unit): ToolPaths {
+        calls += "install"
+        status = ToolsStatus.Ready(FAKE_PATHS)
+        return FAKE_PATHS
+    }
+    override suspend fun reinstall(onProgress: (Float, String) -> Unit): ToolPaths {
+        calls += "remove"
+        calls += "install"
+        status = ToolsStatus.Ready(FAKE_PATHS)
+        return FAKE_PATHS
+    }
+
+    companion object {
+        val FAKE_PATHS = ToolPaths(File("/n"), File("/npm"), File("/fb"), File("/bin"))
+    }
 }
 
 class SetupRunnerTest {
@@ -255,6 +271,46 @@ class SetupRunnerTest {
         assertEquals(StepState.Done, r.states.value[SetupStepId.TOOLS])
         assertEquals(StepState.Todo, r.states.value[SetupStepId.LOGIN])
         assertTrue(SetupStepId.LOGIN !in r.progress.value.done)
+    }
+
+    @Test
+    fun refreshUnticksToolsWhenBroken(): Unit = runBlocking {
+        settings.progressJson = SetupProgress(projectId = "demo-project", done = setOf(SetupStepId.TOOLS, SetupStepId.LOGIN)).encode()
+        val r = SetupRunner(scope, FakeTools(ToolsStatus.Broken("node does not start")), { cli }, workspace, settings, sleep = {})
+        r.refresh()
+        assertEquals(StepState.Todo, r.states.value[SetupStepId.TOOLS])
+        assertTrue(SetupStepId.TOOLS !in r.progress.value.done)
+        assertEquals(ToolsState.BROKEN, r.info.value.tools)
+    }
+
+    @Test
+    fun refreshReportsReadyAndOutdatedTools(): Unit = runBlocking {
+        val ready = SetupRunner(scope, FakeTools(installed = true), { cli }, workspace, settings, sleep = {})
+        ready.refresh()
+        assertEquals(ToolsState.READY, ready.info.value.tools)
+        val old = SetupRunner(scope, FakeTools(ToolsStatus.Outdated("v22.1.0", "15.0.0")), { cli }, workspace, settings, sleep = {})
+        old.refresh()
+        assertEquals(ToolsState.OUTDATED, old.info.value.tools)
+        assertEquals(StepState.Todo, old.states.value[SetupStepId.TOOLS])
+    }
+
+    @Test
+    fun reinstallRemovesThenInstalls(): Unit = runBlocking {
+        val tools = FakeTools(ToolsStatus.Broken("x"))
+        val r = SetupRunner(scope, tools, { cli }, workspace, settings, sleep = {})
+        r.reinstallTools()
+        withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] == StepState.Done } }
+        assertEquals(listOf("remove", "install"), tools.calls)
+        assertEquals(ToolsState.READY, r.info.value.tools)
+    }
+
+    @Test
+    fun runningToolsOnBrokenToolsReinstalls(): Unit = runBlocking {
+        val tools = FakeTools(ToolsStatus.Broken("x"))
+        val r = SetupRunner(scope, tools, { cli }, workspace, settings, sleep = {})
+        r.run(SetupStepId.TOOLS)
+        withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] == StepState.Done } }
+        assertEquals(listOf("remove", "install"), tools.calls)
     }
 
     @Test

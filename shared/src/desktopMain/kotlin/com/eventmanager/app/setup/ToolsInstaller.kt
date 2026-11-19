@@ -1,9 +1,12 @@
 package com.eventmanager.app.setup
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
+import java.net.ProxySelector
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -19,6 +22,8 @@ interface ToolsHttp {
 
 class JdkToolsHttp : ToolsHttp {
     private val client = HttpClient.newBuilder()
+        .also { SystemProxy.detect() }
+        .proxy(ProxySelector.getDefault())
         .followRedirects(HttpClient.Redirect.NORMAL)
         .connectTimeout(Duration.ofSeconds(20))
         .build()
@@ -50,10 +55,13 @@ class JdkToolsHttp : ToolsHttp {
     }
 }
 
+/** Not enough free space for the tools; [neededBytes] is what the install needs. */
+class DiskSpaceException(val neededBytes: Long) :
+    IOException("Not enough free disk space: ${neededBytes / (1024 * 1024)} MB needed")
+
 /**
- * Gets Node.js 22 and the Firebase CLI for the admin, on request only. Everything lands in
- * [toolsDir]; a half-finished install is never visible because extraction happens in a temp
- * folder that is renamed at the end.
+ * Installs the pinned Node.js and Firebase CLI into [toolsDir], on request only, and judges them by running
+ * them. A half-finished install is never visible: extraction happens in a temp folder renamed at the end.
  */
 class ToolsInstaller(
     private val toolsDir: File,
@@ -61,26 +69,52 @@ class ToolsInstaller(
     private val http: ToolsHttp,
     private val os: String,
     private val arch: String,
-) {
+    private val environment: SetupEnvironment,
+    private val basePath: String = System.getenv("PATH").orEmpty(),
+    private val freeBytes: (File) -> Long = { it.usableSpace },
+    private val sleep: suspend (Long) -> Unit = { delay(it) },
+) : SetupTools {
     private val bundled get() = ToolPathsResolver.bundled(toolsDir, os)
 
-    suspend fun detect(pathEnv: String): ToolPaths? {
-        val own = bundled
-        if (own.node.isFile && own.npm.isFile && own.firebase.isFile) return own
-        val system = ToolPathsResolver.fromPath(pathEnv, os) { it.isFile } ?: return null
-        val version = StringBuilder()
-        val code = runCatching { runner.run(listOf(system.node.path, "-v"), null, emptyMap(), null) { version.append(it) } }
-            .getOrDefault(1)
-        return system.takeIf { code == 0 && majorVersion(version.toString()) >= MIN_NODE_MAJOR }
+    override suspend fun status(): ToolsStatus {
+        val paths = bundled
+        val present = listOf(paths.node, paths.npm, paths.firebase).map { it.isFile }
+        if (present.none { it }) return ToolsStatus.Missing
+        if (!present.all { it }) return ToolsStatus.Broken("some tool files are missing")
+        val node = answer(paths.nodeCommand(), paths) ?: return ToolsStatus.Broken("node does not start")
+        val firebase = answer(paths.firebaseCommand() + "--version", paths) ?: return ToolsStatus.Broken("firebase does not start")
+        return if (node == ToolsManifest.NODE_VERSION && firebase == ToolsManifest.FIREBASE_TOOLS_VERSION) {
+            ToolsStatus.Ready(paths)
+        } else {
+            ToolsStatus.Outdated(node, firebase)
+        }
     }
 
-    suspend fun install(onProgress: (Float, String) -> Unit): ToolPaths {
+    /** Runs a command and returns its last non-empty line, or null when it failed. */
+    private suspend fun answer(cmd: List<String>, paths: ToolPaths): String? {
+        val lines = mutableListOf<String>()
+        val code = try {
+            runner.run(cmd, environment.workDir, environment.childEnv(paths.binDir, basePath), null, CommandLimits.READ) { lines += it }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            return null
+        }
+        return if (code == 0) lines.map { it.trim() }.lastOrNull { it.isNotEmpty() } else null
+    }
+
+    override suspend fun reinstall(onProgress: (Float, String) -> Unit): ToolPaths {
+        FileOps.deleteTree(toolsDir.resolve("node"), sleep)
+        FileOps.deleteTree(toolsDir.resolve("npm-global"), sleep)
+        return install(onProgress)
+    }
+
+    override suspend fun install(onProgress: (Float, String) -> Unit): ToolPaths {
         toolsDir.mkdirs()
+        if (freeBytes(nearestExisting(toolsDir)) < ToolsManifest.MIN_FREE_BYTES) throw DiskSpaceException(ToolsManifest.MIN_FREE_BYTES)
         onProgress(0f, "node")
         val sums = http.text("$NODE_DIST/SHASUMS256.txt")
-        val version = sums.lineSequence().mapNotNull { VERSION.find(it)?.value }.firstOrNull()
-            ?: throw IOException("Node.js version not found")
-        val name = archiveName(version, os, arch)
+        val name = archiveName(ToolsManifest.NODE_VERSION, os, arch)
         val expected = sums.lineSequence()
             .map { it.trim().split(Regex("\\s+")) }
             .firstOrNull { it.size == 2 && it[1] == name }?.get(0)
@@ -92,12 +126,11 @@ class ToolsInstaller(
             http.download("$NODE_DIST/$name", archive) { onProgress(it * 0.7f, "node") }
             if (sha256(archive) != expected.lowercase()) throw SecurityException("Node.js download checksum mismatch")
             tmp.mkdirs()
-            val code = runner.run(listOf("tar", "-xf", archive.path, "-C", tmp.path), null, emptyMap(), null) {}
-            if (code != 0) throw IOException("could not extract Node.js")
+            withContext(Dispatchers.IO) { ArchiveExtractor.extract(archive, tmp, os, runner) }
             val extracted = tmp.listFiles()?.singleOrNull { it.isDirectory } ?: throw IOException("unexpected Node.js archive layout")
             val nodeDir = toolsDir.resolve("node")
-            nodeDir.deleteRecursively()
-            if (!extracted.renameTo(nodeDir)) throw IOException("could not move Node.js into place")
+            FileOps.deleteTree(nodeDir, sleep)
+            FileOps.move(extracted, nodeDir, sleep)
         } finally {
             tmp.deleteRecursively()
             downloads.deleteRecursively()
@@ -105,12 +138,15 @@ class ToolsInstaller(
         onProgress(0.75f, "firebase")
         val paths = bundled
         val prefix = toolsDir.resolve("npm-global")
-        val env = mapOf("PATH" to listOf(paths.binDir.path, System.getenv("PATH").orEmpty()).joinToString(File.pathSeparator))
         val code = runner.run(
-            paths.npmCommand() + listOf("install", "--global", "--prefix", prefix.path, "--no-audit", "--no-fund", "firebase-tools"),
+            paths.npmCommand() + listOf(
+                "install", "--global", "--prefix", prefix.path, "--no-audit", "--no-fund",
+                "firebase-tools@${ToolsManifest.FIREBASE_TOOLS_VERSION}",
+            ),
+            environment.workDir,
+            environment.childEnv(paths.binDir, basePath),
             null,
-            env,
-            null,
+            CommandLimits.NPM,
         ) {}
         if (code != 0 || !paths.firebase.isFile) {
             prefix.deleteRecursively()
@@ -122,6 +158,12 @@ class ToolsInstaller(
 
     fun remove() {
         toolsDir.deleteRecursively()
+    }
+
+    private fun nearestExisting(file: File): File {
+        var f: File? = file.absoluteFile
+        while (f != null && !f.exists()) f = f.parentFile
+        return f ?: file
     }
 
     private fun sha256(file: File): String {
@@ -138,9 +180,7 @@ class ToolsInstaller(
     }
 
     companion object {
-        const val NODE_DIST = "https://nodejs.org/dist/latest-v22.x"
-        private const val MIN_NODE_MAJOR = 22
-        private val VERSION = Regex("v22\\.[0-9]+\\.[0-9]+")
+        const val NODE_DIST = "https://nodejs.org/dist/${ToolsManifest.NODE_VERSION}"
 
         fun archiveName(version: String, os: String, arch: String): String {
             val o = os.lowercase()
@@ -151,8 +191,5 @@ class ToolsInstaller(
                 else -> "node-$version-linux-$cpu.tar.xz"
             }
         }
-
-        fun majorVersion(text: String): Int =
-            Regex("v?([0-9]+)\\.").find(text.trim())?.groupValues?.get(1)?.toIntOrNull() ?: 0
     }
 }

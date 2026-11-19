@@ -45,6 +45,7 @@ import com.eventmanager.app.setup.SetupAutomation
 import com.eventmanager.app.setup.SetupStepId
 import com.eventmanager.app.setup.StepInput
 import com.eventmanager.app.setup.StepState
+import com.eventmanager.app.setup.ToolsState
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -126,7 +127,7 @@ fun AutomaticTab(
     ) {
         items(requiredSteps, key = { it.name }) { step ->
             Card(step, states[step] ?: StepState.Todo, onShowManual) {
-                StepControls(step, automation, pid, info.projects.map { it.id }, info.locations, info.account, info.region, info.siteUrl, info.toolsProgress, progress.confirmed, info.loginChallenge)
+                StepControls(step, automation, pid, info.projects.map { it.id }, info.locations, info.account, info.region, info.siteUrl, info.toolsProgress, info.tools, progress.confirmed, info.loginChallenge)
             }
         }
         item(key = "extras") {
@@ -146,7 +147,7 @@ fun AutomaticTab(
                 }
                 if (enabled) {
                     Card(step, states[step] ?: StepState.Todo, onShowManual) {
-                        StepControls(step, automation, pid, info.projects.map { it.id }, info.locations, info.account, info.region, info.siteUrl, info.toolsProgress, progress.confirmed, info.loginChallenge)
+                        StepControls(step, automation, pid, info.projects.map { it.id }, info.locations, info.account, info.region, info.siteUrl, info.toolsProgress, info.tools, progress.confirmed, info.loginChallenge)
                     }
                 }
             }
@@ -179,6 +180,7 @@ private fun StepControls(
     region: String,
     siteUrl: String,
     toolsProgress: Float?,
+    toolsState: ToolsState,
     confirmed: Set<SetupStepId>,
     loginChallenge: LoginChallenge?,
 ) {
@@ -204,7 +206,17 @@ private fun StepControls(
         when (step) {
             SetupStepId.TOOLS -> {
                 toolsProgress?.let { LinearProgressIndicator(progress = { it }, modifier = Modifier.fillMaxWidth()) }
-                RunButton()
+                when (toolsState) {
+                    ToolsState.MISSING -> RunButton()
+                    else -> {
+                        if (toolsState == ToolsState.BROKEN) Text(stringResource(Res.string.setup_tools_broken))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            val label = if (toolsState == ToolsState.OUTDATED) Res.string.setup_tools_update else Res.string.setup_tools_reinstall
+                            Button(onClick = { automation.reinstallTools() }, enabled = !busy) { Text(stringResource(label)) }
+                            if (busy) TextButton(onClick = { automation.cancel() }) { Text(stringResource(Res.string.setup_btn_cancel)) }
+                        }
+                    }
+                }
             }
             SetupStepId.LOGIN -> {
                 if (account.isNotBlank()) Text(stringResource(Res.string.setup_signed_in_as, account))

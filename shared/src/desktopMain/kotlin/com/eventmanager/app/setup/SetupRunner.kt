@@ -42,7 +42,13 @@ class SetupRunner(
 
     /** Re-checks the steps it can see from here; a tick that is no longer true goes away. */
     override suspend fun refresh() {
-        val paths = tools.detect() ?: return unmark(SetupStepId.TOOLS)
+        val paths = when (val status = tools.status()) {
+            is ToolsStatus.Ready -> status.paths
+            ToolsStatus.Missing -> return noTools(ToolsState.MISSING)
+            is ToolsStatus.Broken -> return noTools(ToolsState.BROKEN)
+            is ToolsStatus.Outdated -> return noTools(ToolsState.OUTDATED)
+        }
+        _info.update { it.copy(tools = ToolsState.READY) }
         markDone(SetupStepId.TOOLS)
         val c = cliFactory(paths).also { cli = it }
         val account = runCatching { c.loginList().firstOrNull() }.getOrNull() ?: return unmark(SetupStepId.LOGIN)
@@ -69,7 +75,12 @@ class SetupRunner(
         }
     }
 
-    override fun run(step: SetupStepId, input: StepInput) {
+    override fun run(step: SetupStepId, input: StepInput) = launchStep(step, input, reinstall = false)
+
+    /** Throws the app's own tools away and installs them again, whatever state they are in. */
+    override fun reinstallTools() = launchStep(SetupStepId.TOOLS, StepInput(), reinstall = true)
+
+    private fun launchStep(step: SetupStepId, input: StepInput, reinstall: Boolean) {
         if (_states.value[step] is StepState.Running || _states.value[step] is StepState.WaitingRetry) return
         // Steps run one after the other: a step started while the previous one is finishing waits for it.
         val previous = job
@@ -77,7 +88,7 @@ class SetupRunner(
             previous?.join()
             setState(step, StepState.Running(emptyList()))
             try {
-                execute(step, input)
+                execute(step, input, reinstall)
             } catch (e: CancellationException) {
                 setState(step, StepState.Todo)
                 throw e
@@ -118,15 +129,25 @@ class SetupRunner(
         scope.cancel()
     }
 
-    private suspend fun execute(step: SetupStepId, input: StepInput) {
+    private suspend fun execute(step: SetupStepId, input: StepInput, reinstall: Boolean) {
         when (step) {
             SetupStepId.TOOLS -> {
-                val paths = tools.detect() ?: tools.install { fraction, label ->
+                val progress: (Float, String) -> Unit = { fraction, label ->
                     _info.update { it.copy(toolsProgress = fraction) }
                     log(step, "$label ${(fraction * 100).toInt()}%")
                 }
+                val status = if (reinstall) null else tools.status()
+                val paths = try {
+                    when (status) {
+                        is ToolsStatus.Ready -> status.paths
+                        ToolsStatus.Missing -> tools.install(progress)
+                        else -> tools.reinstall(progress)
+                    }
+                } finally {
+                    _info.update { it.copy(toolsProgress = null) }
+                }
                 cli = cliFactory(paths)
-                _info.update { it.copy(toolsProgress = null) }
+                _info.update { it.copy(tools = ToolsState.READY) }
                 markDone(step)
             }
             SetupStepId.LOGIN -> {
@@ -271,7 +292,7 @@ class SetupRunner(
     }
 
     private suspend fun requireCli(): SetupCli = cli
-        ?: tools.detect()?.let { paths -> cliFactory(paths).also { cli = it } }
+        ?: (tools.status() as? ToolsStatus.Ready)?.let { ready -> cliFactory(ready.paths).also { cli = it } }
         ?: throw CliException(CliError(CliErrorKind.UNKNOWN, false, SetupStepId.TOOLS, "tools not ready"))
 
     /** Ticks belong to one project: choosing another keeps only the computer-wide steps. */
@@ -282,6 +303,12 @@ class SetupRunner(
                 if (step in MACHINE_STEPS || state is StepState.Running || state is StepState.WaitingRetry) state else StepState.Todo
             }
         }
+    }
+
+    private fun noTools(state: ToolsState) {
+        cli = null
+        _info.update { it.copy(tools = state) }
+        unmark(SetupStepId.TOOLS)
     }
 
     private fun unmark(step: SetupStepId) {

@@ -27,6 +27,9 @@ interface SetupAutomation {
     /** Re-checks what is already done (read-only). */
     suspend fun refresh()
     fun run(step: SetupStepId, input: StepInput = StepInput())
+
+    /** Removes the app's Node.js and Firebase tools and installs them again. */
+    fun reinstallTools()
     fun confirm(step: SetupStepId)
     fun setExtra(step: SetupStepId, enabled: Boolean)
     fun cancel()
@@ -38,6 +41,9 @@ interface SetupAutomation {
     val info: StateFlow<SetupInfo>
 }
 
+/** What a check by running the app's tools found. */
+enum class ToolsState { READY, MISSING, BROKEN, OUTDATED }
+
 data class SetupInfo(
     val account: String = "",
     val projects: List<ProjectInfo> = emptyList(),
@@ -45,6 +51,7 @@ data class SetupInfo(
     val region: String = "",
     val siteUrl: String = "",
     val toolsProgress: Float? = null,
+    val tools: ToolsState = ToolsState.MISSING,
     /** Set while the admin signs in: open [LoginChallenge.url], then paste the code. */
     val loginChallenge: LoginChallenge? = null,
 )

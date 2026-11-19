@@ -24,10 +24,19 @@ interface SetupCli {
     suspend fun setArtifactPolicy(projectId: String, region: String, onLine: (String) -> Unit)
 }
 
-/** Finds or installs Node.js and the Firebase CLI ([ToolsInstaller] in production). */
+/** What the app-owned tools look like right now. Only tools in the app's own folder count. */
+sealed interface ToolsStatus {
+    data class Ready(val paths: ToolPaths) : ToolsStatus
+    data object Missing : ToolsStatus
+    data class Broken(val reason: String) : ToolsStatus
+    data class Outdated(val node: String, val firebase: String) : ToolsStatus
+}
+
+/** Checks, installs and reinstalls Node.js and the Firebase CLI ([ToolsInstaller] in production). */
 interface SetupTools {
-    suspend fun detect(): ToolPaths?
+    suspend fun status(): ToolsStatus
     suspend fun install(onProgress: (Float, String) -> Unit): ToolPaths
+    suspend fun reinstall(onProgress: (Float, String) -> Unit): ToolPaths
 }
 
 /** The few app settings the assistant reads and fills. */

@@ -285,25 +285,4 @@ class ToolPathsTest {
         assertEquals(File("/a b/tools/node/lib/node_modules/npm/bin/npm-cli.js"), p.npm)
         assertEquals(File("/a b/tools/npm-global/lib/node_modules/firebase-tools/lib/bin/firebase.js"), p.firebase)
     }
-
-    @Test
-    fun fromPathFollowsLinksToTheScripts() {
-        val root = java.nio.file.Files.createTempDirectory("path tools").toFile()
-        try {
-            val bin = root.resolve("bin").apply { mkdirs() }
-            val fbJs = root.resolve("lib/node_modules/firebase-tools/lib/bin/firebase.js").apply { parentFile.mkdirs(); writeText("") }
-            val npmJs = root.resolve("lib/node_modules/npm/bin/npm-cli.js").apply { parentFile.mkdirs(); writeText("") }
-            bin.resolve("node").writeText("")
-            java.nio.file.Files.createSymbolicLink(bin.resolve("firebase").toPath(), fbJs.toPath())
-            java.nio.file.Files.createSymbolicLink(bin.resolve("npm").toPath(), npmJs.toPath())
-            val p = ToolPathsResolver.fromPath(bin.path, "Mac OS X") { it.exists() }
-            assertEquals(fbJs.canonicalFile, p?.firebase)
-            assertEquals(npmJs.canonicalFile, p?.npm)
-            bin.resolve("firebase").delete()
-            bin.resolve("firebase").writeText("#!/bin/sh")
-            assertNull(ToolPathsResolver.fromPath(bin.path, "Mac OS X") { it.exists() })
-        } finally {
-            root.deleteRecursively()
-        }
-    }
 }
