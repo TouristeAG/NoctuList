@@ -41,6 +41,8 @@ interface VolunteerPortalHost {
     fun portalGoogleDomains(): List<String>
     /** Every Google account may sign in, not only the association's domains. */
     fun portalGoogleAnyAccount(): Boolean = false
+    /** Rule for the Google address of a newly opened access; empty when the automatic rule is off. */
+    fun portalGoogleAddressTemplate(): String = ""
 
     /** Non-admin volunteers get their own QR code in the portal. */
     fun portalQrEnabled(): Boolean = true
@@ -263,6 +265,7 @@ class VolunteerPortalService(
                 val linked = sameEmail.copy(portalEnabled = true, portalUid = submission.uid, lastModified = now)
                 if (!host.saveVolunteer(linked)) return
                 if (photo != null && linked.profilePhotoPath.isBlank()) host.attachVolunteerPhoto(linked, photo)
+                applyGoogleAddressRule(linked.id)
             } else {
                 val created = host.createVolunteer(
                     Volunteer(
@@ -280,6 +283,7 @@ class VolunteerPortalService(
                     photo,
                 ) ?: return
                 println("Portal: registered volunteer ${created.name} from link $formId")
+                applyGoogleAddressRule(created.id)
             }
         }
         finishSignup(formId, submission.photoPath)
@@ -605,6 +609,32 @@ class VolunteerPortalService(
     }
 
     /**
+     * A portal access was just opened: links the Google address built by the team's rule, if the
+     * rule is on and the volunteer has none yet. Never fails the caller; a refused address
+     * (taken, wrong domain, unusable name) leaves the field empty for the admin to fill in.
+     */
+    private suspend fun applyGoogleAddressRule(volunteerId: String) {
+        if (!host.portalGoogleEnabled()) return
+        val template = host.portalGoogleAddressTemplate().trim()
+        if (template.isEmpty()) return
+        runCatchingLogged("Google address rule") {
+            val current = host.volunteers().firstOrNull { it.id == volunteerId } ?: return@runCatchingLogged
+            if (current.portalGoogleEmail.isNotBlank()) return@runCatchingLogged
+            val address = PortalGoogleAddressTemplate.render(template, current.name, current.lastNameAbbreviation)
+            if (address == null) {
+                println("Portal: Google address rule gave no address for a volunteer")
+                return@runCatchingLogged
+            }
+            // Never a guessed address outside the verified domains, even when any account may sign in.
+            if (!PortalGoogleAddressTemplate.usesVerifiedDomain(address, host.portalGoogleDomains())) {
+                println("Portal: Google address rule refused: DOMAIN")
+                return@runCatchingLogged
+            }
+            assignGoogleAccount(current, address)?.let { println("Portal: Google address rule refused: $it") }
+        }
+    }
+
+    /**
      * The volunteer was deleted: removes what the portal kept for them right away, without waiting
      * for the next publish, which only cleans pages this device published itself. Best effort per
      * item; a failed QR delete is left to the next publish.
@@ -682,6 +712,7 @@ class VolunteerPortalService(
                     volunteer.copy(portalEnabled = true, portalUid = created.uid, lastModified = clock()),
                 )
                 if (!saved) return PortalGrantResult.Failed("SAVE_FAILED")
+                applyGoogleAddressRule(volunteer.id)
                 val reset = client.sendPasswordReset(email, languageCode) is PortalAuthResult.Sent
                 PortalGrantResult.Created(password, reset)
             }
@@ -690,6 +721,7 @@ class VolunteerPortalService(
                     volunteer.copy(portalEnabled = true, portalUid = "", lastModified = clock()),
                 )
                 if (!saved) return PortalGrantResult.Failed("SAVE_FAILED")
+                applyGoogleAddressRule(volunteer.id)
                 val reset = client.sendPasswordReset(email, languageCode) is PortalAuthResult.Sent
                 PortalGrantResult.ExistingAccount(reset)
             }

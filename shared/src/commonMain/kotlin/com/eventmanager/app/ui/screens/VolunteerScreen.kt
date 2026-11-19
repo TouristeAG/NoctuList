@@ -82,6 +82,7 @@ fun VolunteerScreen(
     val accountBalances = viewModel?.accountBalances?.collectAsState()?.value ?: emptyMap()
     var showAddDialog by remember { mutableStateOf(false) }
     val portalEnabled = rememberVolunteerPortalEnabled(viewModel)
+    val portalAutoAccess = viewModel?.volunteerPortalAutoAccess?.collectAsState()?.value == true
     val portalSignupAvailable = portalEnabled && viewModel?.isVolunteerSignupLinkAvailable() == true
     var showAddChoice by remember { mutableStateOf(false) }
     var showSignupLink by remember { mutableStateOf(false) }
@@ -315,6 +316,7 @@ fun VolunteerScreen(
             onDismiss = { showAddDialog = false },
             profilePhotosEnabled = rememberProfilePhotosUploadEnabled(viewModel),
             portalAccessAvailable = portalEnabled && viewModel != null,
+            portalAccessAlways = portalAutoAccess,
             onConfirm = { name, abbreviation, email, phone, dateOfBirth, gender, photo, createPortalAccess ->
                 val newVolunteer = Volunteer(
                     name = name,
@@ -532,6 +534,8 @@ fun AddVolunteerDialog(
     onConfirm: (String, String, String, String, String, Gender?, ByteArray?, Boolean) -> Unit,
     profilePhotosEnabled: Boolean = false,
     portalAccessAvailable: Boolean = false,
+    /** Team setting "open access for every new volunteer": no switch, access always opened. */
+    portalAccessAlways: Boolean = false,
 ) {
     val platformContext = LocalPlatformContext.current
     var name by remember { mutableStateOf("") }
@@ -699,7 +703,7 @@ fun AddVolunteerDialog(
                             onClearPending = { pendingPhotoBytes = null },
                         )
 
-                        if (portalAccessAvailable) {
+                        if (portalAccessAvailable && !portalAccessAlways) {
                             PortalAccessToggleRow(
                                 checked = createPortalAccess,
                                 onCheckedChange = { createPortalAccess = it },
@@ -725,7 +729,7 @@ fun AddVolunteerDialog(
                         Button(
                             onClick = { 
                                 val storageDate = ValidationUtils.convertDateToStorageFormat(dateOfBirth) ?: dateOfBirth
-                                onConfirm(name, abbreviation, email, phone, storageDate, selectedGender, pendingPhotoBytes, portalAccessAvailable && createPortalAccess) 
+                                onConfirm(name, abbreviation, email, phone, storageDate, selectedGender, pendingPhotoBytes, portalAccessAvailable && (portalAccessAlways || createPortalAccess)) 
                             },
                             enabled = name.isNotBlank() && abbreviation.isNotBlank() && 
                                      email.isNotBlank() && phone.isNotBlank() && dateOfBirth.isNotBlank() &&

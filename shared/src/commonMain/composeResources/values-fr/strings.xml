@@ -2305,6 +2305,17 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="portal_google_needs_domain">Ajoutez au moins un domaine pour que les bénévoles puissent se connecter avec Google</string>
     <string name="portal_google_scope_all">Tous les comptes Google</string>
     <string name="portal_google_scope_internal">Comptes Google de l'association uniquement</string>
+    <string name="portal_auto_access_title">Ouvrir l'accès pour chaque nouveau bénévole</string>
+    <string name="portal_google_auto_title">Remplir les comptes Google automatiquement</string>
+    <string name="portal_google_auto_desc">S'applique à chaque accès ouvert à partir de maintenant, si le bénévole n'a pas encore de compte Google.</string>
+    <string name="portal_google_template_label">Règle des adresses</string>
+    <string name="portal_google_template_placeholder">{prénom}.{nom}@asso.ch</string>
+    <string name="portal_google_template_help">{prénom}, {nom}, {p} initiale du prénom, {n} initiale du nom. Les accents sont retirés et les espaces deviennent des -.</string>
+    <string name="portal_google_template_preview">Exemple : %1$s → %2$s</string>
+    <string name="portal_google_template_invalid">Cette règle ne donne pas d'adresse valable</string>
+    <string name="portal_google_template_domain">Ce domaine ne fait pas partie des domaines vérifiés</string>
+    <string name="portal_google_template_empty">Écrivez une règle pour activer cette option</string>
+    <string name="portal_google_template_save">Enregistrer</string>
     <string name="portal_show_logo">Afficher le logo de l'association</string>
     <string name="portal_show_logo_hint">À côté du nom de l'association, en haut de la plateforme bénévole. C'est le logo défini dans Réglages, E-mail.</string>
     <string name="volunteer_portal_qr_enabled">Afficher le QR dans l'espace bénévole</string>

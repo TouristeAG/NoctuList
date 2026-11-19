@@ -218,6 +218,9 @@ class SettingsManager(private val storage: AppStorage) {
         private const val KEY_VOLUNTEER_PORTAL_QR_ENABLED = "volunteer_portal_qr_enabled"
         private const val KEY_VOLUNTEER_PORTAL_GOOGLE_DOMAINS = "volunteer_portal_google_domains"
         private const val KEY_VOLUNTEER_PORTAL_GOOGLE_ANY_ACCOUNT = "volunteer_portal_google_any_account"
+        private const val KEY_VOLUNTEER_PORTAL_AUTO_ACCESS = "volunteer_portal_auto_access"
+        private const val KEY_VOLUNTEER_PORTAL_GOOGLE_AUTO = "volunteer_portal_google_auto"
+        private const val KEY_VOLUNTEER_PORTAL_GOOGLE_TEMPLATE = "volunteer_portal_google_template"
         private const val KEY_PENDING_SIGNUP_FORMS = "volunteer_portal_pending_signup_forms"
         private const val KEY_PORTAL_PUBLISHED_HASHES = "volunteer_portal_published_hashes"
         private const val KEY_GUEST_FORMS_BILLETERIE_VALIDATE_ENABLED =
@@ -503,6 +506,31 @@ class SettingsManager(private val storage: AppStorage) {
     fun setVolunteerPortalGoogleAnyAccount(any: Boolean) {
         storage.putBoolean(KEY_VOLUNTEER_PORTAL_GOOGLE_ANY_ACCOUNT, any)
         touchInstitutionSettingLastModified(InstitutionSettingsKeys.VOLUNTEER_PORTAL_GOOGLE_ANY_ACCOUNT)
+    }
+
+    /** Every volunteer added in the app gets portal access right away. Off by default. */
+    fun isVolunteerPortalAutoAccess(): Boolean = storage.getBoolean(KEY_VOLUNTEER_PORTAL_AUTO_ACCESS, false)
+
+    fun setVolunteerPortalAutoAccess(enabled: Boolean) {
+        storage.putBoolean(KEY_VOLUNTEER_PORTAL_AUTO_ACCESS, enabled)
+        touchInstitutionSettingLastModified(InstitutionSettingsKeys.VOLUNTEER_PORTAL_AUTO_ACCESS)
+    }
+
+    /** A newly opened portal access gets its Google address from the rule below. Off by default. */
+    fun isVolunteerPortalGoogleAuto(): Boolean = storage.getBoolean(KEY_VOLUNTEER_PORTAL_GOOGLE_AUTO, false)
+
+    fun setVolunteerPortalGoogleAuto(enabled: Boolean) {
+        storage.putBoolean(KEY_VOLUNTEER_PORTAL_GOOGLE_AUTO, enabled)
+        touchInstitutionSettingLastModified(InstitutionSettingsKeys.VOLUNTEER_PORTAL_GOOGLE_AUTO)
+    }
+
+    /** Rule such as `{prénom}.{nom}@asso.ch`; empty when none was set. */
+    fun volunteerPortalGoogleTemplate(): String =
+        storage.getString(KEY_VOLUNTEER_PORTAL_GOOGLE_TEMPLATE, "")?.trim().orEmpty()
+
+    fun setVolunteerPortalGoogleTemplate(template: String) {
+        storage.putString(KEY_VOLUNTEER_PORTAL_GOOGLE_TEMPLATE, template.trim())
+        touchInstitutionSettingLastModified(InstitutionSettingsKeys.VOLUNTEER_PORTAL_GOOGLE_TEMPLATE)
     }
 
     /** Volunteer portal sign-in page for one organization. Empty when the site origin is unknown. */
@@ -1236,6 +1264,9 @@ class SettingsManager(private val storage: AppStorage) {
                 com.eventmanager.app.data.remote.FirebaseEmailDomainPolicy.serialize(volunteerPortalGoogleDomains())
             InstitutionSettingsKeys.VOLUNTEER_PORTAL_GOOGLE_ANY_ACCOUNT ->
                 isVolunteerPortalGoogleAnyAccount().toString()
+            InstitutionSettingsKeys.VOLUNTEER_PORTAL_AUTO_ACCESS -> isVolunteerPortalAutoAccess().toString()
+            InstitutionSettingsKeys.VOLUNTEER_PORTAL_GOOGLE_AUTO -> isVolunteerPortalGoogleAuto().toString()
+            InstitutionSettingsKeys.VOLUNTEER_PORTAL_GOOGLE_TEMPLATE -> volunteerPortalGoogleTemplate()
             InstitutionSettingsKeys.GUEST_FORMS_BILLETERIE_VALIDATE_ENABLED ->
                 isGuestFormsBilleterieValidateEnabled().toString()
             InstitutionSettingsKeys.GUEST_FORM_BASE_URL -> getGuestFormBaseUrl()
@@ -1412,6 +1443,12 @@ class SettingsManager(private val storage: AppStorage) {
                     KEY_VOLUNTEER_PORTAL_GOOGLE_ANY_ACCOUNT,
                     value.trim().equals("true", ignoreCase = true),
                 )
+            InstitutionSettingsKeys.VOLUNTEER_PORTAL_AUTO_ACCESS ->
+                storage.putBoolean(KEY_VOLUNTEER_PORTAL_AUTO_ACCESS, value.trim().equals("true", ignoreCase = true))
+            InstitutionSettingsKeys.VOLUNTEER_PORTAL_GOOGLE_AUTO ->
+                storage.putBoolean(KEY_VOLUNTEER_PORTAL_GOOGLE_AUTO, value.trim().equals("true", ignoreCase = true))
+            InstitutionSettingsKeys.VOLUNTEER_PORTAL_GOOGLE_TEMPLATE ->
+                storage.putString(KEY_VOLUNTEER_PORTAL_GOOGLE_TEMPLATE, value.trim())
             InstitutionSettingsKeys.VOLUNTEER_PORTAL_QR_ENABLED ->
                 storage.putBoolean(
                     KEY_VOLUNTEER_PORTAL_QR_ENABLED,

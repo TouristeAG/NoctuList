@@ -2308,6 +2308,17 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="portal_google_needs_domain">Add at least one domain so volunteers can sign in with Google</string>
     <string name="portal_google_scope_all">All Google accounts</string>
     <string name="portal_google_scope_internal">Association Google accounts only</string>
+    <string name="portal_auto_access_title">Open portal access for every new volunteer</string>
+    <string name="portal_google_auto_title">Fill in Google accounts automatically</string>
+    <string name="portal_google_auto_desc">Applies to each portal access opened from now on, when the volunteer has no Google account yet.</string>
+    <string name="portal_google_template_label">Address rule</string>
+    <string name="portal_google_template_placeholder">{first}.{last}@asso.ch</string>
+    <string name="portal_google_template_help">{first}, {last}, {p} first initial, {n} last name initial. Accents are removed and spaces become -.</string>
+    <string name="portal_google_template_preview">Example: %1$s → %2$s</string>
+    <string name="portal_google_template_invalid">This rule does not give a valid address</string>
+    <string name="portal_google_template_domain">This domain is not in the verified domains</string>
+    <string name="portal_google_template_empty">Write a rule to turn this on</string>
+    <string name="portal_google_template_save">Save</string>
     <string name="portal_show_logo">Show the association logo</string>
     <string name="portal_show_logo_hint">Next to the association name at the top of the volunteer portal. The logo is the one set in Settings, E-mail.</string>
     <string name="volunteer_portal_qr_enabled">Show the QR code in the volunteer space</string>

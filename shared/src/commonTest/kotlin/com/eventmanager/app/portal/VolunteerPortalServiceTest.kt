@@ -109,6 +109,10 @@ private class FakeHost(initial: List<Volunteer>) : VolunteerPortalHost {
     override fun profilePhotosEnabled() = true
     override fun portalGoogleEnabled() = googleEnabled
     override fun portalGoogleDomains() = googleDomains
+    var googleTemplate = ""
+    var googleAny = false
+    override fun portalGoogleAnyAccount() = googleAny
+    override fun portalGoogleAddressTemplate() = googleTemplate
     override fun portalQrEnabled() = qrEnabled
     override suspend fun volunteers() = volunteers.toList()
     override suspend fun createVolunteer(volunteer: Volunteer, photo: ByteArray?): Volunteer {
@@ -619,6 +623,107 @@ class VolunteerPortalServiceTest {
         assertTrue(host.volunteers.single().portalEnabled)
         assertEquals("", host.volunteers.single().portalUid)
     }
+
+    // region Automatic Google address
+
+    private fun ruleHost(vararg roster: Volunteer) = FakeHost(roster.toList()).apply {
+        googleDomains = listOf("asso.ch")
+        googleTemplate = "{prénom}.{nom}@asso.ch"
+    }
+
+    @Test
+    fun grantLinksTheGeneratedGoogleAddress() = runBlocking {
+        val host = ruleHost(volunteer("V1", "lea@example.org"))
+        val result = service(FakeGateway(), host, FakeAuth(PortalAuthResult.Created("NewUid00000000000000003")))
+            .grantAccess(host.volunteers.single(), "fr")
+        assertIs<PortalGrantResult.Created>(result)
+        val v = host.volunteers.single()
+        assertEquals("NewUid00000000000000003", v.portalUid)
+        assertEquals("lea.martin@asso.ch", v.portalGoogleEmail)
+        assertEquals(Volunteer.GOOGLE_LINKED_BY_ADMIN, v.portalGoogleLinkedBy)
+    }
+
+    @Test
+    fun grantToExistingAccountAlsoLinks() = runBlocking {
+        val host = ruleHost(volunteer("V1", "lea@example.org"))
+        val result = service(FakeGateway(), host, FakeAuth(PortalAuthResult.EmailExists)).grantAccess(host.volunteers.single(), "fr")
+        assertIs<PortalGrantResult.ExistingAccount>(result)
+        assertEquals("lea.martin@asso.ch", host.volunteers.single().portalGoogleEmail)
+    }
+
+    @Test
+    fun grantKeepsAnExistingGoogleAddress() = runBlocking {
+        val host = ruleHost(volunteer("V1", "lea@example.org").copy(portalGoogleEmail = "lea@asso.ch"))
+        service(FakeGateway(), host, FakeAuth(PortalAuthResult.Created("NewUid00000000000000003"))).grantAccess(host.volunteers.single(), "fr")
+        assertEquals("lea@asso.ch", host.volunteers.single().portalGoogleEmail)
+    }
+
+    @Test
+    fun noRuleWhenTemplateEmptyOrGoogleOff() = runBlocking {
+        val noTemplate = ruleHost(volunteer("V1", "lea@example.org")).apply { googleTemplate = "" }
+        service(FakeGateway(), noTemplate, FakeAuth(PortalAuthResult.Created("NewUid00000000000000003"))).grantAccess(noTemplate.volunteers.single(), "fr")
+        assertEquals("", noTemplate.volunteers.single().portalGoogleEmail)
+        val googleOff = ruleHost(volunteer("V1", "lea@example.org")).apply { googleEnabled = false }
+        service(FakeGateway(), googleOff, FakeAuth(PortalAuthResult.Created("NewUid00000000000000003"))).grantAccess(googleOff.volunteers.single(), "fr")
+        assertEquals("", googleOff.volunteers.single().portalGoogleEmail)
+    }
+
+    @Test
+    fun takenOrUnusableAddressLeavesTheFieldEmpty() = runBlocking {
+        val other = volunteer("V2", "other@example.org").copy(portalGoogleEmail = "lea.martin@asso.ch")
+        val host = ruleHost(volunteer("V1", "lea@example.org"), other)
+        val result = service(FakeGateway(), host, FakeAuth(PortalAuthResult.Created("NewUid00000000000000003"))).grantAccess(host.volunteers.first(), "fr")
+        assertIs<PortalGrantResult.Created>(result)
+        assertEquals("", host.volunteers.first().portalGoogleEmail)
+
+        val noLastName = ruleHost(volunteer("V1", "lea@example.org").copy(lastNameAbbreviation = ""))
+        val second = service(FakeGateway(), noLastName, FakeAuth(PortalAuthResult.Created("NewUid00000000000000003"))).grantAccess(noLastName.volunteers.single(), "fr")
+        assertIs<PortalGrantResult.Created>(second)
+        assertEquals("", noLastName.volunteers.single().portalGoogleEmail)
+    }
+
+    @Test
+    fun ruleOnAnUnverifiedDomainNeverLinksEvenWhenAnyAccountMaySignIn() = runBlocking {
+        val host = ruleHost(volunteer("V1", "lea@example.org")).apply {
+            googleAny = true
+            googleDomains = emptyList()
+            googleTemplate = "{prénom}.{nom}@gmail.com"
+        }
+        service(FakeGateway(), host, FakeAuth(PortalAuthResult.Created("NewUid00000000000000003"))).grantAccess(host.volunteers.single(), "fr")
+        assertEquals("", host.volunteers.single().portalGoogleEmail)
+    }
+
+    @Test
+    fun signupLinksTheGeneratedGoogleAddress() = runBlocking {
+        val gateway = FakeGateway()
+        val host = ruleHost()
+        startedService(gateway, host)
+        gateway.docs["volunteerSignupForms/form00000006"] = submittedForm() + ("submittedAt" to System.currentTimeMillis() - 150_000)
+        gateway.push("volunteerSignupForms")
+        assertEquals(1, host.created.size)
+        assertEquals("max.dupont@asso.ch", host.volunteers.single().portalGoogleEmail)
+    }
+
+    @Test
+    fun signupOntoExistingProfileLinksOnlyWhenEmpty() = runBlocking {
+        val gateway = FakeGateway()
+        val host = ruleHost(
+            volunteer("V1", "max@example.org").copy(name = "Max", lastNameAbbreviation = "DUPONT", portalGoogleEmail = "max@asso.ch"),
+            volunteer("V2", "zoe@example.org").copy(name = "Zoé", lastNameAbbreviation = "BLANC"),
+        )
+        startedService(gateway, host)
+        gateway.docs["volunteerSignupForms/form00000007"] = submittedForm() + ("submittedAt" to System.currentTimeMillis() - 150_000)
+        gateway.push("volunteerSignupForms")
+        assertEquals("max@asso.ch", host.volunteers.first { it.id == "V1" }.portalGoogleEmail)
+        assertEquals(UID, host.volunteers.first { it.id == "V1" }.portalUid)
+
+        gateway.docs["volunteerSignupForms/form00000008"] =
+            submittedForm(email = "zoe@example.org") + ("submittedUid" to "OtherUid0000000000000004") + ("submittedAt" to System.currentTimeMillis() - 150_000)
+        gateway.push("volunteerSignupForms")
+        assertEquals("zoe.blanc@asso.ch", host.volunteers.first { it.id == "V2" }.portalGoogleEmail)
+    }
+
+    // endregion
 
     // region Google accounts
 
