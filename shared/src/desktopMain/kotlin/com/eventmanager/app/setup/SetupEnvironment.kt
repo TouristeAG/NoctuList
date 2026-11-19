@@ -27,6 +27,8 @@ class SetupEnvironment(appData: File, private val proxy: ProxyInfo?) {
             val url = "http://${proxy.host}:${proxy.port}"
             env["HTTPS_PROXY"] = url
             env["HTTP_PROXY"] = url
+            // Node's built-in fetch (the Google helper) reads these only with this flag (Node 22.21 and later).
+            env["NODE_USE_ENV_PROXY"] = "1"
         }
         return env
     }

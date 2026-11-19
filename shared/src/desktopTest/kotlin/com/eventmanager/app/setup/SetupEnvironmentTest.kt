@@ -28,6 +28,9 @@ class SetupEnvironmentTest {
         val child = env(ProxyInfo("proxy.local", 3128)).childEnv(File("/t/bin"), "/usr/bin")
         assertEquals("http://proxy.local:3128", child["HTTPS_PROXY"])
         assertEquals("http://proxy.local:3128", child["HTTP_PROXY"])
+        // Node's own fetch (the Google helper) ignores HTTPS_PROXY unless told to read it.
+        assertEquals("1", child["NODE_USE_ENV_PROXY"])
         assertTrue("HTTPS_PROXY" !in env().childEnv(File("/t/bin"), "/usr/bin"))
+        assertTrue("NODE_USE_ENV_PROXY" !in env().childEnv(File("/t/bin"), "/usr/bin"))
     }
 }

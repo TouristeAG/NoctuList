@@ -90,17 +90,26 @@ class ToolsInstaller(
         }
     }
 
-    /** Runs a command and returns its last non-empty line, or null when it failed. */
+    /**
+     * Runs a command and returns its last non-empty line, or null when it failed. A first start after an install
+     * can be slow (an antivirus scans the new files), so a timeout is tried once more before the tools count as broken.
+     */
     private suspend fun answer(cmd: List<String>, paths: ToolPaths): String? {
-        val lines = mutableListOf<String>()
-        val code = try {
-            runner.run(cmd, environment.workDir, environment.childEnv(paths.binDir, basePath), null, PROBE_LIMITS) { lines += it }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            return null
+        repeat(PROBE_ATTEMPTS) { attempt ->
+            val lines = mutableListOf<String>()
+            val code = try {
+                runner.run(cmd, environment.workDir, environment.childEnv(paths.binDir, basePath), null, PROBE_LIMITS) { lines += it }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: CommandTimeoutException) {
+                if (attempt < PROBE_ATTEMPTS - 1) return@repeat
+                return null
+            } catch (e: Exception) {
+                return null
+            }
+            return if (code == 0) lines.map { it.trim() }.lastOrNull { it.isNotEmpty() } else null
         }
-        return if (code == 0) lines.map { it.trim() }.lastOrNull { it.isNotEmpty() } else null
+        return null
     }
 
     override suspend fun reinstall(onProgress: (Float, String) -> Unit): ToolPaths {
@@ -142,13 +151,14 @@ class ToolsInstaller(
         val prefix = toolsDir.resolve("npm-global")
         val code = runner.run(
             paths.npmCommand() + listOf(
-                "install", "--global", "--prefix", prefix.path, "--no-audit", "--no-fund",
+                // http log level prints a line per download, so a slow but working install never looks idle.
+                "install", "--global", "--prefix", prefix.path, "--no-audit", "--no-fund", "--loglevel=http",
                 "firebase-tools@${ToolsManifest.FIREBASE_TOOLS_VERSION}",
             ),
             environment.workDir,
             environment.childEnv(paths.binDir, basePath),
             null,
-            CommandLimits.NPM,
+            TOOLS_NPM_LIMITS,
         ) {}
         if (code != 0 || !paths.firebase.isFile) {
             prefix.deleteRecursively()
@@ -186,7 +196,11 @@ class ToolsInstaller(
     }
 
     companion object {
-        private val PROBE_LIMITS = CommandLimits(20_000, 20_000)
+        private val PROBE_LIMITS = CommandLimits(60_000, 60_000)
+        private const val PROBE_ATTEMPTS = 2
+
+        /** Some 700 packages on a slow line, with an antivirus scanning each file: well above the functions install. */
+        private val TOOLS_NPM_LIMITS = CommandLimits(1_800_000, 600_000)
         const val NODE_DIST = "https://nodejs.org/dist/${ToolsManifest.NODE_VERSION}"
 
         fun archiveName(version: String, os: String, arch: String): String {

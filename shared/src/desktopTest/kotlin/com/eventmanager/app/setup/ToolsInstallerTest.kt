@@ -109,6 +109,38 @@ class ToolsInstallerTest {
     }
 
     @Test
+    fun firebaseInstallHasItsOwnLimitAndPrintsProgress(): Unit = runBlocking {
+        val r = runner()
+        installer(r).install { _, _ -> }
+        val at = r.calls.indexOfFirst { it.any { a -> a.startsWith("firebase-tools") } }
+        assertTrue("--loglevel=http" in r.calls[at], r.calls[at].toString())
+        assertEquals(CommandLimits(1_800_000, 600_000), r.limitsSeen[at])
+    }
+
+    @Test
+    fun probeTimeoutIsRetriedOnce(): Unit = runBlocking {
+        fakeInstalledFiles()
+        var timeouts = 1
+        val slow = object : ProcessRunner {
+            val inner = runner()
+            var calls = 0
+            override suspend fun run(
+                cmd: List<String>, workDir: File?, env: Map<String, String>, stdin: ByteArray?,
+                limits: CommandLimits, onLine: (String) -> Unit,
+            ): Int {
+                calls++
+                if (cmd.last() == "-v" && timeouts-- > 0) throw CommandTimeoutException(idle = true)
+                return inner.run(cmd, workDir, env, stdin, limits, onLine)
+            }
+        }
+        val make = { ToolsInstaller(toolsDir, slow, http(), "Mac OS X", "aarch64", SetupEnvironment(appData, null), "", { 10L shl 30 }, {}) }
+        assertIs<ToolsStatus.Ready>(make().status())
+        assertEquals(3, slow.calls)
+        timeouts = 2
+        assertIs<ToolsStatus.Broken>(make().status())
+    }
+
+    @Test
     fun installPinsFirebaseToolsVersion(): Unit = runBlocking {
         val r = runner()
         installer(r).install { _, _ -> }
@@ -146,7 +178,8 @@ class ToolsInstallerTest {
         assertEquals(toolsDir.resolve("node/bin/node"), status.paths.node)
         val fb = r.calls.first { it.last() == "--version" }
         assertEquals(listOf(status.paths.node.path, status.paths.firebase.path, "--version"), fb)
-        assertTrue(r.limitsSeen.all { it == CommandLimits(20_000, 20_000) })
+        // A cold Windows start (Defender scanning node.exe) needs more than 20 seconds.
+        assertTrue(r.limitsSeen.all { it == CommandLimits(60_000, 60_000) })
         assertTrue(r.envs.all { it["XDG_CONFIG_HOME"] != null })
     }
 
