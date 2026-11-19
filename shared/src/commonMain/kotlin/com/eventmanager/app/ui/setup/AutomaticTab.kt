@@ -29,6 +29,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -189,6 +191,7 @@ private fun StepControls(
     val busy = automation.states.collectAsState().value[step].let { it is StepState.Running || it is StepState.WaitingRetry }
     val anyBusy = automation.states.collectAsState().value.values.any { it is StepState.Running || it is StepState.WaitingRetry }
     val runLabel = stringResource(Res.string.setup_btn_run)
+    val scope = rememberCoroutineScope()
 
     @Composable
     fun RunButton(enabled: Boolean = true, input: () -> StepInput = { StepInput() }) {
@@ -220,7 +223,17 @@ private fun StepControls(
                 }
             }
             SetupStepId.LOGIN -> {
-                if (account.isNotBlank()) Text(stringResource(Res.string.setup_signed_in_as, account))
+                if (account.isNotBlank()) {
+                    Text(stringResource(Res.string.setup_signed_in_as, account))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = { scope.launch { automation.signOut() } }, enabled = !anyBusy) {
+                            Text(stringResource(Res.string.setup_sign_out))
+                        }
+                        OutlinedButton(onClick = { scope.launch { automation.switchAccount() } }, enabled = !anyBusy) {
+                            Text(stringResource(Res.string.setup_switch_account))
+                        }
+                    }
+                }
                 val challenge = loginChallenge
                 if (challenge == null) {
                     RunButton()

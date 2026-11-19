@@ -8,6 +8,9 @@ interface SetupCli {
     suspend fun loginStart(): LoginChallenge
     suspend fun loginFinish(code: String)
     suspend fun loginList(): List<String>
+
+    /** Signs the app's own Firebase session out. */
+    suspend fun logout()
     suspend fun projectsList(): List<ProjectInfo>
     suspend fun projectsCreate(id: String, displayName: String, onLine: (String) -> Unit)
     suspend fun databases(projectId: String): List<DatabaseInfo>

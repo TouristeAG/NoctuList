@@ -28,6 +28,12 @@ interface SetupAutomation {
     suspend fun refresh()
     fun run(step: SetupStepId, input: StepInput = StepInput())
 
+    /** Stops running steps, signs the Firebase CLI out and forgets the account. */
+    suspend fun signOut()
+
+    /** [signOut], then starts a new sign-in. */
+    suspend fun switchAccount()
+
     /** Removes the app's Node.js and Firebase tools and installs them again. */
     fun reinstallTools()
     fun confirm(step: SetupStepId)

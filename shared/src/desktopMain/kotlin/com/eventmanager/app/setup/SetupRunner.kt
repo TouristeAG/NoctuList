@@ -132,6 +132,31 @@ class SetupRunner(
         saveProgress { it.copy(extras = if (enabled) it.extras + step else it.extras - step) }
     }
 
+    override suspend fun signOut() {
+        val all = synchronized(jobs) { jobs.toList().also { jobs.clear() } }
+        all.forEach { it.cancel() }
+        all.joinAll()
+        var failure: CliException? = null
+        try {
+            requireCli().logout()
+        } catch (e: CliException) {
+            failure = e
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            failure = CliException(CliError(CliErrorKind.UNKNOWN, false, SetupStepId.LOGIN, e.message.orEmpty()))
+        }
+        // The local sign-in is forgotten even if the CLI failed; project ticks stay until the next refresh checks them.
+        _info.update { it.copy(account = "", loginChallenge = null, projects = emptyList()) }
+        unmark(SetupStepId.LOGIN)
+        failure?.let { setState(SetupStepId.LOGIN, StepState.Error(it.error)) }
+    }
+
+    override suspend fun switchAccount() {
+        signOut()
+        run(SetupStepId.LOGIN)
+    }
+
     /** Stops the running step (its process is destroyed) and drops the queued ones. */
     override fun cancel() {
         val all = synchronized(jobs) { jobs.toList().also { jobs.clear() } }

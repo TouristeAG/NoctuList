@@ -14,6 +14,8 @@ actual fun createSetupAutomation(context: PlatformContext, settings: SettingsMan
         override val info: StateFlow<SetupInfo> = MutableStateFlow(SetupInfo())
         override suspend fun refresh() = Unit
         override fun run(step: SetupStepId, input: StepInput) = Unit
+        override suspend fun signOut() = Unit
+        override suspend fun switchAccount() = Unit
         override fun reinstallTools() = Unit
         override fun confirm(step: SetupStepId) = Unit
         override fun setExtra(step: SetupStepId, enabled: Boolean) = Unit

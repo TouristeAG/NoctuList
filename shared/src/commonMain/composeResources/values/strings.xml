@@ -2395,6 +2395,8 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="setup_step_server_title">Automatic processing</string>
     <string name="setup_step_server_purpose">Handles registrations, profile changes and QR e-mails in seconds, even with no device on. Needs the Blaze plan and a Gmail app password.</string>
     <string name="setup_signed_in_as">Signed in as %1$s</string>
+    <string name="setup_sign_out">Sign out</string>
+    <string name="setup_switch_account">Switch account</string>
     <string name="setup_project_pick">Existing project</string>
     <string name="setup_project_new_id">New project ID (lowercase letters, numbers and dashes)</string>
     <string name="setup_project_new_name">Project name</string>

@@ -50,6 +50,10 @@ class FirebaseCli(
         result(readJson(listOf("login:list", "--json"), SetupStepId.LOGIN, show = false)).arr()
             .mapNotNull { it.obj()?.get("user")?.obj()?.str("email") }
 
+    override suspend fun logout() {
+        exec(listOf("logout"), step = SetupStepId.LOGIN)
+    }
+
     override suspend fun projectsList(): List<ProjectInfo> =
         result(readJson(listOf("projects:list", "--json"), SetupStepId.PROJECT)).arr().mapNotNull {
             val o = it.obj() ?: return@mapNotNull null
@@ -169,7 +173,7 @@ class FirebaseCli(
 
     private fun limitsFor(args: List<String>): CommandLimits = when (args.firstOrNull()) {
         "deploy", "projects:create", "apps:create", "firestore:databases:create", "hosting:sites:create" -> CommandLimits.DEPLOY
-        "login" -> CommandLimits.LOGIN
+        "login", "logout" -> CommandLimits.LOGIN
         else -> CommandLimits.READ
     }
 

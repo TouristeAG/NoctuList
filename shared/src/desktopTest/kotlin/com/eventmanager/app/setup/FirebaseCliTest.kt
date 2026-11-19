@@ -211,6 +211,14 @@ class FirebaseCliTest {
     }
 
     @Test
+    fun logoutRunsFirebaseLogout(): Unit = runBlocking {
+        val runner = FakeProcessRunner()
+        cli(runner).logout()
+        assertEquals(listOf(fb, js, "logout"), runner.calls.single())
+        assertEquals(CommandLimits.LOGIN, runner.limitsSeen.single())
+    }
+
+    @Test
     fun createHostingSiteUsesTheProjectIdAsSiteId(): Unit = runBlocking {
         val runner = FakeProcessRunner()
         cli(runner).createHostingSite(pid) {}

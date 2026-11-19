@@ -47,6 +47,12 @@ private class FakeCli : SetupCli {
     override suspend fun loginStart(): LoginChallenge { calls += "loginStart"; return LoginChallenge("AB12C", "https://auth.firebase.tools/login?x") }
     override suspend fun loginFinish(code: String) { calls += "loginFinish $code"; accounts = listOf("admin@example.org") }
     override suspend fun loginList() = accounts
+    var logoutFails = false
+    override suspend fun logout() {
+        calls += "logout"
+        if (logoutFails) throw CliException(CliError(CliErrorKind.UNKNOWN, false, SetupStepId.LOGIN, "boom"))
+        accounts = emptyList()
+    }
     var projects = listOf(ProjectInfo("demo-project", "Demo"), ProjectInfo("other-project", "Other"))
     override suspend fun projectsList() = projects
     override suspend fun projectsCreate(id: String, displayName: String, onLine: (String) -> Unit) { calls += "create $id" }
@@ -495,5 +501,69 @@ class SetupRunnerTest {
         assertTrue("deploy storage" in cli.calls)
         assertTrue(settings.photosEnabled)
         assertTrue(base.resolve("demo-project/storage.rules").isFile)
+    }
+
+    @Test
+    fun signOutClearsAccountAndUnticksLogin(): Unit = runBlocking {
+        settings.progressJson = SetupProgress(projectId = "demo-project", done = setOf(SetupStepId.TOOLS, SetupStepId.LOGIN, SetupStepId.PROJECT)).encode()
+        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, workspace, settings, sleep = {})
+        r.refresh()
+        assertEquals("admin@example.org", r.info.value.account)
+        r.signOut()
+        assertTrue("logout" in cli.calls)
+        assertEquals("", r.info.value.account)
+        assertEquals(StepState.Todo, r.states.value[SetupStepId.LOGIN])
+        assertTrue(SetupStepId.LOGIN !in r.progress.value.done)
+        assertTrue(SetupStepId.PROJECT in r.progress.value.done)
+        assertTrue(r.info.value.projects.isEmpty())
+    }
+
+    @Test
+    fun signOutStillClearsLocalStateWhenLogoutFails(): Unit = runBlocking {
+        settings.progressJson = SetupProgress(projectId = "demo-project", done = setOf(SetupStepId.TOOLS, SetupStepId.LOGIN)).encode()
+        cli.logoutFails = true
+        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, workspace, settings, sleep = {})
+        r.refresh()
+        r.signOut()
+        assertEquals("", r.info.value.account)
+        assertTrue(SetupStepId.LOGIN !in r.progress.value.done)
+        assertTrue(r.states.value[SetupStepId.LOGIN] is StepState.Error)
+    }
+
+    @Test
+    fun signOutCancelsRunningSteps(): Unit = runBlocking {
+        cli.blockDeploy = CompletableDeferred()
+        settings.progressJson = SetupProgress(projectId = "demo-project", done = setOf(SetupStepId.TOOLS, SetupStepId.LOGIN)).encode()
+        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, workspace, settings, sleep = {})
+        r.refresh()
+        r.run(SetupStepId.RULES)
+        awaitStateOf(r, SetupStepId.RULES) { it is StepState.Running }
+        r.signOut()
+        assertEquals(StepState.Todo, r.states.value[SetupStepId.RULES])
+        assertTrue("logout" in cli.calls)
+    }
+
+    private suspend fun awaitStateOf(r: SetupRunner, step: SetupStepId, predicate: (StepState) -> Boolean) =
+        withTimeout(5_000) { r.states.first { it[step]?.let(predicate) == true } }
+
+    @Test
+    fun switchAccountStartsNewSignIn(): Unit = runBlocking {
+        settings.progressJson = SetupProgress(projectId = "demo-project", done = setOf(SetupStepId.TOOLS, SetupStepId.LOGIN)).encode()
+        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, workspace, settings, sleep = {})
+        r.refresh()
+        r.switchAccount()
+        awaitStateOf(r, SetupStepId.LOGIN) { it == StepState.Todo }
+        withTimeout(5_000) { r.info.first { it.loginChallenge != null } }
+        assertEquals("AB12C", r.info.value.loginChallenge?.sessionId)
+    }
+
+    @Test
+    fun oldSavedProgressWithoutSignInShowsSignedOut(): Unit = runBlocking {
+        settings.progressJson = SetupProgress(projectId = "demo-project", done = setOf(SetupStepId.TOOLS, SetupStepId.LOGIN, SetupStepId.PROJECT)).encode()
+        cli.accounts = emptyList()
+        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, workspace, settings, sleep = {})
+        r.refresh()
+        assertEquals(StepState.Todo, r.states.value[SetupStepId.LOGIN])
+        assertEquals("", r.info.value.account)
     }
 }
