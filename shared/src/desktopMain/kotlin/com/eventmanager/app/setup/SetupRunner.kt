@@ -115,9 +115,9 @@ class SetupRunner(
                 setState(step, StepState.Todo)
                 throw e
             } catch (e: CliException) {
-                setState(step, StepState.Error(e.error))
+                setState(step, StepState.Error(clean(e.error)))
             } catch (e: Exception) {
-                setState(step, StepState.Error(unknown(step, e.message.orEmpty())))
+                setState(step, StepState.Error(clean(unknown(step, e.message.orEmpty()))))
             } finally {
                 secrets.clear()
                 input.appPassword?.fill('\u0000')
@@ -129,6 +129,10 @@ class SetupRunner(
             jobs += next
         }
     }
+
+    /** The stored error must not hold a secret: they are cleared as soon as the step ends. */
+    private fun clean(error: SetupError) =
+        error.copy(headline = redactor.redact(error.headline), details = redactor.redact(error.details))
 
     override fun report(step: SetupStepId): String {
         val error = (_states.value[step] as? StepState.Error)?.error ?: return ""
@@ -273,6 +277,7 @@ class SetupRunner(
                 confirm(step)
             }
             SetupStepId.CONNECT -> {
+                input.webClientSecret?.trim()?.takeIf { it.isNotBlank() }?.let { secrets.add(it) }
                 val c = requireCli()
                 val pid = projectId()
                 val appId = c.webApps(pid).firstOrNull() ?: c.createWebApp(pid) { log(step, it) }

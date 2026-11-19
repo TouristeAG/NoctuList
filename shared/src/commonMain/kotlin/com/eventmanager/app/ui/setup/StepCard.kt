@@ -45,6 +45,7 @@ import com.eventmanager.app.resources.setup_err_open_page
 import com.eventmanager.app.resources.setup_err_report_copied
 import com.eventmanager.app.resources.setup_err_repairs_header
 import com.eventmanager.app.resources.setup_err_retry
+import com.eventmanager.app.resources.setup_err_retry_password
 import com.eventmanager.app.resources.setup_btn_hide_details
 import com.eventmanager.app.resources.setup_btn_manual
 import com.eventmanager.app.resources.setup_btn_run_again
@@ -71,6 +72,7 @@ fun StepCard(
     rerunnable: Boolean = false,
     repairs: List<RepairNote> = emptyList(),
     onRetry: (() -> Unit)? = null,
+    retryEnabled: Boolean = true,
     onOpenLink: (String) -> Unit = {},
     report: () -> String = { "" },
     content: @Composable () -> Unit,
@@ -102,7 +104,7 @@ fun StepCard(
             }
             when (state) {
                 is StepState.Running -> LogArea(state.log)
-                is StepState.Error -> ErrorBox(state, repairs, onRetry, onOpenLink, report, onShowManual = { onShowManual(step) })
+                is StepState.Error -> ErrorBox(state, step, repairs, onRetry, retryEnabled, onOpenLink, report, onShowManual = { onShowManual(step) })
                 else -> Unit
             }
         }
@@ -163,8 +165,10 @@ private fun LogArea(lines: List<String>) {
 @Composable
 private fun ErrorBox(
     state: StepState.Error,
+    step: SetupStepId,
     repairs: List<RepairNote>,
     onRetry: (() -> Unit)?,
+    retryEnabled: Boolean,
     onOpenLink: (String) -> Unit,
     report: () -> String,
     onShowManual: () -> Unit,
@@ -200,11 +204,14 @@ private fun ErrorBox(
                 error.link?.let { link ->
                     OutlinedButton(onClick = { onOpenLink(link) }) { Text(stringResource(Res.string.setup_err_open_page)) }
                 }
-                onRetry?.let { Button(onClick = it) { Text(stringResource(Res.string.setup_err_retry)) } }
+                onRetry?.let { Button(onClick = it, enabled = retryEnabled) { Text(stringResource(Res.string.setup_err_retry)) } }
                 OutlinedButton(onClick = {
                     clipboard.setText(AnnotatedString(report()))
                     copied = true
                 }) { Text(stringResource(if (copied) Res.string.setup_err_report_copied else Res.string.setup_err_copy_report)) }
+            }
+            if (!retryEnabled && step == SetupStepId.SERVER) {
+                Text(stringResource(Res.string.setup_err_retry_password), color = ink, style = MaterialTheme.typography.bodySmall)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = onShowManual) { Text(stringResource(Res.string.setup_btn_manual)) }

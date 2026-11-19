@@ -14,6 +14,7 @@ import java.nio.file.Files
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 private class FakeSettings : SetupSettings {
@@ -175,6 +176,60 @@ class SetupRunnerTest {
         r.run(SetupStepId.SERVER, StepInput(gmailUser = "info@example.org", appPassword = "abcd efgh".toCharArray()))
         withTimeout(5_000) { r.states.first { it[SetupStepId.SERVER] == StepState.Done } }
         assertEquals(listOf("abcd efgh"), seenDuringStep)
+        assertEquals(emptyList(), secrets.current())
+    }
+
+    @Test
+    fun errorStateAndReportKeepNoSecretAfterAFailedStep(): Unit = runBlocking {
+        val failing = object : SetupCli by cli {
+            override suspend fun setSecret(projectId: String, dir: File, name: String, value: CharArray, onLine: (String) -> Unit) {
+                throw IllegalStateException("refused for abcd efgh")
+            }
+        }
+        val r = SetupRunner(scope, FakeTools(), { failing }, workspace, settings, sleep = {})
+        r.run(SetupStepId.TOOLS)
+        withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] == StepState.Done } }
+        r.run(SetupStepId.SERVER, StepInput(gmailUser = "info@example.org", appPassword = "abcd efgh".toCharArray()))
+        val state = withTimeout(5_000) { r.states.first { it[SetupStepId.SERVER] is StepState.Error } }
+        val error = (state.getValue(SetupStepId.SERVER) as StepState.Error).error
+        assertFalse("abcd" in error.details || "abcd" in error.headline)
+        val report = r.report(SetupStepId.SERVER)
+        assertTrue("Step 9" in report && "refused for" in report)
+        assertFalse("abcd" in report)
+    }
+
+    @Test
+    fun cliErrorDetailsAreRedactedWhenTheStepFails(): Unit = runBlocking {
+        val failing = object : SetupCli by cli {
+            override suspend fun setSecret(projectId: String, dir: File, name: String, value: CharArray, onLine: (String) -> Unit) {
+                throw CliException(ErrorCatalog.classify("Error: quota hit for abcd efgh", SetupStepId.SERVER))
+            }
+        }
+        val r = SetupRunner(scope, FakeTools(), { failing }, workspace, settings, sleep = {})
+        r.run(SetupStepId.TOOLS)
+        withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] == StepState.Done } }
+        r.run(SetupStepId.SERVER, StepInput(gmailUser = "info@example.org", appPassword = "abcd efgh".toCharArray()))
+        val state = withTimeout(5_000) { r.states.first { it[SetupStepId.SERVER] is StepState.Error } }
+        val error = (state.getValue(SetupStepId.SERVER) as StepState.Error).error
+        assertFalse("abcd" in error.details || "abcd" in error.headline)
+    }
+
+    @Test
+    fun webClientSecretIsMaskedWhileConnectRuns(): Unit = runBlocking {
+        val secrets = ActiveSecrets()
+        var seen = emptyList<String>()
+        val probing = object : SetupCli by cli {
+            override suspend fun sdkConfig(projectId: String, appId: String): WebConfig {
+                seen = secrets.current()
+                return WebConfig("k", appId, projectId)
+            }
+        }
+        val r = SetupRunner(scope, FakeTools(), { probing }, workspace, settings, sleep = {}, secrets = secrets)
+        r.run(SetupStepId.TOOLS)
+        withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] == StepState.Done } }
+        r.run(SetupStepId.CONNECT, StepInput(webClientId = "id", webClientSecret = "GOCSPX-secret"))
+        withTimeout(5_000) { r.states.first { it[SetupStepId.CONNECT] == StepState.Done } }
+        assertEquals(listOf("GOCSPX-secret"), seen)
         assertEquals(emptyList(), secrets.current())
     }
 

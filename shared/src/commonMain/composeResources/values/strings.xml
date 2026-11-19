@@ -2660,6 +2660,7 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="setup_err_unknown_steps">1. Open the details and read Google's error line.\n2. Click Retry.\n3. If the error comes back, copy the report and send it to the person helping you.</string>
     <string name="setup_err_open_page">Open the page</string>
     <string name="setup_err_retry">Retry</string>
+    <string name="setup_err_retry_password">Enter the app password again, then click Retry.</string>
     <string name="setup_err_copy_report">Copy the report</string>
     <string name="setup_err_report_copied">Report copied</string>
     <string name="setup_err_repairs_header">What the app already did</string>

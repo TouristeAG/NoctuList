@@ -25,6 +25,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -106,8 +108,9 @@ fun AutomaticTab(
     val progress by automation.progress.collectAsState()
     val info by automation.info.collectAsState()
     LaunchedEffect(automation) { automation.refresh() }
-    // What each step was last run with, so Retry repeats it. Passwords and codes are not kept.
-    val lastInputs = remember { mutableMapOf<SetupStepId, StepInput>() }
+    // Retry runs a step with what its form holds now, so each Run button says how to read it and whether it can run.
+    val retryInputs = remember { mutableMapOf<SetupStepId, () -> StepInput>() }
+    val retryEnabled = remember { mutableStateMapOf<SetupStepId, Boolean>() }
     val pid = progress.projectId.ifBlank { projectId }
 
     LazyColumn(
@@ -116,8 +119,8 @@ fun AutomaticTab(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         items(requiredSteps, key = { it.name }) { step ->
-            Card(step, states[step] ?: StepState.Todo, onShowManual, automation, info.repairs[step].orEmpty(), lastInputs) {
-                StepControls(step, automation, pid, info.projects.map { it.id }, info.locations, info.account, info.region, info.siteUrl, info.toolsProgress, info.tools, progress.confirmed, info.loginChallenge, { st, input -> lastInputs[st] = input })
+            Card(step, states[step] ?: StepState.Todo, onShowManual, automation, info.repairs[step].orEmpty(), retryInputs, retryEnabled) {
+                StepControls(step, automation, pid, info.projects.map { it.id }, info.locations, info.account, info.region, info.siteUrl, info.toolsProgress, info.tools, progress.confirmed, info.loginChallenge, retryInputs, retryEnabled)
             }
         }
         item(key = "extras") {
@@ -136,8 +139,8 @@ fun AutomaticTab(
                     Switch(checked = enabled, onCheckedChange = { automation.setExtra(step, it) })
                 }
                 if (enabled) {
-                    Card(step, states[step] ?: StepState.Todo, onShowManual, automation, info.repairs[step].orEmpty(), lastInputs) {
-                        StepControls(step, automation, pid, info.projects.map { it.id }, info.locations, info.account, info.region, info.siteUrl, info.toolsProgress, info.tools, progress.confirmed, info.loginChallenge, { st, input -> lastInputs[st] = input })
+                    Card(step, states[step] ?: StepState.Todo, onShowManual, automation, info.repairs[step].orEmpty(), retryInputs, retryEnabled) {
+                        StepControls(step, automation, pid, info.projects.map { it.id }, info.locations, info.account, info.region, info.siteUrl, info.toolsProgress, info.tools, progress.confirmed, info.loginChallenge, retryInputs, retryEnabled)
                     }
                 }
             }
@@ -152,7 +155,8 @@ private fun Card(
     onShowManual: (SetupStepId) -> Unit,
     automation: SetupAutomation,
     repairs: List<RepairNote>,
-    lastInputs: Map<SetupStepId, StepInput>,
+    retryInputs: Map<SetupStepId, () -> StepInput>,
+    retryEnabled: Map<SetupStepId, Boolean>,
     content: @Composable () -> Unit,
 ) {
     val platform = LocalPlatformContext.current
@@ -164,9 +168,8 @@ private fun Card(
         onShowManual = onShowManual,
         rerunnable = step in RERUNNABLE,
         repairs = repairs,
-        onRetry = if (step == SetupStepId.SERVER) null else {
-            { automation.run(step, lastInputs[step] ?: StepInput()) }
-        },
+        onRetry = { automation.run(step, retryInputs[step]?.invoke() ?: StepInput()) },
+        retryEnabled = retryEnabled[step] ?: true,
         onOpenLink = { openExternalUrl(platform, it) },
         report = { automation.report(step) },
         content = content,
@@ -188,7 +191,8 @@ private fun StepControls(
     toolsState: ToolsState,
     confirmed: Set<SetupStepId>,
     loginChallenge: LoginChallenge?,
-    remember: (SetupStepId, StepInput) -> Unit,
+    retryInputs: MutableMap<SetupStepId, () -> StepInput>,
+    retryEnabled: MutableMap<SetupStepId, Boolean>,
 ) {
     val platform = LocalPlatformContext.current
     val open: (String) -> Unit = { openExternalUrl(platform, it) }
@@ -199,15 +203,14 @@ private fun StepControls(
 
     @Composable
     fun RunButton(enabled: Boolean = true, input: () -> StepInput = { StepInput() }) {
+        SideEffect {
+            retryInputs[step] = input
+            if (retryEnabled[step] != enabled) retryEnabled[step] = enabled
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(
                 onClick = {
-                    val given = input()
-                    remember(
-                        step,
-                        StepInput(given.projectId, given.newProjectName, given.location, given.gmailUser, null, given.webClientId, given.webClientSecret),
-                    )
-                    automation.run(step, given)
+                    automation.run(step, input())
                 },
                 enabled = enabled && !busy,
             ) { Text("▶  $runLabel") }
