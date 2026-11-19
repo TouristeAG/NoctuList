@@ -6,6 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import java.io.File
@@ -565,5 +566,33 @@ class SetupRunnerTest {
         r.refresh()
         assertEquals(StepState.Todo, r.states.value[SetupStepId.LOGIN])
         assertEquals("", r.info.value.account)
+        assertTrue(SetupStepId.LOGIN !in r.progress.value.done)
+    }
+
+    @Test
+    fun switchAccountAfterFailedLogoutKeepsError(): Unit = runBlocking {
+        settings.progressJson = SetupProgress(projectId = "demo-project", done = setOf(SetupStepId.TOOLS, SetupStepId.LOGIN)).encode()
+        cli.logoutFails = true
+        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, workspace, settings, sleep = {})
+        r.refresh()
+        r.switchAccount()
+        kotlinx.coroutines.delay(200)
+        assertTrue(r.states.value[SetupStepId.LOGIN] is StepState.Error)
+        assertEquals("", r.info.value.account)
+        assertTrue("loginStart" !in cli.calls)
+    }
+
+    @Test
+    fun refreshCannotRetickLoginAfterSignOut(): Unit = runBlocking {
+        settings.progressJson = SetupProgress(projectId = "demo-project", done = setOf(SetupStepId.TOOLS, SetupStepId.LOGIN)).encode()
+        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, workspace, settings, sleep = {})
+        r.refresh()
+        kotlinx.coroutines.coroutineScope {
+            launch { r.refresh() }
+            launch { r.signOut() }
+        }
+        assertEquals("", r.info.value.account)
+        assertEquals(StepState.Todo, r.states.value[SetupStepId.LOGIN])
+        assertTrue(SetupStepId.LOGIN !in r.progress.value.done)
     }
 }

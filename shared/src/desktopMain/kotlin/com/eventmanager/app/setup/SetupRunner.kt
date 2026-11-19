@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
@@ -43,8 +45,13 @@ class SetupRunner(
     private val jobs = mutableListOf<Job>()
     private var cli: SetupCli? = null
 
+    /** Keeps a refresh from re-ticking the sign-in while it is being signed out. */
+    private val accountLock = Mutex()
+
     /** Re-checks the steps it can see from here; a tick that is no longer true goes away. */
-    override suspend fun refresh() {
+    override suspend fun refresh() = accountLock.withLock { refreshLocked() }
+
+    private suspend fun refreshLocked() {
         // Tools are being installed or replaced: probing or spawning them now would hold their files open.
         val toolsStep = _states.value[SetupStepId.TOOLS]
         if (toolsStep is StepState.Running || toolsStep is StepState.WaitingRetry) return
@@ -133,28 +140,36 @@ class SetupRunner(
     }
 
     override suspend fun signOut() {
+        signOutOnce()
+    }
+
+    /** Returns true when the CLI signed out; the local sign-in is forgotten either way. */
+    private suspend fun signOutOnce(): Boolean {
         val all = synchronized(jobs) { jobs.toList().also { jobs.clear() } }
         all.forEach { it.cancel() }
         all.joinAll()
-        var failure: CliException? = null
-        try {
-            requireCli().logout()
-        } catch (e: CliException) {
-            failure = e
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            failure = CliException(CliError(CliErrorKind.UNKNOWN, false, SetupStepId.LOGIN, e.message.orEmpty()))
+        // A cancelled caller must not leave the sign-out half done.
+        return withContext(NonCancellable) {
+            accountLock.withLock {
+                var failure: CliException? = null
+                try {
+                    requireCli().logout()
+                } catch (e: CliException) {
+                    failure = e
+                } catch (e: Exception) {
+                    failure = CliException(CliError(CliErrorKind.UNKNOWN, false, SetupStepId.LOGIN, e.message.orEmpty()))
+                }
+                // Project ticks stay until the next refresh checks them.
+                _info.update { it.copy(account = "", loginChallenge = null, projects = emptyList()) }
+                unmark(SetupStepId.LOGIN)
+                failure?.let { setState(SetupStepId.LOGIN, StepState.Error(it.error)) }
+                failure == null
+            }
         }
-        // The local sign-in is forgotten even if the CLI failed; project ticks stay until the next refresh checks them.
-        _info.update { it.copy(account = "", loginChallenge = null, projects = emptyList()) }
-        unmark(SetupStepId.LOGIN)
-        failure?.let { setState(SetupStepId.LOGIN, StepState.Error(it.error)) }
     }
 
     override suspend fun switchAccount() {
-        signOut()
-        run(SetupStepId.LOGIN)
+        if (signOutOnce()) run(SetupStepId.LOGIN)
     }
 
     /** Stops the running step (its process is destroyed) and drops the queued ones. */
