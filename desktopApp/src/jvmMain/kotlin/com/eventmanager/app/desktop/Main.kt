@@ -1,6 +1,9 @@
 package com.eventmanager.app.desktop
 
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.MenuBar
 import androidx.compose.ui.window.Window
@@ -9,8 +12,10 @@ import androidx.compose.ui.window.rememberWindowState
 import com.eventmanager.app.data.utils.AppTimeZone
 import com.eventmanager.app.data.sync.FileAppLogger
 import com.eventmanager.app.data.sync.SettingsManager
+import com.eventmanager.app.platform.SingleInstance
 import com.eventmanager.app.platform.createAppStorage
 import com.eventmanager.app.platform.createPlatformContext
+import com.eventmanager.app.platform.desktopDataDir
 import com.eventmanager.app.ui.AppRoot
 import com.eventmanager.app.ui.desktop.DesktopNavigationHooks
 import com.eventmanager.app.ui.desktop.DesktopWindowAppearance
@@ -18,6 +23,7 @@ import com.eventmanager.app.ui.platform.bootstrapAppLocale
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
+import kotlin.system.exitProcess
 
 private val isMacOs: Boolean =
     System.getProperty("os.name").orEmpty().contains("mac", ignoreCase = true)
@@ -56,7 +62,18 @@ private fun installCrashLogger() {
     }
 }
 
+/** Bumped from the single-instance listener thread; the window reacts on the UI thread. */
+private var showRequest by mutableStateOf(0)
+
 fun main() {
+    // Single instance check first, before any Firebase or AWT work.
+    val dataDir = desktopDataDir().also { it.mkdirs() }
+    val singleInstance = SingleInstance(dataDir)
+    if (!singleInstance.acquire { showRequest++ }) {
+        singleInstance.signalFirst()
+        exitProcess(0)
+    }
+    Runtime.getRuntime().addShutdownHook(Thread { singleInstance.release() })
     // Before the crash logger and before any AWT/Skiko/Firestore class init.
     DesktopWindowAppearance.initBeforeUiToolkit()
     installCrashLogger()
@@ -83,6 +100,13 @@ fun main() {
             state = windowState
         ) {
             DesktopWindowThemeEffect(platformContext)
+            LaunchedEffect(showRequest) {
+                if (showRequest > 0) {
+                    if (windowState.isMinimized) windowState.isMinimized = false
+                    window.toFront()
+                    window.requestFocus()
+                }
+            }
             LaunchedEffect(Unit) {
                 window.minimumSize = java.awt.Dimension(1024, 768)
                 DesktopAppIcon.loadAwtIcon()?.let { window.iconImage = it }

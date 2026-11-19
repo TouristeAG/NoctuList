@@ -8,9 +8,11 @@ actual class PlatformContext internal constructor(
     val dataDir: File
 )
 
+fun desktopDataDir(): File = File(System.getProperty("user.home"), ".noctulist")
+
 actual fun createPlatformContext(): PlatformContext {
     return desktopContext ?: run {
-        val dir = File(System.getProperty("user.home"), ".noctulist").also { it.mkdirs() }
+        val dir = desktopDataDir().also { it.mkdirs() }
         PlatformContext(dir).also { desktopContext = it }
     }
 }
