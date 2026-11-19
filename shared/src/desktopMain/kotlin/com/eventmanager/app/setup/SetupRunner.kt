@@ -20,13 +20,23 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.io.IOException
 
-/** Every Google API the setup uses, turned on before the database step (idempotent on Google's side). */
-val REQUIRED_APIS = listOf(
+/**
+ * Google APIs a project on the free Spark plan can turn on: enabled before the database step and when a
+ * free step (rules, site, photos) finds one off. Idempotent on Google's side.
+ */
+val FREE_APIS = listOf(
     "firestore.googleapis.com", "firebaserules.googleapis.com", "firebasehosting.googleapis.com",
-    "firebasestorage.googleapis.com", "storage.googleapis.com", "cloudfunctions.googleapis.com",
-    "cloudbuild.googleapis.com", "artifactregistry.googleapis.com", "run.googleapis.com", "eventarc.googleapis.com",
-    "pubsub.googleapis.com", "secretmanager.googleapis.com", "iamcredentials.googleapis.com", "iam.googleapis.com",
-    "cloudbilling.googleapis.com", "cloudresourcemanager.googleapis.com",
+    "firebasestorage.googleapis.com", "storage.googleapis.com", "iam.googleapis.com", "iamcredentials.googleapis.com",
+    "cloudresourcemanager.googleapis.com", "cloudbilling.googleapis.com",
+)
+
+/**
+ * APIs Google only turns on for a project with billing (the server functions need them). Asking for them on a
+ * Spark project fails the whole batch, so they wait until the server step found billing ready.
+ */
+val BILLED_APIS = listOf(
+    "cloudfunctions.googleapis.com", "cloudbuild.googleapis.com", "artifactregistry.googleapis.com",
+    "run.googleapis.com", "eventarc.googleapis.com", "pubsub.googleapis.com", "secretmanager.googleapis.com",
 )
 
 /** Role the default compute account needs to build 2nd gen functions. */
@@ -297,9 +307,10 @@ class SetupRunner(
         Repair.CREATE_HOSTING_SITE, Repair.REINSTALL_TOOLS, Repair.RELOGIN -> false
     }
 
-    private suspend fun enableApis(step: SetupStepId) {
-        requireOps(step).enableApis(projectId(), REQUIRED_APIS)
-        note(step, Repair.ENABLE_APIS, "${REQUIRED_APIS.size} API")
+    /** The server step may turn on billed APIs (its billing was checked first); every other step only the free ones. */
+    private suspend fun enableApis(step: SetupStepId, apis: List<String> = if (step == SetupStepId.SERVER) FREE_APIS + BILLED_APIS else FREE_APIS) {
+        requireOps(step).enableApis(projectId(), apis)
+        note(step, Repair.ENABLE_APIS, "${apis.size} API")
     }
 
     /** Builds of 2nd gen functions run as the default compute account, which new projects leave without this role. */
@@ -566,6 +577,7 @@ class SetupRunner(
             MailMode.WORKSPACE -> UNUSED_SECRET.toCharArray()
         }
         if (!billingReady(step)) return
+        enableApis(step, BILLED_APIS)
         val db = c.databases(pid).firstOrNull { it.name == DEFAULT_DB } ?: throw IllegalStateException("no database")
         val region = RegionMapper.functionsRegion(db.locationId)
         _info.update { it.copy(region = region) }

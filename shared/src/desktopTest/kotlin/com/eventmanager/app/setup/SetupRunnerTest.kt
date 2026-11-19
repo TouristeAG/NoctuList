@@ -138,9 +138,11 @@ private class FakeOps : GoogleOps {
     override suspend fun projectNumber(projectId: String) = number.also { rec("projectNumber") }
     override suspend fun missingPermissions(projectId: String, permissions: List<String>) =
         missing.also { rec("missingPermissions ${permissions.joinToString(",")}") }
+    val enabledCalls = mutableListOf<List<String>>()
     override suspend fun enableApis(projectId: String, apis: List<String>) {
         rec("enableApis")
         enabledApis = apis
+        enabledCalls += apis
         gate?.await()
     }
     override suspend fun ensureRole(projectId: String, member: String, role: String) = roleChanged.also { rec("ensureRole $member $role") }
@@ -947,10 +949,47 @@ class SetupRunnerTest {
         runner.run(SetupStepId.DATABASE, StepInput(location = "eur3"))
         awaitState(SetupStepId.DATABASE) { it == StepState.Done }
         assertEquals("enableApis", ops.calls.first())
-        assertEquals(REQUIRED_APIS, ops.enabledApis)
-        assertEquals(16, REQUIRED_APIS.size)
-        assertEquals(listOf(RepairNote(Repair.ENABLE_APIS, "16 API")), runner.info.value.repairs[SetupStepId.DATABASE])
+        // A Spark project (no billing) can turn these on: the billed ones wait for the server step.
+        assertEquals(listOf(FREE_APIS), ops.enabledCalls)
+        assertEquals(9, FREE_APIS.size)
+        assertTrue(FREE_APIS.none { it in BILLED_APIS })
+        assertEquals(listOf(RepairNote(Repair.ENABLE_APIS, "9 API")), runner.info.value.repairs[SetupStepId.DATABASE])
         assertEquals(listOf(SetupStepId.DATABASE), ops.steps)
+    }
+
+    @Test
+    fun serverEnablesBilledApisOnlyOnceBillingIsReady(): Unit = runBlocking {
+        val order = mutableListOf<String>()
+        ops.order = order
+        ops.billing = BillingStatus(false, listOf(BillingAccount("billingAccounts/1", "Main")))
+        ready()
+        runner.run(SetupStepId.SERVER, serverInput())
+        awaitState(SetupStepId.SERVER) { it is StepState.NeedsBilling }
+        assertTrue(ops.enabledCalls.isEmpty(), ops.enabledCalls.toString())
+        runner.confirmBilling(SetupStepId.SERVER, "billingAccounts/1", serverInput())
+        awaitServerDeployed()
+        assertEquals(listOf(BILLED_APIS), ops.enabledCalls)
+        assertEquals(7, BILLED_APIS.size)
+        assertTrue(order.lastIndexOf("billing") < order.indexOf("enableApis"), order.toString())
+    }
+
+    @Test
+    fun siteRepairEnablesFreeApisOnly(): Unit = runBlocking {
+        ready()
+        cli.deployFailures += "Error: Firebase Hosting API has not been used in project 1 before or it is disabled."
+        runner.run(SetupStepId.SITE)
+        awaitState(SetupStepId.SITE) { it == StepState.Done }
+        assertEquals(listOf(FREE_APIS), ops.enabledCalls)
+    }
+
+    @Test
+    fun serverRepairEnablesTheBilledApis(): Unit = runBlocking {
+        ready()
+        cli.deployFailures += "Error: Cloud Run API has not been used in project 1 before or it is disabled."
+        runner.run(SetupStepId.SERVER, serverInput())
+        withTimeout(5_000) { while (cli.calls.count { it == "deploy hosting,functions" } < 2) kotlinx.coroutines.delay(10) }
+        awaitServerDeployed()
+        assertTrue(ops.enabledCalls.drop(1).any { it.containsAll(BILLED_APIS) }, ops.enabledCalls.toString())
     }
 
     @Test
@@ -1013,7 +1052,7 @@ class SetupRunnerTest {
         cli.deployFailures += "Error: Cloud Run API has not been used in project 1 before or it is disabled."
         runner.run(SetupStepId.RULES)
         awaitState(SetupStepId.RULES) { it == StepState.Done }
-        assertEquals(REQUIRED_APIS, ops.enabledApis)
+        assertEquals(FREE_APIS, ops.enabledApis)
         assertEquals(2, cli.calls.count { it == "deploy firestore:rules" })
         assertTrue(runner.info.value.repairs[SetupStepId.RULES].orEmpty().any { it.repair == Repair.ENABLE_APIS })
     }
