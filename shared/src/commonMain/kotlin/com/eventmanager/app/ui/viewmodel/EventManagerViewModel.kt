@@ -135,6 +135,7 @@ class EventManagerViewModel(
         const val VM_LOG_TAG = "EventManagerVM"
         const val PHOTO_REQUEST_BACKGROUND_POLL_MS = 20_000L
         const val VOLUNTEER_PORTAL_CHECK_MS = 30_000L
+        const val SHIFT_CREDIT_EVALUATION_MS = 15L * 60L * 1000L
         /** Reuse an open link only if it stays valid for at least this long. */
         const val PHOTO_REQUEST_REUSE_MARGIN_MS = 24L * 60 * 60 * 1000
     }
@@ -728,7 +729,13 @@ class EventManagerViewModel(
     val accountBalances: StateFlow<Map<AccountHolderKey, Double>> = _accountBalances
 
     private val accountCreditService: AccountCreditService by lazy {
-        AccountCreditService(repository) {
+        AccountCreditService(
+            repository,
+            reversalFloorProvider = {
+                settingsManagerCached?.takeIf { it.getBackendType() == BackendType.FIREBASE }
+                    ?.let { -it.getPurchaseCreditBuffer().coerceAtLeast(0.0) }
+            },
+        ) {
             platformContext?.let { SettingsManager(it).getCurrencyCode() } ?: "CHF"
         }
     }
@@ -1589,7 +1596,13 @@ class EventManagerViewModel(
         }
         viewModelScope.launch {
             delay(1200)
-            evaluatePendingShiftCreditsIfNeeded()
+            // Repeats so shifts reaching their day, and shifts removed through sync, are settled
+            // without waiting for the next app start.
+            while (isActive) {
+                runCatching { evaluatePendingShiftCreditsIfNeeded() }
+                    .onFailure { println("Shift credit evaluation failed: ${it.message}") }
+                delay(SHIFT_CREDIT_EVALUATION_MS)
+            }
         }
         viewModelScope.launch {
             delay(2500)
@@ -3006,9 +3019,7 @@ class EventManagerViewModel(
                             val vol = repository.getVolunteerById(job.volunteerId)
                             if (vol != null) {
                                 val offset = platformContext?.let { SettingsManager(it).getDateChangeOffsetHours() } ?: 0
-                                val reversals = accountCreditService.reverseShiftCredits(
-                                    job, vol, _jobTypeConfigs.value, offset
-                                )
+                                val reversals = accountCreditService.reconcileVolunteer(job.volunteerId, _jobTypeConfigs.value, offset)
                                 syncCreatedTransfers(reversals)
                             }
                         } catch (e: Exception) {
@@ -3650,9 +3661,7 @@ class EventManagerViewModel(
                 val volunteer = repository.getVolunteerById(jobWithId.volunteerId)
                 if (volunteer != null) {
                     val offset = platformContext?.let { SettingsManager(it).getDateChangeOffsetHours() } ?: 0
-                    val credits = accountCreditService.applyShiftCredits(
-                        jobWithId, volunteer, _jobTypeConfigs.value, offset
-                    )
+                    val credits = accountCreditService.reconcileVolunteer(jobWithId.volunteerId, _jobTypeConfigs.value, offset)
                     refreshAccountBalancesFromDb()
                     syncCreatedTransfers(credits)
                 }
@@ -3721,9 +3730,8 @@ class EventManagerViewModel(
 
                 val offset = platformContext?.let { SettingsManager(it).getDateChangeOffsetHours() } ?: 0
                 val credits = mutableListOf<AccountTransfer>()
-                for (job in saved) {
-                    val volunteer = repository.getVolunteerById(job.volunteerId) ?: continue
-                    credits += accountCreditService.applyShiftCredits(job, volunteer, configs, offset)
+                for (volunteerId in saved.map { it.volunteerId }.distinct()) {
+                    credits += accountCreditService.reconcileVolunteer(volunteerId, configs, offset)
                 }
                 if (credits.isNotEmpty()) {
                     refreshAccountBalancesFromDb()
@@ -3744,7 +3752,17 @@ class EventManagerViewModel(
         viewModelScope.launch {
             try {
                 if (rejectIfCrudSoftLocked("updating shifts")) return@launch
+                val previousVolunteerId = _jobs.value.firstOrNull { it.id == job.id }?.volunteerId
                 repository.updateJob(job)
+                // Date, venue, time or type are part of the credit key: without this an edited
+                // shift kept its old credit and earned a second one.
+                val offset = platformContext?.let { SettingsManager(it).getDateChangeOffsetHours() } ?: 0
+                val creditChanges = listOfNotNull(job.volunteerId, previousVolunteerId).distinct()
+                    .flatMap { accountCreditService.reconcileVolunteer(it, _jobTypeConfigs.value, offset) }
+                if (creditChanges.isNotEmpty()) {
+                    refreshAccountBalancesFromDb()
+                    syncCreatedTransfers(creditChanges)
+                }
                 val coordinator = syncCoordinator
                 if (coordinator != null) {
                     coordinator.afterJobSaved(job)
@@ -3801,9 +3819,7 @@ class EventManagerViewModel(
                 val volunteer = repository.getVolunteerById(job.volunteerId)
                 if (volunteer != null) {
                     val offset = platformContext?.let { SettingsManager(it).getDateChangeOffsetHours() } ?: 0
-                    val reversals = accountCreditService.reverseShiftCredits(
-                        job, volunteer, _jobTypeConfigs.value, offset
-                    )
+                    val reversals = accountCreditService.reconcileVolunteer(job.volunteerId, _jobTypeConfigs.value, offset)
                     refreshAccountBalancesFromDb()
                     syncCreatedTransfers(reversals)
                 }
@@ -6995,9 +7011,7 @@ class EventManagerViewModel(
                                         twoWaySyncService?.backupJobsToSheets()
                                     }
                                 
-                                val reversals = accountCreditService.reverseShiftCredits(
-                                    job, volunteer, _jobTypeConfigs.value, offsetHours,
-                                )
+                                val reversals = accountCreditService.reconcileVolunteer(job.volunteerId, _jobTypeConfigs.value, offsetHours)
                                 syncCreatedTransfers(reversals)
                                 
                                 println("Deleted job: ${job.jobTypeName} (ID: ${job.id}) for volunteer ${volunteer.name}")

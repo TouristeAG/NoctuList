@@ -20,7 +20,7 @@ data class ShiftCreditEntry(
 object ShiftCreditCalculator {
     private const val CHF_PER_DRINK = 5.0
     private const val ORION_WALLET_CHF = 270.0
-    private const val GALAXIE_BONUS_CHF = 5.0
+    const val GALAXIE_BONUS_CHF = 5.0
 
     fun isJobDayReached(
         job: Job,
@@ -90,60 +90,8 @@ object ShiftCreditCalculator {
             }
         }
 
-        if (ctx.shiftJobTypeNames.contains(job.jobTypeName)) {
-            val isOrion = BenefitCalculator.isVolunteerOrionActive(volunteerJobs, jobTypeConfigs, offsetHours = offsetHours)
-            val contributionsBefore = monthlyContributionsExcludingJob(
-                volunteerJobs, job, ctx, excludeMeetingsForOrion = isOrion
-            )
-            val contributionsAfter = contributionsBefore + 1
-            if (contributionsBefore < 3 && contributionsAfter >= 3) {
-                entries += ShiftCreditEntry(
-                    amount = GALAXIE_BONUS_CHF,
-                    sourceReference = "galaxie_bonus:$refKey",
-                    description = "Galaxie monthly bonus drink",
-                    jobReferenceKey = refKey,
-                    jobTypeName = job.jobTypeName,
-                    jobDate = job.date
-                )
-            }
-        }
-
+        // The Galaxie bonus depends on the whole month, not on one shift: see ShiftCreditReconciler.
         return entries
-    }
-
-    fun sourceReferencesForRemovedJob(
-        job: Job,
-        volunteerJobs: List<Job>,
-        jobTypeConfigs: List<JobTypeConfig>,
-        offsetHours: Int = 0
-    ): List<String> {
-        val ctx = BenefitCalculator.CalculationContext(jobTypeConfigs, offsetHours = offsetHours)
-        val refKey = jobReferenceKey(job)
-        val refs = mutableListOf<String>()
-
-        if (baseCreditForJob(job, ctx.jobTypeConfigsByName[job.jobTypeName] ?: return emptyList()) > 0) {
-            refs += "shift_credit:$refKey"
-        }
-
-        if (ctx.orionJobTypeNames.contains(job.jobTypeName)) {
-            val orionJobs = volunteerJobs
-                .filter { ctx.orionJobTypeNames.contains(it.jobTypeName) }
-                .sortedBy { it.date }
-            val firstOrion = orionJobs.firstOrNull()
-            if (firstOrion != null && jobReferenceKey(firstOrion) == refKey) {
-                refs += "orion_wallet:${job.volunteerId}:${mandateYearForOrionJob(firstOrion, offsetHours)}"
-            }
-        }
-
-        if (ctx.shiftJobTypeNames.contains(job.jobTypeName)) {
-            val isOrion = BenefitCalculator.isVolunteerOrionActive(volunteerJobs, jobTypeConfigs, offsetHours = offsetHours)
-            val contributionsWithJob = monthlyContributionsIncludingJob(volunteerJobs, job, ctx, excludeMeetingsForOrion = isOrion)
-            if (contributionsWithJob >= 3) {
-                refs += "galaxie_bonus:$refKey"
-            }
-        }
-
-        return refs
     }
 
     private fun baseCreditForJob(job: Job, config: JobTypeConfig?): Double {
@@ -173,39 +121,5 @@ object ShiftCreditCalculator {
             )
         }
         return cal.get(java.util.Calendar.YEAR)
-    }
-
-    private fun monthlyContributionsExcludingJob(
-        allJobs: List<Job>,
-        excluded: Job,
-        ctx: BenefitCalculator.CalculationContext,
-        excludeMeetingsForOrion: Boolean
-    ): Int {
-        val excludedKey = jobReferenceKey(excluded)
-        return allJobs.count { job ->
-            jobReferenceKey(job) != excludedKey && countsAsMonthlyContribution(job, ctx, excludeMeetingsForOrion)
-        }
-    }
-
-    private fun monthlyContributionsIncludingJob(
-        allJobs: List<Job>,
-        included: Job,
-        ctx: BenefitCalculator.CalculationContext,
-        excludeMeetingsForOrion: Boolean
-    ): Int {
-        return allJobs.count { job -> countsAsMonthlyContribution(job, ctx, excludeMeetingsForOrion) }
-    }
-
-    private fun countsAsMonthlyContribution(
-        job: Job,
-        ctx: BenefitCalculator.CalculationContext,
-        excludeMeetingsForOrion: Boolean
-    ): Boolean {
-        val jobDayStart = com.eventmanager.app.data.utils.DateTimeUtils.getStartOfDayWithOffset(job.date, ctx.offsetHours)
-        return job.date >= ctx.monthStart &&
-            job.date < ctx.monthEnd &&
-            ctx.currentTime >= jobDayStart &&
-            ctx.shiftJobTypeNames.contains(job.jobTypeName) &&
-            !(excludeMeetingsForOrion && ctx.meetingJobTypeNames.contains(job.jobTypeName))
     }
 }
