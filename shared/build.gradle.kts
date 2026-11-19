@@ -351,11 +351,18 @@ val syncWebFormResources = tasks.register<Copy>("syncWebFormResources") {
     into(layout.projectDirectory.dir("src/commonMain/composeResources/files/webform"))
 }
 
+val syncSetupHelper = tasks.register<Copy>("syncSetupHelper") {
+    from(rootProject.file("setup-helper/noctulist-gcp.cjs"))
+    into(layout.projectDirectory.dir("src/commonMain/composeResources/files/setup"))
+}
+
 tasks.matching { it.name.contains("generateResourceAccessors", ignoreCase = true) }.configureEach {
     dependsOn(syncWebFormResources)
+    dependsOn(syncSetupHelper)
 }
 tasks.matching { it.name.contains("copyNonXmlValueResources", ignoreCase = true) }.configureEach {
     dependsOn(syncWebFormResources)
+    dependsOn(syncSetupHelper)
 }
 
 kotlin.sourceSets.all {

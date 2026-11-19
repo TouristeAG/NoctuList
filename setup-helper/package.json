@@ -1,0 +1,7 @@
+{
+  "name": "noctulist-setup-helper",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": { "test": "node --test test/*.test.cjs" },
+  "devDependencies": { "firebase-tools": "15.36.0" }
+}

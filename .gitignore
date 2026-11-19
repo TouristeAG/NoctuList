@@ -36,3 +36,4 @@ app/google-services.json
 
 # Claude Code worktrees
 .claude/worktrees/
+setup-helper/node_modules/
