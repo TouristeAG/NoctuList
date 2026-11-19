@@ -2356,6 +2356,7 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="setup_progress">%1$d de %2$d pasos hechos</string>
     <string name="setup_phone_note">La configuración automática se hace desde la app de ordenador. Aquí puede seguir los pasos manuales.</string>
     <string name="setup_optional_header">Opciones adicionales</string>
+    <string name="setup_check_all">Comprobar todo</string>
     <string name="setup_close">Cerrar</string>
     <string name="setup_btn_run">Ejecutar</string>
     <string name="setup_btn_open">Abrir</string>

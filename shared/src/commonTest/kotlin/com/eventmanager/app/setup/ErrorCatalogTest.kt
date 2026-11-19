@@ -171,6 +171,11 @@ class ErrorCatalogTest {
         check(SetupErrorId.PERMISSION_DENIED, "PERMISSION_DENIED", link = iam)
     }
 
+    @Test fun networkReasonFromTheGoogleHelper() = check(
+        SetupErrorId.NETWORK, "fetch failed", retry = RetryPolicy.WAIT_AND_RETRY,
+        api = GoogleApiStatus(0, "NETWORK", ""),
+    )
+
     @Test fun network() = check(SetupErrorId.NETWORK, "getaddrinfo ENOTFOUND x", retry = RetryPolicy.WAIT_AND_RETRY)
 
     @Test fun unknownKeepsHeadline() {

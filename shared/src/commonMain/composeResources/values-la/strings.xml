@@ -2361,6 +2361,7 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="setup_progress">%1$d ex %2$d gradibus perfecti</string>
     <string name="setup_phone_note">Configuratio automatica in applicatione computatri fit. Hic gradus manuales sequi potes.</string>
     <string name="setup_optional_header">Optiones additae</string>
+    <string name="setup_check_all">Omnia probare</string>
     <string name="setup_close">Claude</string>
     <string name="setup_btn_run">Exsequere</string>
     <string name="setup_btn_open">Aperi</string>

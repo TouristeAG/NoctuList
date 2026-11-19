@@ -71,6 +71,8 @@ data class SetupInfo(
     val loginChallenge: LoginChallenge? = null,
     /** What the app fixed by itself before a step failed, shown in the error box. */
     val repairs: Map<SetupStepId, List<RepairNote>> = emptyMap(),
+    /** True while [SetupAutomation.refresh] checks the steps against the project. */
+    val checking: Boolean = false,
 )
 
 /** One repair the app ran for a step, with what it found. */

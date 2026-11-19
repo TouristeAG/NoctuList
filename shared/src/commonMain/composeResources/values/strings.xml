@@ -2358,6 +2358,7 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="setup_progress">%1$d of %2$d steps done</string>
     <string name="setup_phone_note">Automatic setup runs on the computer app. Here you can follow the manual steps.</string>
     <string name="setup_optional_header">Optional extras</string>
+    <string name="setup_check_all">Check everything</string>
     <string name="setup_close">Close</string>
     <string name="setup_btn_run">Run</string>
     <string name="setup_btn_open">Open</string>

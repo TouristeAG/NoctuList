@@ -163,6 +163,24 @@ test("notLoggedInMapping", async () => {
   }
 });
 
+test("networkFailureWhileGettingTheTokenIsNotASignInProblem", async () => {
+  const failures = [
+    Object.assign(new Error("getaddrinfo ENOTFOUND oauth2.googleapis.com"), { code: "ENOTFOUND" }),
+    new Error("request failed: socket hang up"),
+    new TypeError("fetch failed"),
+    Object.assign(new Error("boom"), { code: "ETIMEDOUT" }),
+  ];
+  for (const err of failures) {
+    const a = buildAuth({
+      auth: { getGlobalDefaultAccount: () => ({ user: { email: "a@b.c" }, tokens: {} }) },
+      requireAuth: async () => { throw err; }, apiv2: {},
+    });
+    const out = JSON.parse(await run(["lib", "project-number", "--project", P], { ...make(() => ok({})).deps, token: a.token }));
+    assert.strictEqual(out.error.status, 0);
+    assert.strictEqual(out.error.reason, "NETWORK");
+  }
+});
+
 test("buildAuthPassesAccountToRequireAuth", async () => {
   let seen;
   const a = buildAuth({

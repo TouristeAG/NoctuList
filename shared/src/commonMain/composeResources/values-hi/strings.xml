@@ -2361,6 +2361,7 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="setup_progress">%2$d में से %1$d चरण पूरे</string>
     <string name="setup_phone_note">स्वचालित सेटअप कंप्यूटर ऐप पर होता है। यहाँ आप मैनुअल चरण देख सकते हैं।</string>
     <string name="setup_optional_header">वैकल्पिक सुविधाएँ</string>
+    <string name="setup_check_all">सब कुछ जाँचें</string>
     <string name="setup_close">बंद करें</string>
     <string name="setup_btn_run">चलाएँ</string>
     <string name="setup_btn_open">खोलें</string>

@@ -65,8 +65,19 @@ class SetupRunner(
     /** Keeps a refresh from re-ticking the sign-in while it is being signed out. */
     private val accountLock = Mutex()
 
-    /** Re-checks the steps it can see from here; a tick that is no longer true goes away. */
-    override suspend fun refresh() = accountLock.withLock { refreshLocked() }
+    /** Re-checks every step it can see from here; a tick that is no longer true goes away. */
+    override suspend fun refresh() = accountLock.withLock {
+        _info.update { it.copy(checking = true) }
+        try {
+            refreshLocked()
+        } catch (_: SignInExpired) {
+            // Already shown on the sign-in step; the other checks need a valid sign-in.
+        } finally {
+            _info.update { it.copy(checking = false) }
+        }
+    }
+
+    private class SignInExpired : Exception()
 
     private suspend fun refreshLocked() {
         // Tools are being installed or replaced: probing or spawning them now would hold their files open.
@@ -84,6 +95,8 @@ class SetupRunner(
         val account = runCatching { c.loginList().firstOrNull() }.getOrNull() ?: return unmark(SetupStepId.LOGIN)
         _info.update { it.copy(account = account) }
         markDone(SetupStepId.LOGIN)
+        // The CLI lists an account whose token Google may have revoked: ask Google itself, before any other check.
+        val signedIn = check(SetupStepId.LOGIN) { requireOps(SetupStepId.LOGIN).checkAuth() } != null
         val projects = runCatching { c.projectsList() }.getOrDefault(emptyList())
         _info.update { it.copy(projects = projects) }
         val pid = settings.projectId
@@ -99,10 +112,56 @@ class SetupRunner(
             _info.update { it.copy(locations = RegionMapper.orderLocations(locations)) }
         }
         if (settings.hasWebClient()) markDone(SetupStepId.CONNECT) else unmark(SetupStepId.CONNECT)
-        val functions = runCatching { c.functionsList(pid) }.getOrNull()?.map { it.name }
-        if (functions != null) {
-            if (functions.containsAll(SERVER_FUNCTIONS)) markDone(SetupStepId.SERVER) else unmark(SetupStepId.SERVER)
+        // Without a reachable Google account the checks below cannot say anything: ticks stay as they are.
+        if (!signedIn) return
+        if (db != null) {
+            val rules = check(SetupStepId.RULES) { requireOps(SetupStepId.RULES).rulesReleased(pid) }
+            if (rules != null) tick(SetupStepId.RULES, rules.first)
+            if (rules != null) {
+                val photos = if (!rules.second) false else check(SetupStepId.PHOTOS) {
+                    requireOps(SetupStepId.PHOTOS).storageBucket(pid) != null
+                }
+                if (photos != null) tick(SetupStepId.PHOTOS, photos)
+            }
         }
+        check(SetupStepId.SITE) { requireOps(SetupStepId.SITE).hostingLive(pid) }?.let { tick(SetupStepId.SITE, it) }
+        check(SetupStepId.SERVER) { requireOps(SetupStepId.SERVER).functions(pid, CODEBASE) }
+            ?.let { tick(SetupStepId.SERVER, serverReady(it)) }
+    }
+
+    /** Where Task 13 adds "the last test mail succeeded"; until then the three functions being ACTIVE is enough. */
+    private fun serverReady(functions: List<FunctionState>): Boolean =
+        SERVER_FUNCTIONS.all { name -> functions.any { it.name == name && it.state == "ACTIVE" } }
+
+    private fun tick(step: SetupStepId, done: Boolean) = if (done) markDone(step) else unmark(step)
+
+    /**
+     * Runs one Google check. A failed check returns null and changes nothing; only an expired sign-in
+     * (HTTP 401 / NOT_LOGGED_IN / invalid_grant) un-ticks the sign-in and stops the refresh.
+     */
+    private suspend fun <T : Any> check(step: SetupStepId, block: suspend () -> T): T? {
+        try {
+            return block()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: GoogleOpsException) {
+            val err = e.error
+            if (err.status == 401 || err.reason == "NOT_LOGGED_IN" || err.reason == "invalid_grant") {
+                expireSignIn(err)
+                throw SignInExpired()
+            }
+            return null
+        } catch (e: Exception) {
+            return null
+        }
+    }
+
+    private fun expireSignIn(err: GoogleApiError) {
+        unmark(SetupStepId.LOGIN)
+        val api = GoogleApiStatus(err.status, err.reason, err.service)
+        val error = ErrorCatalog.classify(err.message, SetupStepId.LOGIN, settings.projectId, api)
+        val current = _states.value[SetupStepId.LOGIN]
+        if (current !is StepState.Running && current !is StepState.WaitingRetry) setState(SetupStepId.LOGIN, StepState.Error(error))
     }
 
     override fun run(step: SetupStepId, input: StepInput) = launchStep(step, input, reinstall = false)

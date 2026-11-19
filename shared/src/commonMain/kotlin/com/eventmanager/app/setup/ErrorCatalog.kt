@@ -119,8 +119,10 @@ object ErrorCatalog {
             text(Regex("quota", I), Regex("HTTP Error: 429"))),
         Rule(SetupErrorId.PERMISSION_DENIED, RetryPolicy.NONE, null, iamPage,
             text(Regex("HTTP Error: 403"), Regex("permission denied", I), Regex("PERMISSION_DENIED"))),
-        Rule(SetupErrorId.NETWORK, RetryPolicy.WAIT_AND_RETRY, null, none,
-            text(Regex("ENOTFOUND|ECONNRESET|ETIMEDOUT|EAI_AGAIN|socket hang up", I))),
+        Rule(SetupErrorId.NETWORK, RetryPolicy.WAIT_AND_RETRY, null, none) { out, _, api ->
+            api?.reason == "NETWORK" ||
+                Regex("ENOTFOUND|ECONNRESET|ETIMEDOUT|EAI_AGAIN|socket hang up", I).containsMatchIn(out)
+        },
     )
 
     fun classify(output: String, step: SetupStepId, projectId: String = "", api: GoogleApiStatus? = null): SetupError {

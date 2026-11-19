@@ -7,11 +7,13 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -120,6 +122,16 @@ fun AutomaticTab(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        item(key = "check-all") {
+            val busy = info.checking || states.values.any { it is StepState.Running || it is StepState.WaitingRetry }
+            val scope = rememberCoroutineScope()
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { scope.launch { automation.refresh() } }, enabled = !busy) {
+                    Text(stringResource(Res.string.setup_check_all))
+                }
+                if (info.checking) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+            }
+        }
         items(requiredSteps, key = { it.name }) { step ->
             Card(step, states[step] ?: StepState.Todo, onShowManual, automation, info.repairs[step].orEmpty(), retryInputs, retryEnabled) {
                 StepControls(step, automation, pid, info.projects.map { it.id }, info.locations, info.account, info.region, info.siteUrl, info.toolsProgress, info.tools, progress.confirmed, info.loginChallenge, retryInputs, retryEnabled)

@@ -229,6 +229,10 @@ async function dispatch(argv, deps) {
   }
 }
 
+const NETWORK_FAILURE = /ENOTFOUND|ECONNRESET|ETIMEDOUT|EAI_AGAIN|ECONNREFUSED|fetch failed|socket hang up/i;
+// A lost connection is not a refused sign-in: the admin must not be asked to sign in again for it.
+const isNetworkFailure = (e) => NETWORK_FAILURE.test(`${(e && e.code) || ""} ${(e && e.message) || ""} ${(e && e.cause && (e.cause.code || e.cause.message)) || ""}`);
+const networkDown = (m) => new GoogleError(0, "NETWORK", scrub(String(m || "Network unavailable")), "");
 const notLoggedIn = (m) => new GoogleError(401, "NOT_LOGGED_IN", scrub(String(m || "Not signed in")), "");
 
 // Builds token/email providers from firebase-tools modules (requireAuth, apiv2, auth).
@@ -251,6 +255,7 @@ function buildAuth(mods) {
         return cache;
       } catch (e) {
         if (e instanceof GoogleError) throw e;
+        if (isNetworkFailure(e)) throw networkDown(e && e.message);
         throw notLoggedIn(e && e.message);
       }
     },

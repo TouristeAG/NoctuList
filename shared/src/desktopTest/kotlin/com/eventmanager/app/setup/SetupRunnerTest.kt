@@ -114,7 +114,17 @@ private class FakeOps : GoogleOps {
         order?.add(call)
     }
 
-    override suspend fun checkAuth() = "admin@example.org"
+    var authError: Exception? = null
+    var rules: Pair<Boolean, Boolean> = true to true
+    var hosting = true
+    var rulesError: Exception? = null
+    var hostingError: Exception? = null
+    var functionsError: Exception? = null
+    override suspend fun checkAuth(): String {
+        rec("checkAuth")
+        authError?.let { throw it }
+        return "admin@example.org"
+    }
     var number = "123"
     override suspend fun projectNumber(projectId: String) = number.also { rec("projectNumber") }
     override suspend fun missingPermissions(projectId: String, permissions: List<String>) =
@@ -134,10 +144,22 @@ private class FakeOps : GoogleOps {
         rec("linkBilling $account")
         billing = billing.copy(enabled = true)
     }
-    override suspend fun functions(projectId: String, codebase: String) = functions.also { rec("functions $codebase") }
+    override suspend fun functions(projectId: String, codebase: String): List<FunctionState> {
+        rec("functions $codebase")
+        functionsError?.let { throw it }
+        return functions
+    }
     override suspend fun storageBucket(projectId: String) = bucket.also { rec("storageBucket") }
-    override suspend fun rulesReleased(projectId: String) = true to true
-    override suspend fun hostingLive(projectId: String) = true
+    override suspend fun rulesReleased(projectId: String): Pair<Boolean, Boolean> {
+        rec("rulesReleased")
+        rulesError?.let { throw it }
+        return rules
+    }
+    override suspend fun hostingLive(projectId: String): Boolean {
+        rec("hostingLive")
+        hostingError?.let { throw it }
+        return hosting
+    }
     override suspend fun ensureMailServiceAccount(projectId: String) = MailServiceAccount("", "")
 }
 
@@ -705,6 +727,129 @@ class SetupRunnerTest {
         assertEquals("", r.info.value.account)
         assertEquals(StepState.Todo, r.states.value[SetupStepId.LOGIN])
         assertTrue(SetupStepId.LOGIN !in r.progress.value.done)
+    }
+
+    private fun activeFunctions(state: String = "ACTIVE") =
+        listOf("onSignupWritten", "onPortalRequestWritten", "onMailOutboxWritten").map { FunctionState(it, "europe-west6", state, emptyList()) }
+
+    private fun refreshRunner(vararg done: SetupStepId): SetupRunner {
+        settings.progressJson = SetupProgress(projectId = "demo-project", done = done.toSet()).encode()
+        return SetupRunner(scope, FakeTools(installed = true), { cli }, { ops }, workspace, settings, sleep = {})
+    }
+
+    @Test
+    fun refreshUnticksServerWhenAFunctionIsFailed(): Unit = runBlocking {
+        ops.functions = activeFunctions().let { it.dropLast(1) + it.last().copy(state = "FAILED") }
+        val r = refreshRunner(SetupStepId.SERVER)
+        r.refresh()
+        assertEquals(StepState.Todo, r.states.value[SetupStepId.SERVER])
+        assertTrue(SetupStepId.SERVER !in r.progress.value.done)
+    }
+
+    @Test
+    fun refreshTicksServerWhenAllFunctionsAreActive(): Unit = runBlocking {
+        ops.functions = activeFunctions()
+        val r = refreshRunner()
+        r.refresh()
+        assertEquals(StepState.Done, r.states.value[SetupStepId.SERVER])
+    }
+
+    @Test
+    fun refreshUnticksSiteWhenNoLiveVersion(): Unit = runBlocking {
+        ops.hosting = false
+        val r = refreshRunner(SetupStepId.SITE)
+        r.refresh()
+        assertEquals(StepState.Todo, r.states.value[SetupStepId.SITE])
+        assertTrue(SetupStepId.SITE !in r.progress.value.done)
+    }
+
+    @Test
+    fun refreshTicksRulesWhenReleased(): Unit = runBlocking {
+        val r = refreshRunner()
+        r.refresh()
+        assertEquals(StepState.Done, r.states.value[SetupStepId.RULES])
+        assertEquals(StepState.Done, r.states.value[SetupStepId.SITE])
+        assertEquals(StepState.Done, r.states.value[SetupStepId.PHOTOS])
+    }
+
+    @Test
+    fun refreshUnticksPhotosWithoutBucketOrStorageRules(): Unit = runBlocking {
+        ops.bucket = null
+        val r = refreshRunner(SetupStepId.PHOTOS)
+        r.refresh()
+        assertEquals(StepState.Todo, r.states.value[SetupStepId.PHOTOS])
+        ops.bucket = "demo-project.appspot.com"
+        ops.rules = true to false
+        refreshRunner(SetupStepId.PHOTOS).also { it.refresh(); assertEquals(StepState.Todo, it.states.value[SetupStepId.PHOTOS]) }
+    }
+
+    @Test
+    fun refreshKeepsTickWhenCheckErrors(): Unit = runBlocking {
+        val failure = GoogleOpsException(GoogleApiError(503, "UNAVAILABLE", "try later", ""))
+        ops.rulesError = failure
+        ops.hostingError = GoogleOpsException(GoogleApiError(0, "NETWORK", "fetch failed", ""))
+        ops.functionsError = failure
+        val r = refreshRunner(SetupStepId.RULES, SetupStepId.SITE, SetupStepId.SERVER, SetupStepId.PHOTOS)
+        r.refresh()
+        for (s in listOf(SetupStepId.RULES, SetupStepId.SITE, SetupStepId.SERVER, SetupStepId.PHOTOS)) {
+            assertEquals(StepState.Done, r.states.value[s], s.name)
+            assertTrue(s in r.progress.value.done)
+        }
+        assertEquals(StepState.Done, r.states.value[SetupStepId.LOGIN])
+    }
+
+    @Test
+    fun refreshShowsExpiredSignIn(): Unit = runBlocking {
+        ops.authError = GoogleOpsException(GoogleApiError(401, "NOT_LOGGED_IN", "Not signed in", ""))
+        val r = refreshRunner(SetupStepId.LOGIN, SetupStepId.SITE)
+        r.refresh()
+        val login = r.states.value[SetupStepId.LOGIN]
+        assertTrue(login is StepState.Error && login.error.id == SetupErrorId.LOGIN_EXPIRED)
+        assertTrue(SetupStepId.LOGIN !in r.progress.value.done)
+        assertEquals(listOf("checkAuth"), ops.calls)
+        assertEquals(StepState.Done, r.states.value[SetupStepId.SITE])
+    }
+
+    @Test
+    fun refreshKeepsSignInOnNetworkErrorFromCheckAuth(): Unit = runBlocking {
+        ops.authError = GoogleOpsException(GoogleApiError(0, "NETWORK", "fetch failed", ""))
+        val r = refreshRunner(SetupStepId.LOGIN, SetupStepId.SITE)
+        r.refresh()
+        assertEquals(StepState.Done, r.states.value[SetupStepId.LOGIN])
+        assertEquals(StepState.Done, r.states.value[SetupStepId.SITE])
+    }
+
+    @Test
+    fun refreshDoesNotCallGoogleWithoutAProject(): Unit = runBlocking {
+        settings.projectId = ""
+        val r = refreshRunner(SetupStepId.SITE)
+        settings.projectId = ""
+        r.refresh()
+        assertTrue(ops.calls.none { it != "checkAuth" })
+    }
+
+    @Test
+    fun refreshSkipsProjectChecksWithoutDatabase(): Unit = runBlocking {
+        cli.databases = emptyList()
+        val r = refreshRunner(SetupStepId.RULES)
+        r.refresh()
+        assertTrue("rulesReleased" !in ops.calls)
+    }
+
+    @Test
+    fun refreshResetsCheckingFlag(): Unit = runBlocking {
+        val r = refreshRunner()
+        assertEquals(false, r.info.value.checking)
+        ops.functionsError = IllegalStateException("boom")
+        runCatching { r.refresh() }
+        assertEquals(false, r.info.value.checking)
+    }
+
+    @Test
+    fun refreshChecksAuthFirst(): Unit = runBlocking {
+        val r = refreshRunner()
+        r.refresh()
+        assertEquals("checkAuth", ops.calls.first())
     }
 
     private fun serverInput() = StepInput(gmailUser = "info@example.org", appPassword = "x".toCharArray())
