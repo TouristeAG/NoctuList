@@ -94,9 +94,9 @@ class SetupRunner(
         val c = useTools(paths)
         val account = runCatching { c.loginList().firstOrNull() }.getOrNull() ?: return unmark(SetupStepId.LOGIN)
         _info.update { it.copy(account = account) }
-        markDone(SetupStepId.LOGIN)
-        // The CLI lists an account whose token Google may have revoked: ask Google itself, before any other check.
+        // The CLI lists an account whose token Google may have revoked: ask Google itself before ticking it.
         val signedIn = check(SetupStepId.LOGIN) { requireOps(SetupStepId.LOGIN).checkAuth() } != null
+        if (signedIn) tick(SetupStepId.LOGIN, true)
         val projects = runCatching { c.projectsList() }.getOrDefault(emptyList())
         _info.update { it.copy(projects = projects) }
         val pid = settings.projectId
@@ -108,6 +108,9 @@ class SetupRunner(
             _info.update { it.copy(region = RegionMapper.functionsRegion(db.locationId)) }
         } else {
             unmark(SetupStepId.DATABASE)
+            // Rules and photos cannot be in place without Firestore.
+            unmark(SetupStepId.RULES)
+            unmark(SetupStepId.PHOTOS)
             val locations = runCatching { c.firestoreLocations(pid) }.getOrDefault(emptyList())
             _info.update { it.copy(locations = RegionMapper.orderLocations(locations)) }
         }
@@ -133,7 +136,12 @@ class SetupRunner(
     private fun serverReady(functions: List<FunctionState>): Boolean =
         SERVER_FUNCTIONS.all { name -> functions.any { it.name == name && it.state == "ACTIVE" } }
 
-    private fun tick(step: SetupStepId, done: Boolean) = if (done) markDone(step) else unmark(step)
+    /** A step that is running owns its own state: a check must not flip it. */
+    private fun tick(step: SetupStepId, done: Boolean) {
+        val state = _states.value[step]
+        if (state is StepState.Running || state is StepState.WaitingRetry) return
+        if (done) markDone(step) else unmark(step)
+    }
 
     /**
      * Runs one Google check. A failed check returns null and changes nothing; only an expired sign-in

@@ -840,9 +840,30 @@ class SetupRunnerTest {
     fun refreshResetsCheckingFlag(): Unit = runBlocking {
         val r = refreshRunner()
         assertEquals(false, r.info.value.checking)
-        ops.functionsError = IllegalStateException("boom")
+        ops.authError = kotlinx.coroutines.CancellationException("cancelled")
         runCatching { r.refresh() }
         assertEquals(false, r.info.value.checking)
+    }
+
+    @Test
+    fun refreshDoesNotTickARunningStep(): Unit = runBlocking {
+        cli.blockDeploy = CompletableDeferred()
+        val r = refreshRunner(SetupStepId.TOOLS, SetupStepId.LOGIN)
+        r.refresh()
+        r.run(SetupStepId.RULES)
+        awaitStateOf(r, SetupStepId.RULES) { it is StepState.Running }
+        r.refresh()
+        assertTrue(r.states.value[SetupStepId.RULES] is StepState.Running)
+        cli.blockDeploy!!.complete(Unit)
+    }
+
+    @Test
+    fun refreshUnticksRulesAndPhotosWithoutDatabase(): Unit = runBlocking {
+        cli.databases = emptyList()
+        val r = refreshRunner(SetupStepId.RULES, SetupStepId.PHOTOS)
+        r.refresh()
+        assertEquals(StepState.Todo, r.states.value[SetupStepId.RULES])
+        assertEquals(StepState.Todo, r.states.value[SetupStepId.PHOTOS])
     }
 
     @Test
