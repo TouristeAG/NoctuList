@@ -90,7 +90,7 @@ class SetupRunner(
             is ToolsStatus.Outdated -> return noTools(ToolsState.OUTDATED)
         }
         _info.update { it.copy(tools = ToolsState.READY) }
-        markDone(SetupStepId.TOOLS)
+        tick(SetupStepId.TOOLS, true)
         val c = useTools(paths)
         val account = runCatching { c.loginList().firstOrNull() }.getOrNull() ?: return unmark(SetupStepId.LOGIN)
         _info.update { it.copy(account = account) }
@@ -101,20 +101,28 @@ class SetupRunner(
         _info.update { it.copy(projects = projects) }
         val pid = settings.projectId
         if (pid.isBlank() || projects.none { it.id == pid }) return unmark(SetupStepId.PROJECT)
-        markDone(SetupStepId.PROJECT)
-        val db = runCatching { c.databases(pid) }.getOrDefault(emptyList()).firstOrNull { it.name == DEFAULT_DB }
+        tick(SetupStepId.PROJECT, true)
+        // A failed call says nothing about the database: ticks stay and the checks that need it are skipped.
+        val listed = try {
+            c.databases(pid)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        }
+        val db = listed?.firstOrNull { it.name == DEFAULT_DB }
         if (db != null) {
-            markDone(SetupStepId.DATABASE)
+            tick(SetupStepId.DATABASE, true)
             _info.update { it.copy(region = RegionMapper.functionsRegion(db.locationId)) }
-        } else {
-            unmark(SetupStepId.DATABASE)
+        } else if (listed != null) {
+            tick(SetupStepId.DATABASE, false)
             // Rules and photos cannot be in place without Firestore.
-            unmark(SetupStepId.RULES)
-            unmark(SetupStepId.PHOTOS)
+            tick(SetupStepId.RULES, false)
+            tick(SetupStepId.PHOTOS, false)
             val locations = runCatching { c.firestoreLocations(pid) }.getOrDefault(emptyList())
             _info.update { it.copy(locations = RegionMapper.orderLocations(locations)) }
         }
-        if (settings.hasWebClient()) markDone(SetupStepId.CONNECT) else unmark(SetupStepId.CONNECT)
+        tick(SetupStepId.CONNECT, settings.hasWebClient())
         // Without a reachable Google account the checks below cannot say anything: ticks stay as they are.
         if (!signedIn) return
         if (db != null) {

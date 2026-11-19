@@ -59,7 +59,12 @@ private class FakeCli : SetupCli {
     var projects = listOf(ProjectInfo("demo-project", "Demo"), ProjectInfo("other-project", "Other"))
     override suspend fun projectsList() = projects
     override suspend fun projectsCreate(id: String, displayName: String, onLine: (String) -> Unit) { calls += "create $id" }
-    override suspend fun databases(projectId: String) = databases.also { calls += "databases" }
+    var databasesError: Exception? = null
+    override suspend fun databases(projectId: String): List<DatabaseInfo> {
+        calls += "databases"
+        databasesError?.let { throw it }
+        return databases
+    }
     override suspend fun firestoreLocations(projectId: String) = listOf("nam5", "eur3", "europe-west6")
     override suspend fun createDatabase(projectId: String, location: String, allowed: List<String>, onLine: (String) -> Unit) { calls += "createDatabase $location" }
     override suspend fun webApps(projectId: String) = apps
@@ -841,8 +846,33 @@ class SetupRunnerTest {
         val r = refreshRunner()
         assertEquals(false, r.info.value.checking)
         ops.authError = kotlinx.coroutines.CancellationException("cancelled")
-        runCatching { r.refresh() }
+        val failure = runCatching { r.refresh() }.exceptionOrNull()
+        assertTrue(failure is kotlinx.coroutines.CancellationException)
         assertEquals(false, r.info.value.checking)
+    }
+
+    @Test
+    fun refreshKeepsTicksWhenDatabaseListFails(): Unit = runBlocking {
+        cli.databasesError = java.io.IOException("network down")
+        val r = refreshRunner(SetupStepId.DATABASE, SetupStepId.RULES, SetupStepId.PHOTOS)
+        r.refresh()
+        for (s in listOf(SetupStepId.DATABASE, SetupStepId.RULES, SetupStepId.PHOTOS)) {
+            assertEquals(StepState.Done, r.states.value[s], s.name)
+            assertTrue(s in r.progress.value.done)
+        }
+        assertTrue("rulesReleased" !in ops.calls)
+    }
+
+    @Test
+    fun refreshDoesNotTickARunningDatabaseStep(): Unit = runBlocking {
+        ops.gate = CompletableDeferred()
+        val r = refreshRunner(SetupStepId.TOOLS, SetupStepId.LOGIN, SetupStepId.PROJECT)
+        r.refresh()
+        r.run(SetupStepId.DATABASE, StepInput(location = "eur3"))
+        awaitStateOf(r, SetupStepId.DATABASE) { it is StepState.Running }
+        r.refresh()
+        assertTrue(r.states.value[SetupStepId.DATABASE] is StepState.Running)
+        ops.gate!!.complete(Unit)
     }
 
     @Test
