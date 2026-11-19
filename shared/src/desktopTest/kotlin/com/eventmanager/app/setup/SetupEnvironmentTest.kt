@@ -19,6 +19,7 @@ class SetupEnvironmentTest {
         assertEquals("0", child["FORCE_COLOR"])
         assertTrue(child.getValue("PATH").startsWith("/t/bin"))
         assertTrue(child.getValue("PATH").endsWith("/usr/bin"))
+        assertTrue(e.logDir.path.endsWith("logs" + File.separator + "setup"))
         assertTrue(e.workDir.isDirectory && e.configDir.isDirectory && e.logDir.isDirectory)
     }
 

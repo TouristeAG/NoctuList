@@ -107,6 +107,22 @@ class OutputRedactorTest {
         assertEquals("value is •••• ok", r.redact("value is $secret ok"))
         assertEquals("nothing here", r.redact("nothing here"))
     }
+
+    @OptIn(kotlin.io.encoding.ExperimentalEncodingApi::class)
+    @Test
+    fun hidesBase64FormsOfSecrets() {
+        val secret = "abcd efgh?>>"
+        val r = OutputRedactor { listOf(secret) }
+        val b = secret.encodeToByteArray()
+        for (enc in listOf(
+            kotlin.io.encoding.Base64.Default.encode(b),
+            kotlin.io.encoding.Base64.Default.encode(b).trimEnd('='),
+            kotlin.io.encoding.Base64.UrlSafe.encode(b),
+            kotlin.io.encoding.Base64.UrlSafe.encode(b).trimEnd('='),
+        )) {
+            assertEquals("data: ••••", r.redact("data: $enc"))
+        }
+    }
 }
 
 class SetupProgressTest {

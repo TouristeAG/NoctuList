@@ -168,7 +168,7 @@ class FirebaseCli(
     private fun env(): Map<String, String> = env.childEnv(tools.binDir, System.getenv("PATH").orEmpty())
 
     private fun limitsFor(args: List<String>): CommandLimits = when (args.firstOrNull()) {
-        "deploy" -> CommandLimits.DEPLOY
+        "deploy", "projects:create", "apps:create", "firestore:databases:create", "hosting:sites:create" -> CommandLimits.DEPLOY
         "login" -> CommandLimits.LOGIN
         else -> CommandLimits.READ
     }
@@ -184,11 +184,17 @@ class FirebaseCli(
         val lines = StringBuilder()
         val log = logs.sink(step)
         val cwd = workDir ?: env.workDir
-        val code = runner.run(tools.firebaseCommand() + args, cwd, env(), stdin, limitsFor(args)) {
-            log(it)
-            val safe = redactor.redact(it)
-            lines.appendLine(safe)
-            if (show) onLine(safe)
+        val code = try {
+            runner.run(tools.firebaseCommand() + args, cwd, env(), stdin, limitsFor(args)) {
+                log(it)
+                val safe = redactor.redact(it)
+                lines.appendLine(safe)
+                if (show) onLine(safe)
+            }
+        } catch (e: Throwable) {
+            // Timeout or cancellation: the debug log is the best clue to what happened.
+            keepDebugLog(cwd, true, log)
+            throw e
         }
         keepDebugLog(cwd, code != 0, log)
         val text = lines.toString()

@@ -78,6 +78,44 @@ class FirebaseCliTest {
     }
 
     @Test
+    fun base64SecretInDebugLogIsRedacted() = runBlocking {
+        val secret = "p@ss word"
+        val b64 = java.util.Base64.getEncoder().encodeToString(secret.encodeToByteArray())
+        val runner = FakeProcessRunner(onRun = { dir ->
+            dir!!.resolve("firebase-debug.log").writeText("body: $b64 end\n")
+        }) { 1 to "boom" }
+        assertFailsWith<CliException> { cli(runner) { listOf(secret) }.createHostingSite(pid) {} }
+        val log = logs.latest(SetupStepId.SITE)!!.readText()
+        assertTrue("body:" in log)
+        assertFalse(b64 in log)
+    }
+
+    @Test
+    fun timeoutKeepsDebugLogAndRethrows() = runBlocking {
+        val runner = object : ProcessRunner {
+            override suspend fun run(
+                cmd: List<String>, workDir: File?, env: Map<String, String>, stdin: ByteArray?,
+                limits: CommandLimits, onLine: (String) -> Unit,
+            ): Int {
+                workDir!!.resolve("firebase-debug.log").writeText("stuck at step 3\n")
+                throw CommandTimeoutException(idle = true)
+            }
+        }
+        assertFailsWith<CommandTimeoutException> { cli(FakeProcessRunner()).let { FirebaseCli(runner, tools, OutputRedactor { emptyList() }, env, logs).createHostingSite(pid) {} } }
+        assertTrue("stuck at step 3" in logs.latest(SetupStepId.SITE)!!.readText())
+        assertFalse(env.workDir.resolve("firebase-debug.log").exists())
+    }
+
+    @Test
+    fun createAndLoginCommandsGetLongEnoughLimits() = runBlocking {
+        val runner = FakeProcessRunner { 0 to "" }
+        val c = cli(runner)
+        c.projectsCreate("my-project-1", "My Project") {}
+        c.loginFinish("4/0AVMBsJ_x-y.z~Q12345")
+        assertEquals(listOf(CommandLimits.DEPLOY, CommandLimits.LOGIN), runner.limitsSeen)
+    }
+
+    @Test
     fun failedCommandCopiesDebugLogIntoStepLog() = runBlocking {
         val runner = FakeProcessRunner(onRun = { dir ->
             dir!!.resolve("firebase-debug.log").writeText("debug line with secret-value\n")

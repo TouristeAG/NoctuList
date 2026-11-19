@@ -13,7 +13,7 @@ class SetupEnvironment(appData: File, private val proxy: ProxyInfo?) {
     private val root = appData.resolve("setup")
     val workDir: File = root.resolve("work").also { it.mkdirs() }
     val configDir: File = root.resolve("config").also { it.mkdirs() }
-    val logDir: File = root.resolve("logs").also { it.mkdirs() }
+    val logDir: File = appData.resolve("logs").resolve("setup").also { it.mkdirs() }
 
     fun childEnv(binDir: File, basePath: String): Map<String, String> {
         val env = mutableMapOf(
