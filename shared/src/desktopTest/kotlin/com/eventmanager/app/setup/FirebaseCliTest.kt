@@ -67,6 +67,32 @@ class FirebaseCliTest {
     }
 
     @Test
+    fun loginListTokensNeverReachTheLogFile() = runBlocking {
+        val tokens = listOf("1//0gRefreshTok-en_1", "ya29.a0AccessTok-en", "eyJhbGciOi.eyJzdWIiOi.c2lnbmF0dXJl")
+        val out = """
+            {
+              "status": "success",
+              "result": [
+                {
+                  "user": { "email": "admin@example.org" },
+                  "tokens": {
+                    "refresh_token": "${tokens[0]}",
+                    "access_token": "${tokens[1]}",
+                    "id_token": "${tokens[2]}"
+                  }
+                }
+              ]
+            }
+        """.trimIndent()
+        val runner = FakeProcessRunner { 0 to out }
+        assertEquals(listOf("admin@example.org"), cli(runner).loginList())
+        val log = logs.latest(SetupStepId.LOGIN)!!.readText()
+        for (t in tokens) assertFalse(t in log, log)
+        assertFalse("refresh_token" in log, log)
+        assertTrue("[output hidden: ${out.lines().size} lines]" in log, log)
+    }
+
+    @Test
     fun firebaseCommandsRunInWorkDirByDefault() = runBlocking {
         val runner = FakeProcessRunner { 0 to emptyList }
         cli(runner).projectsList()

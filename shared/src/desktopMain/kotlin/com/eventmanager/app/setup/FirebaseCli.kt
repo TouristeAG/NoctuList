@@ -204,19 +204,25 @@ class FirebaseCli(
         val lines = StringBuilder()
         val log = logs.sink(step)
         val cwd = workDir ?: env.workDir
+        var count = 0
+        // Hidden output (login:list holds the sign-in tokens) never reaches the log file, only its size.
+        val hidden = { log("[output hidden: $count lines]") }
         val code = try {
             runner.run(tools.firebaseCommand() + args, cwd, env(), stdin, limitsFor(args)) {
-                log(it)
+                count++
+                if (show) log(it)
                 val safe = redactor.redact(it)
                 lines.appendLine(safe)
                 if (show) onLine(safe)
             }
         } catch (e: Throwable) {
+            if (!show) hidden()
             // Timeout or cancellation: the debug log is the best clue to what happened.
-            keepDebugLog(cwd, true, log)
+            keepDebugLog(cwd, show, log)
             throw e
         }
-        keepDebugLog(cwd, code != 0, log)
+        if (!show) hidden()
+        keepDebugLog(cwd, show && code != 0, log)
         val text = lines.toString()
         if (code != 0) {
             throw CliException(ErrorCatalog.classify(if (show) text else "exit $code", step, projectId))
@@ -224,11 +230,14 @@ class FirebaseCli(
         return text
     }
 
-    /** The CLI's own debug log holds the real server replies: on failure it goes to our log file only, never to the screen. */
-    private fun keepDebugLog(dir: File, failed: Boolean, log: (String) -> Unit) {
+    /**
+     * The CLI's own debug log holds the real server replies: on failure it goes to our log file only, never to the
+     * screen. [keep] false deletes it unread (a hidden command's log may hold what the output held).
+     */
+    private fun keepDebugLog(dir: File, keep: Boolean, log: (String) -> Unit) {
         val file = dir.resolve("firebase-debug.log")
         if (!file.isFile) return
-        if (failed) runCatching { file.readLines(Charsets.UTF_8).forEach(log) }
+        if (keep) runCatching { file.readLines(Charsets.UTF_8).forEach(log) }
         file.delete()
     }
 

@@ -72,6 +72,18 @@ class OutputRedactorTest {
             assertEquals("data: ••••", r.redact("data: $enc"))
         }
     }
+
+    @Test
+    fun hidesGoogleTokensWithoutBeingTold() {
+        val r = OutputRedactor { emptyList() }
+        val line = "access ya29.a0AfB_x-y.z refresh 1//0gAbC-d_e.f id eyJhbGciOi.eyJzdWIiOi.c2ln-bmF_0 done"
+        val out = r.redact(line)
+        assertFalse("ya29." in out, out)
+        assertFalse("1//" in out, out)
+        assertFalse("eyJ" in out, out)
+        assertEquals("access •••• refresh •••• id •••• done", out)
+        assertEquals("see https://example.org/a and 2//x", r.redact("see https://example.org/a and 2//x"))
+    }
 }
 
 class SetupProgressTest {

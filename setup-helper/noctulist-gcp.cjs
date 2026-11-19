@@ -62,7 +62,13 @@ async function run(argv, deps) {
     return JSON.stringify({ ok: false, error: info });
   }
 }
-function scrub(s) { return s.replace(/ya29\.[\w.-]+/g, "[redacted]").replace(/Bearer\s+\S+/gi, "Bearer [redacted]"); }
+function scrub(s) {
+  return s
+    .replace(/ya29\.[\w.-]+/g, "[redacted]")
+    .replace(/1\/\/[\w.-]+/g, "[redacted]")
+    .replace(/eyJ[\w-]+\.[\w-]+\.[\w-]+/g, "[redacted]")
+    .replace(/Bearer\s+\S+/gi, "Bearer [redacted]");
+}
 
 async function dispatch(argv, deps) {
   const command = argv[1];
@@ -70,7 +76,7 @@ async function dispatch(argv, deps) {
   const commands = {
     "check-auth": null, "project-number": 1, "test-permissions": 1, "enable-apis": 1, "ensure-role": 1,
     "billing-status": 1, "link-billing": 1, "functions-status": 1, "storage-status": 1,
-    "rules-status": 1, "hosting-status": 1, "ensure-mail-sa": 1,
+    "rules-status": 1, "hosting-status": 1, "ensure-mail-sa": 1, "get-mail-sa": 1,
   };
   if (!Object.hasOwn(commands, command)) throw new GoogleError(0, "UNKNOWN_COMMAND", "Unknown command", "");
   if (command === "check-auth") {
@@ -208,6 +214,14 @@ async function dispatch(argv, deps) {
       const ch = await call("GET", `https://firebasehosting.googleapis.com/v1beta1/${site.name}/channels/live`);
       if (ch.status !== 404 && (ch.status < 200 || ch.status >= 300)) throw fromResponse(ch);
       return { live: ch.status === 200 && !!(ch.body && ch.body.release), url: site.defaultUrl || "" };
+    }
+    case "get-mail-sa": {
+      // Read only: a refresh must not create the account or change any permission.
+      const email = `${MAIL_ACCOUNT_ID}@${id}.iam.gserviceaccount.com`;
+      const got = await call("GET", `https://iam.googleapis.com/v1/${P}/serviceAccounts/${email}`);
+      if (got.status === 404) return null;
+      if (got.status < 200 || got.status >= 300) throw fromResponse(got);
+      return { email, clientId: (got.body || {}).oauth2ClientId || "" };
     }
     case "ensure-mail-sa": {
       const number = await projectNumber();

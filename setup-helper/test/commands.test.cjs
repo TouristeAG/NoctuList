@@ -239,3 +239,33 @@ test("serviceAccountCreate409RereadsAccount", async () => {
   const out = JSON.parse(await run(["lib", "ensure-mail-sa", "--project", P], deps));
   assert.deepStrictEqual(out.data, { email, clientId: "cid" });
 });
+
+test("scrubHidesRefreshTokensAndJwts", async () => {
+  const leak = "bad refresh 1//0gAbC-d_e.f id eyJhbGciOi.eyJzdWIiOi.c2lnbmF0dXJl access ya29.a0Xyz end";
+  const a = buildAuth({
+    auth: { getGlobalDefaultAccount: () => ({ user: { email: "a@b.c" }, tokens: {} }) },
+    requireAuth: async () => { throw new Error(leak); }, apiv2: {},
+  });
+  const out = await run(["lib", "project-number", "--project", P], { ...make(() => ok({})).deps, token: a.token });
+  assert.ok(!out.includes("1//"), out);
+  assert.ok(!out.includes("eyJ"), out);
+  assert.ok(!out.includes("ya29."), out);
+  assert.ok(out.includes("bad refresh"), out);
+  const internal = await run(["lib", "check-auth"], { ...make(() => ok({})).deps, token: async () => { throw new Error(leak); } });
+  assert.ok(!internal.includes("1//") && !internal.includes("eyJ") && !internal.includes("ya29."), internal);
+});
+
+test("getMailSaReadsWithoutWriting", async () => {
+  const email = `noctulist-mail@${P}.iam.gserviceaccount.com`;
+  const found = make(() => ok({ email, oauth2ClientId: "cid" }));
+  const out = JSON.parse(await run(["lib", "get-mail-sa", "--project", P], found.deps));
+  assert.deepStrictEqual(out, { ok: true, data: { email, clientId: "cid" } });
+  assert.ok(found.calls.every((c) => c.method === "GET"));
+  assert.strictEqual(found.calls.length, 1);
+  const missing = make(() => ({ status: 404, body: { error: { code: 404, status: "NOT_FOUND", message: "n" } } }));
+  const none = JSON.parse(await run(["lib", "get-mail-sa", "--project", P], missing.deps));
+  assert.deepStrictEqual(none, { ok: true, data: null });
+  assert.ok(missing.calls.every((c) => c.method === "GET"));
+  const refused = make(() => ({ status: 403, body: { error: { code: 403, status: "PERMISSION_DENIED", message: "no" } } }));
+  assert.strictEqual(JSON.parse(await run(["lib", "get-mail-sa", "--project", P], refused.deps)).ok, false);
+});

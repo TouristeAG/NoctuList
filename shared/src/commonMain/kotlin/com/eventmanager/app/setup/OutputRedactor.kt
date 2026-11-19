@@ -5,12 +5,13 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 
 /**
  * Removes secrets (such as the Gmail app password) from command output shown on screen or written
- * to logs. Also hides their base64 and base64url forms, which tools put into request bodies.
+ * to logs. Also hides their base64 and base64url forms, which tools put into request bodies, and
+ * Google tokens (access, refresh and ID tokens) wherever they appear, even when nobody listed them.
  */
 @OptIn(ExperimentalEncodingApi::class)
 class OutputRedactor(private val secrets: () -> List<String>) {
     fun redact(line: String): String =
-        variants().fold(line) { acc, s -> acc.replace(s, MASK) }
+        TOKENS.fold(variants().fold(line) { acc, s -> acc.replace(s, MASK) }) { acc, re -> acc.replace(re, MASK) }
 
     private fun variants(): List<String> =
         secrets().filter { it.isNotBlank() }.flatMap { secret ->
@@ -22,6 +23,11 @@ class OutputRedactor(private val secrets: () -> List<String>) {
 
     private companion object {
         const val MASK = "••••"
+        val TOKENS = listOf(
+            Regex("""ya29\.[\w.-]+"""), // access token
+            Regex("""1//[\w.-]+"""), // refresh token
+            Regex("""eyJ[\w-]+\.[\w-]+\.[\w-]+"""), // ID token (JWT)
+        )
     }
 }
 
