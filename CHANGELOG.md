@@ -4,6 +4,34 @@ All notable changes to NoctuList are documented here. Version numbers follow [Se
 
 ---
 
+## 3.1.0 — 2026-11-19
+
+Mandatory update: devices on 3.0.0 or older must update before they can be used.
+
+### Features
+
+- **Google accounts filled in automatically.** Settings, Firebase, Volunteer portal: a rule such as `{prénom}.{nom}@asso.ch` (also `{first}`, `{last}`, `{p}`, `{n}`) builds the Google Workspace address of each newly opened portal access, from the admin's button, the add dialog or a registration link. Accents and apostrophes are removed and spaces become `-`. The address is linked only when the volunteer has none, must be on a verified Workspace domain (also in "any Google account" mode, so a guessed address never belongs to a stranger), and is left empty when another volunteer already uses it.
+- **Portal access for every new volunteer.** A team setting opens portal access for each volunteer added in the app; the switch in "Add volunteer" is then hidden.
+- **Site mail from a Google Workspace address** without a stored app password. The sending address and a test mail are chosen at the end of the server step.
+- **Firebase setup assistant hardened.** Every step is checked against the project when the page opens; errors come from a catalogue with their cause, what the app tried and what to do; the tools can be reinstalled from the app; the admin can sign out of Firebase or switch account; only free APIs are enabled before billing is known; a manual check covers Spark, proxies, Defender and tokens.
+- **Single NoctuList instance.** A second launch brings the open window forward.
+
+### Fixes
+
+- **Shift credits** are reconciled per volunteer after every shift add, edit or delete, and in a background pass every 15 minutes. An edited shift no longer earns a second credit, shifts deleted on another device are reversed through sync (with guards against half-loaded job lists), and duplicate Galaxie bonuses are removed. On Firebase a reversal never takes the balance below the purchase buffer; the rest is reversed later.
+- **Volunteer portal:** a request nobody took for 5 minutes can be sent again.
+- **Server account roles:** the default compute account also gets `roles/datastore.user` and `roles/storage.objectAdmin`; without them every portal request failed with PERMISSION_DENIED on new projects.
+- Sign-in tokens and encoded secrets are kept out of the setup logs.
+
+### Upgrade notes
+
+- **Version code:** 45 (`3.1.0`). Minimum supported code is now **45**: older versions must update.
+- **Firestore and Storage rules:** unchanged (v16).
+- **Hosting and functions:** export the form site again and run `firebase deploy --only hosting,functions` (new portal script and Workspace mail sending).
+- **Database:** no migration.
+
+---
+
 ## 3.0.0 — 2026-11-16
 
 New, optional: a personal web space for volunteers, and a refreshed look for every public page.
