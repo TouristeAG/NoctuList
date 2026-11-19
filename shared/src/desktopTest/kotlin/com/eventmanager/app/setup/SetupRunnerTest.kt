@@ -51,9 +51,15 @@ private class FakeCli : SetupCli {
     private fun fail(text: String, step: SetupStepId): Nothing = throw CliException(ErrorCatalog.classify(text, step))
 
     var accounts = listOf("admin@example.org")
+    var accountsError: Exception? = null
+    var projectsError: Exception? = null
+    var databasesGate: CompletableDeferred<Unit>? = null
     override suspend fun loginStart(): LoginChallenge { calls += "loginStart"; return LoginChallenge("AB12C", "https://auth.firebase.tools/login?x") }
     override suspend fun loginFinish(code: String) { calls += "loginFinish $code"; accounts = listOf("admin@example.org") }
-    override suspend fun loginList() = accounts
+    override suspend fun loginList(): List<String> {
+        accountsError?.let { throw it }
+        return accounts
+    }
     var logoutFails = false
     override suspend fun logout() {
         calls += "logout"
@@ -61,11 +67,15 @@ private class FakeCli : SetupCli {
         accounts = emptyList()
     }
     var projects = listOf(ProjectInfo("demo-project", "Demo"), ProjectInfo("other-project", "Other"))
-    override suspend fun projectsList() = projects
+    override suspend fun projectsList(): List<ProjectInfo> {
+        projectsError?.let { throw it }
+        return projects
+    }
     override suspend fun projectsCreate(id: String, displayName: String, onLine: (String) -> Unit) { calls += "create $id" }
     var databasesError: Exception? = null
     override suspend fun databases(projectId: String): List<DatabaseInfo> {
         calls += "databases"
+        databasesGate?.await()
         databasesError?.let { throw it }
         return databases
     }
@@ -104,7 +114,8 @@ private class FakeCli : SetupCli {
 
 /** Answers like a healthy Blaze project unless a test says otherwise. */
 private class FakeOps : GoogleOps {
-    override var step: SetupStepId = SetupStepId.TOOLS
+    var step: SetupStepId = SetupStepId.TOOLS
+    override fun forStep(step: SetupStepId): GoogleOps = also { it.step = step }
     val calls = mutableListOf<String>()
     val steps = mutableListOf<SetupStepId>()
     var order: MutableList<String>? = null
@@ -175,6 +186,11 @@ private class FakeOps : GoogleOps {
         rec("ensureMailServiceAccount")
         return MailServiceAccount("noctulist-mail@$projectId.iam.gserviceaccount.com", "1234567890")
     }
+    var mailAccountExists = true
+    override suspend fun mailServiceAccount(projectId: String): MailServiceAccount? {
+        rec("mailServiceAccount")
+        return if (mailAccountExists) MailServiceAccount("noctulist-mail@$projectId.iam.gserviceaccount.com", "1234567890") else null
+    }
 }
 
 /** Answers like a site whose server sent the test mail unless a test says otherwise. */
@@ -194,7 +210,8 @@ private class FakeTools(var status: ToolsStatus = ToolsStatus.Missing, val calls
     var failWith: Exception? = null
     constructor(installed: Boolean) : this(if (installed) ToolsStatus.Ready(FAKE_PATHS) else ToolsStatus.Missing)
 
-    override suspend fun status(): ToolsStatus { statusCalls++; return status }
+    var statusGate: CompletableDeferred<Unit>? = null
+    override suspend fun status(): ToolsStatus { statusCalls++; statusGate?.await(); return status }
     override suspend fun install(onProgress: (Float, String) -> Unit): ToolPaths {
         gate?.await()
         failWith?.let { throw it }
@@ -957,6 +974,102 @@ class SetupRunnerTest {
     }
 
     @Test
+    fun refreshIgnoresAnswersAboutAProjectSwitchedMeanwhile(): Unit = runBlocking {
+        cli.databasesGate = CompletableDeferred()
+        val r = refreshRunner(SetupStepId.TOOLS, SetupStepId.LOGIN, SetupStepId.PROJECT)
+        val refreshing = launch(Dispatchers.Default) { r.refresh() }
+        withTimeout(5_000) { while ("databases" !in cli.calls) kotlinx.coroutines.delay(10) }
+        r.run(SetupStepId.PROJECT, StepInput(projectId = "other-project"))
+        awaitStateOf(r, SetupStepId.PROJECT) { it == StepState.Done }
+        cli.databasesGate!!.complete(Unit)
+        refreshing.join()
+        // The database listed belongs to demo-project: it must not tick other-project's step.
+        assertEquals(StepState.Todo, r.states.value[SetupStepId.DATABASE])
+        assertTrue(SetupStepId.DATABASE !in r.progress.value.done)
+        assertTrue(ops.calls.none { it == "rulesReleased" || it == "hostingLive" }, ops.calls.toString())
+    }
+
+    @Test
+    fun reinstallWaitsForARunningRefresh(): Unit = runBlocking {
+        val tools = FakeTools(ToolsStatus.Ready(FakeTools.FAKE_PATHS)).apply { statusGate = CompletableDeferred() }
+        val r = SetupRunner(scope, tools, { cli }, { ops }, workspace, settings, sleep = {})
+        val refreshing = launch(Dispatchers.Default) { r.refresh() }
+        withTimeout(5_000) { while (tools.statusCalls == 0) kotlinx.coroutines.delay(10) }
+        r.reinstallTools()
+        kotlinx.coroutines.delay(300)
+        assertTrue("remove" !in tools.calls, "the tools were deleted while the refresh was probing them")
+        tools.statusGate!!.complete(Unit)
+        refreshing.join()
+        withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] == StepState.Done } }
+        assertEquals(listOf("remove", "install"), tools.calls)
+    }
+
+    @Test
+    fun failedProjectListKeepsTheProjectTick(): Unit = runBlocking {
+        val r = refreshRunner(SetupStepId.PROJECT, SetupStepId.DATABASE)
+        r.refresh()
+        val listed = r.info.value.projects
+        assertTrue(listed.isNotEmpty())
+        cli.projectsError = java.io.IOException("network down")
+        cli.calls.clear()
+        r.refresh()
+        assertEquals(StepState.Done, r.states.value[SetupStepId.PROJECT])
+        assertTrue(SetupStepId.PROJECT in r.progress.value.done)
+        assertEquals(listed, r.info.value.projects)
+        assertTrue("databases" !in cli.calls, cli.calls.toString())
+    }
+
+    @Test
+    fun cancelledListsCancelTheRefresh(): Unit = runBlocking {
+        for (fail in listOf<(FakeCli) -> Unit>({ it.projectsError = kotlinx.coroutines.CancellationException("stop") }, { it.accountsError = kotlinx.coroutines.CancellationException("stop") })) {
+            cli.projectsError = null
+            cli.accountsError = null
+            fail(cli)
+            val r = refreshRunner(SetupStepId.LOGIN, SetupStepId.PROJECT)
+            val failure = runCatching { r.refresh() }.exceptionOrNull()
+            assertTrue(failure is kotlinx.coroutines.CancellationException, failure.toString())
+            assertEquals(StepState.Done, r.states.value[SetupStepId.PROJECT])
+            assertEquals(StepState.Done, r.states.value[SetupStepId.LOGIN])
+        }
+    }
+
+    @Test
+    fun aSecondClickOnRunIsIgnored(): Unit = runBlocking {
+        ready()
+        cli.blockDeploy = CompletableDeferred()
+        runner.run(SetupStepId.RULES)
+        runner.run(SetupStepId.RULES)
+        assertTrue(runner.states.value[SetupStepId.RULES] is StepState.Running)
+        cli.blockDeploy!!.complete(Unit)
+        awaitState(SetupStepId.RULES) { it == StepState.Done }
+        kotlinx.coroutines.delay(200)
+        assertEquals(1, cli.calls.count { it == "deploy firestore:rules" })
+    }
+
+    @Test
+    fun aSecondClickOnReinstallIsIgnored(): Unit = runBlocking {
+        val tools = FakeTools(ToolsStatus.Broken("x"))
+        val r = SetupRunner(scope, tools, { cli }, { ops }, workspace, settings, sleep = {})
+        r.reinstallTools()
+        r.reinstallTools()
+        withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] == StepState.Done } }
+        kotlinx.coroutines.delay(200)
+        assertEquals(listOf("remove", "install"), tools.calls)
+    }
+
+    @Test
+    fun aQueuedStepCancelledBeforeItStartsGoesBackToTodo(): Unit = runBlocking {
+        ready()
+        cli.blockDeploy = CompletableDeferred()
+        runner.run(SetupStepId.RULES)
+        runner.run(SetupStepId.SITE)
+        assertTrue(runner.states.value[SetupStepId.SITE] is StepState.Running)
+        runner.cancel()
+        awaitState(SetupStepId.SITE) { it == StepState.Todo }
+        awaitState(SetupStepId.RULES) { it == StepState.Todo }
+    }
+
+    @Test
     fun refreshChecksAuthFirst(): Unit = runBlocking {
         val r = refreshRunner()
         r.refresh()
@@ -1385,7 +1498,19 @@ class SetupRunnerTest {
             r.info.value.mailServiceAccount,
         )
         r.refresh()
-        assertEquals(1, ops.calls.count { it == "ensureMailServiceAccount" })
+        assertEquals(1, ops.calls.count { it == "mailServiceAccount" })
+        // A check never writes to Google: no account is made and no permission changed.
+        assertTrue("ensureMailServiceAccount" !in ops.calls)
+    }
+
+    @Test
+    fun refreshWithoutTheMailAccountMakesNone(): Unit = runBlocking {
+        ops.mailAccountExists = false
+        settings.mailWorkspaceProject = "demo-project"
+        val r = refreshRunner()
+        r.refresh()
+        assertEquals(null, r.info.value.mailServiceAccount)
+        assertTrue("ensureMailServiceAccount" !in ops.calls)
     }
 
     @Test
@@ -1393,7 +1518,7 @@ class SetupRunnerTest {
         ops.functions = activeFunctions()
         val r = refreshRunner()
         r.refresh()
-        assertTrue("ensureMailServiceAccount" !in ops.calls)
+        assertTrue("ensureMailServiceAccount" !in ops.calls && "mailServiceAccount" !in ops.calls)
         assertEquals(null, r.info.value.mailServiceAccount)
     }
 

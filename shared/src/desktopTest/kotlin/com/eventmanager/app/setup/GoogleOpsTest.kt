@@ -106,4 +106,35 @@ class GoogleOpsTest {
             assertEquals(expected, runner.limitsSeen[i], c[3])
         }
     }
+
+    @Test
+    fun eachStepViewLogsToItsOwnStep() = runBlocking {
+        val runner = FakeProcessRunner { cmd ->
+            when (cmd[3]) {
+                "rules-status" -> 0 to "rules call\n" + """{"ok":true,"data":{"firestore":true,"storage":true}}"""
+                else -> 0 to "hosting call\n" + """{"ok":true,"data":{"live":true}}"""
+            }
+        }
+        val base = ops(runner)
+        val rules = base.forStep(SetupStepId.RULES)
+        val site = base.forStep(SetupStepId.SITE) // made after: must not move the rules calls to the site log
+        rules.rulesReleased(pid)
+        site.hostingLive(pid)
+        val rulesLog = logs.latest(SetupStepId.RULES)!!.readText()
+        val siteLog = logs.latest(SetupStepId.SITE)!!.readText()
+        assertTrue("rules call" in rulesLog && "hosting call" !in rulesLog, rulesLog)
+        assertTrue("hosting call" in siteLog && "rules call" !in siteLog, siteLog)
+    }
+
+    @Test
+    fun mailServiceAccountIsReadOnly() = runBlocking {
+        var answer = ok("""{"email":"s@p.iam.gserviceaccount.com","clientId":"99"}""")
+        val runner = FakeProcessRunner { answer }
+        val o = ops(runner)
+        assertEquals(MailServiceAccount("s@p.iam.gserviceaccount.com", "99"), o.mailServiceAccount(pid))
+        assertEquals(listOf(tools.node.path, helper.path, libDir, "get-mail-sa", "--project", pid), runner.calls.single())
+        assertEquals(CommandLimits.READ, runner.limitsSeen.single())
+        answer = ok("null")
+        assertEquals(null, o.mailServiceAccount(pid))
+    }
 }

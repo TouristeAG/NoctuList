@@ -22,8 +22,8 @@ data class MailServiceAccount(val email: String, val clientId: String)
 
 /** Google API calls the Firebase CLI cannot make, through the bundled helper script. */
 interface GoogleOps {
-    /** Step the calls are logged under; the runner sets it before each call. */
-    var step: SetupStepId
+    /** The same operations, logged under [step]: each caller keeps its own, so parallel calls never mix logs. */
+    fun forStep(step: SetupStepId): GoogleOps
 
     suspend fun checkAuth(): String
     suspend fun projectNumber(projectId: String): String
@@ -37,6 +37,9 @@ interface GoogleOps {
     suspend fun rulesReleased(projectId: String): Pair<Boolean, Boolean>
     suspend fun hostingLive(projectId: String): Boolean
     suspend fun ensureMailServiceAccount(projectId: String): MailServiceAccount
+
+    /** Reads the sending account without creating it or changing a permission; null when there is none. */
+    suspend fun mailServiceAccount(projectId: String): MailServiceAccount?
 }
 
 /**
@@ -50,9 +53,9 @@ class HelperGoogleOps(
     private val env: SetupEnvironment,
     private val logs: SetupLogFiles,
     private val redactor: OutputRedactor,
+    private val step: SetupStepId = SetupStepId.TOOLS,
 ) : GoogleOps {
-    @Volatile
-    override var step: SetupStepId = SetupStepId.TOOLS
+    override fun forStep(step: SetupStepId): GoogleOps = HelperGoogleOps(runner, tools, helper, env, logs, redactor, step)
 
     override suspend fun checkAuth(): String =
         call("check-auth", null, emptyList()).str("email").orEmpty()
@@ -114,6 +117,12 @@ class HelperGoogleOps(
     override suspend fun ensureMailServiceAccount(projectId: String): MailServiceAccount {
         val d = call("ensure-mail-sa", projectId, emptyList(), LONG)
         return MailServiceAccount(d.str("email").orEmpty(), d.str("clientId").orEmpty())
+    }
+
+    override suspend fun mailServiceAccount(projectId: String): MailServiceAccount? {
+        val d = call("get-mail-sa", projectId, emptyList())
+        val email = d.str("email")?.takeIf { it.isNotBlank() } ?: return null
+        return MailServiceAccount(email, d.str("clientId").orEmpty())
     }
 
     private suspend fun call(command: String, projectId: String?, extra: List<String>, limits: CommandLimits = CommandLimits.READ): JsonObject {

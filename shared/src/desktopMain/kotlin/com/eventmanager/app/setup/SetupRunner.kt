@@ -4,6 +4,7 @@ import com.eventmanager.app.email.SiteMailOutcome
 import com.eventmanager.app.email.SiteMailResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
@@ -78,21 +79,33 @@ class SetupRunner(
     /** Keeps a refresh from re-ticking the sign-in while it is being signed out. */
     private val accountLock = Mutex()
 
+    /**
+     * Project the running refresh checks. A step may switch the project while a refresh waits on Google: from then on
+     * its answers are about the old project, so they change nothing (see [stale], [tick], [drop]).
+     */
+    @Volatile
+    private var refreshProject: String? = null
+
+    private fun stale(): Boolean = refreshProject?.let { it != settings.projectId } == true
+
     /** Re-checks every step it can see from here; a tick that is no longer true goes away. */
     override suspend fun refresh() = accountLock.withLock {
         _info.update { it.copy(checking = true) }
+        val pid = settings.projectId
+        refreshProject = pid
         try {
-            refreshLocked()
+            refreshLocked(pid)
         } catch (_: SignInExpired) {
             // Already shown on the sign-in step; the other checks need a valid sign-in.
         } finally {
+            refreshProject = null
             _info.update { it.copy(checking = false) }
         }
     }
 
     private class SignInExpired : Exception()
 
-    private suspend fun refreshLocked() {
+    private suspend fun refreshLocked(pid: String) {
         // Tools are being installed or replaced: probing or spawning them now would hold their files open.
         val toolsStep = _states.value[SetupStepId.TOOLS]
         if (toolsStep is StepState.Running || toolsStep is StepState.WaitingRetry) return
@@ -102,27 +115,26 @@ class SetupRunner(
             is ToolsStatus.Broken -> return noTools(ToolsState.BROKEN)
             is ToolsStatus.Outdated -> return noTools(ToolsState.OUTDATED)
         }
+        // The tools may have started installing while they were probed.
+        val toolsNow = _states.value[SetupStepId.TOOLS]
+        if (toolsNow is StepState.Running || toolsNow is StepState.WaitingRetry) return
         _info.update { it.copy(tools = ToolsState.READY) }
         tick(SetupStepId.TOOLS, true)
         val c = useTools(paths)
-        val account = runCatching { c.loginList().firstOrNull() }.getOrNull() ?: return unmark(SetupStepId.LOGIN)
+        val account = orNull { c.loginList().firstOrNull() } ?: return drop(SetupStepId.LOGIN)
         _info.update { it.copy(account = account) }
         // The CLI lists an account whose token Google may have revoked: ask Google itself before ticking it.
         val signedIn = check(SetupStepId.LOGIN) { requireOps(SetupStepId.LOGIN).checkAuth() } != null
         if (signedIn) tick(SetupStepId.LOGIN, true)
-        val projects = runCatching { c.projectsList() }.getOrDefault(emptyList())
+        // A failed list says nothing about the project: its tick and the list shown stay, the checks that need it wait.
+        val projects = orNull { c.projectsList() } ?: return
+        if (stale()) return
         _info.update { it.copy(projects = projects) }
-        val pid = settings.projectId
-        if (pid.isBlank() || projects.none { it.id == pid }) return unmark(SetupStepId.PROJECT)
+        if (pid.isBlank() || projects.none { it.id == pid }) return drop(SetupStepId.PROJECT)
         tick(SetupStepId.PROJECT, true)
         // A failed call says nothing about the database: ticks stay and the checks that need it are skipped.
-        val listed = try {
-            c.databases(pid)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            null
-        }
+        val listed = orNull { c.databases(pid) }
+        if (stale()) return
         val db = listed?.firstOrNull { it.name == DEFAULT_DB }
         if (db != null) {
             tick(SetupStepId.DATABASE, true)
@@ -132,7 +144,8 @@ class SetupRunner(
             // Rules and photos cannot be in place without Firestore.
             tick(SetupStepId.RULES, false)
             tick(SetupStepId.PHOTOS, false)
-            val locations = runCatching { c.firestoreLocations(pid) }.getOrDefault(emptyList())
+            val locations = orNull { c.firestoreLocations(pid) }.orEmpty()
+            if (stale()) return
             _info.update { it.copy(locations = RegionMapper.orderLocations(locations)) }
         }
         tick(SetupStepId.CONNECT, settings.hasWebClient())
@@ -140,6 +153,7 @@ class SetupRunner(
         if (!signedIn) return
         if (db != null) {
             val rules = check(SetupStepId.RULES) { requireOps(SetupStepId.RULES).rulesReleased(pid) }
+            if (stale()) return
             if (rules != null) tick(SetupStepId.RULES, rules.first)
             if (rules != null) {
                 val photos = if (!rules.second) false else check(SetupStepId.PHOTOS) {
@@ -148,18 +162,31 @@ class SetupRunner(
                 if (photos != null) tick(SetupStepId.PHOTOS, photos)
             }
         }
+        if (stale()) return
         check(SetupStepId.SITE) { requireOps(SetupStepId.SITE).hostingLive(pid) }?.let { tick(SetupStepId.SITE, it) }
+        if (stale()) return
         check(SetupStepId.SERVER) { requireOps(SetupStepId.SERVER).functions(pid, CODEBASE) }?.let { functions ->
+            if (stale()) return
             val active = functionsActive(functions)
             _info.update { it.copy(serverDeployed = active, mailTestOk = mailTestOk()) }
             tick(SetupStepId.SERVER, active && mailTestOk())
         }
-        // After a restart the client ID box needs the service account again (idempotent on Google's side).
+        // After a restart the client ID box needs the service account again. Read only: a check writes nothing.
         if (settings.mailWorkspaceProject == pid && _info.value.mailServiceAccount == null) {
-            check(SetupStepId.SERVER) { requireOps(SetupStepId.SERVER).ensureMailServiceAccount(pid) }
-                ?.takeIf { it.email.isNotBlank() }
+            check(SetupStepId.SERVER) { listOfNotNull(requireOps(SetupStepId.SERVER).mailServiceAccount(pid)) }
+                ?.firstOrNull()
+                ?.takeIf { it.email.isNotBlank() && !stale() }
                 ?.let { sa -> _info.update { it.copy(mailServiceAccount = MailServiceAccountInfo(sa.email, sa.clientId)) } }
         }
+    }
+
+    /** Null when [block] failed for any reason but cancellation, which goes on up. */
+    private suspend fun <T> orNull(block: suspend () -> T): T? = try {
+        block()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        null
     }
 
     /** A test mail only counts for the project it was sent from. */
@@ -168,8 +195,9 @@ class SetupRunner(
     private fun functionsActive(functions: List<FunctionState>): Boolean =
         SERVER_FUNCTIONS.all { name -> functions.any { it.name == name && it.state == "ACTIVE" } }
 
-    /** A step that is running owns its own state: a check must not flip it. */
+    /** A step that is running owns its own state: a check must not flip it, nor one about a project left meanwhile. */
     private fun tick(step: SetupStepId, done: Boolean) {
+        if (stale()) return
         val state = _states.value[step]
         if (state is StepState.Running || state is StepState.WaitingRetry) return
         if (done) markDone(step) else unmark(step)
@@ -209,7 +237,7 @@ class SetupRunner(
         err.status == 401 || err.reason == "NOT_LOGGED_IN" || err.reason == "invalid_grant"
 
     private fun expireSignIn(err: GoogleApiError) {
-        unmark(SetupStepId.LOGIN)
+        drop(SetupStepId.LOGIN)
         val api = GoogleApiStatus(err.status, err.reason, err.service)
         val error = ErrorCatalog.classify(err.message, SetupStepId.LOGIN, settings.projectId, api)
         val current = _states.value[SetupStepId.LOGIN]
@@ -246,15 +274,17 @@ class SetupRunner(
         work: suspend () -> Unit = { executeWithRepair(step, input, reinstall) },
     ) {
         if (_states.value[step] is StepState.Running || _states.value[step] is StepState.WaitingRetry) return
+        // Shown as running from the click on (queued steps too), so a second click is ignored.
+        setState(step, StepState.Running(emptyList()))
         // Steps run one after the other: a step started while the previous one is finishing waits for it.
         val previous = job
-        val next = scope.launch {
-            stopFirst.joinAll()
-            previous?.join()
-            setState(step, StepState.Running(emptyList()))
-            _info.update { it.copy(repairs = it.repairs - step) }
+        // ATOMIC: a step cancelled while queued still runs its catch below and goes back to Todo.
+        val next = scope.launch(start = CoroutineStart.ATOMIC) {
             try {
                 try {
+                    stopFirst.joinAll()
+                    previous?.join()
+                    _info.update { it.copy(repairs = it.repairs - step) }
                     before?.let { attempt(step, it) }
                     work()
                 } catch (e: CliException) {
@@ -465,6 +495,9 @@ class SetupRunner(
                     if (status is ToolsStatus.Ready) {
                         status.paths
                     } else {
+                        // A refresh may be probing the tools: wait for it before replacing them. Later ones see
+                        // this step running and leave the tools alone.
+                        accountLock.withLock { }
                         if (status == ToolsStatus.Missing) tools.install(progress) else tools.reinstall(progress)
                         // Installed means answers when run, not just files on disk.
                         (tools.status() as? ToolsStatus.Ready)?.paths
@@ -702,8 +735,7 @@ class SetupRunner(
     private suspend fun requireOps(step: SetupStepId): GoogleOps {
         requireCli()
         val o = ops ?: opsFactory(paths ?: throw CliException(toolsBroken(SetupStepId.TOOLS, "tools not ready"))).also { ops = it }
-        o.step = step
-        return o
+        return o.forStep(step)
     }
 
     private fun useTools(found: ToolPaths): SetupCli {
@@ -754,7 +786,12 @@ class SetupRunner(
         if (running is StepState.Running || running is StepState.WaitingRetry) return // the install is judged when it ends
         forgetTools()
         _info.update { it.copy(tools = state) }
-        unmark(SetupStepId.TOOLS)
+        drop(SetupStepId.TOOLS)
+    }
+
+    /** [unmark] for a refresh: nothing changes once the project it checks was left. */
+    private fun drop(step: SetupStepId) {
+        if (!stale()) unmark(step)
     }
 
     private fun unmark(step: SetupStepId) {
