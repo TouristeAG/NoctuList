@@ -45,6 +45,9 @@ class SetupRunner(
 
     /** Re-checks the steps it can see from here; a tick that is no longer true goes away. */
     override suspend fun refresh() {
+        // Tools are being installed or replaced: probing or spawning them now would hold their files open.
+        val toolsStep = _states.value[SetupStepId.TOOLS]
+        if (toolsStep is StepState.Running || toolsStep is StepState.WaitingRetry) return
         val paths = when (val status = tools.status()) {
             is ToolsStatus.Ready -> status.paths
             ToolsStatus.Missing -> return noTools(ToolsState.MISSING)

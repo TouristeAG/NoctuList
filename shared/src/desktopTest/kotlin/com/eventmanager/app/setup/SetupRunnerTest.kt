@@ -38,6 +38,7 @@ private class FakeCli : SetupCli {
     var apps = emptyList<String>()
     var blockDeploy: CompletableDeferred<Unit>? = null
     var events: MutableList<String>? = null
+    var cleanupMs = 0L
     var passwordSeen: String? = null
 
     private fun fail(text: String, step: SetupStepId): Nothing = throw CliException(CliErrorClassifier.classify(text, step))
@@ -61,6 +62,8 @@ private class FakeCli : SetupCli {
             blockDeploy?.await()
         } catch (e: kotlinx.coroutines.CancellationException) {
             events?.add("deploy cancelled")
+            if (cleanupMs > 0) kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) { kotlinx.coroutines.delay(cleanupMs) }
+            events?.add("deploy cleaned up")
             throw e
         }
         if (deployFailures.isNotEmpty()) fail(deployFailures.removeAt(0), SetupStepId.SERVER)
@@ -78,10 +81,11 @@ private class FakeCli : SetupCli {
 private class FakeTools(var status: ToolsStatus = ToolsStatus.Missing, val calls: MutableList<String> = mutableListOf()) : SetupTools {
     var gate: CompletableDeferred<Unit>? = null
     var installWorks = true
+    var statusCalls = 0
     var failWith: Exception? = null
     constructor(installed: Boolean) : this(if (installed) ToolsStatus.Ready(FAKE_PATHS) else ToolsStatus.Missing)
 
-    override suspend fun status(): ToolsStatus = status
+    override suspend fun status(): ToolsStatus { statusCalls++; return status }
     override suspend fun install(onProgress: (Float, String) -> Unit): ToolPaths {
         gate?.await()
         failWith?.let { throw it }
@@ -326,7 +330,7 @@ class SetupRunnerTest {
         r.reinstallTools()
         withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] == StepState.Done } }
         assertEquals(StepState.Todo, r.states.value[SetupStepId.RULES])
-        assertEquals(listOf("deploy cancelled", "remove", "install"), events)
+        assertEquals(listOf("deploy cancelled", "deploy cleaned up", "remove", "install"), events)
     }
 
     @Test
@@ -340,6 +344,37 @@ class SetupRunnerTest {
         assertTrue(r.states.value[SetupStepId.TOOLS] is StepState.Running)
         tools.gate!!.complete(Unit)
         withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] == StepState.Done } }
+    }
+
+    @Test
+    fun refreshDuringReinstallDoesNothing(): Unit = runBlocking {
+        val tools = FakeTools(ToolsStatus.Ready(FakeTools.FAKE_PATHS)).apply { gate = CompletableDeferred() }
+        val r = SetupRunner(scope, tools, { cli }, workspace, settings, sleep = {})
+        r.reinstallTools()
+        withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] is StepState.Running } }
+        val before = tools.statusCalls
+        r.refresh()
+        assertEquals(before, tools.statusCalls)
+        assertTrue(cli.calls.isEmpty())
+        assertTrue(r.states.value[SetupStepId.TOOLS] is StepState.Running)
+        tools.gate!!.complete(Unit)
+        withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] == StepState.Done } }
+    }
+
+    @Test
+    fun reinstallWaitsForCancelledMiddleJob(): Unit = runBlocking {
+        val events = mutableListOf<String>()
+        cli.events = events
+        cli.cleanupMs = 300
+        cli.blockDeploy = CompletableDeferred()
+        val tools = FakeTools(ToolsStatus.Ready(FakeTools.FAKE_PATHS), events)
+        val r = SetupRunner(scope, tools, { cli }, workspace, settings, sleep = {})
+        r.run(SetupStepId.RULES)
+        withTimeout(5_000) { while ("deploy firestore:rules" !in cli.calls) kotlinx.coroutines.delay(10) }
+        r.run(SetupStepId.SITE) // queued behind the running deploy
+        r.reinstallTools()
+        withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] == StepState.Done } }
+        assertEquals(listOf("deploy cancelled", "deploy cleaned up", "remove", "install"), events)
     }
 
     @Test
