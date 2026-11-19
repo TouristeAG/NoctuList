@@ -44,6 +44,12 @@ val BILLED_APIS = listOf(
 const val BUILD_ROLE = "roles/cloudbuild.builds.builder"
 
 /**
+ * Roles of the default compute account, which builds the functions and also runs them. New projects leave it
+ * without any of these: without Firestore and Storage, every portal request fails with PERMISSION_DENIED.
+ */
+val COMPUTE_ROLES = listOf(BUILD_ROLE, "roles/datastore.user", "roles/storage.objectAdmin")
+
+/**
  * Runs the setup steps one at a time and keeps their state for the Automatic tab.
  * Order and retry rules follow the spec (§3, §4).
  */
@@ -355,7 +361,7 @@ class SetupRunner(
         note(step, Repair.ENABLE_APIS, "${apis.size} API")
     }
 
-    /** Builds of 2nd gen functions run as the default compute account, which new projects leave without this role. */
+    /** 2nd gen functions are built and run as the default compute account: it gets [COMPUTE_ROLES]. */
     private suspend fun grantBuildRole(step: SetupStepId, force: Boolean) {
         val pid = projectId()
         val number = requireOps(step).projectNumber(pid)
@@ -363,8 +369,9 @@ class SetupRunner(
             val message = "Google returned an invalid project number for $pid: \"${number.take(40)}\""
             throw CliException(SetupError(SetupErrorId.UNKNOWN, step, RetryPolicy.NONE, null, null, message, message))
         }
-        val changed = requireOps(step).ensureRole(pid, "serviceAccount:$number-compute@developer.gserviceaccount.com", BUILD_ROLE)
-        if (changed || force) note(step, Repair.GRANT_BUILD_ROLE, BUILD_ROLE)
+        val member = "serviceAccount:$number-compute@developer.gserviceaccount.com"
+        val changed = COMPUTE_ROLES.filter { requireOps(step).ensureRole(pid, member, it) }
+        if (changed.isNotEmpty() || force) note(step, Repair.GRANT_BUILD_ROLE, (changed.ifEmpty { COMPUTE_ROLES }).joinToString(", "))
     }
 
     /**

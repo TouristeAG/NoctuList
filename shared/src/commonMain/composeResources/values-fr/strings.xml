@@ -2679,7 +2679,7 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="setup_err_report_copied">Rapport copié</string>
     <string name="setup_err_repairs_header">Ce que l'app a déjà fait</string>
     <string name="setup_repair_enable_apis">Services Google activés</string>
-    <string name="setup_repair_grant_build_role">Rôle Cloud Build ajouté au compte de build</string>
+    <string name="setup_repair_grant_build_role">Rôles Cloud Build, Firestore et Storage donnés au compte du serveur</string>
     <string name="setup_repair_delete_failed_functions">Fonctions en échec supprimées</string>
     <string name="setup_repair_create_hosting_site">Site Hosting créé</string>
     <string name="setup_repair_reinstall_tools">Outils réinstallés</string>
