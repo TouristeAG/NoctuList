@@ -2,6 +2,52 @@
 // Every piece of data reaches the page through textContent — never innerHTML — so nothing a
 // volunteer types (or a document contains) can run as script.
 
+/** Same as the rules: a PROCESSING claim this old was abandoned and the request can be sent again. */
+const PROCESSING_STALE_MS = 5 * 60_000;
+/**
+ * A QR e-mail request nobody took for this long is given up: only the server or a phone can send
+ * the mail, so an old one (sent before mail worked, for example) would otherwise read "received" forever.
+ */
+const QR_PENDING_STALE_MS = 15 * 60_000;
+/**
+ * The server answers within seconds and devices step in after 2 minutes. A request still pending
+ * after this was missed (the Functions were stopped, no device open): the volunteer may send it
+ * again, which the rules allow and which wakes the server up.
+ */
+const PENDING_STALE_MS = 5 * 60_000;
+/** Pending requests that wait for something else than the server or a device: never given up. */
+const ALWAYS_WAIT = new Set(["GOOGLE_LINK", "ADMIN_MATCH", "LINK_CODE"]);
+
+/** Firestore timestamp, plain millis or nothing, as millis (0 when unknown). */
+export function millisOf(value) {
+  if (!value) return 0;
+  if (typeof value === "number") return value;
+  if (typeof value.toMillis === "function") return value.toMillis();
+  return 0;
+}
+
+function pendingStaleMs(type) {
+  if (ALWAYS_WAIT.has(type)) return Infinity;
+  return type === "QR_EMAIL" ? QR_PENDING_STALE_MS : PENDING_STALE_MS;
+}
+
+/** The request waits for an answer: pending and recent, or claimed less than 5 minutes ago. */
+export function isWaiting(r, now = Date.now()) {
+  if (r?.status === "PENDING") {
+    // No time yet: just written, the server timestamp is still on its way.
+    const at = millisOf(r.requestedAt);
+    return !at || now - at <= pendingStaleMs(r.type);
+  }
+  if (r?.status !== "PROCESSING") return false;
+  const at = millisOf(r.processingAt);
+  return !at || now - at <= PROCESSING_STALE_MS;
+}
+
+/** Still pending, but for so long that nobody is going to take it: it can be sent again. */
+export function isStalePending(r, now = Date.now()) {
+  return r?.status === "PENDING" && !isWaiting(r, now);
+}
+
 /** `el("p", { class: "muted", text: "…" }, child1, child2)` */
 export function el(tag, props = {}, ...children) {
   const node = document.createElement(tag);

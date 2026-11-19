@@ -38,7 +38,7 @@ import {
   uploadBytes,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 import { EMULATOR_PORTS, isLocalDev, loadConfig, parseOrgPath } from "./firebase-env.js?v=portal-2";
-import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=qr-3";
+import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=qr-4";
 import { clearQr, closeQrDialog, isStaleFor, missingIsFinal, openQrDialog, readCachedQr, storeQr } from "./portal-qr.js?v=qr-2";
 import {
   EMAIL_RE,
@@ -48,9 +48,12 @@ import {
   clear,
   el,
   icon,
+  isStalePending,
+  isWaiting,
+  millisOf,
   passwordProblem,
   toJpeg,
-} from "./portal-common.js?v=portal-2";
+} from "./portal-common.js?v=portal-3";
 
 const $ = (id) => document.getElementById(id);
 const VIEWS = ["view-loading", "view-disabled", "view-signin", "view-reset", "view-verify", "view-pending", "view-google", "view-dash", "view-offline"];
@@ -64,13 +67,6 @@ const LINK_WAIT_MS = 3 * 60_000;
 /** Messages for the answers to a Google claim (portalGoogleClaims). */
 const ADMIN_MATCH_KEYS = { NO_MATCH: "googleNoMatch", DOMAIN: "googleDomain" };
 const LINK_CODE_KEYS = { CODE: "googleCode", TAKEN: "googleTaken", ALREADY_LINKED: "googleAlreadyLinked", DOMAIN: "googleDomain" };
-/** Same as the rules: a PROCESSING claim this old was abandoned and the request can be sent again. */
-const PROCESSING_STALE_MS = 5 * 60_000;
-/**
- * A QR e-mail request nobody took for this long is given up: only the server or a phone can send
- * the mail, so an old one (sent before mail worked, for example) would otherwise read "received" forever.
- */
-const QR_PENDING_STALE_MS = 15 * 60_000;
 /** Without any answer from Firestore for this long, a QR stored on the device is shown alone. */
 const OFFLINE_FALLBACK_MS = 4000;
 
@@ -180,13 +176,6 @@ function ago(millis) {
   const h = Math.floor(min / 60);
   if (h < 48) return t("hoursAgo", { n: h });
   return t("daysAgo", { n: Math.floor(h / 24) });
-}
-
-function millisOf(value) {
-  if (!value) return 0;
-  if (typeof value === "number") return value;
-  if (typeof value.toMillis === "function") return value.toMillis();
-  return 0;
 }
 
 // ---------- Branding ----------
@@ -837,19 +826,6 @@ async function sendRequest(type, extra = {}) {
   });
 }
 
-/** The request waits for an answer: pending, or claimed less than 5 minutes ago. */
-function isWaiting(r) {
-  if (r?.status === "PENDING") {
-    if (r.type !== "QR_EMAIL") return true;
-    // No time yet: just written, the server timestamp is still on its way.
-    const at = millisOf(r.requestedAt);
-    return !at || Date.now() - at <= QR_PENDING_STALE_MS;
-  }
-  if (r?.status !== "PROCESSING") return false;
-  const at = millisOf(r.processingAt);
-  return !at || Date.now() - at <= PROCESSING_STALE_MS;
-}
-
 function requestCooldownMinutes(type) {
   const r = requests[type];
   if (!r) return 0;
@@ -922,6 +898,8 @@ function profileTile() {
   const status = requests.PROFILE;
   if (isWaiting(status)) {
     card.append(el("p", { class: "notice", text: t("profilePending") }));
+  } else if (isStalePending(status)) {
+    card.append(el("p", { class: "notice", text: t("profileStale") }));
   } else if (status?.status === "REJECTED" && millisOf(status.requestedAt) > Date.now() - 86_400_000) {
     card.append(el("p", { class: "error", text: t("profileRejected") }));
   }
@@ -1284,7 +1262,8 @@ function profileForm(onDone) {
     if (!firstName) return fail("errName", first);
     if (!lastName) return fail("errName", last);
     if (!phoneValue) return fail("errPhone", phone);
-    if (isWaiting(requests.PROFILE) || requestCooldownMinutes("PROFILE") > 0) return fail("profileWait", first);
+    if (isWaiting(requests.PROFILE)) return fail("profilePending", first);
+    if (requestCooldownMinutes("PROFILE") > 0) return fail("profileWait", first);
     save.disabled = true;
     const blob = photo?.picked() ?? null;
     if (blob) {
