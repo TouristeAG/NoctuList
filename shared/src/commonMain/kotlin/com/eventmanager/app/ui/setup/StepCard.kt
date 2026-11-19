@@ -199,7 +199,7 @@ private fun ErrorBox(
                     )
                 }
             }
-            Text(stringResource(errorSteps(error.id)), color = ink, style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(errorSteps(error.id, step)), color = ink, style = MaterialTheme.typography.bodyMedium)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 error.link?.let { link ->
                     OutlinedButton(onClick = { onOpenLink(link) }) { Text(stringResource(Res.string.setup_err_open_page)) }

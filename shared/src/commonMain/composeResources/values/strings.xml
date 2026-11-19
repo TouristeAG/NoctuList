@@ -2596,6 +2596,7 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="setup_err_login_expired_title">You are no longer signed in to Google</string>
     <string name="setup_err_login_expired_cause">The Firebase sign-in has expired or was removed.</string>
     <string name="setup_err_login_expired_steps">1. Sign in again at step 1.\n2. Come back here and click Retry.</string>
+    <string name="setup_err_login_expired_steps_login">1. Click Retry: the app signs you out and opens the Google sign-in again.\n2. Sign in, then paste the code shown.</string>
     <string name="setup_err_project_id_taken_title">This project ID already exists</string>
     <string name="setup_err_project_id_taken_cause">Project IDs are unique across all of Google, and another project already uses this one.</string>
     <string name="setup_err_project_id_taken_steps">1. Pick another ID, for example by adding the year.\n2. Click Create.</string>

@@ -3,6 +3,7 @@ package com.eventmanager.app.ui.setup
 import com.eventmanager.app.resources.*
 import com.eventmanager.app.setup.Repair
 import com.eventmanager.app.setup.SetupErrorId
+import com.eventmanager.app.setup.SetupStepId
 import org.jetbrains.compose.resources.StringResource
 
 fun errorTitle(id: SetupErrorId): StringResource = when (id) {
@@ -76,6 +77,10 @@ fun errorCause(id: SetupErrorId): StringResource = when (id) {
     SetupErrorId.NETWORK -> Res.string.setup_err_network_cause
     SetupErrorId.UNKNOWN -> Res.string.setup_err_unknown_cause
 }
+
+/** What to do, as shown on [step]'s card: on the sign-in step itself, Retry is what signs in again. */
+fun errorSteps(id: SetupErrorId, step: SetupStepId): StringResource =
+    if (id == SetupErrorId.LOGIN_EXPIRED && step == SetupStepId.LOGIN) Res.string.setup_err_login_expired_steps_login else errorSteps(id)
 
 fun errorSteps(id: SetupErrorId): StringResource = when (id) {
     SetupErrorId.WORKDIR_NOT_WRITABLE -> Res.string.setup_err_workdir_not_writable_steps

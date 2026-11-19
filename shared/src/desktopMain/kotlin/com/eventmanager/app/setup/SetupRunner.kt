@@ -186,7 +186,7 @@ class SetupRunner(
             throw e
         } catch (e: GoogleOpsException) {
             val err = e.error
-            if (err.status == 401 || err.reason == "NOT_LOGGED_IN" || err.reason == "invalid_grant") {
+            if (signInRefused(err)) {
                 expireSignIn(err)
                 throw SignInExpired()
             }
@@ -195,6 +195,18 @@ class SetupRunner(
             return null
         }
     }
+
+    /** False when Google refuses the listed account's token; other failures (network) are thrown as they are. */
+    private suspend fun tokenAccepted(step: SetupStepId): Boolean = try {
+        requireOps(step).checkAuth()
+        true
+    } catch (e: GoogleOpsException) {
+        if (!signInRefused(e.error)) throw e
+        false
+    }
+
+    private fun signInRefused(err: GoogleApiError) =
+        err.status == 401 || err.reason == "NOT_LOGGED_IN" || err.reason == "invalid_grant"
 
     private fun expireSignIn(err: GoogleApiError) {
         unmark(SetupStepId.LOGIN)
@@ -476,7 +488,13 @@ class SetupRunner(
                 val c = requireCli()
                 val code = input.authCode?.trim().orEmpty()
                 if (code.isNotEmpty()) c.loginFinish(code)
-                val account = c.loginList().firstOrNull()
+                var account = c.loginList().firstOrNull()
+                // The CLI keeps listing an account whose token Google revoked: ask Google, and sign in again if so.
+                if (account != null && code.isEmpty() && !tokenAccepted(step)) {
+                    c.logout()
+                    _info.update { it.copy(account = "") }
+                    account = null
+                }
                 if (account != null) {
                     _info.update { it.copy(account = account, loginChallenge = null) }
                     markDone(step)

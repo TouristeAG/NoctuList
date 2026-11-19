@@ -430,6 +430,28 @@ class SetupRunnerTest {
     }
 
     @Test
+    fun loginWithARevokedTokenSignsInAgain(): Unit = runBlocking {
+        ready()
+        ops.authError = GoogleOpsException(GoogleApiError(401, "NOT_LOGGED_IN", "Not signed in", ""))
+        runner.run(SetupStepId.LOGIN)
+        withTimeout(5_000) { runner.info.first { it.loginChallenge != null } }
+        awaitState(SetupStepId.LOGIN) { it == StepState.Todo }
+        assertEquals(listOf("logout", "loginStart"), cli.calls)
+        assertTrue(SetupStepId.LOGIN !in runner.progress.value.done)
+        assertEquals("", runner.info.value.account)
+        assertEquals("checkAuth", ops.calls.first())
+    }
+
+    @Test
+    fun loginChecksTheTokenBeforeTicking(): Unit = runBlocking {
+        ready()
+        runner.run(SetupStepId.LOGIN)
+        awaitState(SetupStepId.LOGIN) { it == StepState.Done }
+        assertEquals(listOf("checkAuth"), ops.calls)
+        assertEquals(listOf(SetupStepId.LOGIN), ops.steps)
+    }
+
+    @Test
     fun switchingProjectClearsTheOtherProjectsTicks(): Unit = runBlocking {
         settings.progressJson = SetupProgress(
             projectId = "demo-project",

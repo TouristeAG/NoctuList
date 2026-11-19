@@ -2593,6 +2593,7 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="setup_err_login_expired_title">Vous n'êtes plus connecté à Google</string>
     <string name="setup_err_login_expired_cause">La connexion à Firebase a expiré ou a été retirée.</string>
     <string name="setup_err_login_expired_steps">1. Reconnectez-vous à l'étape 1.\n2. Revenez ici et cliquez sur Réessayer.</string>
+    <string name="setup_err_login_expired_steps_login">1. Cliquez sur Réessayer : l'app vous déconnecte et rouvre la connexion Google.\n2. Connectez-vous, puis collez le code affiché.</string>
     <string name="setup_err_project_id_taken_title">Cet identifiant de projet existe déjà</string>
     <string name="setup_err_project_id_taken_cause">Les identifiants de projet sont uniques sur tout Google, et celui-ci est déjà pris par un autre projet.</string>
     <string name="setup_err_project_id_taken_steps">1. Choisissez un autre identifiant, par exemple en ajoutant l'année.\n2. Cliquez sur Créer.</string>
