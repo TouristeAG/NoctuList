@@ -9,6 +9,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -78,13 +81,21 @@ class SetupRunner(
     override fun run(step: SetupStepId, input: StepInput) = launchStep(step, input, reinstall = false)
 
     /** Throws the app's own tools away and installs them again, whatever state they are in. */
-    override fun reinstallTools() = launchStep(SetupStepId.TOOLS, StepInput(), reinstall = true)
+    override fun reinstallTools() {
+        val tools = _states.value[SetupStepId.TOOLS]
+        if (tools is StepState.Running || tools is StepState.WaitingRetry) return
+        // Running commands hold the tools open (Windows cannot delete node.exe then): stop them and wait first.
+        val running = synchronized(jobs) { jobs.toList().also { jobs.clear() } }
+        running.forEach { it.cancel() }
+        launchStep(SetupStepId.TOOLS, StepInput(), reinstall = true, stopFirst = running)
+    }
 
-    private fun launchStep(step: SetupStepId, input: StepInput, reinstall: Boolean) {
+    private fun launchStep(step: SetupStepId, input: StepInput, reinstall: Boolean, stopFirst: List<Job> = emptyList()) {
         if (_states.value[step] is StepState.Running || _states.value[step] is StepState.WaitingRetry) return
         // Steps run one after the other: a step started while the previous one is finishing waits for it.
         val previous = job
         val next = scope.launch {
+            stopFirst.joinAll()
             previous?.join()
             setState(step, StepState.Running(emptyList()))
             try {
@@ -136,13 +147,23 @@ class SetupRunner(
                     _info.update { it.copy(toolsProgress = fraction) }
                     log(step, "$label ${(fraction * 100).toInt()}%")
                 }
-                val status = if (reinstall) null else tools.status()
                 val paths = try {
-                    when (status) {
-                        is ToolsStatus.Ready -> status.paths
-                        ToolsStatus.Missing -> tools.install(progress)
-                        else -> tools.reinstall(progress)
+                    val status = if (reinstall) null else tools.status()
+                    if (status is ToolsStatus.Ready) {
+                        status.paths
+                    } else {
+                        if (status == ToolsStatus.Missing) tools.install(progress) else tools.reinstall(progress)
+                        // Installed means answers when run, not just files on disk.
+                        (tools.status() as? ToolsStatus.Ready)?.paths
+                            ?: throw CliException(CliError(CliErrorKind.UNKNOWN, false, step, "tools do not respond after install"))
                     }
+                } catch (e: Throwable) {
+                    cli = null
+                    withContext(NonCancellable) {
+                        val fresh = runCatching { tools.status() }.getOrNull()
+                        _info.update { it.copy(tools = toolsStateOf(fresh)) }
+                    }
+                    throw e
                 } finally {
                     _info.update { it.copy(toolsProgress = null) }
                 }
@@ -305,7 +326,16 @@ class SetupRunner(
         }
     }
 
+    private fun toolsStateOf(status: ToolsStatus?) = when (status) {
+        is ToolsStatus.Ready -> ToolsState.READY
+        is ToolsStatus.Broken -> ToolsState.BROKEN
+        is ToolsStatus.Outdated -> ToolsState.OUTDATED
+        else -> ToolsState.MISSING
+    }
+
     private fun noTools(state: ToolsState) {
+        val running = _states.value[SetupStepId.TOOLS]
+        if (running is StepState.Running || running is StepState.WaitingRetry) return // the install is judged when it ends
         cli = null
         _info.update { it.copy(tools = state) }
         unmark(SetupStepId.TOOLS)

@@ -187,6 +187,7 @@ private fun StepControls(
     val platform = LocalPlatformContext.current
     val open: (String) -> Unit = { openExternalUrl(platform, it) }
     val busy = automation.states.collectAsState().value[step].let { it is StepState.Running || it is StepState.WaitingRetry }
+    val anyBusy = automation.states.collectAsState().value.values.any { it is StepState.Running || it is StepState.WaitingRetry }
     val runLabel = stringResource(Res.string.setup_btn_run)
 
     @Composable
@@ -212,7 +213,7 @@ private fun StepControls(
                         if (toolsState == ToolsState.BROKEN) Text(stringResource(Res.string.setup_tools_broken))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             val label = if (toolsState == ToolsState.OUTDATED) Res.string.setup_tools_update else Res.string.setup_tools_reinstall
-                            Button(onClick = { automation.reinstallTools() }, enabled = !busy) { Text(stringResource(label)) }
+                            Button(onClick = { automation.reinstallTools() }, enabled = !anyBusy) { Text(stringResource(label)) }
                             if (busy) TextButton(onClick = { automation.cancel() }) { Text(stringResource(Res.string.setup_btn_cancel)) }
                         }
                     }

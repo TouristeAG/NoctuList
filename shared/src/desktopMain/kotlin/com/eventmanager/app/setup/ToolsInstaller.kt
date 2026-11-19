@@ -6,6 +6,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
+import java.net.InetSocketAddress
 import java.net.ProxySelector
 import java.net.URI
 import java.net.http.HttpClient
@@ -20,10 +21,9 @@ interface ToolsHttp {
     suspend fun download(url: String, target: File, onProgress: (Float) -> Unit)
 }
 
-class JdkToolsHttp : ToolsHttp {
+class JdkToolsHttp(proxy: ProxyInfo? = null) : ToolsHttp {
     private val client = HttpClient.newBuilder()
-        .also { SystemProxy.detect() }
-        .proxy(ProxySelector.getDefault())
+        .proxy(if (proxy != null) ProxySelector.of(InetSocketAddress(proxy.host, proxy.port)) else ProxySelector.getDefault())
         .followRedirects(HttpClient.Redirect.NORMAL)
         .connectTimeout(Duration.ofSeconds(20))
         .build()
@@ -94,7 +94,7 @@ class ToolsInstaller(
     private suspend fun answer(cmd: List<String>, paths: ToolPaths): String? {
         val lines = mutableListOf<String>()
         val code = try {
-            runner.run(cmd, environment.workDir, environment.childEnv(paths.binDir, basePath), null, CommandLimits.READ) { lines += it }
+            runner.run(cmd, environment.workDir, environment.childEnv(paths.binDir, basePath), null, PROBE_LIMITS) { lines += it }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -104,6 +104,8 @@ class ToolsInstaller(
     }
 
     override suspend fun reinstall(onProgress: (Float, String) -> Unit): ToolPaths {
+        toolsDir.mkdirs()
+        checkDisk() // before anything is deleted: a full disk must leave the old tools alone
         FileOps.deleteTree(toolsDir.resolve("node"), sleep)
         FileOps.deleteTree(toolsDir.resolve("npm-global"), sleep)
         return install(onProgress)
@@ -111,7 +113,7 @@ class ToolsInstaller(
 
     override suspend fun install(onProgress: (Float, String) -> Unit): ToolPaths {
         toolsDir.mkdirs()
-        if (freeBytes(nearestExisting(toolsDir)) < ToolsManifest.MIN_FREE_BYTES) throw DiskSpaceException(ToolsManifest.MIN_FREE_BYTES)
+        checkDisk()
         onProgress(0f, "node")
         val sums = http.text("$NODE_DIST/SHASUMS256.txt")
         val name = archiveName(ToolsManifest.NODE_VERSION, os, arch)
@@ -160,6 +162,10 @@ class ToolsInstaller(
         toolsDir.deleteRecursively()
     }
 
+    private fun checkDisk() {
+        if (freeBytes(nearestExisting(toolsDir)) < ToolsManifest.MIN_FREE_BYTES) throw DiskSpaceException(ToolsManifest.MIN_FREE_BYTES)
+    }
+
     private fun nearestExisting(file: File): File {
         var f: File? = file.absoluteFile
         while (f != null && !f.exists()) f = f.parentFile
@@ -180,6 +186,7 @@ class ToolsInstaller(
     }
 
     companion object {
+        private val PROBE_LIMITS = CommandLimits(20_000, 20_000)
         const val NODE_DIST = "https://nodejs.org/dist/${ToolsManifest.NODE_VERSION}"
 
         fun archiveName(version: String, os: String, arch: String): String {

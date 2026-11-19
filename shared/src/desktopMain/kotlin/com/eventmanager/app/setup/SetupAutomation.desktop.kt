@@ -21,11 +21,12 @@ actual fun createSetupAutomation(context: PlatformContext, settings: SettingsMan
     val root = context.appDataDir
     val runner = RealProcessRunner()
     val os = System.getProperty("os.name").orEmpty()
-    val environment = SetupEnvironment(root, SystemProxy.detect())
+    val proxy = SystemProxy.detect()
+    val environment = SetupEnvironment(root, proxy)
     val tools = ToolsInstaller(
         toolsDir = SetupPaths.tools(root),
         runner = runner,
-        http = JdkToolsHttp(),
+        http = JdkToolsHttp(proxy),
         os = os,
         arch = System.getProperty("os.arch").orEmpty(),
         environment = environment,

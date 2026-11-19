@@ -146,7 +146,7 @@ class ToolsInstallerTest {
         assertEquals(toolsDir.resolve("node/bin/node"), status.paths.node)
         val fb = r.calls.first { it.last() == "--version" }
         assertEquals(listOf(status.paths.node.path, status.paths.firebase.path, "--version"), fb)
-        assertTrue(r.limitsSeen.all { it == CommandLimits.READ })
+        assertTrue(r.limitsSeen.all { it == CommandLimits(20_000, 20_000) })
         assertTrue(r.envs.all { it["XDG_CONFIG_HOME"] != null })
     }
 
@@ -238,6 +238,15 @@ class ToolsInstallerTest {
         job.cancelAndJoin()
         assertFalse(toolsDir.resolve("node").exists())
         assertFalse(toolsDir.listFiles().orEmpty().any { it.name.startsWith(".tmp") })
+    }
+
+    @Test
+    fun reinstallWithFullDiskKeepsOldTools(): Unit = runBlocking {
+        fakeInstalledFiles()
+        val p = ToolPathsResolver.bundled(toolsDir, "Mac OS X")
+        assertFailsWith<DiskSpaceException> { installer(free = 1L).reinstall { _, _ -> } }
+        assertTrue(p.node.isFile)
+        assertTrue(p.firebase.isFile)
     }
 
     @Test

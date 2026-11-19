@@ -10,6 +10,7 @@ object ArchiveExtractor {
         if (archive.name.endsWith(".zip")) {
             extractZip(archive, into)
         } else {
+            // tar runs to completion even if the caller is cancelled; the caller's finally block cleans up.
             val code = kotlinx.coroutines.runBlocking {
                 runner.run(listOf("tar", "-xf", archive.path, "-C", into.path), null, emptyMap(), null) {}
             }

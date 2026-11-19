@@ -37,6 +37,7 @@ private class FakeCli : SetupCli {
     var databases = listOf(DatabaseInfo("(default)", "europe-west6"))
     var apps = emptyList<String>()
     var blockDeploy: CompletableDeferred<Unit>? = null
+    var events: MutableList<String>? = null
     var passwordSeen: String? = null
 
     private fun fail(text: String, step: SetupStepId): Nothing = throw CliException(CliErrorClassifier.classify(text, step))
@@ -56,7 +57,12 @@ private class FakeCli : SetupCli {
     override suspend fun sdkConfig(projectId: String, appId: String) = WebConfig("AIzaKey", appId, projectId).also { calls += "sdkConfig" }
     override suspend fun deploy(projectId: String, dir: File, only: String, onLine: (String) -> Unit) {
         calls += "deploy $only"
-        blockDeploy?.await()
+        try {
+            blockDeploy?.await()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            events?.add("deploy cancelled")
+            throw e
+        }
         if (deployFailures.isNotEmpty()) fail(deployFailures.removeAt(0), SetupStepId.SERVER)
         if ("hosting" in only) onLine("\u001B[1mHosting URL:\u001B[22m https://site-for-$projectId.web.app")
     }
@@ -69,21 +75,25 @@ private class FakeCli : SetupCli {
     override suspend fun setArtifactPolicy(projectId: String, region: String, onLine: (String) -> Unit) { calls += "setpolicy $region" }
 }
 
-private class FakeTools(var status: ToolsStatus = ToolsStatus.Missing) : SetupTools {
+private class FakeTools(var status: ToolsStatus = ToolsStatus.Missing, val calls: MutableList<String> = mutableListOf()) : SetupTools {
+    var gate: CompletableDeferred<Unit>? = null
+    var installWorks = true
+    var failWith: Exception? = null
     constructor(installed: Boolean) : this(if (installed) ToolsStatus.Ready(FAKE_PATHS) else ToolsStatus.Missing)
 
-    val calls = mutableListOf<String>()
     override suspend fun status(): ToolsStatus = status
     override suspend fun install(onProgress: (Float, String) -> Unit): ToolPaths {
+        gate?.await()
+        failWith?.let { throw it }
         calls += "install"
-        status = ToolsStatus.Ready(FAKE_PATHS)
+        if (installWorks) status = ToolsStatus.Ready(FAKE_PATHS)
         return FAKE_PATHS
     }
     override suspend fun reinstall(onProgress: (Float, String) -> Unit): ToolPaths {
+        gate?.await()
+        failWith?.let { throw it }
         calls += "remove"
-        calls += "install"
-        status = ToolsStatus.Ready(FAKE_PATHS)
-        return FAKE_PATHS
+        return install(onProgress)
     }
 
     companion object {
@@ -302,6 +312,56 @@ class SetupRunnerTest {
         withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] == StepState.Done } }
         assertEquals(listOf("remove", "install"), tools.calls)
         assertEquals(ToolsState.READY, r.info.value.tools)
+    }
+
+    @Test
+    fun reinstallCancelsRunningStepFirst(): Unit = runBlocking {
+        val events = mutableListOf<String>()
+        cli.events = events
+        cli.blockDeploy = CompletableDeferred()
+        val tools = FakeTools(ToolsStatus.Ready(FakeTools.FAKE_PATHS), events)
+        val r = SetupRunner(scope, tools, { cli }, workspace, settings, sleep = {})
+        r.run(SetupStepId.RULES)
+        withTimeout(5_000) { while ("deploy firestore:rules" !in cli.calls) kotlinx.coroutines.delay(10) }
+        r.reinstallTools()
+        withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] == StepState.Done } }
+        assertEquals(StepState.Todo, r.states.value[SetupStepId.RULES])
+        assertEquals(listOf("deploy cancelled", "remove", "install"), events)
+    }
+
+    @Test
+    fun refreshDuringInstallKeepsToolsState(): Unit = runBlocking {
+        val tools = FakeTools(ToolsStatus.Broken("x")).apply { gate = CompletableDeferred() }
+        val r = SetupRunner(scope, tools, { cli }, workspace, settings, sleep = {})
+        r.run(SetupStepId.TOOLS)
+        withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] is StepState.Running } }
+        r.refresh()
+        assertEquals(ToolsState.MISSING, r.info.value.tools)
+        assertTrue(r.states.value[SetupStepId.TOOLS] is StepState.Running)
+        tools.gate!!.complete(Unit)
+        withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] == StepState.Done } }
+    }
+
+    @Test
+    fun failedReinstallReadsTheToolsAgain(): Unit = runBlocking {
+        val tools = FakeTools(ToolsStatus.Broken("x")).apply { failWith = java.io.IOException("disk full") }
+        val r = SetupRunner(scope, tools, { cli }, workspace, settings, sleep = {})
+        r.reinstallTools()
+        withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] is StepState.Error } }
+        assertEquals(ToolsState.BROKEN, r.info.value.tools)
+    }
+
+    @Test
+    fun installThatDoesNotAnswerIsBroken(): Unit = runBlocking {
+        val tools = FakeTools(ToolsStatus.Missing).apply { installWorks = false }
+        val r = SetupRunner(scope, tools, { cli }, workspace, settings, sleep = {})
+        r.run(SetupStepId.TOOLS)
+        withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] is StepState.Error } }
+        assertEquals(ToolsState.MISSING, r.info.value.tools)
+        tools.status = ToolsStatus.Broken("x")
+        r.run(SetupStepId.TOOLS)
+        withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] is StepState.Error } }
+        assertEquals(ToolsState.BROKEN, r.info.value.tools)
     }
 
     @Test
