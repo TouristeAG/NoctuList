@@ -22,6 +22,8 @@ class FirebaseCli(
     private val runner: ProcessRunner,
     private val tools: ToolPaths,
     private val redactor: OutputRedactor,
+    private val env: SetupEnvironment,
+    private val logs: SetupLogFiles,
 ) : SetupCli {
     /**
      * Without a terminal the CLI uses its remote sign-in: it prints a session ID and a URL, and
@@ -130,7 +132,9 @@ class FirebaseCli(
 
     override suspend fun npmInstall(dir: File, onLine: (String) -> Unit) {
         val lines = StringBuilder()
-        val code = runner.run(tools.npmCommand() + listOf("install", "--no-audit", "--no-fund"), dir, env(), null) {
+        val log = logs.sink(SetupStepId.SERVER)
+        val code = runner.run(tools.npmCommand() + listOf("install", "--no-audit", "--no-fund"), dir, env(), null, CommandLimits.NPM) {
+            log(it)
             val safe = redactor.redact(it)
             lines.appendLine(safe)
             onLine(safe)
@@ -161,9 +165,12 @@ class FirebaseCli(
         return listOf("--project", id)
     }
 
-    private fun env(): Map<String, String> {
-        val current = System.getenv("PATH").orEmpty()
-        return mapOf("PATH" to listOf(tools.binDir.path, current).filter { it.isNotBlank() }.joinToString(File.pathSeparator))
+    private fun env(): Map<String, String> = env.childEnv(tools.binDir, System.getenv("PATH").orEmpty())
+
+    private fun limitsFor(args: List<String>): CommandLimits = when (args.firstOrNull()) {
+        "deploy" -> CommandLimits.DEPLOY
+        "login" -> CommandLimits.LOGIN
+        else -> CommandLimits.READ
     }
 
     private suspend fun exec(
@@ -175,7 +182,9 @@ class FirebaseCli(
         onLine: (String) -> Unit = {},
     ): String {
         val lines = StringBuilder()
-        val code = runner.run(tools.firebaseCommand() + args, workDir, env(), stdin) {
+        val log = logs.sink(step)
+        val code = runner.run(tools.firebaseCommand() + args + "--debug", workDir ?: env.workDir, env(), stdin, limitsFor(args)) {
+            log(it)
             val safe = redactor.redact(it)
             lines.appendLine(safe)
             if (show) onLine(safe)
@@ -194,10 +203,34 @@ class FirebaseCli(
         show: Boolean = true,
     ): Output {
         val raw = exec(args, step, show = show, onLine = if (show) onLine else { _ -> })
-        val start = raw.indexOf('{')
-        val end = raw.lastIndexOf('}')
-        val json = if (start in 0 until end) runCatching { Json.parseToJsonElement(raw.substring(start, end + 1)) }.getOrNull() else null
-        return Output(if (show) raw else "", json)
+        return Output(if (show) raw else "", lastJsonObject(raw))
+    }
+
+    /** --debug mixes log lines (some holding braces) with the JSON: take the last top-level object that parses. */
+    private fun lastJsonObject(raw: String): JsonElement? {
+        var found: JsonElement? = null
+        var depth = 0
+        var start = -1
+        var inString = false
+        var escaped = false
+        for ((i, c) in raw.withIndex()) {
+            if (inString) {
+                when {
+                    escaped -> escaped = false
+                    c == '\\' -> escaped = true
+                    c == '"' -> inString = false
+                }
+                continue
+            }
+            when (c) {
+                '"' -> if (depth > 0) inString = true
+                '{' -> { if (depth == 0) start = i; depth++ }
+                '}' -> if (depth > 0 && --depth == 0) {
+                    runCatching { Json.parseToJsonElement(raw.substring(start, i + 1)) }.getOrNull()?.let { found = it }
+                }
+            }
+        }
+        return found
     }
 
     private fun result(out: Output): JsonElement? = out.json?.obj()?.get("result")

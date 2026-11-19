@@ -33,10 +33,14 @@ actual fun createSetupAutomation(context: PlatformContext, settings: SettingsMan
         override suspend fun install(onProgress: (Float, String) -> Unit) = installer.install(onProgress)
     }
     val secrets = ActiveSecrets()
+    val environment = SetupEnvironment(root, null)
+    val redactor = OutputRedactor { secrets.current() }
+    val logs = SetupLogFiles(environment.logDir, redactor) { System.currentTimeMillis() }
+    logs.prune()
     return SetupRunner(
         scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
         tools = tools,
-        cliFactory = { paths -> FirebaseCli(runner, paths, OutputRedactor { secrets.current() }) },
+        cliFactory = { paths -> FirebaseCli(runner, paths, redactor, environment, logs) },
         workspace = SiteWorkspace(SetupPaths.site(root), GuestFormSiteBundle.files) { Res.readBytes(it) },
         settings = SettingsManagerSetupSettings(settings),
         secrets = secrets,
