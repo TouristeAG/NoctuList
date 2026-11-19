@@ -18,6 +18,12 @@ const MAX_LABEL = 80;
 
 export type OutboxReason = "" | "INVALID" | "BAD_ADDRESS" | "SEND_FAILED";
 
+/** The answer written to the document: `failure` is a short non-secret code of a failed send. */
+interface OutboxAnswer {
+  reason: OutboxReason;
+  failure: string;
+}
+
 export interface OutboxMail {
   to: string;
   raw: string;
@@ -104,14 +110,15 @@ export async function onOutboxDocument(
 ): Promise<void> {
   if (current === undefined || !isClaimable(current)) return;
   const ref = db.doc(`orgs/${orgId}/mailOutbox/${id}`);
-  let reason: OutboxReason;
+  let answer: OutboxAnswer;
   try {
     const claimed = await claim(ref, isClaimable);
     if (claimed === null) return;
-    reason = await sendClaimed(mail, claimed);
+    answer = await sendClaimed(mail, claimed);
+    const { reason, failure } = answer;
     // The message (QR code, address) is not kept once answered.
     await ref.set(
-      { status: reason === "" ? "DONE" : "REJECTED", reason, processedAt: Date.now(), raw: FieldValue.delete() },
+      { status: reason === "" ? "DONE" : "REJECTED", reason, failure, processedAt: Date.now(), raw: FieldValue.delete() },
       { merge: true },
     );
   } catch (e) {
@@ -123,17 +130,17 @@ export async function onOutboxDocument(
   } catch (e) {
     logger.error("server status not written", { orgId, id, code: errorCode(e) });
   }
-  logger.info("outbox mail processed", { orgId, id, reason });
+  logger.info("outbox mail processed", { orgId, id, reason: answer.reason, failure: answer.failure });
 }
 
-async function sendClaimed(mail: MailTransport, claimed: Data): Promise<OutboxReason> {
+async function sendClaimed(mail: MailTransport, claimed: Data): Promise<OutboxAnswer> {
   const parsed = parseOutbox(claimed);
-  if (parsed === null) return "INVALID";
+  if (parsed === null) return { reason: "INVALID", failure: "" };
   const to = safeRecipient(parsed.to);
-  if (to === null) return "BAD_ADDRESS";
-  const sent = await sendRawMail(
+  if (to === null) return { reason: "BAD_ADDRESS", failure: "" };
+  const result = await sendRawMail(
     { to, fromName: parsed.fromName, build: (from, now) => rewriteHeaders(parsed.raw, from, parsed.fromName, to, now) },
     mail,
   );
-  return sent ? "" : "SEND_FAILED";
+  return result.sent ? { reason: "", failure: "" } : { reason: "SEND_FAILED", failure: result.failure };
 }

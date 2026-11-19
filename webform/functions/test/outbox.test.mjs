@@ -64,15 +64,35 @@ test("sendRawMail pins the envelope to the one recipient", async () => {
   const calls = [];
   const transport = {
     db: null,
+    mode: () => "app_password", from: () => "", sa: () => "",
     user: () => "asso@gmail.com",
     password: () => "abcd efgh ijkl mnop",
     smtp: (user, password) => ({ sendMail: async (m) => { calls.push({ user, password, m }); return {}; } }),
   };
   const ok = await lib.sendRawMail({ to: "lea@mail.example", fromName: "Asso", build: (from) => `From: ${from}\r\n\r\nx` }, transport);
-  assert.equal(ok, true);
+  assert.deepEqual(ok, { sent: true, failure: "" });
   assert.equal(calls.length, 1);
   assert.equal(calls[0].password, "abcdefghijklmnop");
   assert.deepEqual(calls[0].m.envelope, { from: "asso@gmail.com", to: ["lea@mail.example"] });
   assert.equal(calls[0].m.raw, "From: asso@gmail.com\r\n\r\nx");
-  assert.equal(await lib.sendRawMail({ to: "a@b.example, c@d.example", fromName: "", build: () => "x" }, transport), false);
+  assert.equal((await lib.sendRawMail({ to: "a@b.example, c@d.example", fromName: "", build: () => "x" }, transport)).sent, false);
+});
+
+test("outboxStoresFailureCode", async () => {
+  const sets = [];
+  const db = { runTransaction: async (fn) => fn({ get: async () => ({ exists: true, data: () => doc }), set: () => {} }) };
+  const ref = { firestore: db, set: async (data) => { sets.push(data); } };
+  db.doc = () => ref;
+  const doc = { schema: 1, to: "lea@mail.example", raw: "From: x\r\n\r\nbody", fromName: "A", status: "PENDING" };
+  const transport = {
+    db, mode: () => "app_password", from: () => "", sa: () => "",
+    user: () => "asso@gmail.com", password: () => "pw",
+    smtp: () => ({ sendMail: async () => { throw Object.assign(new Error("Invalid login: 535"), { responseCode: 535 }); } }),
+  };
+  await lib.onOutboxDocument(db, transport, "org1", "m1", doc);
+  const answer = sets.find((s) => s.status === "REJECTED");
+  assert.ok(answer);
+  assert.equal(answer.reason, "SEND_FAILED");
+  assert.equal(answer.failure, "smtp:535");
+  assert.equal(JSON.stringify(answer).includes("body"), false);
 });

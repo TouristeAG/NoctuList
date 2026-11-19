@@ -102,6 +102,7 @@ test("sendMail answers false when the SMTP transport throws (SEND_FAILED)", asyn
   const calls = [];
   const transport = {
     db: null,
+    mode: () => "app_password", from: () => "", sa: () => "",
     user: () => "asso@mail.example",
     password: () => "abcd efgh ijkl mnop",
     smtp: (user, password) => ({
@@ -111,7 +112,7 @@ test("sendMail answers false when the SMTP transport throws (SEND_FAILED)", asyn
       },
     }),
   };
-  assert.equal(await lib.sendMail(outgoing(), transport), false);
+  assert.deepEqual(await lib.sendMail(outgoing(), transport), { sent: false, failure: "smtp:ETIMEDOUT" });
   assert.equal(calls.length, 1);
   assert.equal(calls[0].password, "abcdefghijklmnop");
   assert.deepEqual(calls[0].message.envelope, { from: "asso@mail.example", to: ["lea@mail.example"] });
@@ -120,11 +121,12 @@ test("sendMail answers false when the SMTP transport throws (SEND_FAILED)", asyn
 test("sendMail answers true once the SMTP transport accepted the message", async () => {
   const transport = {
     db: null,
+    mode: () => "app_password", from: () => "", sa: () => "",
     user: () => "asso@mail.example",
     password: () => "secret",
     smtp: () => ({ sendMail: async () => ({ accepted: ["lea@mail.example"] }) }),
   };
-  assert.equal(await lib.sendMail(outgoing(), transport), true);
+  assert.deepEqual(await lib.sendMail(outgoing(), transport), { sent: true, failure: "" });
 });
 
 test("logo image removed from the html when no logo is attached", async () => {
@@ -133,4 +135,58 @@ test("logo image removed from the html when no logo is attached", async () => {
   assert.equal(none.html, "<p>Léa</p><td></td><img src=\"cid:qrcode\">");
   const withLogo = await lib.buildQrMail(template({ html, logoBase64: PNG }), "Léa", "id");
   assert.ok(withLogo.html.includes("src=\"cid:logo\""));
+});
+
+const workspace = (over = {}) => {
+  const calls = { smtp: 0, token: [], send: [] };
+  const transport = {
+    db: null, mode: () => "workspace", from: () => "no-reply@example.org", sa: () => "sa@proj.iam.gserviceaccount.com",
+    user: () => "admin@example.org",
+    password: () => { throw new Error("password must not be read"); },
+    smtp: () => { calls.smtp++; throw new Error("smtp must not be used"); },
+    workspace: {
+      token: async (sa, subject) => { calls.token.push({ sa, subject }); return "tok"; },
+      send: async (token, user, raw) => { calls.send.push({ token, user, raw: raw.toString("utf8") }); },
+    },
+    ...over,
+  };
+  return { calls, transport };
+};
+
+test("workspaceModeSendsThroughGmailApiWithFromAddress", async () => {
+  const { calls, transport } = workspace();
+  const r = await lib.sendMail(outgoing(), transport);
+  assert.deepEqual(r, { sent: true, failure: "" });
+  assert.equal(calls.smtp, 0);
+  assert.deepEqual(calls.token, [{ sa: "sa@proj.iam.gserviceaccount.com", subject: "admin@example.org" }]);
+  assert.equal(calls.send.length, 1);
+  assert.equal(calls.send[0].user, "admin@example.org");
+  assert.equal(calls.send[0].token, "tok");
+  assert.match(calls.send[0].raw, /^From: "?Asso"? <no-reply@example\.org>/m);
+  assert.match(calls.send[0].raw, /^To: lea@mail\.example/m);
+  const raw = await lib.sendRawMail({ to: "lea@mail.example", fromName: "Asso", build: (from) => `From: ${from}\r\n\r\nx` }, transport);
+  assert.deepEqual(raw, { sent: true, failure: "" });
+  assert.equal(calls.send[1].raw, "From: no-reply@example.org\r\n\r\nx");
+});
+
+test("workspace mode falls back to the user as From when MAIL_FROM is blank", async () => {
+  const { calls, transport } = workspace({ from: () => "  " });
+  await lib.sendMail(outgoing(), transport);
+  assert.match(calls.send[0].raw, /^From: "?Asso"? <admin@example\.org>/m);
+});
+
+test("delegationNotAuthorizedGivesFailureCode", async () => {
+  const { transport } = workspace();
+  transport.workspace.token = async () => { throw new lib.MailSendError("delegation:unauthorized_client"); };
+  assert.deepEqual(await lib.sendMail(outgoing(), transport), { sent: false, failure: "delegation:unauthorized_client" });
+  assert.deepEqual(
+    await lib.sendRawMail({ to: "lea@mail.example", fromName: "", build: () => "x" }, transport),
+    { sent: false, failure: "delegation:unauthorized_client" },
+  );
+});
+
+test("gmail failure code is passed through", async () => {
+  const { transport } = workspace();
+  transport.workspace.send = async () => { throw new lib.MailSendError("gmail:403:rateLimitExceeded"); };
+  assert.deepEqual(await lib.sendMail(outgoing(), transport), { sent: false, failure: "gmail:403:rateLimitExceeded" });
 });

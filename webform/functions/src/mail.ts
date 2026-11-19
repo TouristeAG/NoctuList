@@ -6,7 +6,9 @@ import type { Firestore } from "firebase-admin/firestore";
 import nodemailer from "nodemailer";
 import type { Transporter } from "nodemailer";
 import QRCode from "qrcode";
+import MailComposer from "nodemailer/lib/mail-composer";
 import { cleanEmail } from "./validate";
+import { delegatedToken, gmailSendRaw, MailSendError } from "./workspace";
 
 /** PORTAL_FIRST_NAME_TOKEN (Kotlin): replaced by the volunteer's first name. */
 export const PORTAL_FIRST_NAME_TOKEN = "%%NOCTULIST_FIRST_NAME%%";
@@ -49,10 +51,27 @@ export interface OutgoingMail extends QrMail {
 /** The part of a nodemailer transporter that sendMail uses. */
 export type SmtpClient = Pick<Transporter, "sendMail">;
 
+/** What a send answers: `failure` is a short non-secret code, "" once sent. */
+export interface SendResult {
+  sent: boolean;
+  failure: string;
+}
+
+export type MailMode = "app_password" | "workspace";
+
 export interface MailTransport {
   db: Firestore;
+  mode: () => MailMode;
+  /** Envelope and sending user (the Gmail account, or the Workspace user that is impersonated). */
   user: () => string;
+  /** Workspace mode only: the From address, blank for the user. */
+  from: () => string;
+  /** Workspace mode only: the delegated `noctulist-mail@<project>.iam.gserviceaccount.com`. */
+  sa: () => string;
+  /** Never read in workspace mode. */
   password: () => string;
+  /** Workspace calls; the real ones when absent (tests pass fakes). */
+  workspace?: { token: typeof delegatedToken; send: typeof gmailSendRaw };
   /** SMTP client for these credentials; the Gmail one when absent (tests pass a fake). */
   smtp?: (user: string, password: string) => SmtpClient;
 }
@@ -174,65 +193,104 @@ export interface RawOutgoingMail {
   build: (from: string, now: Date) => string;
 }
 
+const SENT: SendResult = { sent: true, failure: "" };
+const failed = (failure: string): SendResult => ({ sent: false, failure });
+
+/** The address in the From header: MAIL_FROM in workspace mode when set, else the sending user. */
+function fromAddress(transport: MailTransport, user: string): string {
+  if (transport.mode() !== "workspace") return user;
+  const from = transport.from().trim();
+  return from === "" ? user : from;
+}
+
+/** Short code of a failed send. Only codes are used: SMTP and API messages can quote addresses. */
+function failureOf(e: unknown): string {
+  if (e instanceof MailSendError) return e.code;
+  const err = e as { code?: unknown; responseCode?: unknown };
+  if (typeof err?.responseCode === "number") return `smtp:${err.responseCode}`;
+  const c = err?.code === undefined ? "" : String(err.code).replace(/[^A-Za-z0-9_.-]/g, "").slice(0, 40);
+  return `smtp:${c === "" ? "0" : c}`;
+}
+
+function logFailure(e: unknown): void {
+  const err = e as { code?: unknown; responseCode?: unknown };
+  logger.error("mail not sent", {
+    reason: "SEND_FAILED",
+    failure: failureOf(e),
+    code: err?.code === undefined ? "" : String(err.code),
+    responseCode: typeof err?.responseCode === "number" ? err.responseCode : 0,
+  });
+}
+
+/** Sends [raw] as [user] through the Gmail API with a delegated token. */
+async function sendWorkspace(transport: MailTransport, user: string, raw: Buffer): Promise<void> {
+  const sa = transport.sa().trim();
+  if (sa === "") throw new MailSendError("config:no_service_account");
+  const ws = transport.workspace ?? { token: delegatedToken, send: gmailSendRaw };
+  const token = await ws.token(sa, user, { fetch, now: Date.now });
+  await ws.send(token, user, raw, fetch);
+}
+
 /**
  * A message the app built itself (mailOutbox), sent as is through the association's Gmail with
  * the envelope pinned to [msg.to]. Same rules and logging as sendMail.
  */
-export async function sendRawMail(msg: RawOutgoingMail, transport: MailTransport): Promise<boolean> {
+export async function sendRawMail(msg: RawOutgoingMail, transport: MailTransport): Promise<SendResult> {
   try {
     const to = safeRecipient(msg.to);
     const user = transport.user().trim();
-    if (to === null || safeRecipient(user) === null) {
+    const from = fromAddress(transport, user);
+    if (to === null || safeRecipient(user) === null || safeRecipient(from) === null) {
       logger.error("mail not sent", { reason: "BAD_ADDRESS" });
-      return false;
+      return failed("bad_address");
     }
-    const raw = msg.build(user, new Date());
+    const raw = msg.build(from, new Date());
     if (isCapture()) {
       await transport.db.collection("_testMail").add({
         to,
-        from: { name: msg.fromName.replace(CONTROL, " ").trim(), address: user },
+        from: { name: msg.fromName.replace(CONTROL, " ").trim(), address: from },
         raw,
         size: raw.length,
         capturedAt: Date.now(),
       });
-      return true;
+      return SENT;
+    }
+    if (transport.mode() === "workspace") {
+      await sendWorkspace(transport, user, Buffer.from(raw, "utf8"));
+      return SENT;
     }
     const password = transport.password().replace(/\s+/g, "");
     if (password === "") {
       logger.error("mail not sent", { reason: "NO_PASSWORD" });
-      return false;
+      return failed("no_password");
     }
     const smtp = transport.smtp ?? gmail;
     await smtp(user, password).sendMail({ envelope: { from: user, to: [to] }, raw });
-    return true;
+    return SENT;
   } catch (e) {
-    const err = e as { code?: unknown; responseCode?: unknown };
-    logger.error("mail not sent", {
-      reason: "SEND_FAILED",
-      code: err?.code === undefined ? "" : String(err.code),
-      responseCode: typeof err?.responseCode === "number" ? err.responseCode : 0,
-    });
-    return false;
+    logFailure(e);
+    return failed(failureOf(e));
   }
 }
 
 /**
- * Sends through the association's Gmail account (SMTP with an app password). True once Gmail
- * accepted the message. Only error codes are logged: SMTP messages can quote addresses.
+ * Sends through the association's Gmail account (SMTP with an app password, or the Gmail API
+ * with Workspace delegation). Sent once Gmail accepted the message. Only error codes are logged.
  */
-export async function sendMail(msg: OutgoingMail, transport: MailTransport): Promise<boolean> {
+export async function sendMail(msg: OutgoingMail, transport: MailTransport): Promise<SendResult> {
   try {
     const to = safeRecipient(msg.to);
     const user = transport.user().trim();
-    if (to === null || safeRecipient(user) === null) {
+    const from = fromAddress(transport, user);
+    if (to === null || safeRecipient(user) === null || safeRecipient(from) === null) {
       logger.error("mail not sent", { reason: "BAD_ADDRESS" });
-      return false;
+      return failed("bad_address");
     }
     const fromName = msg.fromName.replace(CONTROL, " ").trim();
     if (isCapture()) {
       await transport.db.collection("_testMail").add({
         to,
-        from: { name: fromName, address: user },
+        from: { name: fromName, address: from },
         subject: msg.subject,
         html: msg.html,
         text: msg.text,
@@ -245,33 +303,32 @@ export async function sendMail(msg: OutgoingMail, transport: MailTransport): Pro
         })),
         capturedAt: Date.now(),
       });
-      return true;
+      return SENT;
+    }
+    const message = {
+      from: fromName === "" ? from : { name: fromName, address: from },
+      to: { name: "", address: to },
+      subject: msg.subject,
+      html: msg.html,
+      text: msg.text,
+      attachments: msg.attachments,
+    };
+    if (transport.mode() === "workspace") {
+      await sendWorkspace(transport, user, await new MailComposer(message).compile().build());
+      return SENT;
     }
     // Gmail shows app passwords in groups of four; the spaces are not part of it.
     const password = transport.password().replace(/\s+/g, "");
     if (password === "") {
       logger.error("mail not sent", { reason: "NO_PASSWORD" });
-      return false;
+      return failed("no_password");
     }
     const smtp = transport.smtp ?? gmail;
-    await smtp(user, password).sendMail({
-      from: fromName === "" ? user : { name: fromName, address: user },
-      to: { name: "", address: to },
-      // Pinned envelope: the message goes to this one address whatever the headers say.
-      envelope: { from: user, to: [to] },
-      subject: msg.subject,
-      html: msg.html,
-      text: msg.text,
-      attachments: msg.attachments,
-    });
-    return true;
+    // Pinned envelope: the message goes to this one address whatever the headers say.
+    await smtp(user, password).sendMail({ ...message, envelope: { from: user, to: [to] } });
+    return SENT;
   } catch (e) {
-    const err = e as { code?: unknown; responseCode?: unknown };
-    logger.error("mail not sent", {
-      reason: "SEND_FAILED",
-      code: err?.code === undefined ? "" : String(err.code),
-      responseCode: typeof err?.responseCode === "number" ? err.responseCode : 0,
-    });
-    return false;
+    logFailure(e);
+    return failed(failureOf(e));
   }
 }

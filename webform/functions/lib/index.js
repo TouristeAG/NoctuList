@@ -192,13 +192,13 @@ function parseGoogleClaim(googleUid, data) {
   const email = cleanEmail(data.email);
   if (email === null) return null;
   const status = data.status === null || data.status === void 0 ? "" : String(data.status);
-  let code = "";
+  let code2 = "";
   if (type === "LINK_CODE") {
     const raw = str(data.code);
     if (raw === void 0 || !LINK_CODE.test(raw)) return null;
-    code = raw;
+    code2 = raw;
   }
-  return { googleUid, type, status, email, code };
+  return { googleUid, type, status, email, code: code2 };
 }
 
 // src/google.ts
@@ -289,8 +289,8 @@ function canUnlink(owner) {
   return null;
 }
 var errorCode = (e) => {
-  const code = e?.code;
-  return code === void 0 ? "" : String(code);
+  const code2 = e?.code;
+  return code2 === void 0 ? "" : String(code2);
 };
 var volunteersOf = (db, orgId) => db.collection(`orgs/${orgId}/volunteers`);
 var aliasRef = (db, orgId, googleUid) => db.doc(`orgs/${orgId}/portalGoogleAccounts/${googleUid}`);
@@ -464,6 +464,81 @@ async function unlinkGoogle(db, orgId, requestId, uid) {
 import * as logger2 from "firebase-functions/logger";
 import nodemailer from "nodemailer";
 import QRCode from "qrcode";
+import MailComposer from "nodemailer/lib/mail-composer";
+
+// src/workspace.ts
+var MailSendError = class extends Error {
+  code;
+  constructor(code2) {
+    super(code2);
+    this.name = "MailSendError";
+    this.code = code2;
+  }
+};
+var METADATA_TOKEN = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token";
+var TOKEN_URL = "https://oauth2.googleapis.com/token";
+var SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send";
+var LIFETIME_SECONDS = 3600;
+var REFRESH_MARGIN_MS = 6e4;
+var MAX_CODE = 80;
+var safePart = (s, fallback) => {
+  const clean = typeof s === "string" ? s.replace(/[^A-Za-z0-9_.-]/g, "").slice(0, 40) : "";
+  return clean === "" ? fallback : clean;
+};
+var code = (c) => c.slice(0, MAX_CODE);
+async function jsonOf(r) {
+  try {
+    const body = await r.json();
+    return typeof body === "object" && body !== null ? body : {};
+  } catch {
+    return {};
+  }
+}
+var cache = /* @__PURE__ */ new Map();
+async function delegatedToken(sa, subject, deps) {
+  const key = `${sa}|${subject}`;
+  const hit = cache.get(key);
+  if (hit !== void 0 && deps.now() < hit.expiresAt - REFRESH_MARGIN_MS) return hit.token;
+  const f = deps.fetch;
+  const meta = await f(METADATA_TOKEN, { headers: { "Metadata-Flavor": "Google" } });
+  const metaBody = await jsonOf(meta);
+  if (!meta.ok || typeof metaBody.access_token !== "string") throw new MailSendError(code(`delegation:metadata:${meta.status}`));
+  const iat = Math.floor(deps.now() / 1e3);
+  const claims = { iss: sa, sub: subject, scope: SEND_SCOPE, aud: TOKEN_URL, iat, exp: iat + LIFETIME_SECONDS };
+  const signed = await f(`https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${encodeURIComponent(sa).replace(/%40/g, "@")}:signJwt`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${metaBody.access_token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ payload: JSON.stringify(claims) })
+  });
+  const signedBody = await jsonOf(signed);
+  if (!signed.ok || typeof signedBody.signedJwt !== "string") throw new MailSendError(code(`delegation:sign:${signed.status}`));
+  const exchanged = await f(TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `grant_type=${encodeURIComponent("urn:ietf:params:oauth:grant-type:jwt-bearer")}&assertion=${encodeURIComponent(signedBody.signedJwt)}`
+  });
+  const body = await jsonOf(exchanged);
+  if (!exchanged.ok || typeof body.access_token !== "string") {
+    throw new MailSendError(code(`delegation:${safePart(body.error, `http_${exchanged.status}`)}`));
+  }
+  const lifetime = typeof body.expires_in === "number" && body.expires_in > 0 ? body.expires_in : LIFETIME_SECONDS;
+  cache.set(key, { token: body.access_token, expiresAt: deps.now() + lifetime * 1e3 });
+  return body.access_token;
+}
+async function gmailSendRaw(token, user, raw, f) {
+  const r = await f(`https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(user).replace(/%40/g, "@")}/messages/send`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ raw: raw.toString("base64url") })
+  });
+  if (r.ok) return;
+  const body = await jsonOf(r);
+  const error6 = body.error ?? {};
+  const reason = safePart(error6.errors?.[0]?.reason ?? error6.status, "unknown");
+  throw new MailSendError(code(`gmail:${r.status}:${reason}`));
+}
+
+// src/mail.ts
 var PORTAL_FIRST_NAME_TOKEN = "%%NOCTULIST_FIRST_NAME%%";
 var MAIL_TEMPLATE_SCHEMA = 1;
 var QR_WIDTH = 600;
@@ -550,56 +625,87 @@ ${password}`;
   }
   return cached.transporter;
 }
-async function sendRawMail(msg, transport) {
+var SENT = { sent: true, failure: "" };
+var failed = (failure) => ({ sent: false, failure });
+function fromAddress(transport2, user) {
+  if (transport2.mode() !== "workspace") return user;
+  const from = transport2.from().trim();
+  return from === "" ? user : from;
+}
+function failureOf(e) {
+  if (e instanceof MailSendError) return e.code;
+  const err = e;
+  if (typeof err?.responseCode === "number") return `smtp:${err.responseCode}`;
+  const c = err?.code === void 0 ? "" : String(err.code).replace(/[^A-Za-z0-9_.-]/g, "").slice(0, 40);
+  return `smtp:${c === "" ? "0" : c}`;
+}
+function logFailure(e) {
+  const err = e;
+  logger2.error("mail not sent", {
+    reason: "SEND_FAILED",
+    failure: failureOf(e),
+    code: err?.code === void 0 ? "" : String(err.code),
+    responseCode: typeof err?.responseCode === "number" ? err.responseCode : 0
+  });
+}
+async function sendWorkspace(transport2, user, raw) {
+  const sa = transport2.sa().trim();
+  if (sa === "") throw new MailSendError("config:no_service_account");
+  const ws = transport2.workspace ?? { token: delegatedToken, send: gmailSendRaw };
+  const token = await ws.token(sa, user, { fetch, now: Date.now });
+  await ws.send(token, user, raw, fetch);
+}
+async function sendRawMail(msg, transport2) {
   try {
     const to = safeRecipient(msg.to);
-    const user = transport.user().trim();
-    if (to === null || safeRecipient(user) === null) {
+    const user = transport2.user().trim();
+    const from = fromAddress(transport2, user);
+    if (to === null || safeRecipient(user) === null || safeRecipient(from) === null) {
       logger2.error("mail not sent", { reason: "BAD_ADDRESS" });
-      return false;
+      return failed("bad_address");
     }
-    const raw = msg.build(user, /* @__PURE__ */ new Date());
+    const raw = msg.build(from, /* @__PURE__ */ new Date());
     if (isCapture()) {
-      await transport.db.collection("_testMail").add({
+      await transport2.db.collection("_testMail").add({
         to,
-        from: { name: msg.fromName.replace(CONTROL, " ").trim(), address: user },
+        from: { name: msg.fromName.replace(CONTROL, " ").trim(), address: from },
         raw,
         size: raw.length,
         capturedAt: Date.now()
       });
-      return true;
+      return SENT;
     }
-    const password = transport.password().replace(/\s+/g, "");
+    if (transport2.mode() === "workspace") {
+      await sendWorkspace(transport2, user, Buffer.from(raw, "utf8"));
+      return SENT;
+    }
+    const password = transport2.password().replace(/\s+/g, "");
     if (password === "") {
       logger2.error("mail not sent", { reason: "NO_PASSWORD" });
-      return false;
+      return failed("no_password");
     }
-    const smtp = transport.smtp ?? gmail;
+    const smtp = transport2.smtp ?? gmail;
     await smtp(user, password).sendMail({ envelope: { from: user, to: [to] }, raw });
-    return true;
+    return SENT;
   } catch (e) {
-    const err = e;
-    logger2.error("mail not sent", {
-      reason: "SEND_FAILED",
-      code: err?.code === void 0 ? "" : String(err.code),
-      responseCode: typeof err?.responseCode === "number" ? err.responseCode : 0
-    });
-    return false;
+    logFailure(e);
+    return failed(failureOf(e));
   }
 }
-async function sendMail(msg, transport) {
+async function sendMail(msg, transport2) {
   try {
     const to = safeRecipient(msg.to);
-    const user = transport.user().trim();
-    if (to === null || safeRecipient(user) === null) {
+    const user = transport2.user().trim();
+    const from = fromAddress(transport2, user);
+    if (to === null || safeRecipient(user) === null || safeRecipient(from) === null) {
       logger2.error("mail not sent", { reason: "BAD_ADDRESS" });
-      return false;
+      return failed("bad_address");
     }
     const fromName = msg.fromName.replace(CONTROL, " ").trim();
     if (isCapture()) {
-      await transport.db.collection("_testMail").add({
+      await transport2.db.collection("_testMail").add({
         to,
-        from: { name: fromName, address: user },
+        from: { name: fromName, address: from },
         subject: msg.subject,
         html: msg.html,
         text: msg.text,
@@ -612,33 +718,31 @@ async function sendMail(msg, transport) {
         })),
         capturedAt: Date.now()
       });
-      return true;
+      return SENT;
     }
-    const password = transport.password().replace(/\s+/g, "");
-    if (password === "") {
-      logger2.error("mail not sent", { reason: "NO_PASSWORD" });
-      return false;
-    }
-    const smtp = transport.smtp ?? gmail;
-    await smtp(user, password).sendMail({
-      from: fromName === "" ? user : { name: fromName, address: user },
+    const message = {
+      from: fromName === "" ? from : { name: fromName, address: from },
       to: { name: "", address: to },
-      // Pinned envelope: the message goes to this one address whatever the headers say.
-      envelope: { from: user, to: [to] },
       subject: msg.subject,
       html: msg.html,
       text: msg.text,
       attachments: msg.attachments
-    });
-    return true;
+    };
+    if (transport2.mode() === "workspace") {
+      await sendWorkspace(transport2, user, await new MailComposer(message).compile().build());
+      return SENT;
+    }
+    const password = transport2.password().replace(/\s+/g, "");
+    if (password === "") {
+      logger2.error("mail not sent", { reason: "NO_PASSWORD" });
+      return failed("no_password");
+    }
+    const smtp = transport2.smtp ?? gmail;
+    await smtp(user, password).sendMail({ ...message, envelope: { from: user, to: [to] } });
+    return SENT;
   } catch (e) {
-    const err = e;
-    logger2.error("mail not sent", {
-      reason: "SEND_FAILED",
-      code: err?.code === void 0 ? "" : String(err.code),
-      responseCode: typeof err?.responseCode === "number" ? err.responseCode : 0
-    });
-    return false;
+    logFailure(e);
+    return failed(failureOf(e));
   }
 }
 
@@ -664,8 +768,8 @@ var MAX_PHOTO_BYTES = 3 * 1024 * 1024;
 var isClaimable2 = (d) => d.status === STATUS_SUBMITTED;
 var isBlank2 = (v) => typeof v !== "string" || v.trim() === "";
 var errorCode2 = (e) => {
-  const code = e?.code;
-  return code === void 0 ? "" : String(code);
+  const code2 = e?.code;
+  return code2 === void 0 ? "" : String(code2);
 };
 var signupPhotoPath = (orgId, formId) => `orgs/${orgId.trim()}/portalSignupPhotos/${formId.trim()}.jpg`;
 var volunteerPhotoPath = (orgId, id) => `orgs/${orgId.trim()}/profilePhotos/volunteers/${id.trim()}.jpg`;
@@ -836,8 +940,8 @@ function boolOf2(v) {
 var isBlank3 = (v) => kotlinTrim(stringOf2(v)) === "";
 var isOwner = (d, uid) => boolOf2(d.get("portalEnabled")) && stringOf2(d.get("portalUid")) === uid;
 var errorCode3 = (e) => {
-  const code = e?.code;
-  return code === void 0 ? "" : String(code);
+  const code2 = e?.code;
+  return code2 === void 0 ? "" : String(code2);
 };
 async function onRequestDocument(db, bucket, mail, orgId, requestId, current) {
   if (current === void 0 || !isClaimable3(current)) return;
@@ -994,8 +1098,8 @@ async function sendQr(db, mail, orgId, request) {
     associationName(db, orgId)
   ]);
   const message = await buildQrMail(parseMailTemplate(template.data()), stringOf2(owner.get("name")), owner.id);
-  const sent = await sendMail({ ...message, to, fromName: association.trim().slice(0, MAX_LABEL2) }, mail);
-  return sent ? DONE2 : rejected2("SEND_FAILED");
+  const result = await sendMail({ ...message, to, fromName: association.trim().slice(0, MAX_LABEL2) }, mail);
+  return result.sent ? DONE2 : rejected2("SEND_FAILED");
 }
 
 // src/outbox.ts
@@ -1054,19 +1158,20 @@ function rewriteHeaders(raw, from, fromName, to, now) {
 }
 var isClaimable4 = (d) => d.status === "PENDING";
 var errorCode4 = (e) => {
-  const code = e?.code;
-  return code === void 0 ? "" : String(code);
+  const code2 = e?.code;
+  return code2 === void 0 ? "" : String(code2);
 };
 async function onOutboxDocument(db, mail, orgId, id, current) {
   if (current === void 0 || !isClaimable4(current)) return;
   const ref = db.doc(`orgs/${orgId}/mailOutbox/${id}`);
-  let reason;
+  let answer;
   try {
     const claimed = await claim(ref, isClaimable4);
     if (claimed === null) return;
-    reason = await sendClaimed(mail, claimed);
+    answer = await sendClaimed(mail, claimed);
+    const { reason, failure } = answer;
     await ref.set(
-      { status: reason === "" ? "DONE" : "REJECTED", reason, processedAt: Date.now(), raw: FieldValue.delete() },
+      { status: reason === "" ? "DONE" : "REJECTED", reason, failure, processedAt: Date.now(), raw: FieldValue.delete() },
       { merge: true }
     );
   } catch (e) {
@@ -1078,24 +1183,38 @@ async function onOutboxDocument(db, mail, orgId, id, current) {
   } catch (e) {
     logger5.error("server status not written", { orgId, id, code: errorCode4(e) });
   }
-  logger5.info("outbox mail processed", { orgId, id, reason });
+  logger5.info("outbox mail processed", { orgId, id, reason: answer.reason, failure: answer.failure });
 }
 async function sendClaimed(mail, claimed) {
   const parsed = parseOutbox(claimed);
-  if (parsed === null) return "INVALID";
+  if (parsed === null) return { reason: "INVALID", failure: "" };
   const to = safeRecipient(parsed.to);
-  if (to === null) return "BAD_ADDRESS";
-  const sent = await sendRawMail(
+  if (to === null) return { reason: "BAD_ADDRESS", failure: "" };
+  const result = await sendRawMail(
     { to, fromName: parsed.fromName, build: (from, now) => rewriteHeaders(parsed.raw, from, parsed.fromName, to, now) },
     mail
   );
-  return sent ? "" : "SEND_FAILED";
+  return result.sent ? { reason: "", failure: "" } : { reason: "SEND_FAILED", failure: result.failure };
 }
 
 // src/index.ts
 var REGION = defineString("REGION", { default: "europe-west1" });
 var GMAIL_USER = defineString("GMAIL_USER");
+var MAIL_MODE = defineString("MAIL_MODE", { default: "app_password" });
+var MAIL_FROM = defineString("MAIL_FROM", { default: "" });
+var MAIL_SA = defineString("MAIL_SA", { default: "" });
 var GMAIL_APP_PASSWORD = defineSecret("GMAIL_APP_PASSWORD");
+function transport(db) {
+  return {
+    db,
+    mode: () => MAIL_MODE.value() === "workspace" ? "workspace" : "app_password",
+    user: () => GMAIL_USER.value(),
+    from: () => MAIL_FROM.value(),
+    sa: () => MAIL_SA.value(),
+    // Not read in workspace mode, where the app writes "unused".
+    password: () => GMAIL_APP_PASSWORD.value()
+  };
+}
 function admin() {
   if (!getApps().some((app) => app.name === "[DEFAULT]")) initializeApp();
   return { db: getFirestore(), bucket: getStorage().bucket() };
@@ -1122,7 +1241,7 @@ var onPortalRequestWritten = onDocumentWritten(
     const after = event.data?.after;
     if (!after?.exists) return;
     const { db, bucket } = admin();
-    const mail = { db, user: () => GMAIL_USER.value(), password: () => GMAIL_APP_PASSWORD.value() };
+    const mail = transport(db);
     await onRequestDocument(db, bucket, mail, event.params.orgId, event.params.requestId, after.data());
   }
 );
@@ -1138,7 +1257,7 @@ var onMailOutboxWritten = onDocumentWritten(
     const after = event.data?.after;
     if (!after?.exists) return;
     const { db } = admin();
-    const mail = { db, user: () => GMAIL_USER.value(), password: () => GMAIL_APP_PASSWORD.value() };
+    const mail = transport(db);
     await onOutboxDocument(db, mail, event.params.orgId, event.params.mailId, after.data());
   }
 );
@@ -1153,12 +1272,16 @@ var onPortalGoogleClaimWritten = onDocumentWritten(
 );
 export {
   MAX_RAW_LENGTH,
+  MailSendError,
   buildQrMail,
   cleanEmail,
   cleanName,
   cleanPhone,
+  delegatedToken,
   domainAllowed,
+  gmailSendRaw,
   onMailOutboxWritten,
+  onOutboxDocument,
   onPortalGoogleClaimWritten,
   onPortalRequestWritten,
   onSignupWritten,

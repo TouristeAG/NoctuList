@@ -313,6 +313,6 @@ async function sendQr(db: Firestore, mail: MailTransport, orgId: string, request
   ]);
   // Volunteer.id is the document id; it only goes into the QR image.
   const message = await buildQrMail(parseMailTemplate(template.data()), stringOf(owner.get("name")), owner.id);
-  const sent = await sendMail({ ...message, to, fromName: association.trim().slice(0, MAX_LABEL) }, mail);
-  return sent ? DONE : rejected("SEND_FAILED");
+  const result = await sendMail({ ...message, to, fromName: association.trim().slice(0, MAX_LABEL) }, mail);
+  return result.sent ? DONE : rejected("SEND_FAILED");
 }
