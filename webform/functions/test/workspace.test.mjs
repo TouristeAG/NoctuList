@@ -76,3 +76,13 @@ test("gmailSendRaw posts base64url raw and reports status and reason", async () 
     (e) => e instanceof lib.MailSendError && e.code === "gmail:403:insufficientPermissions" && !e.message.includes("secret"),
   );
 });
+
+test("every call carries an abort signal", async () => {
+  const g = fakeGoogle();
+  await lib.delegatedToken(SA, "signal@example.org", { fetch: g.f, now: () => 9, timeoutMs: 5000 });
+  assert.equal(g.calls.length, 3);
+  for (const c of g.calls) assert.ok(c.init.signal instanceof AbortSignal);
+  const seen = [];
+  await lib.gmailSendRaw("t", "a@example.org", Buffer.from("x"), async (u, init) => { seen.push(init); return json(200, {}); });
+  assert.ok(seen[0].signal instanceof AbortSignal);
+});

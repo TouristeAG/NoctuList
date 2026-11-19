@@ -190,3 +190,23 @@ test("gmail failure code is passed through", async () => {
   transport.workspace.send = async () => { throw new lib.MailSendError("gmail:403:rateLimitExceeded"); };
   assert.deepEqual(await lib.sendMail(outgoing(), transport), { sent: false, failure: "gmail:403:rateLimitExceeded" });
 });
+
+test("hung workspace calls are bounded and reported as network failures", async () => {
+  const hang = (url, init) => new Promise((_, reject) => init.signal.addEventListener("abort", () => reject(init.signal.reason)));
+  // AbortSignal.timeout timers are unref'd: keep the loop alive while the fake hangs.
+  const keepAlive = setInterval(() => {}, 20);
+  const { transport } = workspace();
+  delete transport.workspace;
+  transport.fetch = hang;
+  transport.timeoutMs = 50;
+  const started = Date.now();
+  assert.deepEqual(await lib.sendMail(outgoing(), transport), { sent: false, failure: "delegation:network" });
+  assert.ok(Date.now() - started < 2000);
+  // Token phase fine, Gmail call hangs.
+  const { transport: t2 } = workspace();
+  t2.workspace.send = async (token, user, raw, f, ms) => { await f("https://gmail.googleapis.com/x", { signal: AbortSignal.timeout(ms) }); };
+  t2.fetch = hang;
+  t2.timeoutMs = 50;
+  assert.deepEqual(await lib.sendMail(outgoing(), t2), { sent: false, failure: "gmail:network" });
+  clearInterval(keepAlive);
+});

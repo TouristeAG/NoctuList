@@ -2,6 +2,7 @@
 import { getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
+import * as logger6 from "firebase-functions/logger";
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { defineSecret, defineString } from "firebase-functions/params";
 
@@ -475,6 +476,7 @@ var MailSendError = class extends Error {
     this.code = code2;
   }
 };
+var DEFAULT_TIMEOUT_MS = 1e4;
 var METADATA_TOKEN = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token";
 var TOKEN_URL = "https://oauth2.googleapis.com/token";
 var SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send";
@@ -500,7 +502,8 @@ async function delegatedToken(sa, subject, deps) {
   const hit = cache.get(key);
   if (hit !== void 0 && deps.now() < hit.expiresAt - REFRESH_MARGIN_MS) return hit.token;
   const f = deps.fetch;
-  const meta = await f(METADATA_TOKEN, { headers: { "Metadata-Flavor": "Google" } });
+  const signal = () => AbortSignal.timeout(deps.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+  const meta = await f(METADATA_TOKEN, { headers: { "Metadata-Flavor": "Google" }, signal: signal() });
   const metaBody = await jsonOf(meta);
   if (!meta.ok || typeof metaBody.access_token !== "string") throw new MailSendError(code(`delegation:metadata:${meta.status}`));
   const iat = Math.floor(deps.now() / 1e3);
@@ -508,14 +511,16 @@ async function delegatedToken(sa, subject, deps) {
   const signed = await f(`https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${encodeURIComponent(sa).replace(/%40/g, "@")}:signJwt`, {
     method: "POST",
     headers: { Authorization: `Bearer ${metaBody.access_token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ payload: JSON.stringify(claims) })
+    body: JSON.stringify({ payload: JSON.stringify(claims) }),
+    signal: signal()
   });
   const signedBody = await jsonOf(signed);
   if (!signed.ok || typeof signedBody.signedJwt !== "string") throw new MailSendError(code(`delegation:sign:${signed.status}`));
   const exchanged = await f(TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: `grant_type=${encodeURIComponent("urn:ietf:params:oauth:grant-type:jwt-bearer")}&assertion=${encodeURIComponent(signedBody.signedJwt)}`
+    body: `grant_type=${encodeURIComponent("urn:ietf:params:oauth:grant-type:jwt-bearer")}&assertion=${encodeURIComponent(signedBody.signedJwt)}`,
+    signal: signal()
   });
   const body = await jsonOf(exchanged);
   if (!exchanged.ok || typeof body.access_token !== "string") {
@@ -525,11 +530,12 @@ async function delegatedToken(sa, subject, deps) {
   cache.set(key, { token: body.access_token, expiresAt: deps.now() + lifetime * 1e3 });
   return body.access_token;
 }
-async function gmailSendRaw(token, user, raw, f) {
+async function gmailSendRaw(token, user, raw, f, timeoutMs = DEFAULT_TIMEOUT_MS) {
   const r = await f(`https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(user).replace(/%40/g, "@")}/messages/send`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ raw: raw.toString("base64url") })
+    body: JSON.stringify({ raw: raw.toString("base64url") }),
+    signal: AbortSignal.timeout(timeoutMs)
   });
   if (r.ok) return;
   const body = await jsonOf(r);
@@ -652,8 +658,12 @@ async function sendWorkspace(transport2, user, raw) {
   const sa = transport2.sa().trim();
   if (sa === "") throw new MailSendError("config:no_service_account");
   const ws = transport2.workspace ?? { token: delegatedToken, send: gmailSendRaw };
-  const token = await ws.token(sa, user, { fetch, now: Date.now });
-  await ws.send(token, user, raw, fetch);
+  const f = transport2.fetch ?? fetch;
+  const phase = (name) => (e) => {
+    throw e instanceof MailSendError ? e : new MailSendError(`${name}:network`);
+  };
+  const token = await ws.token(sa, user, { fetch: f, now: Date.now, timeoutMs: transport2.timeoutMs }).catch(phase("delegation"));
+  await ws.send(token, user, raw, f, transport2.timeoutMs).catch(phase("gmail"));
 }
 async function sendRawMail(msg, transport2) {
   try {
@@ -1207,7 +1217,12 @@ var GMAIL_APP_PASSWORD = defineSecret("GMAIL_APP_PASSWORD");
 function transport(db) {
   return {
     db,
-    mode: () => MAIL_MODE.value() === "workspace" ? "workspace" : "app_password",
+    mode: () => {
+      const mode = MAIL_MODE.value().trim().toLowerCase();
+      if (mode === "workspace" || mode === "app_password") return mode;
+      logger6.warn("unknown MAIL_MODE, using app_password", { length: mode.length });
+      return "app_password";
+    },
     user: () => GMAIL_USER.value(),
     from: () => MAIL_FROM.value(),
     sa: () => MAIL_SA.value(),

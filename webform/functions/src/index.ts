@@ -2,6 +2,7 @@
 import { getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
+import * as logger from "firebase-functions/logger";
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { defineSecret, defineString } from "firebase-functions/params";
 import type { MailTransport } from "./mail";
@@ -23,7 +24,7 @@ const REGION = defineString("REGION", { default: "europe-west1" });
 const GMAIL_USER = defineString("GMAIL_USER");
 /** "app_password" (Gmail SMTP) or "workspace" (Gmail API with domain-wide delegation, no password). */
 const MAIL_MODE = defineString("MAIL_MODE", { default: "app_password" });
-/** Workspace mode: From address of the mails, blank for GMAIL_USER. */
+/** Workspace mode: From address, blank for GMAIL_USER. Must be a send-as alias of GMAIL_USER, else Gmail rewrites From. */
 const MAIL_FROM = defineString("MAIL_FROM", { default: "" });
 /** Workspace mode: the delegated noctulist-mail@<project>.iam.gserviceaccount.com. */
 const MAIL_SA = defineString("MAIL_SA", { default: "" });
@@ -33,7 +34,12 @@ const GMAIL_APP_PASSWORD = defineSecret("GMAIL_APP_PASSWORD");
 function transport(db: Firestore): MailTransport {
   return {
     db,
-    mode: () => (MAIL_MODE.value() === "workspace" ? "workspace" : "app_password"),
+    mode: () => {
+      const mode = MAIL_MODE.value().trim().toLowerCase();
+      if (mode === "workspace" || mode === "app_password") return mode;
+      logger.warn("unknown MAIL_MODE, using app_password", { length: mode.length });
+      return "app_password";
+    },
     user: () => GMAIL_USER.value(),
     from: () => MAIL_FROM.value(),
     sa: () => MAIL_SA.value(),

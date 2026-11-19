@@ -72,6 +72,9 @@ export interface MailTransport {
   password: () => string;
   /** Workspace calls; the real ones when absent (tests pass fakes). */
   workspace?: { token: typeof delegatedToken; send: typeof gmailSendRaw };
+  /** Workspace calls only (tests): the fetch to use and the per-call timeout. */
+  fetch?: typeof fetch;
+  timeoutMs?: number;
   /** SMTP client for these credentials; the Gmail one when absent (tests pass a fake). */
   smtp?: (user: string, password: string) => SmtpClient;
 }
@@ -227,8 +230,13 @@ async function sendWorkspace(transport: MailTransport, user: string, raw: Buffer
   const sa = transport.sa().trim();
   if (sa === "") throw new MailSendError("config:no_service_account");
   const ws = transport.workspace ?? { token: delegatedToken, send: gmailSendRaw };
-  const token = await ws.token(sa, user, { fetch, now: Date.now });
-  await ws.send(token, user, raw, fetch);
+  const f = transport.fetch ?? fetch;
+  // A transport failure (fetch error, timeout) is not a MailSendError: name the phase it hit.
+  const phase = (name: string) => (e: unknown): never => {
+    throw e instanceof MailSendError ? e : new MailSendError(`${name}:network`);
+  };
+  const token = await ws.token(sa, user, { fetch: f, now: Date.now, timeoutMs: transport.timeoutMs }).catch(phase("delegation"));
+  await ws.send(token, user, raw, f, transport.timeoutMs).catch(phase("gmail"));
 }
 
 /**

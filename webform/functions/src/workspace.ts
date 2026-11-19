@@ -16,7 +16,12 @@ export interface DelegationDeps {
   fetch: typeof fetch;
   /** Milliseconds since the epoch. */
   now: () => number;
+  /** Per-call bound in milliseconds; DEFAULT_TIMEOUT_MS when absent (tests inject a small one). */
+  timeoutMs?: number;
 }
+
+/** Each Google call fails within this, well inside the function timeout. */
+export const DEFAULT_TIMEOUT_MS = 10_000;
 
 const METADATA_TOKEN = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -50,7 +55,8 @@ export async function delegatedToken(sa: string, subject: string, deps: Delegati
   if (hit !== undefined && deps.now() < hit.expiresAt - REFRESH_MARGIN_MS) return hit.token;
 
   const f = deps.fetch;
-  const meta = await f(METADATA_TOKEN, { headers: { "Metadata-Flavor": "Google" } });
+  const signal = (): AbortSignal => AbortSignal.timeout(deps.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+  const meta = await f(METADATA_TOKEN, { headers: { "Metadata-Flavor": "Google" }, signal: signal() });
   const metaBody = await jsonOf(meta);
   if (!meta.ok || typeof metaBody.access_token !== "string") throw new MailSendError(code(`delegation:metadata:${meta.status}`));
 
@@ -60,6 +66,7 @@ export async function delegatedToken(sa: string, subject: string, deps: Delegati
     method: "POST",
     headers: { Authorization: `Bearer ${metaBody.access_token}`, "Content-Type": "application/json" },
     body: JSON.stringify({ payload: JSON.stringify(claims) }),
+    signal: signal(),
   });
   const signedBody = await jsonOf(signed);
   if (!signed.ok || typeof signedBody.signedJwt !== "string") throw new MailSendError(code(`delegation:sign:${signed.status}`));
@@ -68,6 +75,7 @@ export async function delegatedToken(sa: string, subject: string, deps: Delegati
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: `grant_type=${encodeURIComponent("urn:ietf:params:oauth:grant-type:jwt-bearer")}&assertion=${encodeURIComponent(signedBody.signedJwt)}`,
+    signal: signal(),
   });
   const body = await jsonOf(exchanged);
   if (!exchanged.ok || typeof body.access_token !== "string") {
@@ -79,11 +87,12 @@ export async function delegatedToken(sa: string, subject: string, deps: Delegati
 }
 
 /** Sends the finished MIME message as [user] through the Gmail API. */
-export async function gmailSendRaw(token: string, user: string, raw: Buffer, f: typeof fetch): Promise<void> {
+export async function gmailSendRaw(token: string, user: string, raw: Buffer, f: typeof fetch, timeoutMs: number = DEFAULT_TIMEOUT_MS): Promise<void> {
   const r = await f(`https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(user).replace(/%40/g, "@")}/messages/send`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({ raw: raw.toString("base64url") }),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   if (r.ok) return;
   const body = await jsonOf(r);
