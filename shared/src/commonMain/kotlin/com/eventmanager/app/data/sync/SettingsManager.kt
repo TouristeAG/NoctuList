@@ -191,6 +191,7 @@ class SettingsManager(private val storage: AppStorage) {
         private const val KEY_BACKEND_TYPE = "backend_type"
         private const val KEY_FIREBASE_PROJECT_ID = "firebase_project_id"
         private const val KEY_SETUP_ASSISTANT_PROGRESS = "setup_assistant_progress"
+        private const val KEY_SETUP_MAIL_TEST_OK = "setup_assistant_mail_test_ok"
         private const val KEY_FIREBASE_ORG_ID = "firebase_org_id"
         private const val KEY_FIREBASE_ORG_VIEW_MODE = "firebase_org_view_mode"
         private const val KEY_FIREBASE_LAST_SINGLE_ORG_ID = "firebase_last_single_org_id"
@@ -351,6 +352,10 @@ class SettingsManager(private val storage: AppStorage) {
     /** Firebase setup assistant progress (JSON), so the page resumes where the admin stopped. */
     fun getSetupProgressJson(): String = storage.getString(KEY_SETUP_ASSISTANT_PROGRESS, "") ?: ""
     fun saveSetupProgressJson(json: String) = storage.putString(KEY_SETUP_ASSISTANT_PROGRESS, json)
+
+    /** The setup assistant's last test mail went through the site's server. */
+    fun isSetupMailTestOk(): Boolean = storage.getBoolean(KEY_SETUP_MAIL_TEST_OK, false)
+    fun setSetupMailTestOk(ok: Boolean) = storage.putBoolean(KEY_SETUP_MAIL_TEST_OK, ok)
 
     fun getFirebaseGcmSenderId(): String = storage.getString(KEY_FIREBASE_GCM_SENDER_ID, "") ?: ""
     fun setFirebaseGcmSenderId(value: String) = storage.putString(KEY_FIREBASE_GCM_SENDER_ID, value)

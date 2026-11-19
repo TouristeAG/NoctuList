@@ -1,5 +1,7 @@
 package com.eventmanager.app.setup
 
+import com.eventmanager.app.email.SiteMailOutcome
+import com.eventmanager.app.email.SiteMailResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -44,6 +46,7 @@ class SetupRunner(
     private val sleep: suspend (Long) -> Unit = { delay(it) },
     private val secrets: ActiveSecrets = ActiveSecrets(),
     private val redactor: OutputRedactor = OutputRedactor { secrets.current() },
+    private val mailTester: MailTester = MailTester { SiteMailOutcome(SiteMailResult.Unavailable) },
 ) : SetupAutomation {
     override val available = true
 
@@ -53,7 +56,7 @@ class SetupRunner(
     private val _states = MutableStateFlow(initialStates(_progress.value))
     override val states: StateFlow<Map<SetupStepId, StepState>> = _states.asStateFlow()
 
-    private val _info = MutableStateFlow(SetupInfo())
+    private val _info = MutableStateFlow(SetupInfo(mailTestOk = settings.mailTestOk))
     override val info: StateFlow<SetupInfo> = _info.asStateFlow()
 
     private var job: Job? = null
@@ -136,12 +139,14 @@ class SetupRunner(
             }
         }
         check(SetupStepId.SITE) { requireOps(SetupStepId.SITE).hostingLive(pid) }?.let { tick(SetupStepId.SITE, it) }
-        check(SetupStepId.SERVER) { requireOps(SetupStepId.SERVER).functions(pid, CODEBASE) }
-            ?.let { tick(SetupStepId.SERVER, serverReady(it)) }
+        check(SetupStepId.SERVER) { requireOps(SetupStepId.SERVER).functions(pid, CODEBASE) }?.let { functions ->
+            val active = functionsActive(functions)
+            _info.update { it.copy(serverDeployed = active, mailTestOk = settings.mailTestOk) }
+            tick(SetupStepId.SERVER, active && settings.mailTestOk)
+        }
     }
 
-    /** Where Task 13 adds "the last test mail succeeded"; until then the three functions being ACTIVE is enough. */
-    private fun serverReady(functions: List<FunctionState>): Boolean =
+    private fun functionsActive(functions: List<FunctionState>): Boolean =
         SERVER_FUNCTIONS.all { name -> functions.any { it.name == name && it.state == "ACTIVE" } }
 
     /** A step that is running owns its own state: a check must not flip it. */
@@ -182,10 +187,13 @@ class SetupRunner(
 
     override fun run(step: SetupStepId, input: StepInput) = launchStep(step, input, reinstall = false)
 
+    override fun sendTestMail() =
+        launchStep(SetupStepId.SERVER, StepInput(), reinstall = false, work = { testMail() })
+
     override fun confirmBilling(step: SetupStepId, account: String, input: StepInput) {
         val offered = _states.value[step] as? StepState.NeedsBilling ?: return
         if (step !in BILLED_STEPS || offered.accounts.none { it.name == account }) return
-        launchStep(step, input, reinstall = false) { requireOps(step).linkBilling(projectId(), account) }
+        launchStep(step, input, reinstall = false, before = { requireOps(step).linkBilling(projectId(), account) })
     }
 
     /** Throws the app's own tools away and installs them again, whatever state they are in. */
@@ -204,6 +212,7 @@ class SetupRunner(
         reinstall: Boolean,
         stopFirst: List<Job> = emptyList(),
         before: (suspend () -> Unit)? = null,
+        work: suspend () -> Unit = { executeWithRepair(step, input, reinstall) },
     ) {
         if (_states.value[step] is StepState.Running || _states.value[step] is StepState.WaitingRetry) return
         // Steps run one after the other: a step started while the previous one is finishing waits for it.
@@ -216,7 +225,7 @@ class SetupRunner(
             try {
                 try {
                     before?.let { attempt(step, it) }
-                    executeWithRepair(step, input, reinstall)
+                    work()
                 } catch (e: CliException) {
                     throw CliException(explain(step, e.error))
                 }
@@ -523,29 +532,79 @@ class SetupRunner(
         }
     }
 
-    /** Spec §4: region, params file, secret, install, deploy with retries, cleanup policy. */
+    /**
+     * Spec §4: region, params file, secret, install, deploy with retries, cleanup policy. In Workspace mode the
+     * sending service account is made first and the secret holds a placeholder. The step stays open after the
+     * deploy: it is done once [sendTestMail] went through, and every deploy needs a new test.
+     */
     private suspend fun runServer(input: StepInput) {
         val step = SetupStepId.SERVER
         val c = requireCli()
         val pid = projectId()
+        val mode = input.mailMode ?: MailMode.APP_PASSWORD
         val gmail = input.gmailUser?.trim().orEmpty()
         require(SetupValidators.gmail(gmail)) { "invalid gmail address" }
-        val password = input.appPassword ?: throw IllegalArgumentException("missing app password")
-        require(password.isNotEmpty()) { "missing app password" }
-        secrets.add(String(password))
+        val from = if (mode == MailMode.WORKSPACE) input.mailFrom?.trim().orEmpty().ifEmpty { gmail } else ""
+        require(from.isEmpty() || SetupValidators.gmail(from)) { "invalid from address" }
+        val secret = when (mode) {
+            MailMode.APP_PASSWORD -> {
+                val password = input.appPassword ?: throw IllegalArgumentException("missing app password")
+                require(password.isNotEmpty()) { "missing app password" }
+                secrets.add(String(password))
+                password
+            }
+            // The functions still declare the secret; Workspace mode never reads it.
+            MailMode.WORKSPACE -> UNUSED_SECRET.toCharArray()
+        }
         if (!billingReady(step)) return
         val db = c.databases(pid).firstOrNull { it.name == DEFAULT_DB } ?: throw IllegalStateException("no database")
         val region = RegionMapper.functionsRegion(db.locationId)
         _info.update { it.copy(region = region) }
+        settings.mailTestOk = false
+        _info.update { it.copy(mailTestOk = false, serverDeployed = false) }
+        val sa = if (mode == MailMode.WORKSPACE) {
+            val ops = requireOps(step)
+            ops.enableApis(pid, listOf(GMAIL_API))
+            val account = ops.ensureMailServiceAccount(pid)
+            _info.update { it.copy(mailServiceAccount = MailServiceAccountInfo(account.email, account.clientId)) }
+            account.email
+        } else {
+            ""
+        }
         val dir = workspace.prepare(pid, withStorage = storageOn())
-        workspace.writeFunctionParams(dir, pid, gmail, region)
-        c.setSecret(pid, dir, SECRET_NAME, password) { log(step, it) }
+        workspace.writeFunctionParams(dir, pid, gmail, region, mode, from, sa)
+        c.setSecret(pid, dir, SECRET_NAME, secret) { log(step, it) }
         c.npmInstall(dir.resolve("functions")) { log(step, it) }
         grantBuildRole(step, force = false)
         deleteFailedFunctions(step)
         deployTo(step, c, pid, dir, "hosting,functions")
         c.setArtifactPolicy(pid, region) { log(step, it) }
-        markDone(step)
+        forgetDone(step)
+        _info.update { it.copy(serverDeployed = true) }
+        setState(step, StepState.Todo)
+    }
+
+    /** One test mail to the signed-in admin through the site's outbox; only `Sent` ticks the server step. */
+    private suspend fun testMail() {
+        val step = SetupStepId.SERVER
+        val to = _info.value.account.trim()
+        require(SetupValidators.gmail(to)) { "no signed-in account to send the test mail to" }
+        log(step, "Sending a test e-mail to the signed-in account")
+        val outcome = mailTester.sendTest(to)
+        val ok = outcome.result == SiteMailResult.Sent
+        settings.mailTestOk = ok
+        _info.update { it.copy(mailTestOk = ok) }
+        if (ok) return markDone(step)
+        forgetDone(step)
+        val (id, headline) = when (outcome.result) {
+            SiteMailResult.Unavailable -> SetupErrorId.MAIL_TEST_UNAVAILABLE to "No organization or signed-in team account on this device"
+            SiteMailResult.NoAnswer -> SetupErrorId.MAIL_TEST_UNAVAILABLE to "The server did not answer in time"
+            else -> {
+                val code = outcome.failure.trim()
+                MailSetup.failureToError(code) to if (code.isEmpty()) "Refused by the server" else "Mail failure: $code"
+            }
+        }
+        throw CliException(SetupError(id, step, RetryPolicy.NONE, null, null, headline, headline))
     }
 
     private suspend fun deploy(step: SetupStepId, only: String) {
@@ -662,6 +721,11 @@ class SetupRunner(
         if (step in _progress.value.done) saveProgress { it.copy(done = it.done - step) }
     }
 
+    /** Drops [step]'s saved tick while it runs ([unmark] leaves running steps alone). */
+    private fun forgetDone(step: SetupStepId) {
+        if (step in _progress.value.done) saveProgress { it.copy(done = it.done - step) }
+    }
+
     private fun projectId(): String = settings.projectId.also {
         require(SetupValidators.projectId(it)) { "no project selected" }
     }
@@ -700,6 +764,8 @@ class SetupRunner(
     private companion object {
         const val DEFAULT_DB = "(default)"
         const val SECRET_NAME = "GMAIL_APP_PASSWORD"
+        const val UNUSED_SECRET = "unused"
+        const val GMAIL_API = "gmail.googleapis.com"
         const val MAX_RETRIES = 5
         const val RETRY_SECONDS = 120
         const val MAX_LOG_LINES = 200

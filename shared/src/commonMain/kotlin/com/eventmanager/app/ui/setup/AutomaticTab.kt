@@ -22,6 +22,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -39,6 +40,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -47,6 +50,9 @@ import com.eventmanager.app.platform.LocalPlatformContext
 import com.eventmanager.app.platform.openExternalUrl
 import com.eventmanager.app.resources.*
 import com.eventmanager.app.setup.LoginChallenge
+import com.eventmanager.app.setup.MailMode
+import com.eventmanager.app.setup.MailSetup
+import com.eventmanager.app.setup.SetupErrorId
 import com.eventmanager.app.setup.RepairNote
 import com.eventmanager.app.setup.SetupAutomation
 import com.eventmanager.app.setup.SetupStepId
@@ -62,6 +68,9 @@ internal val requiredSteps = SetupStepId.entries.filterNot { it.optional }
 /** Steps worth running again later: rules and site change with NoctuList updates. */
 private val RERUNNABLE = setOf(SetupStepId.PROJECT, SetupStepId.RULES, SetupStepId.SITE, SetupStepId.PHOTOS, SetupStepId.SERVER)
 internal val optionalSteps = SetupStepId.entries.filter { it.optional }
+
+/** Errors of the test mail: Retry sends the test again instead of deploying the server again. */
+private val TEST_MAIL_ERRORS = setOf(SetupErrorId.MAIL_DELEGATION_MISSING, SetupErrorId.MAIL_TEST_FAILED, SetupErrorId.MAIL_TEST_UNAVAILABLE)
 
 internal fun stepTitle(step: SetupStepId): StringResource = when (step) {
     SetupStepId.TOOLS -> Res.string.setup_step_tools_title
@@ -174,6 +183,7 @@ private fun Card(
     content: @Composable () -> Unit,
 ) {
     val platform = LocalPlatformContext.current
+    val retestMail = step == SetupStepId.SERVER && (state as? StepState.Error)?.error?.id in TEST_MAIL_ERRORS
     StepCard(
         step = step,
         state = state,
@@ -182,8 +192,10 @@ private fun Card(
         onShowManual = onShowManual,
         rerunnable = step in RERUNNABLE,
         repairs = repairs,
-        onRetry = { automation.run(step, retryInputs[step]?.invoke() ?: StepInput()) },
-        retryEnabled = retryEnabled[step] ?: true,
+        onRetry = {
+            if (retestMail) automation.sendTestMail() else automation.run(step, retryInputs[step]?.invoke() ?: StepInput())
+        },
+        retryEnabled = retestMail || (retryEnabled[step] ?: true),
         onOpenLink = { openExternalUrl(platform, it) },
         report = { automation.report(step) },
         content = content,
@@ -337,33 +349,97 @@ private fun StepControls(
                 RunButton(enabled = step in confirmed)
             }
             SetupStepId.SERVER -> {
+                val info by automation.info.collectAsState()
+                val suggested = MailSetup.suggestedMode(account)
+                var mode by remember(account) { mutableStateOf(suggested) }
                 var gmail by remember { mutableStateOf("") }
                 var password by remember { mutableStateOf("") }
+                var sender by remember(account) { mutableStateOf(if (suggested == MailMode.WORKSPACE) account else "") }
+                var from by remember(sender) { mutableStateOf(sender) }
                 BillingOffer(step, automation, projectId, retryInputs, retryEnabled, open)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OpenButton(Res.string.setup_open_blaze, SetupLinks.blaze(projectId))
                     OpenButton(Res.string.setup_open_budget, SetupLinks.budget(projectId))
-                    OpenButton(Res.string.setup_open_apppassword, SetupLinks.APP_PASSWORDS)
+                    if (mode == MailMode.APP_PASSWORD) OpenButton(Res.string.setup_open_apppassword, SetupLinks.APP_PASSWORDS)
                 }
-                OutlinedTextField(
-                    gmail, { gmail = it.trim() },
-                    label = { Text(stringResource(Res.string.setup_gmail)) },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    password, { password = it },
-                    label = { Text(stringResource(Res.string.setup_app_password)) },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                Text(stringResource(Res.string.setup_mail_mode), fontWeight = FontWeight.SemiBold)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    for ((option, label) in listOf(
+                        MailMode.APP_PASSWORD to Res.string.setup_mail_mode_app_password,
+                        MailMode.WORKSPACE to Res.string.setup_mail_mode_workspace,
+                    )) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(selected = mode == option, onClick = { mode = option }, enabled = !busy)
+                            Text(stringResource(label))
+                        }
+                    }
+                }
+                if (mode == MailMode.APP_PASSWORD) {
+                    OutlinedTextField(
+                        gmail, { gmail = it.trim() },
+                        label = { Text(stringResource(Res.string.setup_gmail)) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        password, { password = it },
+                        label = { Text(stringResource(Res.string.setup_app_password)) },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                } else {
+                    OutlinedTextField(
+                        sender, { sender = it.trim() },
+                        label = { Text(stringResource(Res.string.setup_mail_sender)) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        from, { from = it.trim() },
+                        label = { Text(stringResource(Res.string.setup_mail_from)) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
                 if (region.isNotBlank()) Text(stringResource(Res.string.setup_region, region), style = MaterialTheme.typography.bodySmall)
-                RunButton(enabled = gmail.isNotBlank() && password.isNotBlank()) {
-                    val input = StepInput(gmailUser = gmail, appPassword = password.filterNot { it == ' ' }.toCharArray())
-                    password = ""
-                    input
+                if (mode == MailMode.APP_PASSWORD) {
+                    RunButton(enabled = gmail.isNotBlank() && password.isNotBlank()) {
+                        val input = StepInput(
+                            gmailUser = gmail,
+                            appPassword = password.filterNot { it == ' ' }.toCharArray(),
+                            mailMode = MailMode.APP_PASSWORD,
+                        )
+                        password = ""
+                        input
+                    }
+                } else {
+                    RunButton(enabled = sender.isNotBlank()) {
+                        StepInput(gmailUser = sender, mailMode = MailMode.WORKSPACE, mailFrom = from.ifBlank { sender })
+                    }
+                    info.mailServiceAccount?.takeIf { it.clientId.isNotBlank() }?.let { sa ->
+                        Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.secondaryContainer) {
+                            Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(stringResource(Res.string.setup_mail_delegation))
+                                CopyValue(stringResource(Res.string.setup_mail_client_id, sa.clientId), sa.clientId)
+                                CopyValue(stringResource(Res.string.setup_mail_scope, MailSetup.GMAIL_SEND_SCOPE), MailSetup.GMAIL_SEND_SCOPE)
+                                OpenButton(Res.string.setup_mail_open_admin, MailSetup.DELEGATION_CONSOLE)
+                            }
+                        }
+                    }
+                    val shown = from.ifBlank { sender }
+                    if (shown.isNotBlank() && !shown.equals(sender, ignoreCase = true)) {
+                        Text(stringResource(Res.string.setup_mail_alias, shown))
+                    }
+                }
+                if (info.serverDeployed || info.mailTestOk) {
+                    if (account.isNotBlank()) Text(stringResource(Res.string.setup_mail_test_to, account), style = MaterialTheme.typography.bodySmall)
+                    Button(onClick = { automation.sendTestMail() }, enabled = !busy && account.isNotBlank()) {
+                        Text(stringResource(Res.string.setup_mail_test))
+                    }
                 }
             }
             SetupStepId.GOOGLE -> {
@@ -417,6 +493,20 @@ private fun BillingOffer(
                 Text(stringResource(hint), style = MaterialTheme.typography.bodySmall)
             }
         }
+    }
+}
+
+/** A value the admin pastes elsewhere, with its own copy button. */
+@Composable
+private fun CopyValue(text: String, value: String) {
+    val clipboard = LocalClipboardManager.current
+    var copied by remember(value) { mutableStateOf(false) }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(text, modifier = Modifier.weight(1f))
+        OutlinedButton(onClick = {
+            clipboard.setText(AnnotatedString(value))
+            copied = true
+        }) { Text(stringResource(if (copied) Res.string.portal_password_copied else Res.string.portal_password_copy)) }
     }
 }
 

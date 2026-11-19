@@ -19,6 +19,9 @@ enum class SiteMailResult {
     Unavailable,
 }
 
+/** A [SiteMailResult] with the server's short non-secret code of a failed send ("" when there is none). */
+data class SiteMailOutcome(val result: SiteMailResult, val failure: String = "")
+
 /**
  * Sends a finished QR e-mail through the site when the device has no Gmail account of its own:
  * the MIME message the app would give the Gmail API goes to `orgs/{orgId}/mailOutbox/{id}`,
@@ -33,10 +36,10 @@ class SiteMailOutbox(
     private val pause: suspend (Long) -> Unit = { delay(it) },
     private val newId: () -> String = ::randomMailId,
 ) {
-    suspend fun send(to: String, mimeMessage: String, fromName: String): SiteMailResult {
+    suspend fun send(to: String, mimeMessage: String, fromName: String): SiteMailOutcome {
         val recipient = to.trim()
-        if (recipient.isEmpty() || mimeMessage.isEmpty()) return SiteMailResult.Rejected
-        if (mimeMessage.length > MAX_RAW_LENGTH) return SiteMailResult.TooLarge
+        if (recipient.isEmpty() || mimeMessage.isEmpty()) return SiteMailOutcome(SiteMailResult.Rejected)
+        if (mimeMessage.length > MAX_RAW_LENGTH) return SiteMailOutcome(SiteMailResult.TooLarge)
         val id = newId()
         try {
             gateway.setPlainDocument(
@@ -58,7 +61,7 @@ class SiteMailOutbox(
             throw e
         } catch (e: Exception) {
             println("Site mail: hand-over failed: ${e.message}")
-            return SiteMailResult.Unavailable
+            return SiteMailOutcome(SiteMailResult.Unavailable)
         }
         val deadline = clock() + ANSWER_TIMEOUT_MS
         var lastStatus = "PENDING"
@@ -73,15 +76,19 @@ class SiteMailOutbox(
             } ?: continue
             lastStatus = data["status"]?.toString().orEmpty()
             when (lastStatus) {
-                "DONE" -> return SiteMailResult.Sent.also { forget(id) }
-                "REJECTED" -> return SiteMailResult.Rejected.also { forget(id) }
+                "DONE" -> return SiteMailOutcome(SiteMailResult.Sent).also { forget(id) }
+                "REJECTED" -> return SiteMailOutcome(SiteMailResult.Rejected, failureOf(data)).also { forget(id) }
             }
         }
         // Never claimed: take it back so a server that wakes up later does not send a stale mail.
         // A claimed one is left to finish; the server drops the message from it once answered.
         if (lastStatus == "PENDING") forget(id)
-        return SiteMailResult.NoAnswer
+        return SiteMailOutcome(SiteMailResult.NoAnswer)
     }
+
+    /** The server writes a short code; anything else in the field is not shown. */
+    private fun failureOf(data: Map<String, Any?>): String =
+        (data["failure"] as? String).orEmpty().filter { it.isLetterOrDigit() || it in FAILURE_CHARS }.take(MAX_FAILURE_LENGTH)
 
     private suspend fun forget(id: String) {
         try {
@@ -100,6 +107,8 @@ class SiteMailOutbox(
         /** Room for a cold start of the function plus the SMTP exchange. */
         const val ANSWER_TIMEOUT_MS = 60_000L
         const val POLL_INTERVAL_MS = 2_000L
+        private const val FAILURE_CHARS = ":_.-"
+        private const val MAX_FAILURE_LENGTH = 80
     }
 }
 
@@ -128,6 +137,12 @@ object SiteMailRelay {
 
     suspend fun send(to: String, mimeMessage: String): SiteMailResult {
         val target = target() ?: return SiteMailResult.Unavailable
-        return target.outbox.send(to, mimeMessage, target.fromName)
+        return target.outbox.send(to, mimeMessage, target.fromName).result
+    }
+
+    /** Like [send], with the server's failure code; [mimeFor] builds the message for the sender name. */
+    suspend fun sendWithFailure(to: String, mimeFor: (fromName: String) -> String): SiteMailOutcome {
+        val target = target() ?: return SiteMailOutcome(SiteMailResult.Unavailable)
+        return target.outbox.send(to, mimeFor(target.fromName), target.fromName)
     }
 }

@@ -9,9 +9,14 @@ class StepInput(
     val projectId: String? = null,
     val newProjectName: String? = null,
     val location: String? = null,
+    /** The account the server sends mail as (a Gmail address, or a Workspace user). */
     val gmailUser: String? = null,
-    /** Wiped by the runner once the step finishes. */
+    /** Wiped by the runner once the step finishes. Only read in [MailMode.APP_PASSWORD]. */
     val appPassword: CharArray? = null,
+    /** Null means [MailMode.APP_PASSWORD], the mode the step had before Workspace was offered. */
+    val mailMode: MailMode? = null,
+    /** Address shown as the sender in [MailMode.WORKSPACE]; blank means [gmailUser]. */
+    val mailFrom: String? = null,
     val webClientId: String? = null,
     val webClientSecret: String? = null,
     /** Code shown by the Google sign-in page for the Firebase CLI. */
@@ -44,6 +49,9 @@ interface SetupAutomation {
      */
     fun confirmBilling(step: SetupStepId, account: String, input: StepInput = StepInput())
     fun setExtra(step: SetupStepId, enabled: Boolean)
+
+    /** Sends a test mail to the signed-in account through the site; the server step is done once it is sent. */
+    fun sendTestMail()
     fun cancel()
 
     /** Stops everything; called when the setup page closes. */
@@ -73,6 +81,12 @@ data class SetupInfo(
     val repairs: Map<SetupStepId, List<RepairNote>> = emptyMap(),
     /** True while [SetupAutomation.refresh] checks the steps against the project. */
     val checking: Boolean = false,
+    /** The Workspace sending service account, once the server step has made it. */
+    val mailServiceAccount: MailServiceAccountInfo? = null,
+    /** The last test mail went through with the server as it is deployed now. */
+    val mailTestOk: Boolean = false,
+    /** The site's server functions are deployed and running: the test mail can be sent. */
+    val serverDeployed: Boolean = false,
 )
 
 /** One repair the app ran for a step, with what it found. */

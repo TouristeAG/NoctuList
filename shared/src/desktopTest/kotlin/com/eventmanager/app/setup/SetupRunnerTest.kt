@@ -1,5 +1,7 @@
 package com.eventmanager.app.setup
 
+import com.eventmanager.app.email.SiteMailOutcome
+import com.eventmanager.app.email.SiteMailResult
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +27,7 @@ private class FakeSettings : SetupSettings {
     var clientSecret = ""
     var progressJson = ""
     var photosEnabled = false
+    override var mailTestOk = false
     override fun setWebConfig(apiKey: String, appId: String) { this.apiKey = apiKey; this.appId = appId }
     override fun setWebClient(id: String, secret: String) { clientId = id; clientSecret = secret }
     override fun hasWebClient() = clientId.isNotBlank() && clientSecret.isNotBlank()
@@ -165,7 +168,20 @@ private class FakeOps : GoogleOps {
         hostingError?.let { throw it }
         return hosting
     }
-    override suspend fun ensureMailServiceAccount(projectId: String) = MailServiceAccount("", "")
+    override suspend fun ensureMailServiceAccount(projectId: String): MailServiceAccount {
+        rec("ensureMailServiceAccount")
+        return MailServiceAccount("noctulist-mail@$projectId.iam.gserviceaccount.com", "1234567890")
+    }
+}
+
+/** Answers like a site whose server sent the test mail unless a test says otherwise. */
+private class FakeMailTester : MailTester {
+    var outcome = SiteMailOutcome(SiteMailResult.Sent, "")
+    val sent = mutableListOf<String>()
+    override suspend fun sendTest(to: String): SiteMailOutcome {
+        sent += to
+        return outcome
+    }
 }
 
 private class FakeTools(var status: ToolsStatus = ToolsStatus.Missing, val calls: MutableList<String> = mutableListOf()) : SetupTools {
@@ -212,7 +228,8 @@ class SetupRunnerTest {
         },
     )
     private val sleeps = mutableListOf<Long>()
-    private val runner = SetupRunner(scope, FakeTools(), { cli }, { ops }, workspace, settings, sleep = { sleeps += it })
+    private val mailer = FakeMailTester()
+    private val runner = SetupRunner(scope, FakeTools(), { cli }, { ops }, workspace, settings, sleep = { sleeps += it }, mailTester = mailer)
 
     @AfterTest
     fun cleanUp() {
@@ -228,17 +245,23 @@ class SetupRunnerTest {
         awaitState(SetupStepId.TOOLS) { it == StepState.Done }
     }
 
+    /** The server step ends with the functions deployed and the step waiting for its test mail. */
+    private suspend fun awaitServerDeployed(r: SetupRunner = runner) {
+        withTimeout(5_000) { r.info.first { it.serverDeployed } }
+        assertEquals(StepState.Todo, r.states.value[SetupStepId.SERVER])
+    }
+
     @Test
     fun serverRunsInTheSafeOrder(): Unit = runBlocking {
         ready()
         runner.run(SetupStepId.SERVER, StepInput(gmailUser = "info@example.org", appPassword = "abcd efgh ijkl mnop".toCharArray()))
-        awaitState(SetupStepId.SERVER) { it == StepState.Done }
+        awaitServerDeployed()
         assertEquals(
             listOf("databases", "setSecret GMAIL_APP_PASSWORD", "npmInstall functions", "deploy hosting,functions", "setpolicy europe-west6"),
             cli.calls,
         )
         assertEquals(
-            "GMAIL_USER=info@example.org\nREGION=europe-west6\n",
+            "GMAIL_USER=info@example.org\nREGION=europe-west6\nMAIL_MODE=app_password\nMAIL_FROM=\nMAIL_SA=\n",
             base.resolve("demo-project/functions/.env.demo-project").readText(),
         )
         assertEquals("abcd efgh ijkl mnop", cli.passwordSeen)
@@ -257,7 +280,7 @@ class SetupRunnerTest {
         r.run(SetupStepId.TOOLS)
         withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] == StepState.Done } }
         r.run(SetupStepId.SERVER, StepInput(gmailUser = "info@example.org", appPassword = "abcd efgh".toCharArray()))
-        withTimeout(5_000) { r.states.first { it[SetupStepId.SERVER] == StepState.Done } }
+        awaitServerDeployed(r)
         assertEquals(listOf("abcd efgh"), seenDuringStep)
         assertEquals(emptyList(), secrets.current())
     }
@@ -321,7 +344,7 @@ class SetupRunnerTest {
         ready()
         val password = "abcd efgh".toCharArray()
         runner.run(SetupStepId.SERVER, StepInput(gmailUser = "info@example.org", appPassword = password))
-        awaitState(SetupStepId.SERVER) { it == StepState.Done }
+        awaitServerDeployed()
         assertTrue(password.all { it == '\u0000' })
     }
 
@@ -330,7 +353,7 @@ class SetupRunnerTest {
         ready()
         cli.deployFailures += listOf("Permission denied while using the Eventarc Service Agent.", "Retry the deployment in a few minutes. Eventarc Service Agent")
         runner.run(SetupStepId.SERVER, StepInput(gmailUser = "info@example.org", appPassword = "x".toCharArray()))
-        awaitState(SetupStepId.SERVER) { it == StepState.Done }
+        awaitServerDeployed()
         assertEquals(3, cli.calls.count { it == "deploy hosting,functions" })
         assertEquals(2 * 120, sleeps.size)
     }
@@ -754,9 +777,21 @@ class SetupRunnerTest {
     @Test
     fun refreshTicksServerWhenAllFunctionsAreActive(): Unit = runBlocking {
         ops.functions = activeFunctions()
+        settings.mailTestOk = true
         val r = refreshRunner()
         r.refresh()
         assertEquals(StepState.Done, r.states.value[SetupStepId.SERVER])
+        assertTrue(r.info.value.mailTestOk)
+    }
+
+    @Test
+    fun refreshNeedsTheTestMailToTickServer(): Unit = runBlocking {
+        ops.functions = activeFunctions()
+        val r = refreshRunner(SetupStepId.SERVER)
+        r.refresh()
+        assertEquals(StepState.Todo, r.states.value[SetupStepId.SERVER])
+        assertTrue(SetupStepId.SERVER !in r.progress.value.done)
+        assertTrue(r.info.value.serverDeployed)
     }
 
     @Test
@@ -925,7 +960,7 @@ class SetupRunnerTest {
         ops.roleChanged = true
         ready()
         runner.run(SetupStepId.SERVER, serverInput())
-        awaitState(SetupStepId.SERVER) { it == StepState.Done }
+        awaitServerDeployed()
         val number = order.indexOf("projectNumber")
         val role = order.indexOf("ensureRole serviceAccount:123-compute@developer.gserviceaccount.com roles/cloudbuild.builds.builder")
         val deploy = order.indexOf("deploy hosting,functions")
@@ -942,7 +977,7 @@ class SetupRunnerTest {
         )
         ready()
         runner.run(SetupStepId.SERVER, serverInput())
-        awaitState(SetupStepId.SERVER) { it == StepState.Done }
+        awaitServerDeployed()
         assertEquals(listOf("deleteFunctions onSignupWritten europe-west6"), cli.calls.filter { it.startsWith("deleteFunctions") })
         assertTrue(cli.calls.indexOf("deleteFunctions onSignupWritten europe-west6") < cli.calls.indexOf("deploy hosting,functions"))
         assertTrue("functions noctulist" in ops.calls)
@@ -955,7 +990,7 @@ class SetupRunnerTest {
         ready()
         cli.deployFailures += SetupErrorFixtures.HTTPS_TO_BACKGROUND
         runner.run(SetupStepId.SERVER, serverInput())
-        awaitState(SetupStepId.SERVER) { it == StepState.Done }
+        awaitServerDeployed()
         assertTrue("deleteFunctions onMailOutboxWritten europe-west6" in cli.calls, cli.calls.toString())
         assertEquals(2, cli.calls.count { it == "deploy hosting,functions" })
     }
@@ -992,7 +1027,7 @@ class SetupRunnerTest {
         assertTrue(ops.calls.none { it.startsWith("linkBilling") })
         assertTrue(cli.calls.none { it.startsWith("deploy") })
         runner.confirmBilling(SetupStepId.SERVER, "billingAccounts/1", serverInput())
-        awaitState(SetupStepId.SERVER) { it == StepState.Done }
+        awaitServerDeployed()
         assertEquals(1, ops.calls.count { it == "linkBilling billingAccounts/1" })
         assertTrue("deploy hosting,functions" in cli.calls)
     }
@@ -1126,7 +1161,7 @@ class SetupRunnerTest {
         )
         ready()
         runner.run(SetupStepId.SERVER, serverInput())
-        awaitState(SetupStepId.SERVER) { it == StepState.Done }
+        awaitServerDeployed()
         assertEquals(listOf("deleteFunctions onMailOutboxWritten europe-west6"), cli.calls.filter { it.startsWith("deleteFunctions") })
     }
 
@@ -1141,5 +1176,111 @@ class SetupRunnerTest {
         assertTrue("project number" in error.headline, error.headline)
         assertTrue(ops.calls.none { it.startsWith("ensureRole") })
         assertTrue(cli.calls.none { it.startsWith("deploy") })
+    }
+
+    private fun workspaceInput(from: String = "no-reply@collectif-nocturne.ch") =
+        StepInput(gmailUser = "info@collectif-nocturne.ch", mailMode = MailMode.WORKSPACE, mailFrom = from)
+
+    private suspend fun signedIn() {
+        ready()
+        runner.run(SetupStepId.LOGIN)
+        awaitState(SetupStepId.LOGIN) { it == StepState.Done }
+    }
+
+    @Test
+    fun workspaceModeWritesUnusedSecretAndParams(): Unit = runBlocking {
+        ready()
+        runner.run(SetupStepId.SERVER, workspaceInput())
+        awaitServerDeployed()
+        assertEquals("unused", cli.passwordSeen)
+        val env = base.resolve("demo-project/functions/.env.demo-project").readText().lines()
+        assertTrue("GMAIL_USER=info@collectif-nocturne.ch" in env, env.toString())
+        assertTrue("MAIL_MODE=workspace" in env, env.toString())
+        assertTrue("MAIL_FROM=no-reply@collectif-nocturne.ch" in env, env.toString())
+        assertTrue("MAIL_SA=noctulist-mail@demo-project.iam.gserviceaccount.com" in env, env.toString())
+        assertEquals(
+            MailServiceAccountInfo("noctulist-mail@demo-project.iam.gserviceaccount.com", "1234567890"),
+            runner.info.value.mailServiceAccount,
+        )
+        assertEquals(listOf("gmail.googleapis.com"), ops.enabledApis)
+        assertTrue("ensureMailServiceAccount" in ops.calls)
+    }
+
+    @Test
+    fun workspaceModeWithoutFromSendsAsTheAccount(): Unit = runBlocking {
+        ready()
+        runner.run(SetupStepId.SERVER, workspaceInput(from = " "))
+        awaitServerDeployed()
+        val env = base.resolve("demo-project/functions/.env.demo-project").readText().lines()
+        assertTrue("MAIL_FROM=info@collectif-nocturne.ch" in env, env.toString())
+    }
+
+    @Test
+    fun appPasswordModeKeepsPassword(): Unit = runBlocking {
+        ready()
+        runner.run(
+            SetupStepId.SERVER,
+            StepInput(gmailUser = "info@example.org", appPassword = "abcd".toCharArray(), mailMode = MailMode.APP_PASSWORD, mailFrom = "x@example.org"),
+        )
+        awaitServerDeployed()
+        assertEquals("abcd", cli.passwordSeen)
+        val env = base.resolve("demo-project/functions/.env.demo-project").readText().lines()
+        assertTrue("MAIL_MODE=app_password" in env, env.toString())
+        assertTrue("MAIL_SA=" in env, env.toString())
+        assertTrue("ensureMailServiceAccount" !in ops.calls)
+        assertEquals(null, runner.info.value.mailServiceAccount)
+    }
+
+    @Test
+    fun serverNotDoneUntilTestMailSent(): Unit = runBlocking {
+        settings.mailTestOk = true // from an earlier deploy: a new deploy needs a new test
+        signedIn()
+        runner.run(SetupStepId.SERVER, workspaceInput())
+        awaitServerDeployed()
+        assertFalse(settings.mailTestOk)
+        assertFalse(runner.info.value.mailTestOk)
+        assertTrue(SetupStepId.SERVER !in runner.progress.value.done)
+        assertTrue(mailer.sent.isEmpty())
+        runner.sendTestMail()
+        awaitState(SetupStepId.SERVER) { it == StepState.Done }
+        assertEquals(listOf("admin@example.org"), mailer.sent)
+        assertTrue(settings.mailTestOk)
+        assertTrue(runner.info.value.mailTestOk)
+        assertTrue(SetupStepId.SERVER in runner.progress.value.done)
+    }
+
+    @Test
+    fun delegationMissingKeepsStepOpen(): Unit = runBlocking {
+        mailer.outcome = SiteMailOutcome(SiteMailResult.Rejected, "delegation:unauthorized_client")
+        signedIn()
+        runner.run(SetupStepId.SERVER, workspaceInput())
+        awaitServerDeployed()
+        runner.sendTestMail()
+        val state = awaitState(SetupStepId.SERVER) { it is StepState.Error }
+        val error = (state as StepState.Error).error
+        assertEquals(SetupErrorId.MAIL_DELEGATION_MISSING, error.id)
+        assertTrue("delegation:unauthorized_client" in error.headline, error.headline)
+        assertTrue("delegation:unauthorized_client" in runner.report(SetupStepId.SERVER))
+        assertEquals(1, cli.calls.count { it.startsWith("setSecret") })
+        assertFalse(settings.mailTestOk)
+        assertTrue(SetupStepId.SERVER !in runner.progress.value.done)
+    }
+
+    @Test
+    fun testMailWithoutOrganizationIsUnavailable(): Unit = runBlocking {
+        mailer.outcome = SiteMailOutcome(SiteMailResult.Unavailable, "")
+        signedIn()
+        runner.sendTestMail()
+        val state = awaitState(SetupStepId.SERVER) { it is StepState.Error }
+        assertEquals(SetupErrorId.MAIL_TEST_UNAVAILABLE, (state as StepState.Error).error.id)
+    }
+
+    @Test
+    fun refusedAppPasswordIsNamed(): Unit = runBlocking {
+        mailer.outcome = SiteMailOutcome(SiteMailResult.Rejected, "smtp:535")
+        signedIn()
+        runner.sendTestMail()
+        val state = awaitState(SetupStepId.SERVER) { it is StepState.Error }
+        assertEquals(SetupErrorId.MAIL_AUTH_REFUSED, (state as StepState.Error).error.id)
     }
 }

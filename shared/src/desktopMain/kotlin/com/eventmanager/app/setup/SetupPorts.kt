@@ -54,4 +54,7 @@ interface SetupSettings {
     fun loadProgress(): String
     fun saveProgress(json: String)
     fun enableProfilePhotos()
+
+    /** The last test mail of the server step went through; reset by every new server deploy. */
+    var mailTestOk: Boolean
 }

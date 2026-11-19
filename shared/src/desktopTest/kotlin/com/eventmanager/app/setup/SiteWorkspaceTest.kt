@@ -12,6 +12,7 @@ import java.nio.file.Files
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -73,13 +74,40 @@ class SiteWorkspaceTest {
     }
 
     @Test
-    fun functionParamsFileHasExactlyTwoLines() = runBlocking {
+    fun functionParamsFileHasTheFiveParams() = runBlocking {
         val dir = workspace.prepare("demo-project", withStorage = false)
-        workspace.writeFunctionParams(dir, "demo-project", "info@example.org", "europe-west6")
+        workspace.writeFunctionParams(dir, "demo-project", "info@example.org", "europe-west6", MailMode.APP_PASSWORD, "", "")
         assertEquals(
-            "GMAIL_USER=info@example.org\nREGION=europe-west6\n",
+            "GMAIL_USER=info@example.org\nREGION=europe-west6\nMAIL_MODE=app_password\nMAIL_FROM=\nMAIL_SA=\n",
             dir.resolve("functions/.env.demo-project").readText(),
         )
+    }
+
+    @Test
+    fun workspaceParamsNameTheFromAddressAndTheServiceAccount() = runBlocking {
+        val dir = workspace.prepare("demo-project", withStorage = false)
+        val sa = "noctulist-mail@demo-project.iam.gserviceaccount.com"
+        workspace.writeFunctionParams(dir, "demo-project", "info@example.org", "europe-west6", MailMode.WORKSPACE, "no-reply@example.org", sa)
+        assertEquals(
+            "GMAIL_USER=info@example.org\nREGION=europe-west6\nMAIL_MODE=workspace\nMAIL_FROM=no-reply@example.org\nMAIL_SA=$sa\n",
+            dir.resolve("functions/.env.demo-project").readText(),
+        )
+    }
+
+    @Test
+    fun writeFunctionParamsRejectsBadFrom() = runBlocking {
+        val dir = workspace.prepare("demo-project", withStorage = false)
+        val sa = "noctulist-mail@demo-project.iam.gserviceaccount.com"
+        assertFailsWith<IllegalArgumentException> {
+            workspace.writeFunctionParams(dir, "demo-project", "info@example.org", "europe-west6", MailMode.WORKSPACE, "a@b.c\nX=1", sa)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            workspace.writeFunctionParams(dir, "demo-project", "info@example.org", "europe-west6", MailMode.WORKSPACE, "no-reply@example.org", "sa\nX=1")
+        }
+        assertFailsWith<IllegalArgumentException> {
+            workspace.writeFunctionParams(dir, "demo-project", "info@example.org", "europe-west6", MailMode.WORKSPACE, "no-reply@example.org", "")
+        }
+        assertFalse(dir.resolve("functions/.env.demo-project").exists())
     }
 
     @Test
@@ -93,7 +121,7 @@ class SiteWorkspaceTest {
     @Test
     fun noSecretEverLandsOnDisk() = runBlocking {
         val dir = workspace.prepare("demo-project", withStorage = true)
-        workspace.writeFunctionParams(dir, "demo-project", "info@example.org", "europe-west1")
+        workspace.writeFunctionParams(dir, "demo-project", "info@example.org", "europe-west1", MailMode.APP_PASSWORD, "", "")
         val secret = "abcd efgh ijkl mnop"
         assertFalse(dir.walkTopDown().filter { it.isFile }.any { it.readText().contains(secret) })
         assertTrue(config(dir).getValue("functions") is JsonArray)

@@ -43,6 +43,7 @@ actual fun createSetupAutomation(context: PlatformContext, settings: SettingsMan
         workspace = SiteWorkspace(SetupPaths.site(root), GuestFormSiteBundle.files) { Res.readBytes(it) },
         settings = SettingsManagerSetupSettings(settings),
         secrets = secrets,
+        mailTester = SiteMailRelayTester(language = { settings.getLanguage() }, clock = System::currentTimeMillis),
     )
 }
 
@@ -94,4 +95,8 @@ class SettingsManagerSetupSettings(private val s: SettingsManager) : SetupSettin
     override fun loadProgress(): String = s.getSetupProgressJson()
     override fun saveProgress(json: String) = s.saveSetupProgressJson(json)
     override fun enableProfilePhotos() = s.setProfilePhotosEnabled(true)
+
+    override var mailTestOk: Boolean
+        get() = s.isSetupMailTestOk()
+        set(value) = s.setSetupMailTestOk(value)
 }

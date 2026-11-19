@@ -51,14 +51,20 @@ class SiteWorkspace(
         return JsonObject(h + ("ignore" to kotlinx.serialization.json.JsonArray(ignore + extra)))
     }
 
-    /** Non-secret function parameters, so the deploy never stops to ask. */
-    fun writeFunctionParams(dir: File, projectId: String, gmailUser: String, region: String) {
+    /**
+     * Non-secret function parameters, so the deploy never stops to ask. [from] and [sa] are only used in
+     * [MailMode.WORKSPACE], where both are required; in [MailMode.APP_PASSWORD] they may be blank.
+     */
+    fun writeFunctionParams(dir: File, projectId: String, gmailUser: String, region: String, mode: MailMode, from: String, sa: String) {
         require(SetupValidators.projectId(projectId)) { "invalid project id" }
         require(SetupValidators.gmail(gmailUser)) { "invalid gmail address" }
         require(REGION.matches(region)) { "invalid region" }
+        val workspace = mode == MailMode.WORKSPACE
+        require(if (workspace) SetupValidators.gmail(from) else from.isEmpty() || SetupValidators.gmail(from)) { "invalid from address" }
+        require(if (workspace) SetupValidators.gmail(sa) else sa.isEmpty() || SetupValidators.gmail(sa)) { "invalid service account" }
         val file = dir.resolve("functions/.env.$projectId")
         file.parentFile.mkdirs()
-        file.writeText("GMAIL_USER=$gmailUser\nREGION=$region\n")
+        file.writeText("GMAIL_USER=$gmailUser\nREGION=$region\nMAIL_MODE=${mode.param}\nMAIL_FROM=$from\nMAIL_SA=$sa\n")
     }
 
     private companion object {

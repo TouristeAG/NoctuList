@@ -53,8 +53,8 @@ class SiteMailOutboxTest {
     @Test
     fun handsOverTheDocumentTheRulesExpectAndReportsSent() = runBlocking {
         val gateway = FakeGateway { if (it < 3) mapOf("status" to "PROCESSING") else mapOf("status" to "DONE") }
-        val result = outbox(gateway).send(" lea@mail.example ", "From: x\r\n\r\nbody", " Asso ")
-        assertEquals(SiteMailResult.Sent, result)
+        val outcome = outbox(gateway).send(" lea@mail.example ", "From: x\r\n\r\nbody", " Asso ")
+        assertEquals(SiteMailOutcome(SiteMailResult.Sent, ""), outcome)
         val doc = gateway.written.getValue("mail1")
         assertEquals(
             setOf("schema", "status", "to", "raw", "fromName", "createdBy", "createdAt"),
@@ -71,14 +71,38 @@ class SiteMailOutboxTest {
     @Test
     fun rejectedAnswerIsReportedAndCleanedUp() = runBlocking {
         val gateway = FakeGateway { mapOf("status" to "REJECTED", "reason" to "SEND_FAILED") }
-        assertEquals(SiteMailResult.Rejected, outbox(gateway).send("lea@mail.example", "m", "A"))
+        assertEquals(SiteMailResult.Rejected, outbox(gateway).send("lea@mail.example", "m", "A").result)
         assertEquals(listOf("mail1"), gateway.deleted)
+    }
+
+    @Test
+    fun rejectedAnswerCarriesTheFailureCode() = runBlocking {
+        val gateway = FakeGateway { mapOf("status" to "REJECTED", "reason" to "SEND_FAILED", "failure" to "delegation:unauthorized_client") }
+        assertEquals(
+            SiteMailOutcome(SiteMailResult.Rejected, "delegation:unauthorized_client"),
+            outbox(gateway).send("lea@mail.example", "m", "A"),
+        )
+    }
+
+    @Test
+    fun relaySendKeepsAnsweringAResult() = runBlocking {
+        val gateway = FakeGateway { mapOf("status" to "REJECTED", "failure" to "smtp:535") }
+        SiteMailRelay.install { SiteMailRelay.Target(outbox(gateway), "Asso") }
+        try {
+            assertEquals(SiteMailResult.Rejected, SiteMailRelay.send("lea@mail.example", "m"))
+            var name = ""
+            val outcome = SiteMailRelay.sendWithFailure("lea@mail.example") { name = it; "m" }
+            assertEquals(SiteMailOutcome(SiteMailResult.Rejected, "smtp:535"), outcome)
+            assertEquals("Asso", name)
+        } finally {
+            SiteMailRelay.install(null)
+        }
     }
 
     @Test
     fun noAnswerTakesBackAnUnclaimedMail() = runBlocking {
         val gateway = FakeGateway { mapOf("status" to "PENDING") }
-        assertEquals(SiteMailResult.NoAnswer, outbox(gateway).send("lea@mail.example", "m", "A"))
+        assertEquals(SiteMailResult.NoAnswer, outbox(gateway).send("lea@mail.example", "m", "A").result)
         assertEquals(listOf("mail1"), gateway.deleted)
         assertTrue(gateway.reads >= 2)
     }
@@ -86,7 +110,7 @@ class SiteMailOutboxTest {
     @Test
     fun noAnswerLeavesAClaimedMailToTheServer() = runBlocking {
         val gateway = FakeGateway { mapOf("status" to "PROCESSING") }
-        assertEquals(SiteMailResult.NoAnswer, outbox(gateway).send("lea@mail.example", "m", "A"))
+        assertEquals(SiteMailResult.NoAnswer, outbox(gateway).send("lea@mail.example", "m", "A").result)
         assertTrue(gateway.deleted.isEmpty())
     }
 
@@ -94,14 +118,14 @@ class SiteMailOutboxTest {
     fun oversizedMessageIsNotWritten() = runBlocking {
         val gateway = FakeGateway { null }
         val big = "x".repeat(SiteMailOutbox.MAX_RAW_LENGTH + 1)
-        assertEquals(SiteMailResult.TooLarge, outbox(gateway).send("lea@mail.example", big, "A"))
+        assertEquals(SiteMailResult.TooLarge, outbox(gateway).send("lea@mail.example", big, "A").result)
         assertTrue(gateway.written.isEmpty())
     }
 
     @Test
     fun deniedWriteMeansUnavailable() = runBlocking {
         val gateway = FakeGateway { null }.apply { failWrite = true }
-        assertEquals(SiteMailResult.Unavailable, outbox(gateway).send("lea@mail.example", "m", "A"))
+        assertEquals(SiteMailResult.Unavailable, outbox(gateway).send("lea@mail.example", "m", "A").result)
     }
 
     @Test
@@ -109,5 +133,6 @@ class SiteMailOutboxTest {
         SiteMailRelay.install(null)
         assertEquals(false, SiteMailRelay.isAvailable())
         assertEquals(SiteMailResult.Unavailable, SiteMailRelay.send("lea@mail.example", "m"))
+        assertEquals(SiteMailOutcome(SiteMailResult.Unavailable, ""), SiteMailRelay.sendWithFailure("lea@mail.example") { "m" })
     }
 }
