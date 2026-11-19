@@ -1070,6 +1070,19 @@ class SetupRunnerTest {
     }
 
     @Test
+    fun reinstallClearsTheBrokenToolsErrorOfOtherSteps(): Unit = runBlocking {
+        val tools = FakeTools(ToolsStatus.Broken("node does not start"))
+        val r = SetupRunner(scope, tools, { cli }, { ops }, workspace, settings, sleep = {})
+        r.run(SetupStepId.RULES)
+        val failed = awaitStateOf(r, SetupStepId.RULES) { it is StepState.Error }.getValue(SetupStepId.RULES)
+        assertEquals(Repair.REINSTALL_TOOLS, (failed as StepState.Error).error.repair)
+        r.reinstallTools()
+        withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] == StepState.Done } }
+        // The error asked for new tools and has them: the step can be run again.
+        assertEquals(StepState.Todo, r.states.value[SetupStepId.RULES])
+    }
+
+    @Test
     fun refreshChecksAuthFirst(): Unit = runBlocking {
         val r = refreshRunner()
         r.refresh()

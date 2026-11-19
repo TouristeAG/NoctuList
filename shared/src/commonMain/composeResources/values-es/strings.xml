@@ -2389,7 +2389,7 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="setup_step_photos_title">Fotos de perfil</string>
     <string name="setup_step_photos_purpose">Requiere el plan Blaze. Abra la página de Storage, pulse Get started, pulse Ya está y luego Ejecutar.</string>
     <string name="setup_step_server_title">Procesamiento automático</string>
-    <string name="setup_step_server_purpose">Procesa registros, cambios de perfil y correos de código QR en segundos, incluso sin ningún dispositivo encendido. Requiere el plan Blaze y una contraseña de aplicación de Gmail.</string>
+    <string name="setup_step_server_purpose">Procesa registros, cambios de perfil y correos de código QR en segundos, incluso sin ningún dispositivo encendido. Requiere el plan Blaze.</string>
     <string name="setup_signed_in_as">Sesión iniciada como %1$s</string>
     <string name="setup_project_pick">Proyecto existente</string>
     <string name="setup_project_new_id">Nuevo ID de proyecto (minúsculas, números y guiones)</string>

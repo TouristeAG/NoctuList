@@ -2389,7 +2389,7 @@
     <string name="setup_step_photos_title">大頭照</string>
     <string name="setup_step_photos_purpose">需要 Blaze 方案。開啟 Storage 頁面，點選 Get started，點選已完成，然後點選執行。</string>
     <string name="setup_step_server_title">自動處理</string>
-    <string name="setup_step_server_purpose">即使沒有裝置開機，也能在幾秒內處理註冊、資料修改和 QR 碼郵件。需要 Blaze 方案和 Gmail 應用程式密碼。</string>
+    <string name="setup_step_server_purpose">即使沒有裝置開機，也能在幾秒內處理註冊、資料修改和 QR 碼郵件。需要 Blaze 方案。</string>
     <string name="setup_signed_in_as">已登入：%1$s</string>
     <string name="setup_project_pick">現有專案</string>
     <string name="setup_project_new_id">新專案 ID（小寫字母、數字和連字號）</string>

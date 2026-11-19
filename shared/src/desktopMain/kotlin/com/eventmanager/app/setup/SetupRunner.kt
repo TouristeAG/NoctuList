@@ -516,6 +516,12 @@ class SetupRunner(
                 useTools(paths)
                 _info.update { it.copy(tools = ToolsState.READY) }
                 markDone(step)
+                // Errors that asked for new tools have them now: those steps can run again.
+                _states.update { states ->
+                    states.mapValues { (_, state) ->
+                        if (state is StepState.Error && state.error.repair == Repair.REINSTALL_TOOLS) StepState.Todo else state
+                    }
+                }
             }
             SetupStepId.LOGIN -> {
                 val c = requireCli()

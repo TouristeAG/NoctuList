@@ -2394,7 +2394,7 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="setup_step_photos_title">प्रोफ़ाइल फ़ोटो</string>
     <string name="setup_step_photos_purpose">Blaze प्लान चाहिए। Storage पेज खोलें, Get started दबाएँ, हो गया दबाएँ, फिर चलाएँ।</string>
     <string name="setup_step_server_title">स्वचालित प्रोसेसिंग</string>
-    <string name="setup_step_server_purpose">पंजीकरण, प्रोफ़ाइल बदलाव और QR कोड ई-मेल कुछ ही सेकंड में संभालता है, भले कोई डिवाइस चालू न हो। Blaze प्लान और Gmail app password चाहिए।</string>
+    <string name="setup_step_server_purpose">पंजीकरण, प्रोफ़ाइल बदलाव और QR कोड ई-मेल कुछ ही सेकंड में संभालता है, भले कोई डिवाइस चालू न हो। Blaze प्लान चाहिए।</string>
     <string name="setup_signed_in_as">%1$s के रूप में साइन इन</string>
     <string name="setup_project_pick">मौजूदा प्रोजेक्ट</string>
     <string name="setup_project_new_id">नया प्रोजेक्ट ID (छोटे अक्षर, अंक और डैश)</string>

@@ -54,6 +54,7 @@ import com.eventmanager.app.setup.LoginChallenge
 import com.eventmanager.app.setup.MailMode
 import com.eventmanager.app.setup.MailSetup
 import com.eventmanager.app.setup.SetupErrorId
+import com.eventmanager.app.setup.Repair
 import com.eventmanager.app.setup.RepairNote
 import com.eventmanager.app.setup.SetupAutomation
 import com.eventmanager.app.setup.SetupStepId
@@ -78,6 +79,19 @@ private const val MODE_SUGGEST_DELAY_MS = 800L
 private val TEST_MAIL_ERRORS = setOf(SetupErrorId.MAIL_DELEGATION_MISSING, SetupErrorId.MAIL_TEST_FAILED, SetupErrorId.MAIL_TEST_UNAVAILABLE,
     SetupErrorId.MAIL_TEST_NO_ORGANIZATION,
 )
+
+/** What Retry on an error does. */
+internal enum class RetryAction { RUN_STEP, SEND_TEST_MAIL, REINSTALL_TOOLS }
+
+/** Broken tools are fixed by reinstalling them, whichever step found them; a failed test mail is sent again. */
+internal fun retryAction(step: SetupStepId, state: StepState): RetryAction {
+    val error = (state as? StepState.Error)?.error ?: return RetryAction.RUN_STEP
+    return when {
+        error.repair == Repair.REINSTALL_TOOLS -> RetryAction.REINSTALL_TOOLS
+        step == SetupStepId.SERVER && error.id in TEST_MAIL_ERRORS -> RetryAction.SEND_TEST_MAIL
+        else -> RetryAction.RUN_STEP
+    }
+}
 
 internal fun stepTitle(step: SetupStepId): StringResource = when (step) {
     SetupStepId.TOOLS -> Res.string.setup_step_tools_title
@@ -190,7 +204,7 @@ private fun Card(
     content: @Composable () -> Unit,
 ) {
     val platform = LocalPlatformContext.current
-    val retestMail = step == SetupStepId.SERVER && (state as? StepState.Error)?.error?.id in TEST_MAIL_ERRORS
+    val action = retryAction(step, state)
     StepCard(
         step = step,
         state = state,
@@ -200,9 +214,13 @@ private fun Card(
         rerunnable = step in RERUNNABLE,
         repairs = repairs,
         onRetry = {
-            if (retestMail) automation.sendTestMail() else automation.run(step, retryInputs[step]?.invoke() ?: StepInput())
+            when (action) {
+                RetryAction.SEND_TEST_MAIL -> automation.sendTestMail()
+                RetryAction.REINSTALL_TOOLS -> automation.reinstallTools()
+                RetryAction.RUN_STEP -> automation.run(step, retryInputs[step]?.invoke() ?: StepInput())
+            }
         },
-        retryEnabled = retestMail || (retryEnabled[step] ?: true),
+        retryEnabled = action != RetryAction.RUN_STEP || (retryEnabled[step] ?: true),
         onOpenLink = { openExternalUrl(platform, it) },
         report = { automation.report(step) },
         content = content,
@@ -230,7 +248,9 @@ private fun StepControls(
     val platform = LocalPlatformContext.current
     val open: (String) -> Unit = { openExternalUrl(platform, it) }
     val busy = automation.states.collectAsState().value[step].let { it is StepState.Running || it is StepState.WaitingRetry }
-    val anyBusy = automation.states.collectAsState().value.values.any { it is StepState.Running || it is StepState.WaitingRetry }
+    // A refresh counts: reinstalling or signing out while it probes the tools would pull them from under it.
+    val checking = automation.info.collectAsState().value.checking
+    val anyBusy = checking || automation.states.collectAsState().value.values.any { it is StepState.Running || it is StepState.WaitingRetry }
     val runLabel = stringResource(Res.string.setup_btn_run)
     val scope = rememberCoroutineScope()
 

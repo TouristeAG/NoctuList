@@ -2391,7 +2391,7 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="setup_step_photos_title">Photos de profil</string>
     <string name="setup_step_photos_purpose">Nécessite le forfait Blaze. Ouvrez la page Storage, cliquez sur Get started, appuyez sur C'est fait, puis Lancer.</string>
     <string name="setup_step_server_title">Traitement automatique</string>
-    <string name="setup_step_server_purpose">Traite les inscriptions, les modifications de profil et les e-mails de QR code en quelques secondes, même sans appareil allumé. Nécessite le forfait Blaze et un mot de passe d'application Gmail.</string>
+    <string name="setup_step_server_purpose">Traite les inscriptions, les modifications de profil et les e-mails de QR code en quelques secondes, même sans appareil allumé. Nécessite le forfait Blaze et une adresse Gmail ou Google Workspace pour l'envoi.</string>
     <string name="setup_signed_in_as">Connecté en tant que %1$s</string>
     <string name="setup_sign_out">Se déconnecter</string>
     <string name="setup_switch_account">Changer de compte</string>
