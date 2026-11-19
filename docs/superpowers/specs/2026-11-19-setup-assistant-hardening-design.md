@@ -95,7 +95,7 @@ The Kotlin side (`GoogleOps`) wraps it the way `FirebaseCli` wraps the CLI: fixe
 - Before step 3: enable the APIs the whole flow needs (Firestore, Rules, Hosting, Storage, Cloud Functions, Cloud Build, Artifact Registry, Cloud Run, Eventarc, Pub/Sub, Secret Manager, IAM Credentials), then wait until active.
 - Before step 9: `ensure-role` `roles/cloudbuild.builds.builder` on the default compute service account (`<number>-compute@developer.gserviceaccount.com`). This is the "missing permission on the build service account" failure.
 - Billing (steps 8 and 9): if not enabled and the user has exactly one usable billing account, offer "Activer Blaze avec <nom du compte>" with a short explanation of pay-as-you-go and a link to budgets; link only on confirmation. Zero or several accounts: guided steps with the console link.
-- Functions left FAILED from an earlier attempt are reported ("anciennes fonctions en échec, elles seront remplacées") and the deploy replaces them.
+- Functions left FAILED from an earlier attempt cannot be replaced in place: their build failed before the Eventarc trigger was created, so Google sees them as HTTPS functions and refuses the change ("Changing from an HTTPS function to a background triggered function is not allowed"). Before step 9 deploys, `functions-status` lists FAILED functions of the `noctulist` codebase; the app deletes them (`functions:delete --force`, they do not work anyway) and reports "Réparé : anciennes fonctions en échec supprimées". The same error seen during a deploy triggers the same repair, then one retry.
 - Transient Google errors (5xx, "Failed to list functions", "unreachable regions", API just enabled) retry with the existing wait loop.
 - Each repair adds a line to the step: "Réparé : …".
 
@@ -131,7 +131,7 @@ Initial catalogue (each item is a test case built from the real output when we h
 | 20 | 9 | build service account missing permission | `ensure-role`, retry |
 | 21 | 9 | Eventarc agent not ready | wait and retry (exists today) |
 | 22 | 9 | "Failed to list functions" and other transient 5xx | retry |
-| 23 | 9 | functions in FAILED state | report, redeploy |
+| 23 | 9 | functions in FAILED state, including "Changing from an HTTPS function to a background triggered function is not allowed" | delete the FAILED functions, redeploy |
 | 24 | 9 | `npm install` failed (network, long paths, antivirus) | retry, then cause-specific text |
 | 25 | 9 | secret write refused | enable Secret Manager, retry |
 | 26 | 9 | app password refused by Gmail, or blocked by the Workspace admin | explain; propose the Workspace mode on a Workspace domain |
