@@ -116,7 +116,7 @@ class SetupRunner(
             } catch (e: CliException) {
                 setState(step, StepState.Error(e.error))
             } catch (e: Exception) {
-                setState(step, StepState.Error(CliError(CliErrorKind.UNKNOWN, false, step, e.message.orEmpty())))
+                setState(step, StepState.Error(unknown(step, e.message.orEmpty())))
             } finally {
                 secrets.clear()
                 input.appPassword?.fill('\u0000')
@@ -157,7 +157,7 @@ class SetupRunner(
                 } catch (e: CliException) {
                     failure = e
                 } catch (e: Exception) {
-                    failure = CliException(CliError(CliErrorKind.UNKNOWN, false, SetupStepId.LOGIN, e.message.orEmpty()))
+                    failure = CliException(unknown(SetupStepId.LOGIN, e.message.orEmpty()))
                 }
                 // Project ticks stay until the next refresh checks them.
                 _info.update { it.copy(account = "", loginChallenge = null, projects = emptyList()) }
@@ -198,7 +198,7 @@ class SetupRunner(
                         if (status == ToolsStatus.Missing) tools.install(progress) else tools.reinstall(progress)
                         // Installed means answers when run, not just files on disk.
                         (tools.status() as? ToolsStatus.Ready)?.paths
-                            ?: throw CliException(CliError(CliErrorKind.UNKNOWN, false, step, "tools do not respond after install"))
+                            ?: throw CliException(toolsBroken(step, "tools do not respond after install"))
                     }
                 } catch (e: Throwable) {
                     cli = null
@@ -339,7 +339,7 @@ class SetupRunner(
                 block()
                 return
             } catch (e: CliException) {
-                if (!e.error.retryable || attempt >= MAX_RETRIES) throw e
+                if (e.error.retry != RetryPolicy.WAIT_AND_RETRY || attempt >= MAX_RETRIES) throw e
                 attempt++
                 for (secondsLeft in RETRY_SECONDS downTo 1) {
                     setState(step, StepState.WaitingRetry(attempt, secondsLeft))
@@ -357,7 +357,7 @@ class SetupRunner(
 
     private suspend fun requireCli(): SetupCli = cli
         ?: (tools.status() as? ToolsStatus.Ready)?.let { ready -> cliFactory(ready.paths).also { cli = it } }
-        ?: throw CliException(CliError(CliErrorKind.UNKNOWN, false, SetupStepId.TOOLS, "tools not ready"))
+        ?: throw CliException(toolsBroken(SetupStepId.TOOLS, "tools not ready"))
 
     /** Ticks belong to one project: choosing another keeps only the computer-wide steps. */
     private fun switchProject(id: String) {
@@ -396,7 +396,13 @@ class SetupRunner(
     }
 
     private fun notLoggedIn(step: SetupStepId) =
-        CliException(CliError(CliErrorKind.NOT_LOGGED_IN, false, step, ""))
+        CliException(SetupError(SetupErrorId.LOGIN_EXPIRED, step, RetryPolicy.NONE, Repair.RELOGIN, null, "", ""))
+
+    private fun toolsBroken(step: SetupStepId, message: String) =
+        SetupError(SetupErrorId.TOOLS_BROKEN, step, RetryPolicy.NONE, Repair.REINSTALL_TOOLS, null, message, message)
+
+    private fun unknown(step: SetupStepId, message: String) =
+        SetupError(SetupErrorId.UNKNOWN, step, RetryPolicy.NONE, null, null, message, message)
 
     private fun log(step: SetupStepId, line: String) {
         _states.update { states ->

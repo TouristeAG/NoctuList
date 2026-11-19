@@ -43,6 +43,7 @@ import com.eventmanager.app.resources.setup_state_running
 import com.eventmanager.app.resources.setup_state_todo
 import com.eventmanager.app.resources.setup_state_waiting
 import com.eventmanager.app.setup.SetupStepId
+import com.eventmanager.app.setup.SetupErrorId
 import com.eventmanager.app.setup.StepState
 import org.jetbrains.compose.resources.stringResource
 
@@ -148,10 +149,17 @@ private fun ErrorBox(state: StepState.Error, onShowManual: () -> Unit) {
     Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.errorContainer) {
         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
-                errorMessage(state.error.kind),
+                errorMessage(state.error.id),
                 color = MaterialTheme.colorScheme.onErrorContainer,
                 style = MaterialTheme.typography.bodyMedium,
             )
+            if (state.error.id == SetupErrorId.UNKNOWN && state.error.headline.isNotBlank()) {
+                Text(
+                    state.error.headline,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = onShowManual) { Text(stringResource(Res.string.setup_btn_manual)) }
                 if (state.error.details.isNotBlank()) {

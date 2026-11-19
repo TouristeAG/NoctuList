@@ -35,7 +35,7 @@ class FirebaseCli(
         val sessionLine = lines.indexOfFirst { it.contains("session ID", ignoreCase = true) }
         val session = lines.drop(sessionLine + 1).firstOrNull { it.isNotBlank() }
         if (url == null || sessionLine < 0 || session == null) {
-            throw CliException(CliErrorClassifier.classify(lines.joinToString("\n"), SetupStepId.LOGIN))
+            throw CliException(ErrorCatalog.classify(lines.joinToString("\n"), SetupStepId.LOGIN))
         }
         return LoginChallenge(session, url)
     }
@@ -92,14 +92,14 @@ class FirebaseCli(
 
     override suspend fun createWebApp(projectId: String, onLine: (String) -> Unit): String {
         val out = readJson(listOf("apps:create", "WEB", "NoctuList") + project(projectId) + "--json", SetupStepId.CONNECT, onLine)
-        return result(out).obj()?.str("appId") ?: throw CliException(CliErrorClassifier.classify(out.raw, SetupStepId.CONNECT))
+        return result(out).obj()?.str("appId") ?: throw CliException(ErrorCatalog.classify(out.raw, SetupStepId.CONNECT))
     }
 
     override suspend fun sdkConfig(projectId: String, appId: String): WebConfig {
         require(SetupValidators.webAppId(appId)) { "invalid app id" }
         val out = readJson(listOf("apps:sdkconfig", "WEB", appId) + project(projectId) + "--json", SetupStepId.CONNECT)
         val cfg = result(out).obj()?.get("sdkConfig")?.obj()
-            ?: throw CliException(CliErrorClassifier.classify(out.raw, SetupStepId.CONNECT))
+            ?: throw CliException(ErrorCatalog.classify(out.raw, SetupStepId.CONNECT))
         return WebConfig(cfg.str("apiKey").orEmpty(), cfg.str("appId").orEmpty(), cfg.str("projectId").orEmpty())
     }
 
@@ -143,7 +143,7 @@ class FirebaseCli(
             lines.appendLine(safe)
             onLine(safe)
         }
-        if (code != 0) throw CliException(CliErrorClassifier.classify(lines.toString(), SetupStepId.SERVER))
+        if (code != 0) throw CliException(ErrorCatalog.classify(lines.toString(), SetupStepId.SERVER))
     }
 
     override suspend fun functionsList(projectId: String): List<FunctionInfo> =
@@ -203,7 +203,7 @@ class FirebaseCli(
         keepDebugLog(cwd, code != 0, log)
         val text = lines.toString()
         if (code != 0) {
-            throw CliException(CliErrorClassifier.classify(if (show) text else "exit $code", step))
+            throw CliException(ErrorCatalog.classify(if (show) text else "exit $code", step))
         }
         return text
     }

@@ -42,7 +42,7 @@ private class FakeCli : SetupCli {
     var cleanupMs = 0L
     var passwordSeen: String? = null
 
-    private fun fail(text: String, step: SetupStepId): Nothing = throw CliException(CliErrorClassifier.classify(text, step))
+    private fun fail(text: String, step: SetupStepId): Nothing = throw CliException(ErrorCatalog.classify(text, step))
 
     var accounts = listOf("admin@example.org")
     override suspend fun loginStart(): LoginChallenge { calls += "loginStart"; return LoginChallenge("AB12C", "https://auth.firebase.tools/login?x") }
@@ -51,7 +51,7 @@ private class FakeCli : SetupCli {
     var logoutFails = false
     override suspend fun logout() {
         calls += "logout"
-        if (logoutFails) throw CliException(CliError(CliErrorKind.UNKNOWN, false, SetupStepId.LOGIN, "boom"))
+        if (logoutFails) throw CliException(SetupError(SetupErrorId.UNKNOWN, SetupStepId.LOGIN, RetryPolicy.NONE, null, null, "boom", "boom"))
         accounts = emptyList()
     }
     var projects = listOf(ProjectInfo("demo-project", "Demo"), ProjectInfo("other-project", "Other"))
@@ -203,7 +203,7 @@ class SetupRunnerTest {
         repeat(6) { cli.deployFailures += "Permission denied while using the Eventarc Service Agent." }
         runner.run(SetupStepId.SERVER, StepInput(gmailUser = "info@example.org", appPassword = "x".toCharArray()))
         val state = awaitState(SetupStepId.SERVER) { it is StepState.Error }
-        assertEquals(CliErrorKind.EVENTARC_PROPAGATION, (state as StepState.Error).error.kind)
+        assertEquals(SetupErrorId.EVENTARC_NOT_READY, (state as StepState.Error).error.id)
         assertEquals(6, cli.calls.count { it == "deploy hosting,functions" })
     }
 
@@ -213,7 +213,7 @@ class SetupRunnerTest {
         cli.deployFailures += "Your project must be on the Blaze (pay-as-you-go) plan."
         runner.run(SetupStepId.SERVER, StepInput(gmailUser = "info@example.org", appPassword = "x".toCharArray()))
         val state = awaitState(SetupStepId.SERVER) { it is StepState.Error }
-        assertEquals(CliErrorKind.BILLING_REQUIRED, (state as StepState.Error).error.kind)
+        assertEquals(SetupErrorId.BILLING_REQUIRED, (state as StepState.Error).error.id)
         assertEquals(1, cli.calls.count { it.startsWith("deploy") })
     }
 

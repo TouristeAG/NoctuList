@@ -34,7 +34,7 @@ sealed interface StepState {
     data class WaitingRetry(val attempt: Int, val secondsLeft: Int) : StepState
     data object Done : StepState
     data object Skipped : StepState
-    data class Error(val error: CliError) : StepState
+    data class Error(val error: SetupError) : StepState
 }
 
 /** What the assistant remembers per project, so it resumes where it stopped. */

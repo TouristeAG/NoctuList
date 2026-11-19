@@ -265,7 +265,7 @@ class FirebaseCliTest {
     fun failureIsClassified() = runBlocking {
         val runner = FakeProcessRunner { 1 to "Permission denied while using the Eventarc Service Agent." }
         val e = assertFailsWith<CliException> { cli(runner).deploy(pid, File("/w"), "functions") {} }
-        assertEquals(CliErrorKind.EVENTARC_PROPAGATION, e.error.kind)
+        assertEquals(SetupErrorId.EVENTARC_NOT_READY, e.error.id)
     }
 
     @Test

@@ -40,7 +40,7 @@ import androidx.compose.ui.unit.dp
 import com.eventmanager.app.platform.LocalPlatformContext
 import com.eventmanager.app.platform.openExternalUrl
 import com.eventmanager.app.resources.*
-import com.eventmanager.app.setup.CliErrorKind
+import com.eventmanager.app.setup.SetupErrorId
 import com.eventmanager.app.setup.LoginChallenge
 import com.eventmanager.app.setup.SetupAutomation
 import com.eventmanager.app.setup.SetupStepId
@@ -86,16 +86,17 @@ private fun stepPurpose(step: SetupStepId): StringResource = when (step) {
 }
 
 @Composable
-internal fun errorMessage(kind: CliErrorKind): String = stringResource(
-    when (kind) {
-        CliErrorKind.NOT_LOGGED_IN -> Res.string.setup_err_not_logged_in
-        CliErrorKind.BILLING_REQUIRED -> Res.string.setup_err_billing
-        CliErrorKind.API_NOT_ENABLED -> Res.string.setup_err_api
-        CliErrorKind.EVENTARC_PROPAGATION -> Res.string.setup_err_eventarc
-        CliErrorKind.PERMISSION_DENIED -> Res.string.setup_err_permission
-        CliErrorKind.NETWORK -> Res.string.setup_err_network
-        CliErrorKind.QUOTA -> Res.string.setup_err_quota
-        CliErrorKind.UNKNOWN -> Res.string.setup_err_unknown
+internal fun errorMessage(id: SetupErrorId): String = stringResource(
+    when (id) {
+        SetupErrorId.BUILD_SA_PERMISSION, SetupErrorId.PERMISSION_DENIED, SetupErrorId.NO_PROJECT_CREATOR ->
+            Res.string.setup_err_permission
+        SetupErrorId.BILLING_REQUIRED -> Res.string.setup_err_billing
+        SetupErrorId.API_NOT_ENABLED, SetupErrorId.SECRET_REFUSED -> Res.string.setup_err_api
+        SetupErrorId.EVENTARC_NOT_READY -> Res.string.setup_err_eventarc
+        SetupErrorId.NETWORK, SetupErrorId.DOWNLOAD_FAILED -> Res.string.setup_err_network
+        SetupErrorId.QUOTA, SetupErrorId.PROJECT_QUOTA -> Res.string.setup_err_quota
+        SetupErrorId.LOGIN_EXPIRED, SetupErrorId.LOGIN_CODE_INVALID -> Res.string.setup_err_not_logged_in
+        else -> Res.string.setup_err_unknown
     },
 )
 
