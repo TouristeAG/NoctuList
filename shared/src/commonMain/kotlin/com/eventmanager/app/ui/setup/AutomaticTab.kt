@@ -40,6 +40,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -53,13 +54,13 @@ import com.eventmanager.app.setup.LoginChallenge
 import com.eventmanager.app.setup.MailMode
 import com.eventmanager.app.setup.MailSetup
 import com.eventmanager.app.setup.SetupErrorId
-import com.eventmanager.app.setup.SetupValidators
 import com.eventmanager.app.setup.RepairNote
 import com.eventmanager.app.setup.SetupAutomation
 import com.eventmanager.app.setup.SetupStepId
 import com.eventmanager.app.setup.StepInput
 import com.eventmanager.app.setup.StepState
 import com.eventmanager.app.setup.ToolsState
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -69,6 +70,9 @@ internal val requiredSteps = SetupStepId.entries.filterNot { it.optional }
 /** Steps worth running again later: rules and site change with NoctuList updates. */
 private val RERUNNABLE = setOf(SetupStepId.PROJECT, SetupStepId.RULES, SetupStepId.SITE, SetupStepId.PHOTOS, SetupStepId.SERVER)
 internal val optionalSteps = SetupStepId.entries.filter { it.optional }
+
+/** How long the sending address must stay unchanged before its domain suggests the mail mode. */
+private const val MODE_SUGGEST_DELAY_MS = 800L
 
 /** Errors of the test mail: Retry sends the test again instead of deploying the server again. */
 private val TEST_MAIL_ERRORS = setOf(SetupErrorId.MAIL_DELEGATION_MISSING, SetupErrorId.MAIL_TEST_FAILED, SetupErrorId.MAIL_TEST_UNAVAILABLE,
@@ -364,7 +368,11 @@ private fun StepControls(
                     val next = typed.trim()
                     from = MailSetup.followSender(sender, next, from)
                     sender = next
-                    if (!modePicked && SetupValidators.gmail(next)) mode = MailSetup.suggestedMode(next)
+                }
+                // Suggest the mode once the address stops changing: "x@gmail.co" is a valid address on the way to gmail.com.
+                LaunchedEffect(sender) {
+                    delay(MODE_SUGGEST_DELAY_MS)
+                    mode = MailSetup.modeAfterTyping(sender, mode, modePicked)
                 }
                 BillingOffer(step, automation, projectId, retryInputs, retryEnabled, open)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -384,14 +392,17 @@ private fun StepControls(
                         }
                     }
                 }
+                // Outside the mode branches, so a mode change never recreates it while the admin types.
+                OutlinedTextField(
+                    sender, onSender,
+                    label = { Text(stringResource(if (mode == MailMode.APP_PASSWORD) Res.string.setup_gmail else Res.string.setup_mail_sender)) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    modifier = Modifier.fillMaxWidth().onFocusChanged { focus ->
+                        if (!focus.isFocused) mode = MailSetup.modeAfterTyping(sender, mode, modePicked)
+                    },
+                )
                 if (mode == MailMode.APP_PASSWORD) {
-                    OutlinedTextField(
-                        sender, onSender,
-                        label = { Text(stringResource(Res.string.setup_gmail)) },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
                     OutlinedTextField(
                         password, { password = it },
                         label = { Text(stringResource(Res.string.setup_app_password)) },
@@ -400,13 +411,6 @@ private fun StepControls(
                         modifier = Modifier.fillMaxWidth(),
                     )
                 } else {
-                    OutlinedTextField(
-                        sender, onSender,
-                        label = { Text(stringResource(Res.string.setup_mail_sender)) },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
                     OutlinedTextField(
                         from, { from = it.trim() },
                         label = { Text(stringResource(Res.string.setup_mail_from)) },

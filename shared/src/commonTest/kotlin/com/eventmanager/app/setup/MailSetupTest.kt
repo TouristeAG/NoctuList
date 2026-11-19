@@ -61,4 +61,12 @@ class MailSetupTest {
         assertEquals("b@x.ch", MailSetup.followSender(previousSender = "a@x.ch", sender = "b@x.ch", from = ""))
         assertEquals("no-reply@x.ch", MailSetup.followSender(previousSender = "a@x.ch", sender = "b@x.ch", from = "no-reply@x.ch"))
     }
+
+    @Test
+    fun modeIsSuggestedOnlyForAFinishedAddressUntilPicked() {
+        assertEquals(MailMode.WORKSPACE, MailSetup.modeAfterTyping("x@asso.ch", MailMode.APP_PASSWORD, picked = false))
+        assertEquals(MailMode.APP_PASSWORD, MailSetup.modeAfterTyping("x@gmail.com", MailMode.WORKSPACE, picked = false))
+        assertEquals(MailMode.APP_PASSWORD, MailSetup.modeAfterTyping("x@gma", MailMode.APP_PASSWORD, picked = false))
+        assertEquals(MailMode.APP_PASSWORD, MailSetup.modeAfterTyping("x@asso.ch", MailMode.APP_PASSWORD, picked = true))
+    }
 }

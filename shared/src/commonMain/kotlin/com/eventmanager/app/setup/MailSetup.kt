@@ -27,6 +27,13 @@ object MailSetup {
         return if (domain in CONSUMER_DOMAINS) MailMode.APP_PASSWORD else MailMode.WORKSPACE
     }
 
+    /**
+     * The mode once the admin stopped typing [sender] (the UI waits before calling this): a valid address
+     * suggests its mode, unless the admin [picked] one by hand.
+     */
+    fun modeAfterTyping(sender: String, current: MailMode, picked: Boolean): MailMode =
+        if (picked || !SetupValidators.gmail(sender.trim())) current else suggestedMode(sender)
+
     /** The displayed address follows the sending account while it is blank or still the previous one. */
     fun followSender(previousSender: String, sender: String, from: String): String =
         if (from.isBlank() || from.equals(previousSender, ignoreCase = true)) sender else from
