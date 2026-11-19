@@ -69,9 +69,11 @@ fun main() {
     // Single instance check first, before any Firebase or AWT work.
     val dataDir = desktopDataDir().also { it.mkdirs() }
     val singleInstance = SingleInstance(dataDir)
-    if (!singleInstance.acquire { showRequest++ }) {
-        singleInstance.signalFirst()
-        exitProcess(0)
+    val acquired = singleInstance.acquire { showRequest++ }
+    if (acquired == SingleInstance.Acquire.ALREADY_RUNNING) {
+        if (singleInstance.signalFirst()) exitProcess(0)
+        System.err.println("NoctuList is already running but did not answer. Close the other NoctuList and try again.")
+        exitProcess(1)
     }
     Runtime.getRuntime().addShutdownHook(Thread { singleInstance.release() })
     // Before the crash logger and before any AWT/Skiko/Firestore class init.
