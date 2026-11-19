@@ -2,12 +2,15 @@ package com.eventmanager.app.ui.components.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -16,9 +19,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.eventmanager.app.portal.DomainCheck
+import com.eventmanager.app.portal.PortalGoogleAddressTemplate
+import com.eventmanager.app.portal.TemplateCheck
 import com.eventmanager.app.resources.*
 import com.eventmanager.app.ui.components.domainCheckMessages
 import com.eventmanager.app.ui.components.portalServerLastRun
@@ -203,6 +209,13 @@ private fun PortalOptions(b: SyncSettingsBindings, canEdit: Boolean) {
         enabled = canEdit,
         onCheckedChange = b.onVolunteerPortalQrEnabledChange,
     )
+    SettingsSwitchRow(
+        title = stringResource(Res.string.portal_auto_access_title),
+        subtitle = null,
+        checked = b.volunteerPortalAutoAccess,
+        enabled = canEdit,
+        onCheckedChange = b.onVolunteerPortalAutoAccessChange,
+    )
     PortalGoogleOptions(b, canEdit)
 }
 
@@ -211,17 +224,8 @@ private fun PortalOptions(b: SyncSettingsBindings, canEdit: Boolean) {
  * Workspace domains. In the second mode the team's own domains are offered as one-click
  * suggestions that run the same check as typing; with no domain, Google sign-in stays closed.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PortalGoogleOptions(b: SyncSettingsBindings, canEdit: Boolean) {
-    val domains = b.volunteerPortalGoogleDomains
-    val hasDomain = domains.isNotEmpty()
-    val messageFor = domainCheckMessages()
-    // Suggestions that turned out not to be Google Workspace domains are not offered again here.
-    var rejected by remember { mutableStateOf(emptySet<String>()) }
-    var checking by remember { mutableStateOf<String?>(null) }
-    var suggestionError by remember { mutableStateOf<String?>(null) }
-
     SettingsSwitchRow(
         title = stringResource(Res.string.portal_google_title),
         subtitle = null,
@@ -247,7 +251,21 @@ private fun PortalGoogleOptions(b: SyncSettingsBindings, canEdit: Boolean) {
             onSelect = { b.onVolunteerPortalGoogleAnyAccountChange(it == 0) },
         )
     }
-    if (b.volunteerPortalGoogleAnyAccount) return
+    if (!b.volunteerPortalGoogleAnyAccount) PortalGoogleDomainOptions(b, canEdit)
+    PortalGoogleAutoOptions(b, canEdit)
+}
+
+/** Verified Workspace domains, with the team's own domains offered as one-click suggestions. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PortalGoogleDomainOptions(b: SyncSettingsBindings, canEdit: Boolean) {
+    val domains = b.volunteerPortalGoogleDomains
+    val hasDomain = domains.isNotEmpty()
+    val messageFor = domainCheckMessages()
+    // Suggestions that turned out not to be Google Workspace domains are not offered again here.
+    var rejected by remember { mutableStateOf(emptySet<String>()) }
+    var checking by remember { mutableStateOf<String?>(null) }
+    var suggestionError by remember { mutableStateOf<String?>(null) }
 
     val suggestions = portalGoogleDomainSuggestions(b.allowedEmailDomains, domains).filterNot { it in rejected }
     Column(
@@ -314,6 +332,90 @@ private fun PortalGoogleOptions(b: SyncSettingsBindings, canEdit: Boolean) {
         }
         suggestionError?.let { error ->
             Text(error, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+        }
+    }
+}
+
+/**
+ * Builds the Google address of each newly opened portal access from a rule. The rule is saved
+ * only when it gives a valid address on the sample name (and, in "association accounts only"
+ * mode, uses a verified domain); the switch stays off until a rule is saved.
+ */
+@Composable
+private fun PortalGoogleAutoOptions(b: SyncSettingsBindings, canEdit: Boolean) {
+    var input by remember(b.volunteerPortalGoogleTemplate) { mutableStateOf(b.volunteerPortalGoogleTemplate) }
+    val check = PortalGoogleAddressTemplate.check(input, b.volunteerPortalGoogleDomains, b.volunteerPortalGoogleAnyAccount)
+    val saved = input.trim() == b.volunteerPortalGoogleTemplate
+    val storedUsable = b.volunteerPortalGoogleTemplate.isNotBlank()
+
+    SettingsSwitchRow(
+        title = stringResource(Res.string.portal_google_auto_title),
+        subtitle = stringResource(Res.string.portal_google_auto_desc),
+        checked = b.volunteerPortalGoogleAuto,
+        enabled = canEdit && (storedUsable || b.volunteerPortalGoogleAuto),
+        onCheckedChange = b.onVolunteerPortalGoogleAutoChange,
+    )
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(
+            start = SettingsKitDefaults.RowHorizontalPadding,
+            end = SettingsKitDefaults.RowHorizontalPadding,
+            bottom = SettingsKitDefaults.RowVerticalPadding,
+        ),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+                value = input,
+                onValueChange = { input = it },
+                label = { Text(stringResource(Res.string.portal_google_template_label)) },
+                placeholder = { Text(stringResource(Res.string.portal_google_template_placeholder)) },
+                singleLine = true,
+                enabled = canEdit,
+                isError = check == TemplateCheck.INVALID || check == TemplateCheck.DOMAIN,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(
+                onClick = { b.onVolunteerPortalGoogleTemplateChange(input.trim()) },
+                enabled = canEdit && !saved && check == TemplateCheck.OK,
+            ) { Text(stringResource(Res.string.portal_google_template_save)) }
+        }
+        Text(
+            stringResource(Res.string.portal_google_template_help),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        when (check) {
+            TemplateCheck.OK -> {
+                val sample = PortalGoogleAddressTemplate.render(
+                    input,
+                    PortalGoogleAddressTemplate.SAMPLE_FIRST,
+                    PortalGoogleAddressTemplate.SAMPLE_LAST,
+                ).orEmpty()
+                Text(
+                    stringResource(
+                        Res.string.portal_google_template_preview,
+                        "${PortalGoogleAddressTemplate.SAMPLE_FIRST} ${PortalGoogleAddressTemplate.SAMPLE_LAST}",
+                        sample,
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+            TemplateCheck.INVALID -> Text(
+                stringResource(Res.string.portal_google_template_invalid),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+            TemplateCheck.DOMAIN -> Text(
+                stringResource(Res.string.portal_google_template_domain),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+            TemplateCheck.EMPTY -> if (!storedUsable) Text(
+                stringResource(Res.string.portal_google_template_empty),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

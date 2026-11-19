@@ -93,6 +93,12 @@ class SyncSettingsBindings(
     val volunteerPortalGoogleDomains: List<String>,
     val onAddVolunteerPortalGoogleDomain: suspend (String) -> DomainCheck,
     val onRemoveVolunteerPortalGoogleDomain: (String) -> Unit,
+    val volunteerPortalAutoAccess: Boolean,
+    val onVolunteerPortalAutoAccessChange: (Boolean) -> Unit,
+    val volunteerPortalGoogleAuto: Boolean,
+    val onVolunteerPortalGoogleAutoChange: (Boolean) -> Unit,
+    val volunteerPortalGoogleTemplate: String,
+    val onVolunteerPortalGoogleTemplateChange: (String) -> Unit,
     // Added for the pages.
     /** [FirebaseOrgAdminAccess.currentUserIsOrgAdmin], checked on the Firebase backend only. */
     val isOrgAdmin: Boolean,
@@ -171,6 +177,9 @@ fun rememberSyncSettingsBindings(
     val volunteerPortalQrEnabled by viewModel.volunteerPortalQrEnabled.collectAsState()
     val volunteerPortalGoogleAnyAccount by viewModel.volunteerPortalGoogleAnyAccount.collectAsState()
     val volunteerPortalGoogleDomains by viewModel.volunteerPortalGoogleDomains.collectAsState()
+    val volunteerPortalAutoAccess by viewModel.volunteerPortalAutoAccess.collectAsState()
+    val volunteerPortalGoogleAuto by viewModel.volunteerPortalGoogleAuto.collectAsState()
+    val volunteerPortalGoogleTemplate by viewModel.volunteerPortalGoogleTemplate.collectAsState()
     val portalServerStatus by viewModel.portalServerStatus.collectAsState()
     val lastSyncAt by viewModel.lastSyncTime.collectAsState()
 
@@ -326,6 +335,12 @@ fun rememberSyncSettingsBindings(
         volunteerPortalGoogleDomains = volunteerPortalGoogleDomains,
         onAddVolunteerPortalGoogleDomain = { viewModel.addVolunteerPortalGoogleDomain(it) },
         onRemoveVolunteerPortalGoogleDomain = { viewModel.removeVolunteerPortalGoogleDomain(it) },
+        volunteerPortalAutoAccess = volunteerPortalAutoAccess,
+        onVolunteerPortalAutoAccessChange = { viewModel.setVolunteerPortalAutoAccess(it) },
+        volunteerPortalGoogleAuto = volunteerPortalGoogleAuto,
+        onVolunteerPortalGoogleAutoChange = { viewModel.setVolunteerPortalGoogleAuto(it) },
+        volunteerPortalGoogleTemplate = volunteerPortalGoogleTemplate,
+        onVolunteerPortalGoogleTemplateChange = { viewModel.setVolunteerPortalGoogleTemplate(it) },
         isOrgAdmin = isOrgAdmin,
         adminChecked = adminChecked,
         onOpenFirebaseGuide = onOpenFirebaseGuide,

@@ -2636,6 +2636,19 @@ class EventManagerViewModel(
     /** Every Google account may sign in (personal ones too), not only the verified domains. */
     val volunteerPortalGoogleAnyAccount: StateFlow<Boolean> = _volunteerPortalGoogleAnyAccount.asStateFlow()
 
+    private val _volunteerPortalAutoAccess = MutableStateFlow(false)
+
+    /** Every volunteer added in the app gets portal access right away. */
+    val volunteerPortalAutoAccess: StateFlow<Boolean> = _volunteerPortalAutoAccess.asStateFlow()
+
+    private val _volunteerPortalGoogleAuto = MutableStateFlow(false)
+
+    /** A newly opened portal access gets its Google address from [volunteerPortalGoogleTemplate]. */
+    val volunteerPortalGoogleAuto: StateFlow<Boolean> = _volunteerPortalGoogleAuto.asStateFlow()
+
+    private val _volunteerPortalGoogleTemplate = MutableStateFlow("")
+    val volunteerPortalGoogleTemplate: StateFlow<String> = _volunteerPortalGoogleTemplate.asStateFlow()
+
     private val _portalServerStatus = MutableStateFlow<PortalServerStatus?>(null)
 
     /** Last run of the portal Cloud Functions, null when they never ran or the portal is off. */
@@ -2656,6 +2669,9 @@ class EventManagerViewModel(
         _volunteerPortalQrEnabled.value = settingsManagerCached?.isVolunteerPortalQrEnabled() != false
         _volunteerPortalGoogleDomains.value = settingsManagerCached?.volunteerPortalGoogleDomains().orEmpty()
         _volunteerPortalGoogleAnyAccount.value = settingsManagerCached?.isVolunteerPortalGoogleAnyAccount() == true
+        _volunteerPortalAutoAccess.value = settingsManagerCached?.isVolunteerPortalAutoAccess() == true
+        _volunteerPortalGoogleAuto.value = settingsManagerCached?.isVolunteerPortalGoogleAuto() == true
+        _volunteerPortalGoogleTemplate.value = settingsManagerCached?.volunteerPortalGoogleTemplate().orEmpty()
     }
 
     private fun republishVolunteerPortal() {
@@ -2688,6 +2704,32 @@ class EventManagerViewModel(
         settings.setVolunteerPortalGoogleEnabled(enabled)
         publishVolunteerPortalSettings()
         republishVolunteerPortal()
+        backupInstitutionSettingsToSheets()
+    }
+
+    fun setVolunteerPortalAutoAccess(enabled: Boolean) {
+        val settings = settingsManagerCached ?: return
+        if (getActiveBackendType() != BackendType.FIREBASE) return
+        settings.setVolunteerPortalAutoAccess(enabled)
+        publishVolunteerPortalSettings()
+        backupInstitutionSettingsToSheets()
+    }
+
+    fun setVolunteerPortalGoogleAuto(enabled: Boolean) {
+        val settings = settingsManagerCached ?: return
+        if (getActiveBackendType() != BackendType.FIREBASE) return
+        settings.setVolunteerPortalGoogleAuto(enabled)
+        publishVolunteerPortalSettings()
+        backupInstitutionSettingsToSheets()
+    }
+
+    /** Saves the Google address rule; the settings page only calls this with a rule that checks out. */
+    fun setVolunteerPortalGoogleTemplate(template: String) {
+        val settings = settingsManagerCached ?: return
+        if (getActiveBackendType() != BackendType.FIREBASE) return
+        if (template.trim() == settings.volunteerPortalGoogleTemplate()) return
+        settings.setVolunteerPortalGoogleTemplate(template)
+        publishVolunteerPortalSettings()
         backupInstitutionSettingsToSheets()
     }
 
@@ -2892,6 +2934,8 @@ class EventManagerViewModel(
         override fun portalGoogleEnabled(): Boolean = settingsManagerCached?.isVolunteerPortalGoogleEnabled() == true
         override fun portalGoogleDomains(): List<String> = settingsManagerCached?.volunteerPortalGoogleDomains().orEmpty()
         override fun portalGoogleAnyAccount(): Boolean = settingsManagerCached?.isVolunteerPortalGoogleAnyAccount() == true
+        override fun portalGoogleAddressTemplate(): String =
+            settingsManagerCached?.takeIf { it.isVolunteerPortalGoogleAuto() }?.volunteerPortalGoogleTemplate().orEmpty()
 
         override suspend fun volunteers(): List<Volunteer> = repository.getAllVolunteersOnce()
 
