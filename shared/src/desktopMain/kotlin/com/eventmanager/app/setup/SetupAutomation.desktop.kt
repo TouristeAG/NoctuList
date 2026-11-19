@@ -8,7 +8,14 @@ import com.eventmanager.app.ui.guestform.GuestFormSiteBundle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.ExperimentalResourceApi
+import java.io.File
+import java.nio.file.AtomicMoveNotSupportedException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 
 /** Where the assistant keeps its files: inside the app data folder, so "Remove all app data" removes them. */
 object SetupPaths {
@@ -52,14 +59,33 @@ actual fun createSetupAutomation(context: PlatformContext, settings: SettingsMan
  * Called lazily on first use, not at app start.
  */
 @OptIn(ExperimentalResourceApi::class)
-suspend fun extractGoogleHelper(root: java.io.File): java.io.File {
-    val target = root.resolve("setup/helper/noctulist-gcp.cjs")
-    val bytes = Res.readBytes("files/setup/noctulist-gcp.cjs")
-    if (!target.isFile || !target.readBytes().contentEquals(bytes)) {
-        target.parentFile.mkdirs()
-        target.writeBytes(bytes)
+suspend fun extractGoogleHelper(root: java.io.File): java.io.File =
+    writeHelperFile(root.resolve("setup/helper/noctulist-gcp.cjs"), Res.readBytes("files/setup/noctulist-gcp.cjs"))
+
+private val helperFileLock = Mutex()
+
+/**
+ * Puts [bytes] at [target] unless it already holds them. Node never sees half a file: the bytes go to a temp file
+ * in the same folder, which then replaces the target in one move. One writer at a time.
+ */
+internal suspend fun writeHelperFile(target: File, bytes: ByteArray): File = helperFileLock.withLock {
+    withContext(Dispatchers.IO) {
+        if (!target.isFile || !target.readBytes().contentEquals(bytes)) {
+            val dir = target.parentFile.apply { mkdirs() }
+            val tmp = File.createTempFile(".${target.name}-", ".tmp", dir)
+            try {
+                tmp.writeBytes(bytes)
+                try {
+                    Files.move(tmp.toPath(), target.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+                } catch (e: AtomicMoveNotSupportedException) {
+                    Files.move(tmp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                }
+            } finally {
+                tmp.delete()
+            }
+        }
+        target
     }
-    return target
 }
 
 /** Builds the Google operations for the runner: one helper per set of tools. */
