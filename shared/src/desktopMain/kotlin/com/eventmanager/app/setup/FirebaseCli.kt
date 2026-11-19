@@ -183,17 +183,27 @@ class FirebaseCli(
     ): String {
         val lines = StringBuilder()
         val log = logs.sink(step)
-        val code = runner.run(tools.firebaseCommand() + args + "--debug", workDir ?: env.workDir, env(), stdin, limitsFor(args)) {
+        val cwd = workDir ?: env.workDir
+        val code = runner.run(tools.firebaseCommand() + args, cwd, env(), stdin, limitsFor(args)) {
             log(it)
             val safe = redactor.redact(it)
             lines.appendLine(safe)
             if (show) onLine(safe)
         }
+        keepDebugLog(cwd, code != 0, log)
         val text = lines.toString()
         if (code != 0) {
             throw CliException(CliErrorClassifier.classify(if (show) text else "exit $code", step))
         }
         return text
+    }
+
+    /** The CLI's own debug log holds the real server replies: on failure it goes to our log file only, never to the screen. */
+    private fun keepDebugLog(dir: File, failed: Boolean, log: (String) -> Unit) {
+        val file = dir.resolve("firebase-debug.log")
+        if (!file.isFile) return
+        if (failed) runCatching { file.readLines(Charsets.UTF_8).forEach(log) }
+        file.delete()
     }
 
     private suspend fun readJson(
@@ -203,34 +213,10 @@ class FirebaseCli(
         show: Boolean = true,
     ): Output {
         val raw = exec(args, step, show = show, onLine = if (show) onLine else { _ -> })
-        return Output(if (show) raw else "", lastJsonObject(raw))
-    }
-
-    /** --debug mixes log lines (some holding braces) with the JSON: take the last top-level object that parses. */
-    private fun lastJsonObject(raw: String): JsonElement? {
-        var found: JsonElement? = null
-        var depth = 0
-        var start = -1
-        var inString = false
-        var escaped = false
-        for ((i, c) in raw.withIndex()) {
-            if (inString) {
-                when {
-                    escaped -> escaped = false
-                    c == '\\' -> escaped = true
-                    c == '"' -> inString = false
-                }
-                continue
-            }
-            when (c) {
-                '"' -> if (depth > 0) inString = true
-                '{' -> { if (depth == 0) start = i; depth++ }
-                '}' -> if (depth > 0 && --depth == 0) {
-                    runCatching { Json.parseToJsonElement(raw.substring(start, i + 1)) }.getOrNull()?.let { found = it }
-                }
-            }
-        }
-        return found
+        val start = raw.indexOf('{')
+        val end = raw.lastIndexOf('}')
+        val json = if (start in 0 until end) runCatching { Json.parseToJsonElement(raw.substring(start, end + 1)) }.getOrNull() else null
+        return Output(if (show) raw else "", json)
     }
 
     private fun result(out: Output): JsonElement? = out.json?.obj()?.get("result")

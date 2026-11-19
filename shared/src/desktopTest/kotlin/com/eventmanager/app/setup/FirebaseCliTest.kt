@@ -11,7 +11,10 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /** Records every command and answers with canned output. */
-class FakeProcessRunner(private val answer: (List<String>) -> Pair<Int, String> = { 0 to "" }) : ProcessRunner {
+class FakeProcessRunner(
+    private val onRun: (File?) -> Unit = {},
+    private val answer: (List<String>) -> Pair<Int, String> = { 0 to "" },
+) : ProcessRunner {
     val calls = mutableListOf<List<String>>()
     val stdins = mutableListOf<ByteArray?>()
     val stdinBuffers = mutableListOf<ByteArray?>()
@@ -29,6 +32,7 @@ class FakeProcessRunner(private val answer: (List<String>) -> Pair<Int, String> 
     ): Int {
         calls += cmd
         workDirs += workDir
+        onRun(workDir)
         limitsSeen += limits
         stdins += stdin?.copyOf() // the CLI wipes its buffer afterwards
         stdinBuffers += stdin
@@ -54,9 +58,12 @@ class FirebaseCliTest {
     private val env = SetupEnvironment(appData, null)
     private val emptyList = """{"status":"success","result":[]}"""
 
+    private var logs = SetupLogFiles(env.logDir, OutputRedactor { emptyList() }) { 0L }
+
     private fun cli(runner: FakeProcessRunner, secrets: () -> List<String> = { emptyList() }): FirebaseCli {
         val redactor = OutputRedactor(secrets)
-        return FirebaseCli(runner, tools, redactor, env, SetupLogFiles(env.logDir, redactor) { 0L })
+        logs = SetupLogFiles(env.logDir, redactor) { 0L }
+        return FirebaseCli(runner, tools, redactor, env, logs)
     }
 
     @Test
@@ -71,21 +78,18 @@ class FirebaseCliTest {
     }
 
     @Test
-    fun firebaseCommandsGetDebugFlag() = runBlocking {
-        val runner = FakeProcessRunner { 0 to emptyList }
-        val c = cli(runner)
-        c.projectsList()
-        c.createHostingSite(pid) {}
-        c.deploy(pid, File("/w"), "hosting") {}
-        assertTrue(runner.calls.isNotEmpty() && runner.calls.all { it.last() == "--debug" })
-    }
-
-    @Test
-    fun debugNoiseOnStdoutStillParses() = runBlocking {
-        val runner = FakeProcessRunner {
-            0 to "[debug] cmd {\"a\":1}\n{\"status\":\"success\",\"result\":[{\"projectId\":\"p-1\",\"displayName\":\"P\"}]}\n[debug] done {x}"
-        }
-        assertEquals(listOf(ProjectInfo("p-1", "P")), cli(runner).projectsList())
+    fun failedCommandCopiesDebugLogIntoStepLog() = runBlocking {
+        val runner = FakeProcessRunner(onRun = { dir ->
+            dir!!.resolve("firebase-debug.log").writeText("debug line with secret-value\n")
+        }) { 1 to "boom" }
+        val c = cli(runner) { listOf("secret-value") }
+        val shown = mutableListOf<String>()
+        val e = assertFailsWith<CliException> { c.createHostingSite(pid) { shown += it } }
+        val log = logs.latest(SetupStepId.SITE)!!.readText()
+        assertTrue("debug line with" in log)
+        assertFalse("secret-value" in log)
+        assertFalse(env.workDir.resolve("firebase-debug.log").exists())
+        assertFalse(shown.any { "debug line" in it } || e.error.toString().contains("debug line"))
     }
 
     @Test
@@ -95,7 +99,7 @@ class FirebaseCliTest {
         val log = mutableListOf<String>()
         cli(runner) { listOf(password) }.setSecret(pid, File("/w s"), "GMAIL_APP_PASSWORD", password.toCharArray()) { log += it }
         assertEquals(
-            listOf(fb, js, "functions:secrets:set", "GMAIL_APP_PASSWORD", "--data-file", "-", "--force", "--project", pid, "--debug"),
+            listOf(fb, js, "functions:secrets:set", "GMAIL_APP_PASSWORD", "--data-file", "-", "--force", "--project", pid),
             runner.calls.single(),
         )
         assertContentEquals(password.encodeToByteArray(), runner.stdins.single())
@@ -119,7 +123,7 @@ class FirebaseCliTest {
         val runner = FakeProcessRunner()
         cli(runner).deploy(pid, File("/a b/site"), "hosting,functions") {}
         assertEquals(
-            listOf(fb, js, "deploy", "--only", "hosting,functions", "--non-interactive", "--force", "--project", pid, "--debug"),
+            listOf(fb, js, "deploy", "--only", "hosting,functions", "--non-interactive", "--force", "--project", pid),
             runner.calls.single(),
         )
         assertTrue(runner.envs.single().getValue("PATH").startsWith("/t/node/bin"))
@@ -156,14 +160,14 @@ class FirebaseCliTest {
         val challenge = cli(runner).loginStart()
         assertEquals("AB12C", challenge.sessionId)
         assertEquals("https://auth.firebase.tools/login?code_challenge=xyz&session=abc-123&attest=q", challenge.url)
-        assertEquals(listOf(fb, js, "login", "--debug"), runner.calls.single())
+        assertEquals(listOf(fb, js, "login"), runner.calls.single())
     }
 
     @Test
     fun loginFinishPassesTheCodeAsOneArgument(): Unit = runBlocking {
         val runner = FakeProcessRunner { 0 to "Success! Logged in as a@example.org" }
         cli(runner).loginFinish("4/0AVMBsJ_x-y.z~Q12345")
-        assertEquals(listOf(fb, js, "login", "4/0AVMBsJ_x-y.z~Q12345", "--debug"), runner.calls.single())
+        assertEquals(listOf(fb, js, "login", "4/0AVMBsJ_x-y.z~Q12345"), runner.calls.single())
         assertFailsWith<IllegalArgumentException> { cli(runner).loginFinish("code; rm -rf /") }
         assertEquals(1, runner.calls.size)
     }
@@ -172,7 +176,7 @@ class FirebaseCliTest {
     fun createHostingSiteUsesTheProjectIdAsSiteId(): Unit = runBlocking {
         val runner = FakeProcessRunner()
         cli(runner).createHostingSite(pid) {}
-        assertEquals(listOf(fb, js, "hosting:sites:create", pid, "--non-interactive", "--project", pid, "--debug"), runner.calls.single())
+        assertEquals(listOf(fb, js, "hosting:sites:create", pid, "--non-interactive", "--project", pid), runner.calls.single())
     }
 
     @Test
@@ -180,7 +184,7 @@ class FirebaseCliTest {
         val json = """{"status":"success","result":[{"user":{"email":"a@example.org"},"tokens":{"refresh_token":"SECRET_REFRESH"}}]}"""
         val runner = FakeProcessRunner { 0 to json }
         assertEquals(listOf("a@example.org"), cli(runner).loginList())
-        assertEquals(listOf(fb, js, "login:list", "--json", "--debug"), runner.calls.single())
+        assertEquals(listOf(fb, js, "login:list", "--json"), runner.calls.single())
     }
 
     @Test
