@@ -16,6 +16,7 @@ Faites tous les essais sur un projet Firebase de test et un compte de test.
 - [ ] Ouvrir l'étape 0 sur une machine sans outils → l'étape indique "à réinstaller", jamais "installé"
 - [ ] Installer les outils sans proxy → Node et Firebase CLI s'installent, l'étape passe à "installé" avec les bonnes versions
 - [ ] Installer les outils derrière un proxy → le téléchargement et npm passent par le proxy et l'installation réussit
+- [ ] Derrière un proxy, cliquer sur "Tout vérifier" puis lancer l'étape 3 → les appels de l'assistant Google (connexion, API, facturation) passent par le proxy et les journaux ne montrent aucune erreur réseau
 - [ ] Installer les outils sans connexion internet → l'erreur "Le téléchargement des outils a échoué" (ou "Pas de connexion à Google") s'affiche et parle du proxy
 - [ ] Supprimer le dossier des outils dans `<appData>/setup`, puis rouvrir la page → l'étape 0 affiche "à réinstaller"
 - [ ] Cliquer sur "Réinstaller" quand les outils sont déjà installés → les outils sont réinstallés et l'étape repasse à "installé"
@@ -30,6 +31,7 @@ Faites tous les essais sur un projet Firebase de test et un compte de test.
 - [ ] Cliquer sur "Changer de compte" → déconnexion puis nouvelle connexion avec un autre compte, les coches de l'ancien compte ne restent pas
 - [ ] Se déconnecter puis changer de compte avec un autre compte Google → le nouveau compte s'affiche et les projets listés sont les siens
 - [ ] Révoquer l'accès de l'application dans le compte Google de test, puis rouvrir la page → l'étape affiche "Vous n'êtes plus connecté à Google" ("Reconnectez-vous") avec le bouton de connexion
+- [ ] Après cette révocation, cliquer sur "Réessayer" à l'étape 1 → l'application se déconnecte et propose une nouvelle connexion, l'étape n'est pas recochée sans elle
 
 ## Projet et base de données
 
@@ -37,6 +39,7 @@ Faites tous les essais sur un projet Firebase de test et un compte de test.
 - [ ] Demander un identifiant de projet déjà pris → l'erreur "Cet identifiant de projet existe déjà" s'affiche et l'application propose un identifiant libre
 - [ ] Utiliser un compte Workspace sans le rôle de création de projet → l'erreur "Ce compte ne peut pas créer de projet" s'affiche et explique ce que l'administrateur Workspace doit accorder
 - [ ] Lancer l'étape 3 sur un projet neuf → les API nécessaires sont activées par l'application et la ligne "Réparé" les mentionne
+- [ ] Sur un projet de test Spark neuf, sans compte de facturation lié : faire les étapes 0 à 7 → aucune ne demande Blaze, l'étape 3 n'active que les API gratuites, les règles et le site sont déployés
 - [ ] Créer la base de données (étape 3) → la base Firestore est créée et l'étape est cochée
 - [ ] Choisir une région non autorisée ou une base déjà configurée → l'erreur "Cette région n'est pas acceptée" (ou "La base est en mode Datastore") s'affiche sans modifier le projet
 
@@ -94,6 +97,7 @@ Faites tous les essais sur un projet Firebase de test et un compte de test.
 - [ ] Déplier les détails techniques → ils sont repliés par défaut et ne contiennent aucun mot de passe
 - [ ] Couper le réseau pendant une commande longue → l'erreur "La commande ne répond plus" (ou "Pas de connexion à Google") s'affiche avec "Réessayer"
 - [ ] Ouvrir le dossier des journaux → un fichier par commande existe, il contient la réponse de Google et aucun secret
+- [ ] Après tout le parcours, chercher `refresh_token`, `ya29.` et `1//` dans tous les fichiers de `<appData>/logs/setup` (macOS : `grep -rE 'refresh_token|ya29\.|1//' ~/.noctulist/logs/setup`, Windows : `findstr /S /C:"refresh_token" /C:"ya29." /C:"1//" "%USERPROFILE%\.noctulist\logs\setup\*"`) → aucun résultat
 
 ## Vérification des coches
 
@@ -109,6 +113,7 @@ Faites tous les essais sur un projet Firebase de test et un compte de test.
 - [ ] Utiliser un compte Windows dont le dossier personnel contient un espace et un accent (par exemple `C:\Users\Élodie Martin`) → l'installation des outils, la connexion et le déploiement fonctionnent
 - [ ] Installer les outils avec Windows Defender activé → l'installation réussit, ou l'erreur "Un fichier est utilisé par un autre programme" nomme le dossier et demande de mettre l'antivirus en pause
 - [ ] Après une pause de l'antivirus, cliquer sur "Réessayer" → l'installation se termine
+- [ ] Sur un Windows neuf avec Defender actif (antivirus non mis en pause), installer les outils et noter les durées : téléchargement de Node, installation de la Firebase CLI, premier "Tout vérifier" → l'installation réussit sous les limites (30 minutes pour la CLI, 60 secondes par vérification d'outil, essayée deux fois) ; reporter les durées ici
 - [ ] Sur Windows avec Git installé, installer les outils → l'installation réussit
 - [ ] Déployer le serveur sur Windows avec un long chemin de dossier → `npm install` réussit, ou l'erreur "L'installation des paquets du serveur a échoué" parle des chemins trop longs
 - [ ] Lire les messages d'erreur contenant des accents → les accents et les apostrophes s'affichent correctement, sans `\'` ni caractères cassés
