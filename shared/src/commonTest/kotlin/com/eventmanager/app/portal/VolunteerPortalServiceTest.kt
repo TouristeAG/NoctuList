@@ -110,6 +110,8 @@ private class FakeHost(initial: List<Volunteer>) : VolunteerPortalHost {
     override fun portalGoogleEnabled() = googleEnabled
     override fun portalGoogleDomains() = googleDomains
     var googleTemplate = ""
+    var googleAny = false
+    override fun portalGoogleAnyAccount() = googleAny
     override fun portalGoogleAddressTemplate() = googleTemplate
     override fun portalQrEnabled() = qrEnabled
     override suspend fun volunteers() = volunteers.toList()
@@ -678,6 +680,17 @@ class VolunteerPortalServiceTest {
         val second = service(FakeGateway(), noLastName, FakeAuth(PortalAuthResult.Created("NewUid00000000000000003"))).grantAccess(noLastName.volunteers.single(), "fr")
         assertIs<PortalGrantResult.Created>(second)
         assertEquals("", noLastName.volunteers.single().portalGoogleEmail)
+    }
+
+    @Test
+    fun ruleOnAnUnverifiedDomainNeverLinksEvenWhenAnyAccountMaySignIn() = runBlocking {
+        val host = ruleHost(volunteer("V1", "lea@example.org")).apply {
+            googleAny = true
+            googleDomains = emptyList()
+            googleTemplate = "{prénom}.{nom}@gmail.com"
+        }
+        service(FakeGateway(), host, FakeAuth(PortalAuthResult.Created("NewUid00000000000000003"))).grantAccess(host.volunteers.single(), "fr")
+        assertEquals("", host.volunteers.single().portalGoogleEmail)
     }
 
     @Test

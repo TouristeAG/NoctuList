@@ -54,7 +54,10 @@ settings map like `VOLUNTEER_PORTAL_GOOGLE_*`:
   (string, default empty). Shown under the existing Google sign-in options, only when Google
   sign-in is on. The template field shows a live preview on a sample name
   ("Jean Pierre D'Amico" → `jean-pierre.damico@asso.ch`) and an error when the template is
-  invalid or, in "internal accounts only" mode, its domain is not one of the verified domains.
+  invalid or its domain is not one of the verified Workspace domains. This holds in "any Google
+  account" mode too (decided after review): a guessed address on a public domain such as gmail.com
+  could belong to a stranger, who would then open the volunteer's profile. In that mode the domain
+  list is shown for the rule's sake.
 
 ### Template rules (pure function, unit tested)
 

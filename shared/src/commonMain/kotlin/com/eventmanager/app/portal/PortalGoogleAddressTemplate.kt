@@ -83,12 +83,21 @@ object PortalGoogleAddressTemplate {
         return PortalInputValidator.cleanEmail("$rendered@$domain")
     }
 
-    /** Checks a rule against the sample name and, in "internal accounts only" mode, the verified domains. */
-    fun check(template: String, verifiedDomains: List<String>, anyAccount: Boolean): TemplateCheck {
+    /**
+     * Checks a rule against the sample name and the verified Workspace domains. The domain must be
+     * verified even when any Google account may sign in: a guessed address on a public domain such
+     * as gmail.com could belong to a stranger, who would then open the volunteer's profile.
+     */
+    fun check(template: String, verifiedDomains: List<String>): TemplateCheck {
         if (template.isBlank()) return TemplateCheck.EMPTY
         val sample = render(template, SAMPLE_FIRST, SAMPLE_LAST) ?: return TemplateCheck.INVALID
-        val domain = sample.substringAfter('@')
-        if (!anyAccount && verifiedDomains.none { it.trim().lowercase() == domain }) return TemplateCheck.DOMAIN
+        if (!usesVerifiedDomain(sample, verifiedDomains)) return TemplateCheck.DOMAIN
         return TemplateCheck.OK
+    }
+
+    /** True when [address] is on one of the verified Workspace domains. */
+    fun usesVerifiedDomain(address: String, verifiedDomains: List<String>): Boolean {
+        val domain = address.substringAfter('@').lowercase()
+        return verifiedDomains.any { it.trim().lowercase() == domain }
     }
 }

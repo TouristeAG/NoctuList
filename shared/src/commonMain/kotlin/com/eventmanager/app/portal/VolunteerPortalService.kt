@@ -625,6 +625,11 @@ class VolunteerPortalService(
                 println("Portal: Google address rule gave no address for a volunteer")
                 return@runCatchingLogged
             }
+            // Never a guessed address outside the verified domains, even when any account may sign in.
+            if (!PortalGoogleAddressTemplate.usesVerifiedDomain(address, host.portalGoogleDomains())) {
+                println("Portal: Google address rule refused: DOMAIN")
+                return@runCatchingLogged
+            }
             assignGoogleAccount(current, address)?.let { println("Portal: Google address rule refused: $it") }
         }
     }

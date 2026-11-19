@@ -251,7 +251,8 @@ private fun PortalGoogleOptions(b: SyncSettingsBindings, canEdit: Boolean) {
             onSelect = { b.onVolunteerPortalGoogleAnyAccountChange(it == 0) },
         )
     }
-    if (!b.volunteerPortalGoogleAnyAccount) PortalGoogleDomainOptions(b, canEdit)
+    // In "any account" mode the list only serves the address rule below, which needs a verified domain.
+    PortalGoogleDomainOptions(b, canEdit)
     PortalGoogleAutoOptions(b, canEdit)
 }
 
@@ -281,7 +282,7 @@ private fun PortalGoogleDomainOptions(b: SyncSettingsBindings, canEdit: Boolean)
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        if (!hasDomain) {
+        if (!hasDomain && !b.volunteerPortalGoogleAnyAccount) {
             Text(
                 stringResource(Res.string.portal_google_needs_domain),
                 style = MaterialTheme.typography.bodyMedium,
@@ -344,7 +345,7 @@ private fun PortalGoogleDomainOptions(b: SyncSettingsBindings, canEdit: Boolean)
 @Composable
 private fun PortalGoogleAutoOptions(b: SyncSettingsBindings, canEdit: Boolean) {
     var input by remember(b.volunteerPortalGoogleTemplate) { mutableStateOf(b.volunteerPortalGoogleTemplate) }
-    val check = PortalGoogleAddressTemplate.check(input, b.volunteerPortalGoogleDomains, b.volunteerPortalGoogleAnyAccount)
+    val check = PortalGoogleAddressTemplate.check(input, b.volunteerPortalGoogleDomains)
     val saved = input.trim() == b.volunteerPortalGoogleTemplate
     val storedUsable = b.volunteerPortalGoogleTemplate.isNotBlank()
 

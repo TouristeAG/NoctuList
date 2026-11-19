@@ -59,10 +59,12 @@ class PortalGoogleAddressTemplateTest {
     @Test
     fun checkTemplate() {
         val t = "{prénom}.{nom}@asso.ch"
-        assertEquals(TemplateCheck.OK, PortalGoogleAddressTemplate.check(t, listOf("asso.ch"), anyAccount = false))
-        assertEquals(TemplateCheck.DOMAIN, PortalGoogleAddressTemplate.check(t, listOf("other.ch"), anyAccount = false))
-        assertEquals(TemplateCheck.OK, PortalGoogleAddressTemplate.check(t, emptyList(), anyAccount = true))
-        assertEquals(TemplateCheck.EMPTY, PortalGoogleAddressTemplate.check("  ", listOf("asso.ch"), false))
-        assertEquals(TemplateCheck.INVALID, PortalGoogleAddressTemplate.check("{prénom}", listOf("asso.ch"), false))
+        assertEquals(TemplateCheck.OK, PortalGoogleAddressTemplate.check(t, listOf("asso.ch")))
+        assertEquals(TemplateCheck.OK, PortalGoogleAddressTemplate.check(t, listOf(" Asso.CH ")))
+        assertEquals(TemplateCheck.DOMAIN, PortalGoogleAddressTemplate.check(t, listOf("other.ch")))
+        // A guessed address on a public domain could belong to a stranger: always a verified domain.
+        assertEquals(TemplateCheck.DOMAIN, PortalGoogleAddressTemplate.check("{prénom}.{nom}@gmail.com", emptyList()))
+        assertEquals(TemplateCheck.EMPTY, PortalGoogleAddressTemplate.check("  ", listOf("asso.ch")))
+        assertEquals(TemplateCheck.INVALID, PortalGoogleAddressTemplate.check("{prénom}", listOf("asso.ch")))
     }
 }
