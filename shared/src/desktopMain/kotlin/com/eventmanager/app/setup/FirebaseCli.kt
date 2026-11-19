@@ -63,18 +63,18 @@ class FirebaseCli(
     override suspend fun projectsCreate(id: String, displayName: String, onLine: (String) -> Unit) {
         require(SetupValidators.projectId(id)) { "invalid project id" }
         require(SetupValidators.displayName(displayName)) { "invalid display name" }
-        exec(listOf("projects:create", id, "--display-name", displayName), SetupStepId.PROJECT, onLine = onLine)
+        exec(listOf("projects:create", id, "--display-name", displayName), SetupStepId.PROJECT, onLine = onLine, projectId = id)
     }
 
     override suspend fun databases(projectId: String): List<DatabaseInfo> =
-        result(readJson(listOf("firestore:databases:list") + project(projectId) + "--json", SetupStepId.DATABASE)).arr()
+        result(readJson(listOf("firestore:databases:list") + project(projectId) + "--json", SetupStepId.DATABASE, projectId = projectId)).arr()
             .mapNotNull {
                 val o = it.obj() ?: return@mapNotNull null
                 DatabaseInfo(o.str("name")?.substringAfterLast('/') ?: return@mapNotNull null, o.str("locationId").orEmpty())
             }
 
     override suspend fun firestoreLocations(projectId: String): List<String> =
-        result(readJson(listOf("firestore:locations") + project(projectId) + "--json", SetupStepId.DATABASE)).arr()
+        result(readJson(listOf("firestore:locations") + project(projectId) + "--json", SetupStepId.DATABASE, projectId = projectId)).arr()
             .mapNotNull { it.obj()?.str("locationId") }
 
     override suspend fun createDatabase(projectId: String, location: String, allowed: List<String>, onLine: (String) -> Unit) {
@@ -83,23 +83,24 @@ class FirebaseCli(
             listOf("firestore:databases:create", "(default)", "--location", location) + project(projectId),
             SetupStepId.DATABASE,
             onLine = onLine,
+            projectId = projectId,
         )
     }
 
     override suspend fun webApps(projectId: String): List<String> =
-        result(readJson(listOf("apps:list", "WEB") + project(projectId) + "--json", SetupStepId.CONNECT)).arr()
+        result(readJson(listOf("apps:list", "WEB") + project(projectId) + "--json", SetupStepId.CONNECT, projectId = projectId)).arr()
             .mapNotNull { it.obj()?.str("appId") }
 
     override suspend fun createWebApp(projectId: String, onLine: (String) -> Unit): String {
-        val out = readJson(listOf("apps:create", "WEB", "NoctuList") + project(projectId) + "--json", SetupStepId.CONNECT, onLine)
-        return result(out).obj()?.str("appId") ?: throw CliException(ErrorCatalog.classify(out.raw, SetupStepId.CONNECT))
+        val out = readJson(listOf("apps:create", "WEB", "NoctuList") + project(projectId) + "--json", SetupStepId.CONNECT, onLine, projectId = projectId)
+        return result(out).obj()?.str("appId") ?: throw CliException(ErrorCatalog.classify(out.raw, SetupStepId.CONNECT, projectId))
     }
 
     override suspend fun sdkConfig(projectId: String, appId: String): WebConfig {
         require(SetupValidators.webAppId(appId)) { "invalid app id" }
-        val out = readJson(listOf("apps:sdkconfig", "WEB", appId) + project(projectId) + "--json", SetupStepId.CONNECT)
+        val out = readJson(listOf("apps:sdkconfig", "WEB", appId) + project(projectId) + "--json", SetupStepId.CONNECT, projectId = projectId)
         val cfg = result(out).obj()?.get("sdkConfig")?.obj()
-            ?: throw CliException(ErrorCatalog.classify(out.raw, SetupStepId.CONNECT))
+            ?: throw CliException(ErrorCatalog.classify(out.raw, SetupStepId.CONNECT, projectId))
         return WebConfig(cfg.str("apiKey").orEmpty(), cfg.str("appId").orEmpty(), cfg.str("projectId").orEmpty())
     }
 
@@ -110,12 +111,13 @@ class FirebaseCli(
             stepFor(only),
             workDir = dir,
             onLine = onLine,
+            projectId = projectId,
         )
     }
 
     /** Default Hosting site named after the project (a project made in the console may have none). */
     override suspend fun createHostingSite(projectId: String, onLine: (String) -> Unit) {
-        exec(listOf("hosting:sites:create", projectId, "--non-interactive") + project(projectId), SetupStepId.SITE, onLine = onLine)
+        exec(listOf("hosting:sites:create", projectId, "--non-interactive") + project(projectId), SetupStepId.SITE, onLine = onLine, projectId = projectId)
     }
 
     override suspend fun setSecret(projectId: String, dir: File, name: String, value: CharArray, onLine: (String) -> Unit) {
@@ -128,6 +130,7 @@ class FirebaseCli(
                 workDir = dir,
                 stdin = bytes,
                 onLine = onLine,
+                projectId = projectId,
             )
         } finally {
             bytes.fill(0)
@@ -147,7 +150,7 @@ class FirebaseCli(
     }
 
     override suspend fun functionsList(projectId: String): List<FunctionInfo> =
-        result(readJson(listOf("functions:list") + project(projectId) + "--json", SetupStepId.SERVER)).arr()
+        result(readJson(listOf("functions:list") + project(projectId) + "--json", SetupStepId.SERVER, projectId = projectId)).arr()
             .mapNotNull {
                 val o = it.obj() ?: return@mapNotNull null
                 FunctionInfo(o.str("id") ?: return@mapNotNull null, o.str("region").orEmpty())
@@ -159,6 +162,18 @@ class FirebaseCli(
             listOf("functions:artifacts:setpolicy", "--location", region, "--force") + project(projectId),
             SetupStepId.SERVER,
             onLine = onLine,
+            projectId = projectId,
+        )
+    }
+
+    override suspend fun deleteFunctions(projectId: String, names: List<String>, region: String, onLine: (String) -> Unit) {
+        require(names.isNotEmpty() && names.all { FUNCTION_NAME.matches(it) }) { "invalid function name" }
+        require(REGION.matches(region)) { "invalid region" }
+        exec(
+            listOf("functions:delete") + names + listOf("--region", region, "--force") + project(projectId),
+            SetupStepId.SERVER,
+            onLine = onLine,
+            projectId = projectId,
         )
     }
 
@@ -172,7 +187,7 @@ class FirebaseCli(
     private fun env(): Map<String, String> = env.childEnv(tools.binDir, System.getenv("PATH").orEmpty())
 
     private fun limitsFor(args: List<String>): CommandLimits = when (args.firstOrNull()) {
-        "deploy", "projects:create", "apps:create", "firestore:databases:create", "hosting:sites:create" -> CommandLimits.DEPLOY
+        "deploy", "functions:delete", "projects:create", "apps:create", "firestore:databases:create", "hosting:sites:create" -> CommandLimits.DEPLOY
         "login", "logout" -> CommandLimits.LOGIN
         else -> CommandLimits.READ
     }
@@ -184,6 +199,7 @@ class FirebaseCli(
         stdin: ByteArray? = null,
         show: Boolean = true,
         onLine: (String) -> Unit = {},
+        projectId: String = "",
     ): String {
         val lines = StringBuilder()
         val log = logs.sink(step)
@@ -203,7 +219,7 @@ class FirebaseCli(
         keepDebugLog(cwd, code != 0, log)
         val text = lines.toString()
         if (code != 0) {
-            throw CliException(ErrorCatalog.classify(if (show) text else "exit $code", step))
+            throw CliException(ErrorCatalog.classify(if (show) text else "exit $code", step, projectId))
         }
         return text
     }
@@ -221,8 +237,9 @@ class FirebaseCli(
         step: SetupStepId,
         onLine: (String) -> Unit = {},
         show: Boolean = true,
+        projectId: String = "",
     ): Output {
-        val raw = exec(args, step, show = show, onLine = if (show) onLine else { _ -> })
+        val raw = exec(args, step, show = show, onLine = if (show) onLine else { _ -> }, projectId = projectId)
         val start = raw.indexOf('{')
         val end = raw.lastIndexOf('}')
         val json = if (start in 0 until end) runCatching { Json.parseToJsonElement(raw.substring(start, end + 1)) }.getOrNull() else null
@@ -246,6 +263,7 @@ class FirebaseCli(
         val ONLY = Regex("^(hosting|functions|firestore:rules|storage)(,(hosting|functions|firestore:rules|storage))*$")
         val SECRET_NAME = Regex("^[A-Z][A-Z0-9_]{1,63}$")
         val REGION = Regex("^[a-z]+-[a-z]+[0-9]+$")
+        val FUNCTION_NAME = Regex("^[A-Za-z][A-Za-z0-9_-]{0,62}$")
         val ANSI = Regex("\u001B\\[[0-9;]*m")
     }
 }

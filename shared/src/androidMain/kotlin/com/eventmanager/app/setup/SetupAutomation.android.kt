@@ -18,6 +18,7 @@ actual fun createSetupAutomation(context: PlatformContext, settings: SettingsMan
         override suspend fun switchAccount() = Unit
         override fun reinstallTools() = Unit
         override fun confirm(step: SetupStepId) = Unit
+        override fun confirmBilling(step: SetupStepId, account: String, input: StepInput) = Unit
         override fun setExtra(step: SetupStepId, enabled: Boolean) = Unit
         override fun cancel() = Unit
         override fun close() = Unit

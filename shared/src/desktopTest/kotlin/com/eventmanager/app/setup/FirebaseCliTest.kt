@@ -269,6 +269,27 @@ class FirebaseCliTest {
     }
 
     @Test
+    fun failureLinksToTheProject() = runBlocking {
+        val runner = FakeProcessRunner { 1 to "Error: HTTP Error: 403, The caller does not have permission" }
+        val e = assertFailsWith<CliException> { cli(runner).deploy(pid, File("/w"), "firestore:rules") {} }
+        assertEquals("https://console.cloud.google.com/iam-admin/iam?project=$pid", e.error.link)
+    }
+
+    @Test
+    fun deleteFunctionsCommand() = runBlocking {
+        val runner = FakeProcessRunner()
+        cli(runner).deleteFunctions(pid, listOf("onSignupWritten", "onMailOutboxWritten"), "europe-west6") {}
+        assertEquals(
+            listOf(fb, js, "functions:delete", "onSignupWritten", "onMailOutboxWritten", "--region", "europe-west6", "--force", "--project", pid),
+            runner.calls.single(),
+        )
+        assertFailsWith<IllegalArgumentException> { cli(runner).deleteFunctions(pid, listOf("a;rm"), "europe-west6") {} }
+        assertFailsWith<IllegalArgumentException> { cli(runner).deleteFunctions(pid, emptyList(), "europe-west6") {} }
+        assertFailsWith<IllegalArgumentException> { cli(runner).deleteFunctions(pid, listOf("ok"), "bad region") {} }
+        assertEquals(1, runner.calls.size)
+    }
+
+    @Test
     fun npmInstallUsesBundledNpm() = runBlocking {
         val runner = FakeProcessRunner()
         cli(runner).npmInstall(File("/a b/site/functions")) {}

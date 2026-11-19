@@ -123,6 +123,18 @@ class ErrorCatalogTest {
         )) check(SetupErrorId.LOGIN_EXPIRED, text, repair = Repair.RELOGIN)
     }
 
+    @Test fun googleSignInRefusedIsLoginExpired() {
+        check(
+            SetupErrorId.LOGIN_EXPIRED, "Request had invalid authentication credentials", repair = Repair.RELOGIN,
+            api = GoogleApiStatus(401, "UNAUTHENTICATED", ""),
+        )
+        // Before PERMISSION_DENIED: the helper's message may say permission denied when it has no sign-in.
+        check(
+            SetupErrorId.LOGIN_EXPIRED, "PERMISSION_DENIED", repair = Repair.RELOGIN,
+            api = GoogleApiStatus(0, "NOT_LOGGED_IN", ""),
+        )
+    }
+
     @Test fun loginCodeInvalid() = check(
         SetupErrorId.LOGIN_CODE_INVALID, "Unable to authenticate using the provided code", step = SetupStepId.LOGIN,
         repair = Repair.RELOGIN,

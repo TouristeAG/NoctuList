@@ -22,6 +22,9 @@ data class MailServiceAccount(val email: String, val clientId: String)
 
 /** Google API calls the Firebase CLI cannot make, through the bundled helper script. */
 interface GoogleOps {
+    /** Step the calls are logged under; the runner sets it before each call. */
+    var step: SetupStepId
+
     suspend fun checkAuth(): String
     suspend fun projectNumber(projectId: String): String
     suspend fun missingPermissions(projectId: String, permissions: List<String>): List<String>
@@ -48,9 +51,8 @@ class HelperGoogleOps(
     private val logs: SetupLogFiles,
     private val redactor: OutputRedactor,
 ) : GoogleOps {
-    /** Step the helper's output is logged under; the runner sets it before each call. */
     @Volatile
-    var step: SetupStepId = SetupStepId.TOOLS
+    override var step: SetupStepId = SetupStepId.TOOLS
 
     override suspend fun checkAuth(): String =
         call("check-auth", null, emptyList()).str("email").orEmpty()

@@ -23,6 +23,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Surface
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -314,6 +316,7 @@ private fun StepControls(
                 RunButton()
             }
             SetupStepId.PHOTOS -> {
+                BillingOffer(step, automation, projectId, retryInputs, retryEnabled, open)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OpenButton(Res.string.setup_open_blaze, SetupLinks.blaze(projectId))
                     OpenButton(Res.string.setup_btn_open, SetupLinks.storage(projectId))
@@ -324,6 +327,7 @@ private fun StepControls(
             SetupStepId.SERVER -> {
                 var gmail by remember { mutableStateOf("") }
                 var password by remember { mutableStateOf("") }
+                BillingOffer(step, automation, projectId, retryInputs, retryEnabled, open)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OpenButton(Res.string.setup_open_blaze, SetupLinks.blaze(projectId))
                     OpenButton(Res.string.setup_open_budget, SetupLinks.budget(projectId))
@@ -353,6 +357,51 @@ private fun StepControls(
             SetupStepId.GOOGLE -> {
                 PortalGoogleGuide(projectId, siteUrl)
                 Button(onClick = { automation.confirm(step) }) { Text(stringResource(Res.string.setup_btn_done)) }
+            }
+        }
+    }
+}
+
+/**
+ * Shown while a step waits for the Blaze plan. With one billing account the app offers to link it (the only
+ * place it does); with none or several the admin follows the Blaze guidance in the Firebase console.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun BillingOffer(
+    step: SetupStepId,
+    automation: SetupAutomation,
+    projectId: String,
+    retryInputs: Map<SetupStepId, () -> StepInput>,
+    retryEnabled: Map<SetupStepId, Boolean>,
+    open: (String) -> Unit,
+) {
+    val states by automation.states.collectAsState()
+    val billing = states[step] as? StepState.NeedsBilling ?: return
+    val anyBusy = states.values.any { it is StepState.Running || it is StepState.WaitingRetry }
+    val canRun = retryEnabled[step] ?: true
+    val input = { retryInputs[step]?.invoke() ?: StepInput() }
+    val account = billing.accounts.singleOrNull()
+    Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.secondaryContainer) {
+        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (account != null) {
+                Text(stringResource(Res.string.setup_billing_offer, account.displayName.ifBlank { account.name }))
+                Button(onClick = { automation.confirmBilling(step, account.name, input()) }, enabled = canRun && !anyBusy) {
+                    Text(stringResource(Res.string.setup_billing_link))
+                }
+            } else {
+                Text(stringResource(Res.string.setup_err_billing_required_title), fontWeight = FontWeight.SemiBold)
+                Text(stringResource(Res.string.setup_err_billing_required_cause))
+                Text(stringResource(Res.string.setup_err_billing_required_steps))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = { open(SetupLinks.blaze(projectId)) }) { Text(stringResource(Res.string.setup_err_open_page)) }
+                    Button(onClick = { automation.run(step, input()) }, enabled = canRun && !anyBusy) {
+                        Text(stringResource(Res.string.setup_err_retry))
+                    }
+                }
+            }
+            if (!canRun && step == SetupStepId.SERVER) {
+                Text(stringResource(Res.string.setup_err_retry_password), style = MaterialTheme.typography.bodySmall)
             }
         }
     }

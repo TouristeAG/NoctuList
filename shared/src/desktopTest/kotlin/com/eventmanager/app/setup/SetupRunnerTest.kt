@@ -42,6 +42,7 @@ private class FakeCli : SetupCli {
     var events: MutableList<String>? = null
     var cleanupMs = 0L
     var passwordSeen: String? = null
+    var order: MutableList<String>? = null
 
     private fun fail(text: String, step: SetupStepId): Nothing = throw CliException(ErrorCatalog.classify(text, step))
 
@@ -66,6 +67,7 @@ private class FakeCli : SetupCli {
     override suspend fun sdkConfig(projectId: String, appId: String) = WebConfig("AIzaKey", appId, projectId).also { calls += "sdkConfig" }
     override suspend fun deploy(projectId: String, dir: File, only: String, onLine: (String) -> Unit) {
         calls += "deploy $only"
+        order?.add("deploy $only")
         try {
             blockDeploy?.await()
         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -84,6 +86,58 @@ private class FakeCli : SetupCli {
     override suspend fun npmInstall(dir: File, onLine: (String) -> Unit) { calls += "npmInstall ${dir.name}" }
     override suspend fun functionsList(projectId: String) = emptyList<FunctionInfo>()
     override suspend fun setArtifactPolicy(projectId: String, region: String, onLine: (String) -> Unit) { calls += "setpolicy $region" }
+    override suspend fun deleteFunctions(projectId: String, names: List<String>, region: String, onLine: (String) -> Unit) {
+        val call = "deleteFunctions ${names.joinToString(",")} $region"
+        calls += call
+        order?.add(call)
+    }
+}
+
+/** Answers like a healthy Blaze project unless a test says otherwise. */
+private class FakeOps : GoogleOps {
+    override var step: SetupStepId = SetupStepId.TOOLS
+    val calls = mutableListOf<String>()
+    val steps = mutableListOf<SetupStepId>()
+    var order: MutableList<String>? = null
+    var enabledApis: List<String>? = null
+    var gate: CompletableDeferred<Unit>? = null
+    var billing = BillingStatus(true, emptyList())
+    var billingError: Exception? = null
+    var functions = emptyList<FunctionState>()
+    var bucket: String? = "demo-project.appspot.com"
+    var roleChanged = false
+    var missing = emptyList<String>()
+
+    private fun rec(call: String) {
+        calls += call
+        steps += step
+        order?.add(call)
+    }
+
+    override suspend fun checkAuth() = "admin@example.org"
+    override suspend fun projectNumber(projectId: String) = "123".also { rec("projectNumber") }
+    override suspend fun missingPermissions(projectId: String, permissions: List<String>) =
+        missing.also { rec("missingPermissions ${permissions.joinToString(",")}") }
+    override suspend fun enableApis(projectId: String, apis: List<String>) {
+        rec("enableApis")
+        enabledApis = apis
+        gate?.await()
+    }
+    override suspend fun ensureRole(projectId: String, member: String, role: String) = roleChanged.also { rec("ensureRole $member $role") }
+    override suspend fun billing(projectId: String): BillingStatus {
+        rec("billing")
+        billingError?.let { throw it }
+        return billing
+    }
+    override suspend fun linkBilling(projectId: String, account: String) {
+        rec("linkBilling $account")
+        billing = billing.copy(enabled = true)
+    }
+    override suspend fun functions(projectId: String, codebase: String) = functions.also { rec("functions $codebase") }
+    override suspend fun storageBucket(projectId: String) = bucket.also { rec("storageBucket") }
+    override suspend fun rulesReleased(projectId: String) = true to true
+    override suspend fun hostingLive(projectId: String) = true
+    override suspend fun ensureMailServiceAccount(projectId: String) = MailServiceAccount("", "")
 }
 
 private class FakeTools(var status: ToolsStatus = ToolsStatus.Missing, val calls: MutableList<String> = mutableListOf()) : SetupTools {
@@ -118,6 +172,7 @@ class SetupRunnerTest {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val settings = FakeSettings().apply { projectId = "demo-project" }
     private val cli = FakeCli()
+    private val ops = FakeOps()
     private val workspace = SiteWorkspace(
         root = base,
         siteFiles = listOf("index.html", "firebase.json"),
@@ -129,7 +184,7 @@ class SetupRunnerTest {
         },
     )
     private val sleeps = mutableListOf<Long>()
-    private val runner = SetupRunner(scope, FakeTools(), { cli }, workspace, settings, sleep = { sleeps += it })
+    private val runner = SetupRunner(scope, FakeTools(), { cli }, { ops }, workspace, settings, sleep = { sleeps += it })
 
     @AfterTest
     fun cleanUp() {
@@ -170,7 +225,7 @@ class SetupRunnerTest {
                 seenDuringStep = secrets.current()
             }
         }
-        val r = SetupRunner(scope, FakeTools(), { probingCli }, workspace, settings, sleep = {}, secrets = secrets)
+        val r = SetupRunner(scope, FakeTools(), { probingCli }, { ops }, workspace, settings, sleep = {}, secrets = secrets)
         r.run(SetupStepId.TOOLS)
         withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] == StepState.Done } }
         r.run(SetupStepId.SERVER, StepInput(gmailUser = "info@example.org", appPassword = "abcd efgh".toCharArray()))
@@ -186,7 +241,7 @@ class SetupRunnerTest {
                 throw IllegalStateException("refused for abcd efgh")
             }
         }
-        val r = SetupRunner(scope, FakeTools(), { failing }, workspace, settings, sleep = {})
+        val r = SetupRunner(scope, FakeTools(), { failing }, { ops }, workspace, settings, sleep = {})
         r.run(SetupStepId.TOOLS)
         withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] == StepState.Done } }
         r.run(SetupStepId.SERVER, StepInput(gmailUser = "info@example.org", appPassword = "abcd efgh".toCharArray()))
@@ -205,7 +260,7 @@ class SetupRunnerTest {
                 throw CliException(ErrorCatalog.classify("Error: quota hit for abcd efgh", SetupStepId.SERVER))
             }
         }
-        val r = SetupRunner(scope, FakeTools(), { failing }, workspace, settings, sleep = {})
+        val r = SetupRunner(scope, FakeTools(), { failing }, { ops }, workspace, settings, sleep = {})
         r.run(SetupStepId.TOOLS)
         withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] == StepState.Done } }
         r.run(SetupStepId.SERVER, StepInput(gmailUser = "info@example.org", appPassword = "abcd efgh".toCharArray()))
@@ -224,7 +279,7 @@ class SetupRunnerTest {
                 return WebConfig("k", appId, projectId)
             }
         }
-        val r = SetupRunner(scope, FakeTools(), { probing }, workspace, settings, sleep = {}, secrets = secrets)
+        val r = SetupRunner(scope, FakeTools(), { probing }, { ops }, workspace, settings, sleep = {}, secrets = secrets)
         r.run(SetupStepId.TOOLS)
         withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] == StepState.Done } }
         r.run(SetupStepId.CONNECT, StepInput(webClientId = "id", webClientSecret = "GOCSPX-secret"))
@@ -327,7 +382,7 @@ class SetupRunnerTest {
             done = setOf(SetupStepId.TOOLS, SetupStepId.LOGIN, SetupStepId.PROJECT, SetupStepId.DATABASE, SetupStepId.RULES, SetupStepId.SITE),
             confirmed = setOf(SetupStepId.PROVIDERS),
         ).encode()
-        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, workspace, settings, sleep = {})
+        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, { ops }, workspace, settings, sleep = {})
         r.run(SetupStepId.PROJECT, StepInput(projectId = "other-project"))
         withTimeout(5_000) { r.states.first { it[SetupStepId.PROJECT] == StepState.Done } }
         val p = r.progress.value
@@ -342,7 +397,7 @@ class SetupRunnerTest {
     fun refreshRemovesTicksThatAreNoLongerTrue(): Unit = runBlocking {
         settings.progressJson = SetupProgress(projectId = "demo-project", done = setOf(SetupStepId.TOOLS, SetupStepId.LOGIN)).encode()
         cli.accounts = emptyList()
-        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, workspace, settings, sleep = {})
+        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, { ops }, workspace, settings, sleep = {})
         r.refresh()
         assertEquals(StepState.Done, r.states.value[SetupStepId.TOOLS])
         assertEquals(StepState.Todo, r.states.value[SetupStepId.LOGIN])
@@ -352,7 +407,7 @@ class SetupRunnerTest {
     @Test
     fun refreshUnticksToolsWhenBroken(): Unit = runBlocking {
         settings.progressJson = SetupProgress(projectId = "demo-project", done = setOf(SetupStepId.TOOLS, SetupStepId.LOGIN)).encode()
-        val r = SetupRunner(scope, FakeTools(ToolsStatus.Broken("node does not start")), { cli }, workspace, settings, sleep = {})
+        val r = SetupRunner(scope, FakeTools(ToolsStatus.Broken("node does not start")), { cli }, { ops }, workspace, settings, sleep = {})
         r.refresh()
         assertEquals(StepState.Todo, r.states.value[SetupStepId.TOOLS])
         assertTrue(SetupStepId.TOOLS !in r.progress.value.done)
@@ -361,10 +416,10 @@ class SetupRunnerTest {
 
     @Test
     fun refreshReportsReadyAndOutdatedTools(): Unit = runBlocking {
-        val ready = SetupRunner(scope, FakeTools(installed = true), { cli }, workspace, settings, sleep = {})
+        val ready = SetupRunner(scope, FakeTools(installed = true), { cli }, { ops }, workspace, settings, sleep = {})
         ready.refresh()
         assertEquals(ToolsState.READY, ready.info.value.tools)
-        val old = SetupRunner(scope, FakeTools(ToolsStatus.Outdated("v22.1.0", "15.0.0")), { cli }, workspace, settings, sleep = {})
+        val old = SetupRunner(scope, FakeTools(ToolsStatus.Outdated("v22.1.0", "15.0.0")), { cli }, { ops }, workspace, settings, sleep = {})
         old.refresh()
         assertEquals(ToolsState.OUTDATED, old.info.value.tools)
         assertEquals(StepState.Todo, old.states.value[SetupStepId.TOOLS])
@@ -373,7 +428,7 @@ class SetupRunnerTest {
     @Test
     fun reinstallRemovesThenInstalls(): Unit = runBlocking {
         val tools = FakeTools(ToolsStatus.Broken("x"))
-        val r = SetupRunner(scope, tools, { cli }, workspace, settings, sleep = {})
+        val r = SetupRunner(scope, tools, { cli }, { ops }, workspace, settings, sleep = {})
         r.reinstallTools()
         withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] == StepState.Done } }
         assertEquals(listOf("remove", "install"), tools.calls)
@@ -386,7 +441,7 @@ class SetupRunnerTest {
         cli.events = events
         cli.blockDeploy = CompletableDeferred()
         val tools = FakeTools(ToolsStatus.Ready(FakeTools.FAKE_PATHS), events)
-        val r = SetupRunner(scope, tools, { cli }, workspace, settings, sleep = {})
+        val r = SetupRunner(scope, tools, { cli }, { ops }, workspace, settings, sleep = {})
         r.run(SetupStepId.RULES)
         withTimeout(5_000) { while ("deploy firestore:rules" !in cli.calls) kotlinx.coroutines.delay(10) }
         r.reinstallTools()
@@ -398,7 +453,7 @@ class SetupRunnerTest {
     @Test
     fun refreshDuringInstallKeepsToolsState(): Unit = runBlocking {
         val tools = FakeTools(ToolsStatus.Broken("x")).apply { gate = CompletableDeferred() }
-        val r = SetupRunner(scope, tools, { cli }, workspace, settings, sleep = {})
+        val r = SetupRunner(scope, tools, { cli }, { ops }, workspace, settings, sleep = {})
         r.run(SetupStepId.TOOLS)
         withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] is StepState.Running } }
         r.refresh()
@@ -411,7 +466,7 @@ class SetupRunnerTest {
     @Test
     fun refreshDuringReinstallDoesNothing(): Unit = runBlocking {
         val tools = FakeTools(ToolsStatus.Ready(FakeTools.FAKE_PATHS)).apply { gate = CompletableDeferred() }
-        val r = SetupRunner(scope, tools, { cli }, workspace, settings, sleep = {})
+        val r = SetupRunner(scope, tools, { cli }, { ops }, workspace, settings, sleep = {})
         r.reinstallTools()
         withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] is StepState.Running } }
         val before = tools.statusCalls
@@ -430,7 +485,7 @@ class SetupRunnerTest {
         cli.cleanupMs = 300
         cli.blockDeploy = CompletableDeferred()
         val tools = FakeTools(ToolsStatus.Ready(FakeTools.FAKE_PATHS), events)
-        val r = SetupRunner(scope, tools, { cli }, workspace, settings, sleep = {})
+        val r = SetupRunner(scope, tools, { cli }, { ops }, workspace, settings, sleep = {})
         r.run(SetupStepId.RULES)
         withTimeout(5_000) { while ("deploy firestore:rules" !in cli.calls) kotlinx.coroutines.delay(10) }
         r.run(SetupStepId.SITE) // queued behind the running deploy
@@ -442,7 +497,7 @@ class SetupRunnerTest {
     @Test
     fun failedReinstallReadsTheToolsAgain(): Unit = runBlocking {
         val tools = FakeTools(ToolsStatus.Broken("x")).apply { failWith = java.io.IOException("disk full") }
-        val r = SetupRunner(scope, tools, { cli }, workspace, settings, sleep = {})
+        val r = SetupRunner(scope, tools, { cli }, { ops }, workspace, settings, sleep = {})
         r.reinstallTools()
         withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] is StepState.Error } }
         assertEquals(ToolsState.BROKEN, r.info.value.tools)
@@ -451,7 +506,7 @@ class SetupRunnerTest {
     @Test
     fun installThatDoesNotAnswerIsBroken(): Unit = runBlocking {
         val tools = FakeTools(ToolsStatus.Missing).apply { installWorks = false }
-        val r = SetupRunner(scope, tools, { cli }, workspace, settings, sleep = {})
+        val r = SetupRunner(scope, tools, { cli }, { ops }, workspace, settings, sleep = {})
         r.run(SetupStepId.TOOLS)
         withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] is StepState.Error } }
         assertEquals(ToolsState.MISSING, r.info.value.tools)
@@ -464,7 +519,7 @@ class SetupRunnerTest {
     @Test
     fun runningToolsOnBrokenToolsReinstalls(): Unit = runBlocking {
         val tools = FakeTools(ToolsStatus.Broken("x"))
-        val r = SetupRunner(scope, tools, { cli }, workspace, settings, sleep = {})
+        val r = SetupRunner(scope, tools, { cli }, { ops }, workspace, settings, sleep = {})
         r.run(SetupStepId.TOOLS)
         withTimeout(5_000) { r.states.first { it[SetupStepId.TOOLS] == StepState.Done } }
         assertEquals(listOf("remove", "install"), tools.calls)
@@ -472,7 +527,7 @@ class SetupRunnerTest {
 
     @Test
     fun stepsWorkWithoutRunningToolsAgainWhenToolsExist(): Unit = runBlocking {
-        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, workspace, settings, sleep = {})
+        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, { ops }, workspace, settings, sleep = {})
         r.run(SetupStepId.LOGIN)
         withTimeout(5_000) { r.states.first { it[SetupStepId.LOGIN] == StepState.Done } }
     }
@@ -480,7 +535,7 @@ class SetupRunnerTest {
     @Test
     fun refreshListsLocationsWhenTheDatabaseIsMissing(): Unit = runBlocking {
         cli.databases = emptyList()
-        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, workspace, settings, sleep = {})
+        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, { ops }, workspace, settings, sleep = {})
         r.refresh()
         assertEquals(listOf("europe-west6", "eur3", "nam5"), r.info.value.locations)
     }
@@ -544,7 +599,7 @@ class SetupRunnerTest {
         val restored = SetupProgress.decode(settings.progressJson)
         assertTrue(SetupStepId.TOOLS in restored.done)
         assertTrue(SetupStepId.PROVIDERS in restored.confirmed)
-        val again = SetupRunner(scope, FakeTools(), { cli }, workspace, settings, sleep = {})
+        val again = SetupRunner(scope, FakeTools(), { cli }, { ops }, workspace, settings, sleep = {})
         assertEquals(StepState.Done, again.states.value[SetupStepId.PROVIDERS])
     }
 
@@ -562,7 +617,7 @@ class SetupRunnerTest {
     @Test
     fun signOutClearsAccountAndUnticksLogin(): Unit = runBlocking {
         settings.progressJson = SetupProgress(projectId = "demo-project", done = setOf(SetupStepId.TOOLS, SetupStepId.LOGIN, SetupStepId.PROJECT)).encode()
-        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, workspace, settings, sleep = {})
+        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, { ops }, workspace, settings, sleep = {})
         r.refresh()
         assertEquals("admin@example.org", r.info.value.account)
         r.signOut()
@@ -578,7 +633,7 @@ class SetupRunnerTest {
     fun signOutStillClearsLocalStateWhenLogoutFails(): Unit = runBlocking {
         settings.progressJson = SetupProgress(projectId = "demo-project", done = setOf(SetupStepId.TOOLS, SetupStepId.LOGIN)).encode()
         cli.logoutFails = true
-        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, workspace, settings, sleep = {})
+        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, { ops }, workspace, settings, sleep = {})
         r.refresh()
         r.signOut()
         assertEquals("", r.info.value.account)
@@ -590,7 +645,7 @@ class SetupRunnerTest {
     fun signOutCancelsRunningSteps(): Unit = runBlocking {
         cli.blockDeploy = CompletableDeferred()
         settings.progressJson = SetupProgress(projectId = "demo-project", done = setOf(SetupStepId.TOOLS, SetupStepId.LOGIN)).encode()
-        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, workspace, settings, sleep = {})
+        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, { ops }, workspace, settings, sleep = {})
         r.refresh()
         r.run(SetupStepId.RULES)
         awaitStateOf(r, SetupStepId.RULES) { it is StepState.Running }
@@ -605,7 +660,7 @@ class SetupRunnerTest {
     @Test
     fun switchAccountStartsNewSignIn(): Unit = runBlocking {
         settings.progressJson = SetupProgress(projectId = "demo-project", done = setOf(SetupStepId.TOOLS, SetupStepId.LOGIN)).encode()
-        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, workspace, settings, sleep = {})
+        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, { ops }, workspace, settings, sleep = {})
         r.refresh()
         r.switchAccount()
         awaitStateOf(r, SetupStepId.LOGIN) { it == StepState.Todo }
@@ -617,7 +672,7 @@ class SetupRunnerTest {
     fun oldSavedProgressWithoutSignInShowsSignedOut(): Unit = runBlocking {
         settings.progressJson = SetupProgress(projectId = "demo-project", done = setOf(SetupStepId.TOOLS, SetupStepId.LOGIN, SetupStepId.PROJECT)).encode()
         cli.accounts = emptyList()
-        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, workspace, settings, sleep = {})
+        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, { ops }, workspace, settings, sleep = {})
         r.refresh()
         assertEquals(StepState.Todo, r.states.value[SetupStepId.LOGIN])
         assertEquals("", r.info.value.account)
@@ -628,7 +683,7 @@ class SetupRunnerTest {
     fun switchAccountAfterFailedLogoutKeepsError(): Unit = runBlocking {
         settings.progressJson = SetupProgress(projectId = "demo-project", done = setOf(SetupStepId.TOOLS, SetupStepId.LOGIN)).encode()
         cli.logoutFails = true
-        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, workspace, settings, sleep = {})
+        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, { ops }, workspace, settings, sleep = {})
         r.refresh()
         r.switchAccount()
         kotlinx.coroutines.delay(200)
@@ -640,7 +695,7 @@ class SetupRunnerTest {
     @Test
     fun refreshCannotRetickLoginAfterSignOut(): Unit = runBlocking {
         settings.progressJson = SetupProgress(projectId = "demo-project", done = setOf(SetupStepId.TOOLS, SetupStepId.LOGIN)).encode()
-        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, workspace, settings, sleep = {})
+        val r = SetupRunner(scope, FakeTools(installed = true), { cli }, { ops }, workspace, settings, sleep = {})
         r.refresh()
         kotlinx.coroutines.coroutineScope {
             launch { r.refresh() }
@@ -649,5 +704,197 @@ class SetupRunnerTest {
         assertEquals("", r.info.value.account)
         assertEquals(StepState.Todo, r.states.value[SetupStepId.LOGIN])
         assertTrue(SetupStepId.LOGIN !in r.progress.value.done)
+    }
+
+    private fun serverInput() = StepInput(gmailUser = "info@example.org", appPassword = "x".toCharArray())
+
+    @Test
+    fun databaseEnablesApisFirst(): Unit = runBlocking {
+        ready()
+        runner.run(SetupStepId.DATABASE, StepInput(location = "eur3"))
+        awaitState(SetupStepId.DATABASE) { it == StepState.Done }
+        assertEquals("enableApis", ops.calls.first())
+        assertEquals(REQUIRED_APIS, ops.enabledApis)
+        assertEquals(16, REQUIRED_APIS.size)
+        assertEquals(listOf(RepairNote(Repair.ENABLE_APIS, "16 API")), runner.info.value.repairs[SetupStepId.DATABASE])
+        assertEquals(listOf(SetupStepId.DATABASE), ops.steps)
+    }
+
+    @Test
+    fun serverGrantsBuildRoleBeforeDeploy(): Unit = runBlocking {
+        val order = mutableListOf<String>()
+        ops.order = order
+        cli.order = order
+        ops.roleChanged = true
+        ready()
+        runner.run(SetupStepId.SERVER, serverInput())
+        awaitState(SetupStepId.SERVER) { it == StepState.Done }
+        val number = order.indexOf("projectNumber")
+        val role = order.indexOf("ensureRole serviceAccount:123-compute@developer.gserviceaccount.com roles/cloudbuild.builds.builder")
+        val deploy = order.indexOf("deploy hosting,functions")
+        assertTrue(number >= 0 && number < role && role < deploy, order.toString())
+        assertTrue(runner.info.value.repairs[SetupStepId.SERVER].orEmpty().any { it.repair == Repair.GRANT_BUILD_ROLE })
+        assertTrue(ops.steps.all { it == SetupStepId.SERVER })
+    }
+
+    @Test
+    fun serverDeletesFailedFunctionsBeforeDeploy(): Unit = runBlocking {
+        ops.functions = listOf(
+            FunctionState("onSignupWritten", "europe-west6", "FAILED", emptyList()),
+            FunctionState("onMailOutboxWritten", "europe-west6", "ACTIVE", emptyList()),
+        )
+        ready()
+        runner.run(SetupStepId.SERVER, serverInput())
+        awaitState(SetupStepId.SERVER) { it == StepState.Done }
+        assertEquals(listOf("deleteFunctions onSignupWritten europe-west6"), cli.calls.filter { it.startsWith("deleteFunctions") })
+        assertTrue(cli.calls.indexOf("deleteFunctions onSignupWritten europe-west6") < cli.calls.indexOf("deploy hosting,functions"))
+        assertTrue("functions noctulist" in ops.calls)
+        assertTrue(runner.info.value.repairs[SetupStepId.SERVER].orEmpty().any { it.repair == Repair.DELETE_FAILED_FUNCTIONS })
+    }
+
+    @Test
+    fun httpsToBackgroundErrorRepairsThenRetriesOnce(): Unit = runBlocking {
+        ready()
+        cli.deployFailures += SetupErrorFixtures.HTTPS_TO_BACKGROUND
+        runner.run(SetupStepId.SERVER, serverInput())
+        awaitState(SetupStepId.SERVER) { it == StepState.Done }
+        assertTrue("deleteFunctions onMailOutboxWritten europe-west6" in cli.calls, cli.calls.toString())
+        assertEquals(2, cli.calls.count { it == "deploy hosting,functions" })
+    }
+
+    @Test
+    fun secondFailureAfterRepairIsShown(): Unit = runBlocking {
+        ready()
+        cli.deployFailures += listOf(SetupErrorFixtures.HTTPS_TO_BACKGROUND, SetupErrorFixtures.HTTPS_TO_BACKGROUND)
+        runner.run(SetupStepId.SERVER, serverInput())
+        val state = awaitState(SetupStepId.SERVER) { it is StepState.Error }
+        assertEquals(SetupErrorId.FUNCTIONS_FAILED_STATE, (state as StepState.Error).error.id)
+        assertEquals(2, cli.calls.count { it == "deploy hosting,functions" })
+    }
+
+    @Test
+    fun apiNotEnabledIsRepairedThenRetried(): Unit = runBlocking {
+        ready()
+        cli.deployFailures += "Error: Cloud Run API has not been used in project 1 before or it is disabled."
+        runner.run(SetupStepId.RULES)
+        awaitState(SetupStepId.RULES) { it == StepState.Done }
+        assertEquals(REQUIRED_APIS, ops.enabledApis)
+        assertEquals(2, cli.calls.count { it == "deploy firestore:rules" })
+        assertTrue(runner.info.value.repairs[SetupStepId.RULES].orEmpty().any { it.repair == Repair.ENABLE_APIS })
+    }
+
+    @Test
+    fun billingNeverLinkedWithoutConfirmation(): Unit = runBlocking {
+        ops.billing = BillingStatus(false, listOf(BillingAccount("billingAccounts/1", "Main")))
+        ready()
+        runner.run(SetupStepId.SERVER, serverInput())
+        val state = awaitState(SetupStepId.SERVER) { it is StepState.NeedsBilling }
+        assertEquals(listOf(BillingAccountInfo("billingAccounts/1", "Main")), (state as StepState.NeedsBilling).accounts)
+        assertTrue(ops.calls.none { it.startsWith("linkBilling") })
+        assertTrue(cli.calls.none { it.startsWith("deploy") })
+        runner.confirmBilling(SetupStepId.SERVER, "billingAccounts/1", serverInput())
+        awaitState(SetupStepId.SERVER) { it == StepState.Done }
+        assertEquals(1, ops.calls.count { it == "linkBilling billingAccounts/1" })
+        assertTrue("deploy hosting,functions" in cli.calls)
+    }
+
+    @Test
+    fun confirmBillingIgnoresAccountsNotOffered(): Unit = runBlocking {
+        ops.billing = BillingStatus(false, listOf(BillingAccount("billingAccounts/1", "Main")))
+        ready()
+        runner.confirm(SetupStepId.PHOTOS)
+        runner.run(SetupStepId.PHOTOS)
+        awaitState(SetupStepId.PHOTOS) { it is StepState.NeedsBilling }
+        runner.confirmBilling(SetupStepId.PHOTOS, "billingAccounts/2")
+        runner.confirmBilling(SetupStepId.SERVER, "billingAccounts/1")
+        kotlinx.coroutines.delay(200)
+        assertTrue(ops.calls.none { it.startsWith("linkBilling") })
+        assertTrue(runner.states.value[SetupStepId.PHOTOS] is StepState.NeedsBilling)
+    }
+
+    @Test
+    fun photosWithoutBucketIsStorageNotReady(): Unit = runBlocking {
+        ops.bucket = null
+        ready()
+        runner.confirm(SetupStepId.PHOTOS)
+        runner.run(SetupStepId.PHOTOS)
+        val state = awaitState(SetupStepId.PHOTOS) { it is StepState.Error }
+        assertEquals(SetupErrorId.STORAGE_NOT_READY, (state as StepState.Error).error.id)
+        assertEquals("https://console.firebase.google.com/project/demo-project/storage", state.error.link)
+        assertTrue(cli.calls.none { it.startsWith("deploy") })
+    }
+
+    @Test
+    fun timeoutBecomesTimeoutError(): Unit = runBlocking {
+        val slow = object : SetupCli by cli {
+            override suspend fun deploy(projectId: String, dir: File, only: String, onLine: (String) -> Unit) {
+                throw CommandTimeoutException(true)
+            }
+        }
+        val r = SetupRunner(scope, FakeTools(installed = true), { slow }, { ops }, workspace, settings, sleep = {})
+        r.run(SetupStepId.RULES)
+        val state = awaitStateOf(r, SetupStepId.RULES) { it is StepState.Error }.getValue(SetupStepId.RULES)
+        assertEquals(SetupErrorId.TIMEOUT, (state as StepState.Error).error.id)
+    }
+
+    @Test
+    fun googleSignInErrorIsLoginExpired(): Unit = runBlocking {
+        ops.billingError = GoogleOpsException(GoogleApiError(401, "NOT_LOGGED_IN", "Not signed in", ""))
+        ready()
+        runner.run(SetupStepId.SERVER, serverInput())
+        val state = awaitState(SetupStepId.SERVER) { it is StepState.Error }
+        assertEquals(SetupErrorId.LOGIN_EXPIRED, (state as StepState.Error).error.id)
+        assertEquals(1, ops.calls.count { it == "billing" })
+    }
+
+    @Test
+    fun cancelDuringRepairReturnsToTodo(): Unit = runBlocking {
+        ops.gate = CompletableDeferred()
+        ready()
+        runner.run(SetupStepId.DATABASE, StepInput(location = "eur3"))
+        withTimeout(5_000) { while ("enableApis" !in ops.calls) kotlinx.coroutines.delay(10) }
+        runner.cancel()
+        awaitState(SetupStepId.DATABASE) { it == StepState.Todo }
+        kotlinx.coroutines.delay(200)
+        assertEquals(listOf("enableApis"), ops.calls)
+        assertTrue(cli.calls.none { it == "databases" })
+    }
+
+    @Test
+    fun diskSpaceBecomesDiskFull(): Unit = runBlocking {
+        val tools = FakeTools(ToolsStatus.Missing).apply { failWith = DiskSpaceException(600L * 1024 * 1024) }
+        val r = SetupRunner(scope, tools, { cli }, { ops }, workspace, settings, sleep = {})
+        r.run(SetupStepId.TOOLS)
+        val state = awaitStateOf(r, SetupStepId.TOOLS) { it is StepState.Error }.getValue(SetupStepId.TOOLS)
+        assertEquals(SetupErrorId.DISK_FULL, (state as StepState.Error).error.id)
+        assertTrue("600 MB" in state.error.headline)
+    }
+
+    @Test
+    fun toolsInstallErrorsHaveTheirCause(): Unit = runBlocking {
+        val cases = listOf(
+            FileLockedException(File("/t/node")) to SetupErrorId.FILE_LOCKED,
+            java.io.IOException("HTTP 503") to SetupErrorId.DOWNLOAD_FAILED,
+        )
+        for ((thrown, id) in cases) {
+            val tools = FakeTools(ToolsStatus.Missing).apply { failWith = thrown }
+            val r = SetupRunner(scope, tools, { cli }, { ops }, workspace, settings, sleep = {})
+            r.run(SetupStepId.TOOLS)
+            val state = awaitStateOf(r, SetupStepId.TOOLS) { it is StepState.Error }.getValue(SetupStepId.TOOLS)
+            assertEquals(id, (state as StepState.Error).error.id)
+        }
+    }
+
+    @Test
+    fun permissionDeniedNamesMissingPermission(): Unit = runBlocking {
+        ops.missing = listOf("firebaserules.releases.create")
+        ready()
+        cli.deployFailures += "Error: HTTP Error: 403, The caller does not have permission"
+        runner.run(SetupStepId.RULES)
+        val state = awaitState(SetupStepId.RULES) { it is StepState.Error }
+        val error = (state as StepState.Error).error
+        assertEquals(SetupErrorId.PERMISSION_DENIED, error.id)
+        assertTrue("firebaserules.releases.create" in error.headline, error.headline)
+        assertTrue("missingPermissions firebaserules.releases.create,firebasehosting.sites.update,firebasestorage.buckets.get" in ops.calls)
     }
 }

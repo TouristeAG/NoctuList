@@ -25,6 +25,9 @@ interface SetupCli {
     suspend fun npmInstall(dir: File, onLine: (String) -> Unit)
     suspend fun functionsList(projectId: String): List<FunctionInfo>
     suspend fun setArtifactPolicy(projectId: String, region: String, onLine: (String) -> Unit)
+
+    /** `functions:delete <names...> --region <region> --force`: removes functions a deploy cannot replace. */
+    suspend fun deleteFunctions(projectId: String, names: List<String>, region: String, onLine: (String) -> Unit)
 }
 
 /** What the app-owned tools look like right now. Only tools in the app's own folder count. */

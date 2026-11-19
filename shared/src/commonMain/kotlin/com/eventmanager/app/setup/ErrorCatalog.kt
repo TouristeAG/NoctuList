@@ -56,6 +56,10 @@ object ErrorCatalog {
     }
 
     private val rules: List<Rule> = listOf(
+        // A Google call without a valid sign-in, whatever its message says (it can read like a permission error).
+        Rule(SetupErrorId.LOGIN_EXPIRED, RetryPolicy.NONE, Repair.RELOGIN, none) { _, _, api ->
+            api != null && (api.status == 401 || api.reason == "NOT_LOGGED_IN")
+        },
         Rule(SetupErrorId.WORKDIR_NOT_WRITABLE, RetryPolicy.NONE, null, none,
             text(Regex("Unable to obtain permissions for firebase-debug.log"))),
         Rule(SetupErrorId.FUNCTIONS_FAILED_STATE, RetryPolicy.AFTER_REPAIR, Repair.DELETE_FAILED_FUNCTIONS, functionsConsole,

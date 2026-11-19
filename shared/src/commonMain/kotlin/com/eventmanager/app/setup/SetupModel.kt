@@ -35,7 +35,13 @@ sealed interface StepState {
     data object Done : StepState
     data object Skipped : StepState
     data class Error(val error: SetupError) : StepState
+
+    /** The step needs the Blaze plan: the admin picks one of [accounts], nothing is linked before that. */
+    data class NeedsBilling(val accounts: List<BillingAccountInfo>) : StepState
 }
+
+/** A Cloud Billing account the signed-in admin can link, as `billingAccounts/<id>`. */
+data class BillingAccountInfo(val name: String, val displayName: String)
 
 /** What the assistant remembers per project, so it resumes where it stopped. */
 @Serializable

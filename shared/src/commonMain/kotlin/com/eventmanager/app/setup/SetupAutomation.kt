@@ -37,6 +37,12 @@ interface SetupAutomation {
     /** Removes the app's Node.js and Firebase tools and installs them again. */
     fun reinstallTools()
     fun confirm(step: SetupStepId)
+
+    /**
+     * Links the project to [account], one of those a [StepState.NeedsBilling] offered for [step], then runs
+     * [step] again with [input] (the step's form as it is now). The only way the app turns Blaze on.
+     */
+    fun confirmBilling(step: SetupStepId, account: String, input: StepInput = StepInput())
     fun setExtra(step: SetupStepId, enabled: Boolean)
     fun cancel()
 

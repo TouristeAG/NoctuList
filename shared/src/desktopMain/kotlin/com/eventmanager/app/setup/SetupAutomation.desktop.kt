@@ -39,6 +39,7 @@ actual fun createSetupAutomation(context: PlatformContext, settings: SettingsMan
         scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
         tools = tools,
         cliFactory = { paths -> FirebaseCli(runner, paths, redactor, environment, logs) },
+        opsFactory = googleOpsFactory(root, runner, environment, logs, redactor),
         workspace = SiteWorkspace(SetupPaths.site(root), GuestFormSiteBundle.files) { Res.readBytes(it) },
         settings = SettingsManagerSetupSettings(settings),
         secrets = secrets,
@@ -60,7 +61,7 @@ suspend fun extractGoogleHelper(root: java.io.File): java.io.File {
     return target
 }
 
-/** Builds the Google operations for the runner (wired in by the runner task). */
+/** Builds the Google operations for the runner: one helper per set of tools. */
 fun googleOpsFactory(
     root: java.io.File,
     runner: ProcessRunner,

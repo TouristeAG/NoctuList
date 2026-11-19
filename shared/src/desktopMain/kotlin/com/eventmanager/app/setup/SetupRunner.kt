@@ -16,6 +16,19 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import java.io.File
+import java.io.IOException
+
+/** Every Google API the setup uses, turned on before the database step (idempotent on Google's side). */
+val REQUIRED_APIS = listOf(
+    "firestore.googleapis.com", "firebaserules.googleapis.com", "firebasehosting.googleapis.com",
+    "firebasestorage.googleapis.com", "storage.googleapis.com", "cloudfunctions.googleapis.com",
+    "cloudbuild.googleapis.com", "artifactregistry.googleapis.com", "run.googleapis.com", "eventarc.googleapis.com",
+    "pubsub.googleapis.com", "secretmanager.googleapis.com", "iamcredentials.googleapis.com", "iam.googleapis.com",
+    "cloudbilling.googleapis.com", "cloudresourcemanager.googleapis.com",
+)
+
+/** Role the default compute account needs to build 2nd gen functions. */
+const val BUILD_ROLE = "roles/cloudbuild.builds.builder"
 
 /**
  * Runs the setup steps one at a time and keeps their state for the Automatic tab.
@@ -25,6 +38,7 @@ class SetupRunner(
     private val scope: CoroutineScope,
     private val tools: SetupTools,
     private val cliFactory: (ToolPaths) -> SetupCli,
+    private val opsFactory: suspend (ToolPaths) -> GoogleOps,
     private val workspace: SiteWorkspace,
     private val settings: SetupSettings,
     private val sleep: suspend (Long) -> Unit = { delay(it) },
@@ -45,6 +59,8 @@ class SetupRunner(
     private var job: Job? = null
     private val jobs = mutableListOf<Job>()
     private var cli: SetupCli? = null
+    private var paths: ToolPaths? = null
+    private var ops: GoogleOps? = null
 
     /** Keeps a refresh from re-ticking the sign-in while it is being signed out. */
     private val accountLock = Mutex()
@@ -64,7 +80,7 @@ class SetupRunner(
         }
         _info.update { it.copy(tools = ToolsState.READY) }
         markDone(SetupStepId.TOOLS)
-        val c = cliFactory(paths).also { cli = it }
+        val c = useTools(paths)
         val account = runCatching { c.loginList().firstOrNull() }.getOrNull() ?: return unmark(SetupStepId.LOGIN)
         _info.update { it.copy(account = account) }
         markDone(SetupStepId.LOGIN)
@@ -91,6 +107,12 @@ class SetupRunner(
 
     override fun run(step: SetupStepId, input: StepInput) = launchStep(step, input, reinstall = false)
 
+    override fun confirmBilling(step: SetupStepId, account: String, input: StepInput) {
+        val offered = _states.value[step] as? StepState.NeedsBilling ?: return
+        if (step !in BILLED_STEPS || offered.accounts.none { it.name == account }) return
+        launchStep(step, input, reinstall = false) { requireOps(step).linkBilling(projectId(), account) }
+    }
+
     /** Throws the app's own tools away and installs them again, whatever state they are in. */
     override fun reinstallTools() {
         val tools = _states.value[SetupStepId.TOOLS]
@@ -101,7 +123,13 @@ class SetupRunner(
         launchStep(SetupStepId.TOOLS, StepInput(), reinstall = true, stopFirst = running)
     }
 
-    private fun launchStep(step: SetupStepId, input: StepInput, reinstall: Boolean, stopFirst: List<Job> = emptyList()) {
+    private fun launchStep(
+        step: SetupStepId,
+        input: StepInput,
+        reinstall: Boolean,
+        stopFirst: List<Job> = emptyList(),
+        before: (suspend () -> Unit)? = null,
+    ) {
         if (_states.value[step] is StepState.Running || _states.value[step] is StepState.WaitingRetry) return
         // Steps run one after the other: a step started while the previous one is finishing waits for it.
         val previous = job
@@ -109,8 +137,14 @@ class SetupRunner(
             stopFirst.joinAll()
             previous?.join()
             setState(step, StepState.Running(emptyList()))
+            _info.update { it.copy(repairs = it.repairs - step) }
             try {
-                execute(step, input, reinstall)
+                try {
+                    before?.let { attempt(step, it) }
+                    executeWithRepair(step, input, reinstall)
+                } catch (e: CliException) {
+                    throw CliException(explain(step, e.error))
+                }
             } catch (e: CancellationException) {
                 setState(step, StepState.Todo)
                 throw e
@@ -128,6 +162,102 @@ class SetupRunner(
             jobs.removeAll { !it.isActive }
             jobs += next
         }
+    }
+
+    /**
+     * Runs the step; an error whose repair the app can make alone is repaired once and the step runs once more.
+     * Signing in again and reinstalling the tools need the admin, so those errors are shown as they are.
+     */
+    private suspend fun executeWithRepair(step: SetupStepId, input: StepInput, reinstall: Boolean) {
+        try {
+            attempt(step) { execute(step, input, reinstall) }
+        } catch (e: CliException) {
+            val repair = e.error.repair
+            if (e.error.retry != RetryPolicy.AFTER_REPAIR || repair !in AUTOMATIC_REPAIRS) throw e
+            attempt(step) { repair(step, repair!!, e.error) }
+            setState(step, StepState.Running(emptyList()))
+            attempt(step) { execute(step, input, reinstall) }
+        }
+    }
+
+    /** Google helper errors and timeouts become catalogue errors, so they get a cause and a repair like CLI ones. */
+    private suspend fun attempt(step: SetupStepId, block: suspend () -> Unit) {
+        try {
+            block()
+        } catch (e: GoogleOpsException) {
+            val api = GoogleApiStatus(e.error.status, e.error.reason, e.error.service)
+            throw CliException(ErrorCatalog.classify(e.error.message, step, settings.projectId, api))
+        } catch (e: CommandTimeoutException) {
+            val message = e.message.orEmpty()
+            throw CliException(SetupError(SetupErrorId.TIMEOUT, step, RetryPolicy.NONE, null, null, message, message))
+        }
+    }
+
+    private suspend fun repair(step: SetupStepId, repair: Repair, error: SetupError) {
+        when (repair) {
+            Repair.ENABLE_APIS -> enableApis(step)
+            Repair.GRANT_BUILD_ROLE -> grantBuildRole(step, force = true)
+            Repair.DELETE_FAILED_FUNCTIONS -> deleteFailedFunctions(step, error.details)
+            // The Hosting site is created inside the deploy (see deployTo); the other two need the admin.
+            Repair.CREATE_HOSTING_SITE, Repair.REINSTALL_TOOLS, Repair.RELOGIN -> Unit
+        }
+    }
+
+    private suspend fun enableApis(step: SetupStepId) {
+        requireOps(step).enableApis(projectId(), REQUIRED_APIS)
+        note(step, Repair.ENABLE_APIS, "${REQUIRED_APIS.size} API")
+    }
+
+    /** Builds of 2nd gen functions run as the default compute account, which new projects leave without this role. */
+    private suspend fun grantBuildRole(step: SetupStepId, force: Boolean) {
+        val pid = projectId()
+        val number = requireOps(step).projectNumber(pid)
+        val changed = requireOps(step).ensureRole(pid, "serviceAccount:$number-compute@developer.gserviceaccount.com", BUILD_ROLE)
+        if (changed || force) note(step, Repair.GRANT_BUILD_ROLE, BUILD_ROLE)
+    }
+
+    /**
+     * A function left FAILED by an earlier deploy, or one that cannot change type (HTTPS to background),
+     * blocks the deploy until it is deleted. [failure] is the deploy output naming the latter.
+     */
+    private suspend fun deleteFailedFunctions(step: SetupStepId, failure: String = "") {
+        val pid = projectId()
+        val failed = requireOps(step).functions(pid, CODEBASE).filter { it.state == "FAILED" }.map { it.name to it.region }
+        val blocked = TYPE_CHANGE.findAll(failure).map { it.groupValues[1] to it.groupValues[2] }.toList()
+        val targets = (failed + blocked).distinct()
+        if (targets.isEmpty()) return
+        val c = requireCli()
+        targets.groupBy({ it.second }, { it.first }).forEach { (region, names) ->
+            c.deleteFunctions(pid, names, region) { log(step, it) }
+        }
+        note(step, Repair.DELETE_FAILED_FUNCTIONS, targets.joinToString(", ") { it.first })
+    }
+
+    /** Nothing is linked here: the admin chooses the account (see [confirmBilling]). Returns false when billing is off. */
+    private suspend fun billingReady(step: SetupStepId): Boolean {
+        val status = requireOps(step).billing(projectId())
+        if (status.enabled) return true
+        setState(step, StepState.NeedsBilling(status.accounts.map { BillingAccountInfo(it.name, it.displayName) }))
+        return false
+    }
+
+    /** A refused permission on the deploy steps: say which ones the account lacks, when Google can tell. */
+    private suspend fun explain(step: SetupStepId, error: SetupError): SetupError {
+        if (error.id != SetupErrorId.PERMISSION_DENIED || step !in PERMISSION_STEPS) return error
+        val missing = try {
+            requireOps(step).missingPermissions(projectId(), CHECKED_PERMISSIONS)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            return error
+        }
+        if (missing.isEmpty()) return error
+        val names = "Missing permissions: ${missing.joinToString(", ")}"
+        return error.copy(headline = if (error.headline.isBlank()) names else "$names. ${error.headline}")
+    }
+
+    private fun note(step: SetupStepId, repair: Repair, detail: String) {
+        _info.update { it.copy(repairs = it.repairs + (step to (it.repairs[step].orEmpty() + RepairNote(repair, detail)))) }
     }
 
     /** The stored error must not hold a secret: they are cleared as soon as the step ends. */
@@ -214,16 +344,16 @@ class SetupRunner(
                             ?: throw CliException(toolsBroken(step, "tools do not respond after install"))
                     }
                 } catch (e: Throwable) {
-                    cli = null
+                    forgetTools()
                     withContext(NonCancellable) {
                         val fresh = runCatching { tools.status() }.getOrNull()
                         _info.update { it.copy(tools = toolsStateOf(fresh)) }
                     }
-                    throw e
+                    throw toolsError(step, e)
                 } finally {
                     _info.update { it.copy(toolsProgress = null) }
                 }
-                cli = cliFactory(paths)
+                useTools(paths)
                 _info.update { it.copy(tools = ToolsState.READY) }
                 markDone(step)
             }
@@ -258,6 +388,7 @@ class SetupRunner(
             SetupStepId.DATABASE -> {
                 val c = requireCli()
                 val pid = projectId()
+                enableApis(step)
                 if (c.databases(pid).none { it.name == DEFAULT_DB }) {
                     val allowed = c.firestoreLocations(pid)
                     _info.update { it.copy(locations = RegionMapper.orderLocations(allowed)) }
@@ -294,6 +425,10 @@ class SetupRunner(
                 markDone(step)
             }
             SetupStepId.PHOTOS -> {
+                if (!billingReady(step)) return
+                if (requireOps(step).storageBucket(projectId()) == null) {
+                    throw CliException(ErrorCatalog.classify(STORAGE_MISSING, step, projectId()))
+                }
                 deploy(step, "storage")
                 settings.enableProfilePhotos()
                 markDone(step)
@@ -312,6 +447,7 @@ class SetupRunner(
         val password = input.appPassword ?: throw IllegalArgumentException("missing app password")
         require(password.isNotEmpty()) { "missing app password" }
         secrets.add(String(password))
+        if (!billingReady(step)) return
         val db = c.databases(pid).firstOrNull { it.name == DEFAULT_DB } ?: throw IllegalStateException("no database")
         val region = RegionMapper.functionsRegion(db.locationId)
         _info.update { it.copy(region = region) }
@@ -319,6 +455,8 @@ class SetupRunner(
         workspace.writeFunctionParams(dir, pid, gmail, region)
         c.setSecret(pid, dir, SECRET_NAME, password) { log(step, it) }
         c.npmInstall(dir.resolve("functions")) { log(step, it) }
+        grantBuildRole(step, force = false)
+        deleteFailedFunctions(step)
         deployTo(step, c, pid, dir, "hosting,functions")
         c.setArtifactPolicy(pid, region) { log(step, it) }
         markDone(step)
@@ -342,6 +480,7 @@ class SetupRunner(
         } catch (e: CliException) {
             if ("hosting" !in only || !NO_SITE.containsMatchIn(e.error.details)) throw e
             c.createHostingSite(pid, onLine)
+            note(step, Repair.CREATE_HOSTING_SITE, "")
             withRetry(step) { c.deploy(pid, dir, only, onLine) }
         }
     }
@@ -370,8 +509,40 @@ class SetupRunner(
     }
 
     private suspend fun requireCli(): SetupCli = cli
-        ?: (tools.status() as? ToolsStatus.Ready)?.let { ready -> cliFactory(ready.paths).also { cli = it } }
+        ?: (tools.status() as? ToolsStatus.Ready)?.let { ready -> useTools(ready.paths) }
         ?: throw CliException(toolsBroken(SetupStepId.TOOLS, "tools not ready"))
+
+    /** The Google helper runs with the same tools as the CLI; its output goes to [step]'s log. */
+    private suspend fun requireOps(step: SetupStepId): GoogleOps {
+        requireCli()
+        val o = ops ?: opsFactory(paths ?: throw CliException(toolsBroken(SetupStepId.TOOLS, "tools not ready"))).also { ops = it }
+        o.step = step
+        return o
+    }
+
+    private fun useTools(found: ToolPaths): SetupCli {
+        if (found != paths) ops = null
+        paths = found
+        return cliFactory(found).also { cli = it }
+    }
+
+    private fun forgetTools() {
+        cli = null
+        paths = null
+        ops = null
+    }
+
+    /** What went wrong while installing the tools, by cause. */
+    private fun toolsError(step: SetupStepId, e: Throwable): Throwable {
+        val id = when (e) {
+            is DiskSpaceException -> SetupErrorId.DISK_FULL
+            is FileLockedException -> SetupErrorId.FILE_LOCKED
+            is IOException -> SetupErrorId.DOWNLOAD_FAILED
+            else -> return e
+        }
+        val message = e.message.orEmpty()
+        return CliException(SetupError(id, step, RetryPolicy.NONE, null, null, message, message))
+    }
 
     /** Ticks belong to one project: choosing another keeps only the computer-wide steps. */
     private fun switchProject(id: String) {
@@ -393,7 +564,7 @@ class SetupRunner(
     private fun noTools(state: ToolsState) {
         val running = _states.value[SetupStepId.TOOLS]
         if (running is StepState.Running || running is StepState.WaitingRetry) return // the install is judged when it ends
-        cli = null
+        forgetTools()
         _info.update { it.copy(tools = state) }
         unmark(SetupStepId.TOOLS)
     }
@@ -451,6 +622,15 @@ class SetupRunner(
         val HOSTING_URL = Regex("Hosting URL:\\s*(https://\\S+)")
         val NO_SITE = Regex("no Hosting site", RegexOption.IGNORE_CASE)
         val ANSI = Regex("\u001B\\[[0-9;]*m")
+        const val CODEBASE = "noctulist"
+        const val STORAGE_MISSING = "Firebase Storage has not been set up on this project."
+        val BILLED_STEPS = setOf(SetupStepId.PHOTOS, SetupStepId.SERVER)
+        val PERMISSION_STEPS = setOf(SetupStepId.RULES, SetupStepId.SITE, SetupStepId.PHOTOS)
+        val CHECKED_PERMISSIONS = listOf("firebaserules.releases.create", "firebasehosting.sites.update", "firebasestorage.buckets.get")
+        // Signing in again and reinstalling the tools need the admin; the Hosting site is made by deployTo.
+        val AUTOMATIC_REPAIRS = setOf(Repair.ENABLE_APIS, Repair.GRANT_BUILD_ROLE, Repair.DELETE_FAILED_FUNCTIONS)
+        // "[noctulist:onMailOutboxWritten(europe-west6)] Changing from an HTTPS function ..."
+        val TYPE_CHANGE = Regex("""\[[A-Za-z0-9_-]+:([A-Za-z][A-Za-z0-9_-]*)\(([a-z]+-[a-z]+[0-9]+)\)] Changing from an HTTPS function""")
 
         fun initialStates(progress: SetupProgress): Map<SetupStepId, StepState> =
             SetupStepId.entries.associateWith { step ->
