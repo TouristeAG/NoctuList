@@ -72,8 +72,11 @@ async function dispatch(argv, deps) {
     "billing-status": 1, "link-billing": 1, "functions-status": 1, "storage-status": 1,
     "rules-status": 1, "hosting-status": 1, "ensure-mail-sa": 1,
   };
-  if (!(command in commands)) throw new GoogleError(0, "UNKNOWN_COMMAND", "Unknown command", "");
-  if (command === "check-auth") return deps.email ? { email: await deps.email() } : { email: "" };
+  if (!Object.hasOwn(commands, command)) throw new GoogleError(0, "UNKNOWN_COMMAND", "Unknown command", "");
+  if (command === "check-auth") {
+    await deps.token();
+    return { email: deps.email ? await deps.email() : "" };
+  }
 
   const id = need(a.project, RE.project, "project");
   const call = async (method, url, body, withProject = true) => {
@@ -90,6 +93,7 @@ async function dispatch(argv, deps) {
 
   async function enableApis(apis) {
     const op = await okCall("POST", `https://serviceusage.googleapis.com/v1/${P}/services:batchEnable`, { serviceIds: apis }, false);
+    if (!op.done && !op.name) throw new GoogleError(0, "BAD_RESPONSE", "Service Usage answered without an operation", "serviceusage.googleapis.com");
     let cur = op;
     let waited = 0;
     while (!cur.done) {
@@ -112,13 +116,14 @@ async function dispatch(argv, deps) {
   // getIamPolicy + merge + setIamPolicy, one retry on 409/ABORTED. base = resource URL.
   async function ensureBinding(base, role, member) {
     for (let attempt = 0; ; attempt++) {
-      const policy = await okCall("POST", `${base}:getIamPolicy`, {});
+      const policy = await okCall("POST", `${base}:getIamPolicy`, { options: { requestedPolicyVersion: 3 } });
       const bindings = policy.bindings || [];
       let b = bindings.find((x) => x.role === role && !x.condition);
       if (b && (b.members || []).includes(member)) return false;
       if (b) b.members = [...(b.members || []), member];
       else bindings.push({ role, members: [member] });
       policy.bindings = bindings;
+      policy.version = Math.max(3, policy.version || 0);
       const r = await call("POST", `${base}:setIamPolicy`, { policy });
       if (r.status >= 200 && r.status < 300) return true;
       const aborted = r.status === 409 || (r.body && r.body.error && r.body.error.status === "ABORTED");
@@ -211,7 +216,10 @@ async function dispatch(argv, deps) {
       let sa;
       const got = await call("GET", `${saBase}/${email}`);
       if (got.status === 404) {
-        sa = await okCall("POST", saBase, { accountId: MAIL_ACCOUNT_ID, serviceAccount: { displayName: "NoctuList mail" } });
+        const made = await call("POST", saBase, { accountId: MAIL_ACCOUNT_ID, serviceAccount: { displayName: "NoctuList mail" } });
+        if (made.status >= 200 && made.status < 300) sa = made.body || {};
+        else if (made.status === 409) sa = await okCall("GET", `${saBase}/${email}`);
+        else throw fromResponse(made);
       } else if (got.status >= 200 && got.status < 300) sa = got.body || {};
       else throw fromResponse(got);
       await enableApis(["iamcredentials.googleapis.com"]);
@@ -221,18 +229,57 @@ async function dispatch(argv, deps) {
   }
 }
 
+const notLoggedIn = (m) => new GoogleError(401, "NOT_LOGGED_IN", scrub(String(m || "Not signed in")), "");
+
+// Builds token/email providers from firebase-tools modules (requireAuth, apiv2, auth).
+function buildAuth(mods) {
+  let cache = null;
+  const account = () => {
+    const acct = mods.auth.getGlobalDefaultAccount();
+    if (!acct) throw notLoggedIn("Not signed in to Firebase");
+    return acct;
+  };
+  return {
+    token: async () => {
+      if (cache) return cache;
+      try {
+        const acct = account();
+        await mods.requireAuth({ user: acct.user, tokens: acct.tokens });
+        const t = await mods.apiv2.getAccessToken();
+        cache = typeof t === "string" ? t : t && t.access_token;
+        if (!cache) throw new Error("No access token");
+        return cache;
+      } catch (e) {
+        if (e instanceof GoogleError) throw e;
+        throw notLoggedIn(e && e.message);
+      }
+    },
+    email: async () => {
+      const acct = account();
+      return (acct.user && acct.user.email) || "";
+    },
+  };
+}
+
+// Sends console output to stderr so stdout carries only the JSON line; returns the real stdout writer.
+function guardStdout() {
+  const write = process.stdout.write.bind(process.stdout);
+  const toErr = (...a) => process.stderr.write(a.map((x) => (typeof x === "string" ? x : require("node:util").inspect(x))).join(" ") + "\n");
+  for (const k of ["log", "info", "debug", "warn"]) console[k] = toErr;
+  return write;
+}
+
 async function main() {
+  const writeOut = guardStdout();
   const lib = process.argv[2];
   if (!lib) throw new Error("Missing firebase-tools lib directory");
-  let tokenCache = null;
+  const authApi = buildAuth({
+    get requireAuth() { return require(path.join(lib, "requireAuth")).requireAuth; },
+    get apiv2() { return require(path.join(lib, "apiv2")); },
+    get auth() { return require(path.join(lib, "auth")); },
+  });
   const deps = {
-    token: async () => {
-      if (tokenCache) return tokenCache;
-      await require(path.join(lib, "requireAuth")).requireAuth({});
-      const t = await require(path.join(lib, "apiv2")).getAccessToken();
-      tokenCache = typeof t === "string" ? t : t && t.access_token;
-      return tokenCache;
-    },
+    ...authApi,
     sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
     request: async (method, url, body, headers) => {
       const res = await fetch(url, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
@@ -241,16 +288,11 @@ async function main() {
       try { parsed = text ? JSON.parse(text) : {}; } catch { parsed = {}; }
       return { status: res.status, body: parsed };
     },
-    email: async () => {
-      await require(path.join(lib, "requireAuth")).requireAuth({});
-      const acct = require(path.join(lib, "auth")).getGlobalDefaultAccount();
-      return (acct && acct.user && acct.user.email) || "";
-    },
   };
-  process.stdout.write((await run(process.argv.slice(2), deps)) + "\n");
+  writeOut((await run(process.argv.slice(2), deps)) + "\n");
 }
 
-module.exports = { run };
+module.exports = { run, buildAuth, guardStdout };
 if (require.main === module) {
   main().catch((e) => {
     process.stderr.write(scrub(String((e && e.message) || e)) + "\n");

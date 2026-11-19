@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert");
-const { run } = require("../noctulist-gcp.cjs");
+const { run, buildAuth, guardStdout } = require("../noctulist-gcp.cjs");
 
 const P = "my-proj-123";
 function make(handler) {
@@ -134,4 +134,90 @@ test("ensureMailSaCreatesAccountWithoutKeyAndGrantsTokenCreator", async () => {
   assert.strictEqual(sets.length, 1);
   assert.ok(sets[0].url.includes(`/serviceAccounts/${email}:setIamPolicy`));
   assert.deepStrictEqual(sets[0].body.policy.bindings, [{ role: "roles/iam.serviceAccountTokenCreator", members: ["serviceAccount:777-compute@developer.gserviceaccount.com"] }]);
+});
+
+test("policyVersion3ConditionalBindingSurvives", async () => {
+  const cond = { role: "roles/editor", members: ["user:z@z.z"], condition: { title: "t", expression: "true" } };
+  let written, asked;
+  const { deps } = make((r) => {
+    if (r.url.endsWith(":getIamPolicy")) { asked = r.body; return ok({ etag: "e", version: 1, bindings: [cond] }); }
+    written = r.body.policy; return ok({});
+  });
+  await run(["lib", "ensure-role", "--project", P, "--member", "user:a@b.c", "--role", "roles/editor"], deps);
+  assert.deepStrictEqual(asked, { options: { requestedPolicyVersion: 3 } });
+  assert.strictEqual(written.version, 3);
+  assert.deepStrictEqual(written.bindings[0], cond);
+  assert.strictEqual(written.bindings.length, 2);
+});
+
+test("notLoggedInMapping", async () => {
+  const noAcct = buildAuth({ auth: { getGlobalDefaultAccount: () => undefined }, requireAuth: async () => {}, apiv2: {} });
+  const revoked = buildAuth({
+    auth: { getGlobalDefaultAccount: () => ({ user: { email: "a@b.c" }, tokens: {} }) },
+    requireAuth: async () => { throw new Error("invalid_grant"); }, apiv2: {},
+  });
+  for (const a of [noAcct, revoked]) {
+    const out = JSON.parse(await run(["lib", "project-number", "--project", P], { ...make(() => ok({})).deps, token: a.token }));
+    assert.strictEqual(out.error.status, 401);
+    assert.strictEqual(out.error.reason, "NOT_LOGGED_IN");
+  }
+});
+
+test("buildAuthPassesAccountToRequireAuth", async () => {
+  let seen;
+  const a = buildAuth({
+    auth: { getGlobalDefaultAccount: () => ({ user: { email: "a@b.c" }, tokens: { refresh_token: "r" } }) },
+    requireAuth: async (o) => { seen = o; },
+    apiv2: { getAccessToken: async () => "tok" },
+  });
+  assert.strictEqual(await a.token(), "tok");
+  assert.deepStrictEqual(seen, { user: { email: "a@b.c" }, tokens: { refresh_token: "r" } });
+  assert.strictEqual(await a.email(), "a@b.c");
+});
+
+test("checkAuthReturnsEmail", async () => {
+  const { deps } = make(() => ok({}));
+  deps.email = async () => "a@b.c";
+  assert.deepStrictEqual(JSON.parse(await run(["lib", "check-auth"], deps)), { ok: true, data: { email: "a@b.c" } });
+});
+
+test("guardStdoutRoutesConsoleToStderr", () => {
+  const saved = { log: console.log, info: console.info, debug: console.debug, warn: console.warn };
+  const ow = process.stdout.write, oe = process.stderr.write;
+  const out = [], err = [];
+  process.stdout.write = (x) => { out.push(String(x)); return true; };
+  process.stderr.write = (x) => { err.push(String(x)); return true; };
+  let writer;
+  try {
+    writer = guardStdout();
+    console.log("noise");
+    console.warn("warn");
+  } finally {
+    process.stdout.write = ow; process.stderr.write = oe;
+    Object.assign(console, saved);
+  }
+  assert.deepStrictEqual(out, []);
+  assert.strictEqual(err.length, 2);
+  assert.strictEqual(typeof writer, "function");
+});
+
+test("batchEnableWithoutOperationFails", async () => {
+  const { deps } = make(() => ok({}));
+  const out = JSON.parse(await run(["lib", "enable-apis", "--project", P, "--apis", "a.googleapis.com"], deps));
+  assert.strictEqual(out.ok, false);
+});
+
+test("serviceAccountCreate409RereadsAccount", async () => {
+  const email = `noctulist-mail@${P}.iam.gserviceaccount.com`;
+  let gets = 0;
+  const { deps } = make((r) => {
+    if (r.url.includes("cloudresourcemanager")) return ok({ projectNumber: "7" });
+    if (r.url.includes("batchEnable")) return ok({ name: "o", done: true });
+    if (r.url.endsWith(":getIamPolicy")) return ok({ etag: "e" });
+    if (r.url.endsWith(":setIamPolicy")) return ok({});
+    if (r.method === "GET") return ++gets === 1 ? { status: 404, body: { error: { code: 404, status: "NOT_FOUND", message: "n" } } } : ok({ oauth2ClientId: "cid" });
+    return { status: 409, body: { error: { code: 409, status: "ALREADY_EXISTS", message: "x" } } };
+  });
+  const out = JSON.parse(await run(["lib", "ensure-mail-sa", "--project", P], deps));
+  assert.deepStrictEqual(out.data, { email, clientId: "cid" });
 });

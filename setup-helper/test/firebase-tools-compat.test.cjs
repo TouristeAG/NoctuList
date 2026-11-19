@@ -8,5 +8,8 @@ test("firebase-tools exposes the internals the helper relies on", () => {
   const apiv2 = require(path.join(lib, "apiv2"));
   assert.strictEqual(typeof apiv2.getAccessToken, "function");
   assert.ok(apiv2.Client);
-  assert.strictEqual(typeof require(path.join(lib, "auth")).getGlobalDefaultAccount, "function");
+  const auth = require(path.join(lib, "auth"));
+  assert.strictEqual(typeof auth.getGlobalDefaultAccount, "function");
+  // requireAuth only uses the signed-in user when the caller supplies options.user and options.tokens.
+  assert.match(require("node:fs").readFileSync(path.join(lib, "requireAuth.js"), "utf8"), /options\.user/);
 });
