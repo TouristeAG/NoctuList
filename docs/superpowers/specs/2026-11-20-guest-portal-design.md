@@ -39,6 +39,7 @@ Réussite :
 | Temporaires, publication | L'appareil qui ouvre l'accès crée le compte et publie la page au même moment. Le serveur n'est pas nécessaire. |
 | Temporaires, contenu | Date d'accès, lieu, nom, contact d'urgence, e-mail du groupe, QR, et le solde si les crédits temporaires sont activés et que le solde n'est pas nul. |
 | Temporaires, modification | Aucune, sauf le mot de passe du compte. |
+| E-mails | Rien n'est envoyé automatiquement, comme pour les bénévoles depuis le dernier changement : ni l'e-mail du groupe temporaire, ni le lien de réinitialisation d'un invité permanent. L'admin les envoie depuis la fenêtre s'il le veut. |
 
 Propositions faites en discussion et non contestées :
 
@@ -178,7 +179,10 @@ l'espace. *Mon choix : évite un second chemin Storage et une règle Storage de 
 
 ### 7.1 Invités permanents
 
-Exactement ceux des bénévoles (`VolunteerPortalService`), sur la fiche invité :
+Exactement ceux des bénévoles (`VolunteerPortalService`), sur la fiche invité. Ouvrir l'accès
+(à la main ou par l'accès automatique) n'envoie aucun e-mail : le mot de passe est affiché une
+fois, et la fenêtre propose « Envoyer un lien de réinitialisation », que l'admin clique s'il le
+veut. Même comportement que `grantAccess` des bénévoles après le changement en cours (§15).
 
 - carte « Accès plateforme » sur la fiche d'un invité permanent (`!isTemporaryGuest`,
   `!isVolunteerBenefit`) : créer l'accès, lien de réinitialisation, Google associatif, couper
@@ -198,12 +202,8 @@ compte et de même e-mail au lieu de créer un doublon, comme pour les bénévol
 
 ### 7.2 Invités temporaires : ouverture de l'accès
 
-Déclencheurs, quand `temp_guest_portal_enabled` est actif et que le groupe a une adresse :
-
-- l'envoi de l'e-mail du groupe (desktop `DesktopEmailConfirmDialog`, Android panneau invités) ;
-- l'action « Ouvrir l'espace du groupe » sur un groupe, pour une association qui n'envoie pas
-  l'e-mail ; le mot de passe par défaut est alors affiché une seule fois, comme pour la création
-  manuelle d'un bénévole. *Mon choix.*
+Déclencheur unique : l'action « Ouvrir l'espace du groupe » sur un groupe, quand
+`temp_guest_portal_enabled` est actif et que le groupe a une adresse. Elle n'envoie aucun e-mail.
 
 1. Si un invité ou bénévole déjà synchronisé a un `portalUid` non vide pour cette adresse : on le
    réutilise.
@@ -212,17 +212,22 @@ Déclencheurs, quand `temp_guest_portal_enabled` est actif et que le groupe a un
    - `EMAIL_EXISTS` : `portalUid = ""`, l'e-mail dit « utilise ton mot de passe habituel » et
      contient le lien de réinitialisation ; la liaison se fait par CLAIM (§8).
 3. Tous les invités du groupe reçoivent `portalEnabled = true`, `portalUid`.
-4. Publication immédiate de `temporaryGuestPortal/{uid}` et du document QR, **avant** l'envoi de
-   l'e-mail.
-5. E-mail : bloc ajouté au modèle existant (adresse de l'espace `/v/{orgId}`, adresse de connexion,
-   mot de passe par défaut ou mention du mot de passe habituel, lien « Choisir mon mot de passe »
-   par `sendOobCode PASSWORD_RESET`). Ce bloc n'existe que quand l'espace temporaire est actif.
+4. Publication immédiate de `temporaryGuestPortal/{uid}` et du document QR.
+5. Fenêtre de résultat, comme pour un bénévole : mot de passe par défaut affiché une seule fois
+   (ou « compte existant »), bouton Copier, et deux actions facultatives :
+   - « Envoyer l'e-mail du groupe » : ouvre l'envoi existant (`DesktopEmailConfirmDialog`,
+     panneau Android) avec, en plus des QR, un bloc compte : adresse de l'espace `/v/{orgId}`,
+     adresse de connexion, mot de passe par défaut tant que la fenêtre le connaît, sinon mention
+     « ton mot de passe habituel » ;
+   - « Envoyer un lien de réinitialisation » (`sendOobCode PASSWORD_RESET`).
 
-Le mot de passe par défaut n'est stocké nulle part : il vit dans l'e-mail envoyé. Envoyé par le
+L'envoi de l'e-mail du groupe reste une action manuelle, comme aujourd'hui. Envoyé plus tard
+depuis la liste, il contient le bloc compte sans mot de passe dès que l'espace du groupe est ouvert.
+
+Le mot de passe par défaut n'est stocké nulle part : il n'existe que dans la fenêtre et, si
+l'admin l'envoie, dans l'e-mail. Envoyé par le
 relais (`mailOutbox`, sans Gmail sur l'appareil), il transite dans le MIME lisible par les seuls
-membres jusqu'à l'envoi, comme le QR aujourd'hui. Un renvoi de
-l'e-mail du groupe pour un compte déjà créé ne contient plus de mot de passe, seulement le lien
-de choix du mot de passe.
+membres jusqu'à l'envoi, comme le QR aujourd'hui. 
 
 Couper l'accès : action « Couper l'accès à l'espace » sur le groupe ; `portalEnabled = false`,
 `portalUid = ""` sur ses invités, republication (la page ne garde que les autres groupes ou est
@@ -358,6 +363,14 @@ d'explication superflu. Liste fixée pendant le plan.
 - Calcul serveur des pages invité au fil du temps (pas nécessaire : pas de calendrier).
 - Comptes individuels pour chaque invité temporaire.
 - Apple Wallet / Google Wallet.
+
+## 15. Prérequis
+
+Le changement « ouvrir l'accès sans e-mail » des bénévoles (`grantAccess` sans `languageCode`,
+`PortalGrantResult.Created(password)`, `ExistingAccount` sans envoi, bouton dans la fenêtre)
+n'est pas encore commité : il est dans le dossier principal (`feature/setup-hardening`), avec
+d'autres changements en cours. Il doit être commité et fusionné dans `main` (ou repris sur
+`feature/guest-portal`) avant le travail sur les invités, pour que les deux suivent le même code.
 
 ## 14. Laissé au plan
 
