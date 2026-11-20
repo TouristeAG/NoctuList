@@ -2706,4 +2706,27 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="setup_billing_offer">El servidor y las fotos necesitan el plan Blaze (pago por uso). La app puede vincular este proyecto a la cuenta de facturación «%1$s». Puede fijar un presupuesto en la consola de Google Cloud.</string>
     <string name="setup_billing_link">Activar Blaze con esta cuenta</string>
     <string name="setup_billing_password">Vuelva a escribir la contraseña de aplicación y haga clic en Activar Blaze con esta cuenta.</string>
+    <string name="sales_filter_status_label">Estado</string>
+    <string name="sales_filter_status_all">Todos</string>
+    <string name="sales_filter_status_active">Activos</string>
+    <string name="sales_filter_status_inactive">Desactivados</string>
+    <string name="sales_filter_category_label">Categoría</string>
+    <string name="sales_filter_uncategorized">Sin categoría</string>
+    <string name="sales_filter_venue_label">Lugar</string>
+    <string name="sales_filter_more">Más filtros</string>
+    <string name="sales_filter_more_count">Más filtros (%1$d)</string>
+    <string name="sales_filter_less">Menos filtros</string>
+    <string name="sales_filter_reset">Restablecer filtros</string>
+    <string name="sales_filter_any">Cualquiera</string>
+    <string name="sales_filter_price_label">Precio</string>
+    <string name="sales_filter_price_min">Mín</string>
+    <string name="sales_filter_price_max">Máx</string>
+    <string name="sales_filter_empty">Ningún artículo coincide con estos filtros</string>
+    <string name="sales_sort_label">Ordenar</string>
+    <string name="sales_sort_name_asc">Nombre de la A a la Z</string>
+    <string name="sales_sort_name_desc">Nombre de la Z a la A</string>
+    <string name="sales_sort_price_asc">Precio ascendente</string>
+    <string name="sales_sort_price_desc">Precio descendente</string>
+    <string name="sales_sort_recent">Modificados recientemente</string>
+    <string name="sales_sort_active_first">Activos primero</string>
 </resources>

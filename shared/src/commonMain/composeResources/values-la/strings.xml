@@ -2711,4 +2711,27 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="setup_billing_offer">Ministrator et imagines consilio Blaze egent (pro usu solvitur). Applicatio hoc projectum rationi rationum „%1$s” conectere potest. Modum impensarum in consolatorio Google Cloud statuere potes.</string>
     <string name="setup_billing_link">Blaze cum hac ratione accende</string>
     <string name="setup_billing_password">Tesseram applicationis iterum insere, deinde Blaze cum hac ratione accende preme.</string>
+    <string name="sales_filter_status_label">Status</string>
+    <string name="sales_filter_status_all">Omnia</string>
+    <string name="sales_filter_status_active">Activa</string>
+    <string name="sales_filter_status_inactive">Inactiva</string>
+    <string name="sales_filter_category_label">Categoria</string>
+    <string name="sales_filter_uncategorized">Sine categoria</string>
+    <string name="sales_filter_venue_label">Locus</string>
+    <string name="sales_filter_more">Plura filtra</string>
+    <string name="sales_filter_more_count">Plura filtra (%1$d)</string>
+    <string name="sales_filter_less">Pauciora filtra</string>
+    <string name="sales_filter_reset">Filtra restituere</string>
+    <string name="sales_filter_any">Quodlibet</string>
+    <string name="sales_filter_price_label">Pretium</string>
+    <string name="sales_filter_price_min">Min</string>
+    <string name="sales_filter_price_max">Max</string>
+    <string name="sales_filter_empty">Nulla res his filtris convenit</string>
+    <string name="sales_sort_label">Ordinare</string>
+    <string name="sales_sort_name_asc">Nomen A ad Z</string>
+    <string name="sales_sort_name_desc">Nomen Z ad A</string>
+    <string name="sales_sort_price_asc">Pretium, minimum primum</string>
+    <string name="sales_sort_price_desc">Pretium, maximum primum</string>
+    <string name="sales_sort_recent">Nuper mutata</string>
+    <string name="sales_sort_active_first">Activa prima</string>
 </resources>

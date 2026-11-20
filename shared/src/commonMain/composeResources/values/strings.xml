@@ -2701,4 +2701,27 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="setup_billing_offer">The server and photos need the Blaze plan (pay as you go). The app can link this project to the billing account “%1$s”. You can set a budget in the Google Cloud console.</string>
     <string name="setup_billing_link">Turn on Blaze with this account</string>
     <string name="setup_billing_password">Enter the app password again, then click Turn on Blaze with this account.</string>
+    <string name="sales_filter_status_label">Status</string>
+    <string name="sales_filter_status_all">All</string>
+    <string name="sales_filter_status_active">Active</string>
+    <string name="sales_filter_status_inactive">Inactive</string>
+    <string name="sales_filter_category_label">Category</string>
+    <string name="sales_filter_uncategorized">No category</string>
+    <string name="sales_filter_venue_label">Venue</string>
+    <string name="sales_filter_more">More filters</string>
+    <string name="sales_filter_more_count">More filters (%1$d)</string>
+    <string name="sales_filter_less">Fewer filters</string>
+    <string name="sales_filter_reset">Reset filters</string>
+    <string name="sales_filter_any">Any</string>
+    <string name="sales_filter_price_label">Price</string>
+    <string name="sales_filter_price_min">Min</string>
+    <string name="sales_filter_price_max">Max</string>
+    <string name="sales_filter_empty">No item matches these filters</string>
+    <string name="sales_sort_label">Sort</string>
+    <string name="sales_sort_name_asc">Name A to Z</string>
+    <string name="sales_sort_name_desc">Name Z to A</string>
+    <string name="sales_sort_price_asc">Price, lowest first</string>
+    <string name="sales_sort_price_desc">Price, highest first</string>
+    <string name="sales_sort_recent">Recently changed</string>
+    <string name="sales_sort_active_first">Active first</string>
 </resources>

@@ -2706,4 +2706,27 @@
     <string name="setup_billing_offer">服务器和照片需要 Blaze 方案（按用量付费）。应用可以将此项目关联到结算账号“%1$s”。你可以在 Google Cloud 控制台中设置预算。</string>
     <string name="setup_billing_link">用此账号开启 Blaze</string>
     <string name="setup_billing_password">请重新输入应用专用密码，然后点击“用此账号开启 Blaze”。</string>
+    <string name="sales_filter_status_label">状态</string>
+    <string name="sales_filter_status_all">全部</string>
+    <string name="sales_filter_status_active">已启用</string>
+    <string name="sales_filter_status_inactive">已停用</string>
+    <string name="sales_filter_category_label">类别</string>
+    <string name="sales_filter_uncategorized">无类别</string>
+    <string name="sales_filter_venue_label">场地</string>
+    <string name="sales_filter_more">更多筛选</string>
+    <string name="sales_filter_more_count">更多筛选 (%1$d)</string>
+    <string name="sales_filter_less">收起筛选</string>
+    <string name="sales_filter_reset">重置筛选</string>
+    <string name="sales_filter_any">不限</string>
+    <string name="sales_filter_price_label">价格</string>
+    <string name="sales_filter_price_min">最低</string>
+    <string name="sales_filter_price_max">最高</string>
+    <string name="sales_filter_empty">没有符合这些筛选条件的商品</string>
+    <string name="sales_sort_label">排序</string>
+    <string name="sales_sort_name_asc">名称 A 到 Z</string>
+    <string name="sales_sort_name_desc">名称 Z 到 A</string>
+    <string name="sales_sort_price_asc">价格从低到高</string>
+    <string name="sales_sort_price_desc">价格从高到低</string>
+    <string name="sales_sort_recent">最近修改</string>
+    <string name="sales_sort_active_first">已启用优先</string>
 </resources>

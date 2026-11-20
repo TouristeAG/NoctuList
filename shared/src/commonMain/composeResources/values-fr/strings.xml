@@ -2698,4 +2698,27 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="setup_billing_offer">Le serveur et les photos demandent le forfait Blaze (paiement à l'usage). L'app peut relier ce projet au compte de facturation « %1$s ». Vous pouvez fixer un budget dans la console Google Cloud.</string>
     <string name="setup_billing_link">Activer Blaze avec ce compte</string>
     <string name="setup_billing_password">Saisissez à nouveau le mot de passe d'application, puis cliquez sur Activer Blaze avec ce compte.</string>
+    <string name="sales_filter_status_label">Statut</string>
+    <string name="sales_filter_status_all">Tous</string>
+    <string name="sales_filter_status_active">Activés</string>
+    <string name="sales_filter_status_inactive">Désactivés</string>
+    <string name="sales_filter_category_label">Catégorie</string>
+    <string name="sales_filter_uncategorized">Sans catégorie</string>
+    <string name="sales_filter_venue_label">Lieu</string>
+    <string name="sales_filter_more">Plus de filtres</string>
+    <string name="sales_filter_more_count">Plus de filtres (%1$d)</string>
+    <string name="sales_filter_less">Moins de filtres</string>
+    <string name="sales_filter_reset">Réinitialiser les filtres</string>
+    <string name="sales_filter_any">Peu importe</string>
+    <string name="sales_filter_price_label">Prix</string>
+    <string name="sales_filter_price_min">Min</string>
+    <string name="sales_filter_price_max">Max</string>
+    <string name="sales_filter_empty">Aucun article ne correspond à ces filtres</string>
+    <string name="sales_sort_label">Trier</string>
+    <string name="sales_sort_name_asc">Nom A à Z</string>
+    <string name="sales_sort_name_desc">Nom Z à A</string>
+    <string name="sales_sort_price_asc">Prix croissant</string>
+    <string name="sales_sort_price_desc">Prix décroissant</string>
+    <string name="sales_sort_recent">Modifiés récemment</string>
+    <string name="sales_sort_active_first">Activés en premier</string>
 </resources>

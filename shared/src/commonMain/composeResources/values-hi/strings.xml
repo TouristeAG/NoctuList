@@ -2711,4 +2711,27 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="setup_billing_offer">सर्वर और फ़ोटो को Blaze प्लान (उपयोग के अनुसार भुगतान) चाहिए। ऐप इस प्रोजेक्ट को बिलिंग खाते “%1$s” से जोड़ सकता है। आप Google Cloud कंसोल में बजट तय कर सकते हैं।</string>
     <string name="setup_billing_link">इस खाते से Blaze चालू करें</string>
     <string name="setup_billing_password">ऐप पासवर्ड फिर से डालें, फिर इस खाते से Blaze चालू करें पर क्लिक करें।</string>
+    <string name="sales_filter_status_label">स्थिति</string>
+    <string name="sales_filter_status_all">सभी</string>
+    <string name="sales_filter_status_active">सक्रिय</string>
+    <string name="sales_filter_status_inactive">निष्क्रिय</string>
+    <string name="sales_filter_category_label">श्रेणी</string>
+    <string name="sales_filter_uncategorized">बिना श्रेणी</string>
+    <string name="sales_filter_venue_label">स्थान</string>
+    <string name="sales_filter_more">और फ़िल्टर</string>
+    <string name="sales_filter_more_count">और फ़िल्टर (%1$d)</string>
+    <string name="sales_filter_less">कम फ़िल्टर</string>
+    <string name="sales_filter_reset">फ़िल्टर रीसेट करें</string>
+    <string name="sales_filter_any">कोई भी</string>
+    <string name="sales_filter_price_label">कीमत</string>
+    <string name="sales_filter_price_min">न्यूनतम</string>
+    <string name="sales_filter_price_max">अधिकतम</string>
+    <string name="sales_filter_empty">इन फ़िल्टर से कोई आइटम मेल नहीं खाता</string>
+    <string name="sales_sort_label">क्रम</string>
+    <string name="sales_sort_name_asc">नाम A से Z</string>
+    <string name="sales_sort_name_desc">नाम Z से A</string>
+    <string name="sales_sort_price_asc">कीमत, कम से ज़्यादा</string>
+    <string name="sales_sort_price_desc">कीमत, ज़्यादा से कम</string>
+    <string name="sales_sort_recent">हाल में बदले गए</string>
+    <string name="sales_sort_active_first">सक्रिय पहले</string>
 </resources>
