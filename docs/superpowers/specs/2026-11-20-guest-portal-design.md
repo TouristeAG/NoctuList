@@ -182,7 +182,7 @@ l'espace. *Mon choix : évite un second chemin Storage et une règle Storage de 
 Exactement ceux des bénévoles (`VolunteerPortalService`), sur la fiche invité. Ouvrir l'accès
 (à la main ou par l'accès automatique) n'envoie aucun e-mail : le mot de passe est affiché une
 fois, et la fenêtre propose « Envoyer un lien de réinitialisation », que l'admin clique s'il le
-veut. Même comportement que `grantAccess` des bénévoles après le changement en cours (§15).
+veut. Même comportement que `grantAccess` des bénévoles après le changement en cours (§14).
 
 - carte « Accès plateforme » sur la fiche d'un invité permanent (`!isTemporaryGuest`,
   `!isVolunteerBenefit`) : créer l'accès, lien de réinitialisation, Google associatif, couper
@@ -364,7 +364,7 @@ d'explication superflu. Liste fixée pendant le plan.
 - Comptes individuels pour chaque invité temporaire.
 - Apple Wallet / Google Wallet.
 
-## 15. Prérequis
+## 14. Prérequis
 
 Le changement « ouvrir l'accès sans e-mail » des bénévoles (`grantAccess` sans `languageCode`,
 `PortalGrantResult.Created(password)`, `ExistingAccount` sans envoi, bouton dans la fenêtre)
@@ -372,7 +372,7 @@ n'est pas encore commité : il est dans le dossier principal (`feature/setup-har
 d'autres changements en cours. Il doit être commité et fusionné dans `main` (ou repris sur
 `feature/guest-portal`) avant le travail sur les invités, pour que les deux suivent le même code.
 
-## 14. Laissé au plan
+## 15. Laissé au plan
 
 - Ordre de livraison (proposé : socle et règles, permanents, temporaires, Functions, web, i18n).
 - Noms exacts des fichiers et des chaînes.
