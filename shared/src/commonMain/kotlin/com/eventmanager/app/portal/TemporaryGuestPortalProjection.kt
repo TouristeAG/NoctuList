@@ -35,15 +35,19 @@ object TemporaryGuestPortalProjectionBuilder {
     fun endsAt(eventDate: Long, offsetHours: Int): Long =
         DateTimeUtils.getStartOfDayWithOffset(eventDate, offsetHours) + GROUP_LIFETIME_MILLIS
 
-    /** Null when no group is still running. */
-    fun build(input: TemporaryGuestPortalInput): PortalProjection? {
-        val batches = input.guests
+    /** The one definition of what the page shows: dated temporary guests of groups not yet ended, by event date. */
+    internal fun runningBatches(guests: List<Guest>, now: Long, offsetHours: Int): List<Pair<List<Guest>, Long>> =
+        guests
             .filter { it.isTemporaryGuest && it.temporaryEventDate != null }
             .groupBy { it.temporaryBatchKey() }
             .values
-            .map { members -> members to endsAt(members.first().temporaryEventDate!!, input.offsetHours) }
-            .filter { (_, endsAt) -> endsAt > input.now }
+            .map { members -> members to endsAt(members.first().temporaryEventDate!!, offsetHours) }
+            .filter { (_, endsAt) -> endsAt > now }
             .sortedWith(compareBy({ it.first.first().temporaryEventDate }, { it.first.first().temporaryArtistName.lowercase() }))
+
+    /** Null when no group is still running. */
+    fun build(input: TemporaryGuestPortalInput): PortalProjection? {
+        val batches = runningBatches(input.guests, input.now, input.offsetHours)
         if (batches.isEmpty()) return null
 
         val label = PortalProjectionBuilder.MAX_LABEL
@@ -115,10 +119,11 @@ object TemporaryGuestPortalQrDocument {
     internal fun hasQr(guest: Guest): Boolean =
         !guest.isAdmin && !guest.temporaryEntryValidated && guest.nanoId.isNotBlank()
 
-    fun build(guests: List<Guest>, enabled: Boolean): Map<String, Any>? {
+    fun build(guests: List<Guest>, enabled: Boolean, now: Long, offsetHours: Int): Map<String, Any>? {
         if (!enabled) return null
-        val items = guests
-            .filter { it.isTemporaryGuest && hasQr(it) }
+        val items = TemporaryGuestPortalProjectionBuilder.runningBatches(guests, now, offsetHours)
+            .flatMap { it.first }
+            .filter { hasQr(it) }
             .associate { guest ->
                 guestKey(guest) to mapOf(
                     "payload" to guest.nanoId,
