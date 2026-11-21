@@ -225,3 +225,29 @@ describe("storage: guest photo upload", () => {
     await assertSucceeds(upload(google("gg1"), "g1"));
   });
 });
+
+describe("read budget with every setting document present", () => {
+  const readAll = async (db) => {
+    await assertSucceeds(getDoc(doc(db, path("guestPortal/g1"))));
+    await assertSucceeds(getDoc(doc(db, path("guestPortalQr/g1"))));
+    await assertSucceeds(getDoc(doc(db, path("volunteerPortalQr/g1"))));
+  };
+
+  beforeEach(async () => {
+    await seed((db) => setDoc(doc(db, path("volunteerPortalQr/g1")), { schema: 1, payload: "V", name: "Ana" }));
+    await setSetting("volunteer_portal_google_enabled", "true");
+    await setSetting("volunteer_portal_qr_enabled", "true");
+  });
+
+  test("domain mode, any_account and QR settings explicit", async () => {
+    await setSetting("volunteer_portal_google_any_account", "false");
+    await setSetting("volunteer_portal_google_domains", "asso.example");
+    await readAll(google("gg1").firestore());
+  });
+
+  test("any-account mode, every setting explicit", async () => {
+    await setSetting("volunteer_portal_google_any_account", "true");
+    await setSetting("volunteer_portal_google_domains", "");
+    await readAll(google("gg1", "gg1@gmail.com").firestore());
+  });
+});

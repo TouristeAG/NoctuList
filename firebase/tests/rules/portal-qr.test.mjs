@@ -104,3 +104,16 @@ describe("volunteerPortalQr", () => {
     await assertFails(deleteDoc(doc(db, QR)));
   });
 });
+
+describe("volunteerPortalQr read budget through Google", () => {
+  test("domain mode with any_account and QR settings explicit", async () => {
+    await setSetting("volunteer_portal_google_any_account", "false");
+    await setSetting("volunteer_portal_qr_enabled", "true");
+    await assertSucceeds(getDoc(doc(google("g1").firestore(), QR)));
+  });
+  test("any-account mode with every setting explicit", async () => {
+    await setSetting("volunteer_portal_google_any_account", "true");
+    await setSetting("volunteer_portal_qr_enabled", "true");
+    await assertSucceeds(getDoc(doc(google("g1", "g1@gmail.com").firestore(), QR)));
+  });
+});

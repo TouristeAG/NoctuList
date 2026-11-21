@@ -85,7 +85,8 @@ service cloud.firestore {
       return domain.size() > 0
         && domain != 'gmail.com'
         && domain != 'googlemail.com'
-        && exists(path)
+        // No exists(): it would cost a second document access, and a missing setting errors,
+        // which denies like false (this function is only ever used positively).
         && get(path).data.get('value', '') is string
         && domain in get(path).data.value.split(',');
     }
