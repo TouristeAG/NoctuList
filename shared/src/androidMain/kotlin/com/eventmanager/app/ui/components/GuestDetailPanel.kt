@@ -116,6 +116,10 @@ actual fun GuestDetailPanel(
     )
     var showQrDialog by remember { mutableStateOf(false) }
     var showNfcDialog by remember { mutableStateOf(false) }
+    var showGroupPortal by remember { mutableStateOf(false) }
+    // Default password handed over by the group space window, for the next group mail only.
+    var groupMailPassword by remember { mutableStateOf<String?>(null) }
+    val groupPortalOn = rememberTemporaryGroupPortalEnabled(viewModel)
 
     val temporaryGuestFeatures = rememberTemporaryGuestFeatures(viewModel)
     val guestAccesses = remember(temporaryGuestFeatures.venueAccesses, guest) {
@@ -216,6 +220,21 @@ actual fun GuestDetailPanel(
 
                     if (!readOnly &&
                         guest.isTemporaryGuest &&
+                        temporaryGuestFeatures.enabled &&
+                        groupPortalOn &&
+                        viewModel != null
+                    ) {
+                        item {
+                            TemporaryGroupPortalSection(
+                                viewModel = viewModel,
+                                guest = guest,
+                                onOpen = { showGroupPortal = true },
+                            )
+                        }
+                    }
+
+                    if (!readOnly &&
+                        guest.isTemporaryGuest &&
                         temporaryGuestFeatures.creditsEnabled &&
                         onManualAccountAdjust != null &&
                         viewModel != null
@@ -244,6 +263,12 @@ actual fun GuestDetailPanel(
                                 allowAdjustment = true,
                                 compactAdjust = true
                             )
+                        }
+                    }
+
+                    if (!readOnly) {
+                        item {
+                            GuestPortalAccessCard(viewModel = viewModel, guest = guest)
                         }
                     }
 
@@ -467,6 +492,25 @@ actual fun GuestDetailPanel(
         }
     }
     
+    if (showGroupPortal && viewModel != null) {
+        TemporaryGroupPortalDialog(
+            viewModel = viewModel,
+            guest = guest,
+            onSendGroupMail = { password ->
+                showGroupPortal = false
+                groupMailPassword = password
+                tempSendScope = TemporaryGuestSendScope.WholeBatch
+                showEmailConfirmDialog = true
+            },
+            onDismiss = { showGroupPortal = false },
+        )
+    }
+
+    // A closed send window forgets the default password.
+    LaunchedEffect(showEmailConfirmDialog) {
+        if (!showEmailConfirmDialog) groupMailPassword = null
+    }
+
     // Whole artist guest list, or just this person?
     if (showTempSendChoiceDialog) {
         TemporaryGuestSendChoiceDialog(
@@ -567,6 +611,12 @@ actual fun GuestDetailPanel(
             else -> emailInputValue
         }
         val batchCodes = if (sendWholeBatch) temporaryBatch else listOf(guest)
+        val portalAccount = if (sendWholeBatch) {
+            viewModel?.groupMailPortalAccount(guest, targetEmail, groupMailPassword)
+        } else {
+            null
+        }
+        val portalAccountLabels = rememberPortalAccountLabels()
         
         // Holder for authLauncher - needed to break circular dependency
         val authLauncherHolder = remember { mutableStateOf<androidx.activity.result.ActivityResultLauncher<Intent>?>(null) }
@@ -737,6 +787,8 @@ actual fun GuestDetailPanel(
                                     )
                                 }
                             } else emptyList(),
+                            portalAccount = portalAccount,
+                            portalAccountLabels = portalAccountLabels,
                         )
                     )
                 } else {
@@ -771,6 +823,8 @@ actual fun GuestDetailPanel(
                     if (includeDigitalWalletPass) {
                         append("[ Digital Wallet Pass (.pkpass) - See attachment ]\n\n")
                     }
+                    val account = QrEmailHtmlBuilder.accountBlockText(portalAccount, portalAccountLabels)
+                    if (account.isNotEmpty()) append(account).append("\n\n")
                     append(contentAfter)
                     append("\n\n")
                     append(signature)
@@ -885,9 +939,11 @@ actual fun GuestDetailPanel(
                     emailContext.getString(R.string.guest_email_content_before_default) 
                 }
                 val includeQr = settingsManager.isGuestEmailIncludeQrEnabled()
+                // The group space block rides along in the text: the share sheet keeps no layout.
+                val account = QrEmailHtmlBuilder.accountBlockText(portalAccount, portalAccountLabels)
                 val contentAfter = settingsManager.getGuestEmailContentAfter().ifEmpty { 
                     emailContext.getString(R.string.guest_email_content_after_default) 
-                }
+                }.let { if (account.isEmpty()) it else account + "\n\n" + it }
                 val signature = settingsManager.resolveAutomaticEmailSignature(
                     emailContext.getString(R.string.email_signature_default)
                 )

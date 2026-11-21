@@ -58,6 +58,10 @@ actual fun GuestDetailPanel(
     var emailInputValue by remember { mutableStateOf("") }
     var showTempSendChoice by remember { mutableStateOf(false) }
     var tempSendScope by remember { mutableStateOf(TemporaryGuestSendScope.SinglePerson) }
+    var showGroupPortal by remember { mutableStateOf(false) }
+    // Default password handed over by the group space window, for the next group mail only.
+    var groupMailPassword by remember { mutableStateOf<String?>(null) }
+    val groupPortalOn = rememberTemporaryGroupPortalEnabled(viewModel)
 
     val tempFeatures = rememberTemporaryGuestFeatures(viewModel)
     val temporaryEnabled = tempFeatures.enabled && guest.isTemporaryGuest
@@ -223,6 +227,14 @@ actual fun GuestDetailPanel(
                     )
                 }
 
+                if (temporaryEnabled && groupPortalOn && !readOnly && viewModel != null) {
+                    TemporaryGroupPortalSection(
+                        viewModel = viewModel,
+                        guest = guest,
+                        onOpen = { showGroupPortal = true },
+                    )
+                }
+
                 if (temporaryEnabled && tempFeatures.creditsEnabled && !readOnly &&
                     viewModel != null && onManualAccountAdjust != null
                 ) {
@@ -268,6 +280,10 @@ actual fun GuestDetailPanel(
                     allowAdjustment = true,
                     compactAdjust = true
                 )
+            }
+
+            if (!readOnly) {
+                GuestPortalAccessCard(viewModel = viewModel, guest = guest)
             }
 
             if (!readOnly && viewModel != null && !guest.isTemporaryGuest && !guest.isVolunteerBenefit) {
@@ -384,8 +400,27 @@ actual fun GuestDetailPanel(
         )
     }
 
+    if (showGroupPortal && viewModel != null) {
+        TemporaryGroupPortalDialog(
+            viewModel = viewModel,
+            guest = guest,
+            onSendGroupMail = { password ->
+                showGroupPortal = false
+                groupMailPassword = password
+                tempSendScope = TemporaryGuestSendScope.WholeBatch
+                showEmailConfirm = true
+            },
+            onDismiss = { showGroupPortal = false },
+        )
+    }
+
     if (showEmailConfirm && targetEmail.isNotBlank()) {
         val sendWholeBatch = temporaryEnabled && tempSendScope == TemporaryGuestSendScope.WholeBatch
+        val portalAccount = if (sendWholeBatch) {
+            viewModel?.groupMailPortalAccount(guest, targetEmail, groupMailPassword)
+        } else {
+            null
+        }
         DesktopEmailConfirmDialog(
             profile = if (temporaryEnabled) DesktopQrEmailProfile.TempGuest else DesktopQrEmailProfile.Guest,
             recipientEmail = targetEmail,
@@ -397,13 +432,20 @@ actual fun GuestDetailPanel(
             qrPayload = guest.nanoId,
             settingsManager = settingsManager,
             platformContext = platformContext,
-            onDismiss = { showEmailConfirm = false },
-            onSent = { showEmailConfirm = false },
+            onDismiss = {
+                showEmailConfirm = false
+                groupMailPassword = null
+            },
+            onSent = {
+                showEmailConfirm = false
+                groupMailPassword = null
+            },
             codes = if (sendWholeBatch) {
                 batch.map { QrEmailRecipientCode(holderName = it.name, qrPayload = it.nanoId) }
             } else {
                 emptyList()
             },
+            portalAccount = portalAccount,
         )
     }
 

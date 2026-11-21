@@ -37,6 +37,7 @@ import com.eventmanager.app.ui.platform.showPlatformToast
 import com.eventmanager.app.ui.util.shiftTimeLabelIfRelevant
 import com.eventmanager.app.ui.utils.getVenueDisplayString
 import com.eventmanager.app.utils.QRCodeUtils
+import com.eventmanager.app.email.PortalAccountBlock
 import com.eventmanager.app.email.QrEmailProfile
 import com.eventmanager.app.email.QrEmailRecipientCode
 import com.eventmanager.app.email.SiteMailRelay
@@ -355,8 +356,11 @@ fun DesktopEmailConfirmDialog(
     staffSafeMode: Boolean = false,
     /** More than one entry turns the mail into a grouped artist guest list. */
     codes: List<QrEmailRecipientCode> = emptyList(),
+    /** Sign-in block of the group's web space, for a group mail while its space is open. */
+    portalAccount: PortalAccountBlock? = null,
 ) {
     val emailService = remember(platformContext) { DesktopQrEmailService(platformContext) }
+    val portalAccountLabels = rememberPortalAccountLabels()
     // On a computer the association's site sends the mail; Gmail sign-in stays on phones.
     val siteAvailable = remember { SiteMailRelay.isAvailable() }
     var isSending by remember { mutableStateOf(false) }
@@ -414,6 +418,8 @@ fun DesktopEmailConfirmDialog(
                                     qrPayload = qrPayload,
                                     template = template,
                                     codes = codes,
+                                    portalAccount = portalAccount,
+                                    portalAccountLabels = portalAccountLabels,
                                 )
                             }
                             if (ok) {
@@ -453,6 +459,8 @@ fun DesktopEmailConfirmDialog(
                                     qrPayload = qrPayload,
                                     template = template,
                                     codes = codes,
+                                    portalAccount = portalAccount,
+                                    portalAccountLabels = portalAccountLabels,
                                 )
                                 isSending = false
                                 when (result) {

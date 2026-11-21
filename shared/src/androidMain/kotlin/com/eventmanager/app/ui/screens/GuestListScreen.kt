@@ -43,6 +43,10 @@ import com.eventmanager.app.ui.components.temporaryEntryValidatedLabel
 import com.eventmanager.app.ui.components.EventDatePickerField
 import com.eventmanager.app.ui.components.GuestFormCreatorDialog
 import com.eventmanager.app.ui.components.GuestFormPendingCard
+import com.eventmanager.app.ui.components.GuestPortalAutoGrantHost
+import com.eventmanager.app.ui.components.GuestSignupLinkDialog
+import com.eventmanager.app.ui.components.rememberGuestSignupLinkAvailable
+import com.eventmanager.app.resources.portal_add_choice_link
 import com.eventmanager.app.ui.components.TemporaryGuestAccessSelector
 import com.eventmanager.app.ui.components.TemporaryGuestNameCard
 import com.eventmanager.app.ui.components.TemporaryGuestVenueDropdown
@@ -140,6 +144,8 @@ actual fun GuestListScreen(
     var selectedFilter by remember { mutableStateOf<String?>(null) }
     var showTemporaryGuestsTimeline by remember { mutableStateOf(false) }
     var showGuestFormCreator by remember { mutableStateOf(false) }
+    var showGuestSignupLink by remember { mutableStateOf(false) }
+    val guestSignupAvailable = rememberGuestSignupLinkAvailable(viewModel)
     val guestFormsEnabled by viewModel?.guestFormsEnabled?.collectAsState()
         ?: remember { mutableStateOf(false) }
     val guestFormsBilleterieValidateEnabled by viewModel?.guestFormsBilleterieValidateEnabled?.collectAsState()
@@ -795,6 +801,12 @@ actual fun GuestListScreen(
                 showAddDialog = false
                 showGuestFormCreator = true
             },
+            onSendSignupForm = if (guestSignupAvailable) {
+                {
+                    showAddDialog = false
+                    showGuestSignupLink = true
+                }
+            } else null,
             onConfirmPermanent = { name, email, phoneNumber, invitations, venueName, notes, barDiscountPercent, photoBytes ->
                 val newGuest = Guest(
                     name = name,
@@ -814,6 +826,12 @@ actual fun GuestListScreen(
             }
         )
     }
+
+    if (showGuestSignupLink && viewModel != null) {
+        GuestSignupLinkDialog(viewModel = viewModel, venues = venues, onDismiss = { showGuestSignupLink = false })
+    }
+
+    GuestPortalAutoGrantHost(viewModel)
 
     if (showGuestFormCreator && viewModel != null) {
         GuestFormCreatorDialog(
@@ -2048,6 +2066,8 @@ fun AddGuestDialog(
     venueAccesses: List<VenueAccess> = emptyList(),
     guestFormsEnabled: Boolean = false,
     onCreateForm: () -> Unit = {},
+    /** Registration form for a new permanent guest; null while the guest space cannot offer one. */
+    onSendSignupForm: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     var selectedTab by remember { mutableStateOf(0) }
@@ -2159,6 +2179,11 @@ fun AddGuestDialog(
                         verticalArrangement = Arrangement.spacedBy(if (isCompact) 12.dp else 16.dp)
                     ) {
                         if (selectedTab == 0) {
+                            if (onSendSignupForm != null) {
+                                OutlinedButton(onClick = onSendSignupForm, modifier = Modifier.fillMaxWidth()) {
+                                    Text(org.jetbrains.compose.resources.stringResource(com.eventmanager.app.resources.Res.string.portal_add_choice_link))
+                                }
+                            }
                             OutlinedTextField(
                                 value = name,
                                 onValueChange = { name = it },

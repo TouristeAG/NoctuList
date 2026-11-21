@@ -33,6 +33,22 @@ data class QrEmailRecipientCode(
     val qrPayload: String,
 )
 
+/**
+ * Sign-in details of a temporary group's web space, added to the group mail. [password] is the
+ * default password while the admin still has it (right after opening); null means the mail tells
+ * the reader to use their usual password.
+ */
+data class PortalAccountBlock(val portalUrl: String, val loginEmail: String, val password: String?)
+
+/** Localized wording of [PortalAccountBlock] in a mail; the row labels carry their own colon. */
+data class PortalAccountLabels(
+    val title: String,
+    val address: String,
+    val login: String,
+    val password: String,
+    val usualPassword: String,
+)
+
 data class QrEmailHtmlOptions(
     val holderName: String,
     val contentBefore: String,
@@ -57,6 +73,9 @@ data class QrEmailHtmlOptions(
      * [qrCodeBase64], which renders exactly as it always has.
      */
     val qrCodes: List<QrEmailCode> = emptyList(),
+    /** Group space sign-in block, rendered after the QR codes when both values are set. */
+    val portalAccount: PortalAccountBlock? = null,
+    val portalAccountLabels: PortalAccountLabels? = null,
 )
 
 object QrEmailHtmlBuilder {
@@ -159,6 +178,8 @@ object QrEmailHtmlBuilder {
             """.trimIndent()
         } else ""
 
+        val accountSection = accountBlockHtml(options.portalAccount, options.portalAccountLabels)
+
         val walletPassSection = if (options.includeDigitalWalletPass && options.useContentId) {
             """
         <tr>
@@ -205,6 +226,7 @@ object QrEmailHtmlBuilder {
                             </td>
                         </tr>
                         $qrSection
+                        $accountSection
                         <tr>
                             <td style="padding: 24px 40px 40px 40px; color: #1f2937; font-size: 16px; line-height: 1.7;">
                                 ${options.contentAfter.toHtmlParagraphs()}
@@ -258,17 +280,71 @@ object QrEmailHtmlBuilder {
         """.trimIndent()
     }
 
+    private fun String.escapeHtml(): String =
+        replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
+
+    private fun accountBlockHtml(block: PortalAccountBlock?, labels: PortalAccountLabels?): String {
+        if (block == null || labels == null) return ""
+        fun row(label: String, value: String) =
+            """<div style="margin: 0 0 6px 0;"><span style="color: #64748b;">${label.escapeHtml()}</span> <strong style="color: #1f2937;">$value</strong></div>"""
+        val url = block.portalUrl.trim()
+        val rows = buildList {
+            if (url.isNotEmpty()) {
+                val safe = url.escapeHtml()
+                add(row(labels.address, """<a href="$safe" style="color: #e11d48;">$safe</a>"""))
+            }
+            add(row(labels.login, block.loginEmail.escapeHtml()))
+            val password = block.password
+            add(
+                if (password != null) {
+                    row(labels.password, """<span style="font-family: monospace;">${password.escapeHtml()}</span>""")
+                } else {
+                    row(labels.password, labels.usualPassword.escapeHtml())
+                }
+            )
+        }
+        return """
+        <tr>
+            <td style="padding: 8px 40px 8px 40px;">
+                <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background-color: #fff1f2; border: 1px solid #fecdd3; border-radius: 12px;">
+                    <tr>
+                        <td style="padding: 16px 18px; font-size: 15px; line-height: 1.5;">
+                            <div style="font-size: 16px; font-weight: 700; color: #9f1239; margin-bottom: 10px;">${labels.title.escapeHtml()}</div>
+                            ${rows.joinToString("\n")}
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+        """.trimIndent()
+    }
+
+    /** Plain-text version of [PortalAccountBlock], empty without a block. */
+    fun accountBlockText(block: PortalAccountBlock?, labels: PortalAccountLabels?): String {
+        if (block == null || labels == null) return ""
+        return buildString {
+            append(labels.title).append("\n")
+            if (block.portalUrl.isNotBlank()) append(labels.address).append(" ").append(block.portalUrl.trim()).append("\n")
+            append(labels.login).append(" ").append(block.loginEmail).append("\n")
+            append(labels.password).append(" ").append(block.password ?: labels.usualPassword)
+        }
+    }
+
     fun buildPlainText(
         contentBefore: String,
         contentAfter: String,
         signature: String,
         includeQr: Boolean,
         includeDigitalWalletPass: Boolean,
+        portalAccount: PortalAccountBlock? = null,
+        portalAccountLabels: PortalAccountLabels? = null,
     ): String = buildString {
         append(contentBefore)
         append("\n\n")
         if (includeQr) append("[ QR Code - See attachment ]\n\n")
         if (includeDigitalWalletPass) append("[ Digital Wallet Pass (.pkpass) - See attachment ]\n\n")
+        val account = accountBlockText(portalAccount, portalAccountLabels)
+        if (account.isNotEmpty()) append(account).append("\n\n")
         append(contentAfter)
         append("\n\n")
         append(signature)

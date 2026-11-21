@@ -1,6 +1,7 @@
 package com.eventmanager.app.portal
 
 import com.eventmanager.app.data.models.Guest
+import com.eventmanager.app.email.PortalAccountBlock
 
 sealed class TemporaryGroupAccessResult {
     /** A new account was created; [password] is shown once to the admin. */
@@ -111,4 +112,22 @@ class TemporaryGuestPortalAccess(
         fun openedForAddress(batch: List<Guest>): String? =
             batch.filter { it.portalEnabled }.map { it.temporaryPortalEmail.trim() }.firstOrNull { it.isNotEmpty() }
     }
+}
+
+/**
+ * Account block of a group mail: only while the group's space is open ([spaceOn] and an opened
+ * address) and the mail goes to that very address, so another person never gets this sign-in.
+ * [password] is set only when the mail is sent from the window that just opened the space.
+ */
+fun temporaryGroupMailAccount(
+    batch: List<Guest>,
+    recipient: String,
+    portalUrl: String,
+    password: String?,
+    spaceOn: Boolean,
+): PortalAccountBlock? {
+    if (!spaceOn) return null
+    val openedFor = TemporaryGuestPortalAccess.openedForAddress(batch) ?: return null
+    if (!recipient.trim().equals(openedFor, ignoreCase = true)) return null
+    return PortalAccountBlock(portalUrl = portalUrl, loginEmail = openedFor, password = password)
 }

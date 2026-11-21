@@ -2,6 +2,8 @@ package com.eventmanager.app.data.sync
 
 import com.eventmanager.app.email.MimeEmailAttachment
 import com.eventmanager.app.email.MimeEmailBuilder
+import com.eventmanager.app.email.PortalAccountBlock
+import com.eventmanager.app.email.PortalAccountLabels
 import com.eventmanager.app.email.QrEmailCode
 import com.eventmanager.app.email.QrEmailHtmlBuilder
 import com.eventmanager.app.email.QrEmailHtmlOptions
@@ -61,6 +63,8 @@ class DesktopQrEmailService(private val context: PlatformContext) {
         qrPayload: String,
         template: DesktopQrEmailTemplateStrings,
         codes: List<QrEmailRecipientCode> = emptyList(),
+        portalAccount: PortalAccountBlock? = null,
+        portalAccountLabels: PortalAccountLabels? = null,
     ): SiteMailResult {
         val prepared = runCatching {
             prepareEmail(
@@ -72,6 +76,8 @@ class DesktopQrEmailService(private val context: PlatformContext) {
                 template = template,
                 forManualSend = false,
                 codes = codes,
+                portalAccount = portalAccount,
+                portalAccountLabels = portalAccountLabels,
             )
         }.getOrNull() ?: return SiteMailResult.Rejected
         return SiteMailRelay.send(recipientEmail, prepared.mimeMessage)
@@ -85,6 +91,8 @@ class DesktopQrEmailService(private val context: PlatformContext) {
         qrPayload: String,
         template: DesktopQrEmailTemplateStrings,
         codes: List<QrEmailRecipientCode> = emptyList(),
+        portalAccount: PortalAccountBlock? = null,
+        portalAccountLabels: PortalAccountLabels? = null,
     ): Boolean = runCatching {
         val prepared = prepareEmail(
             profile = profile,
@@ -95,6 +103,8 @@ class DesktopQrEmailService(private val context: PlatformContext) {
             template = template,
             forManualSend = true,
             codes = codes,
+            portalAccount = portalAccount,
+            portalAccountLabels = portalAccountLabels,
         )
         val emlFile = File(cacheDir, "qr_email_${System.currentTimeMillis()}.eml")
         emlFile.writeText(prepared.mimeMessage)
@@ -113,6 +123,8 @@ class DesktopQrEmailService(private val context: PlatformContext) {
         template: DesktopQrEmailTemplateStrings,
         forManualSend: Boolean,
         codes: List<QrEmailRecipientCode> = emptyList(),
+        portalAccount: PortalAccountBlock? = null,
+        portalAccountLabels: PortalAccountLabels? = null,
     ): PreparedEmail {
         val theme = when (profile) {
             QrEmailProfile.Volunteer -> QrEmailTheme.Volunteer
@@ -188,6 +200,8 @@ class DesktopQrEmailService(private val context: PlatformContext) {
                         QrEmailCode(holderName = it.holderName, contentId = it.contentId)
                     }
                 } else emptyList(),
+                portalAccount = portalAccount,
+                portalAccountLabels = portalAccountLabels,
             )
         )
 
@@ -197,6 +211,8 @@ class DesktopQrEmailService(private val context: PlatformContext) {
             signature = signature,
             includeQr = includeQr,
             includeDigitalWalletPass = includeDigitalWalletPass,
+            portalAccount = portalAccount,
+            portalAccountLabels = portalAccountLabels,
         )
 
         val attachments = buildList {

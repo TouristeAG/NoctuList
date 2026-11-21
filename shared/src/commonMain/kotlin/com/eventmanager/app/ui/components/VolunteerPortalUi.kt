@@ -63,11 +63,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.eventmanager.app.data.models.Guest
+import com.eventmanager.app.data.models.VenueEntity
 import com.eventmanager.app.data.models.Volunteer
 import com.eventmanager.app.data.sync.DateFormatUtils
 import com.eventmanager.app.platform.LocalPlatformContext
 import com.eventmanager.app.portal.DomainCheck
 import com.eventmanager.app.portal.PortalGrantResult
+import com.eventmanager.app.portal.PortalHolder
+import com.eventmanager.app.portal.PortalHolderKind
+import com.eventmanager.app.portal.asPortalHolder
+import com.eventmanager.app.portal.isPermanentPortalGuest
 import com.eventmanager.app.portal.PortalServerStatus
 import com.eventmanager.app.portal.SignupFormState
 import com.eventmanager.app.portal.VolunteerSignupForm
@@ -138,6 +144,16 @@ import com.eventmanager.app.resources.portal_signup_link_received
 import com.eventmanager.app.resources.portal_signup_link_title
 import com.eventmanager.app.resources.portal_signup_link_waiting
 import com.eventmanager.app.resources.portal_working
+import com.eventmanager.app.resources.portal_guest_access_title
+import com.eventmanager.app.resources.portal_guest_access_no_email
+import com.eventmanager.app.resources.portal_guest_access_admin_note
+import com.eventmanager.app.resources.portal_access_google_by_guest
+import com.eventmanager.app.resources.portal_access_google_err_taken_guest
+import com.eventmanager.app.resources.portal_access_google_err_same_as_email_guest
+import com.eventmanager.app.resources.portal_guest_signup_body
+import com.eventmanager.app.resources.portal_guest_signup_received
+import com.eventmanager.app.resources.portal_guest_signup_done
+import com.eventmanager.app.resources.portal_guest_signup_create
 import com.eventmanager.app.ui.viewmodel.EventManagerViewModel
 import com.eventmanager.app.utils.QRCodeUtils
 import kotlinx.coroutines.delay
@@ -247,15 +263,79 @@ private fun ChoiceRow(icon: ImageVector, title: String, body: String, onClick: (
     }
 }
 
+/** Texts of a registration link dialog that name the kind of person being added. */
+private data class SignupLinkTexts(val body: String, val received: String, val done: String)
+
 /** Creates a single-use registration link and waits for the answer (like the photo request). */
 @Composable
 fun VolunteerSignupLinkDialog(viewModel: EventManagerViewModel, onDismiss: () -> Unit) {
+    SignupLinkDialog(
+        viewModel = viewModel,
+        texts = SignupLinkTexts(
+            body = stringResource(Res.string.portal_signup_link_body),
+            received = stringResource(Res.string.portal_signup_link_received),
+            done = stringResource(Res.string.portal_signup_link_done),
+        ),
+        create = { viewModel.createVolunteerSignupForm() },
+        onDismiss = onDismiss,
+    )
+}
+
+/**
+ * Registration link for a new permanent guest. The admin picks the venue first: the form carries
+ * it and the public cannot change it.
+ */
+@Composable
+fun GuestSignupLinkDialog(viewModel: EventManagerViewModel, venues: List<VenueEntity>, onDismiss: () -> Unit) {
+    var venueName by remember { mutableStateOf<String?>(null) }
+    var confirmedVenue by remember { mutableStateOf<String?>(null) }
+    val chosen = confirmedVenue
+    if (chosen == null) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(stringResource(Res.string.portal_signup_link_title)) },
+            text = {
+                GuestVenueDropdownField(
+                    venues = venues,
+                    selectedVenueName = venueName,
+                    onVenueSelected = { venueName = it },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { confirmedVenue = venueName }, enabled = !venueName.isNullOrBlank()) {
+                    Text(stringResource(Res.string.portal_guest_signup_create))
+                }
+            },
+            dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(Res.string.cancel)) } },
+        )
+        return
+    }
+    SignupLinkDialog(
+        viewModel = viewModel,
+        texts = SignupLinkTexts(
+            body = stringResource(Res.string.portal_guest_signup_body),
+            received = stringResource(Res.string.portal_guest_signup_received),
+            done = stringResource(Res.string.portal_guest_signup_done),
+        ),
+        create = { viewModel.createGuestSignupForm(chosen) },
+        onDismiss = onDismiss,
+    )
+}
+
+@Composable
+private fun SignupLinkDialog(
+    viewModel: EventManagerViewModel,
+    texts: SignupLinkTexts,
+    create: suspend () -> VolunteerSignupForm?,
+    onDismiss: () -> Unit,
+) {
     var form by remember { mutableStateOf<VolunteerSignupForm?>(null) }
     var failed by remember { mutableStateOf(false) }
     var state by remember { mutableStateOf(SignupFormState.Waiting) }
 
     LaunchedEffect(Unit) {
-        val created = viewModel.createVolunteerSignupForm()
+        val created = create()
         if (created == null) failed = true else form = created
     }
     LaunchedEffect(form) {
@@ -289,14 +369,14 @@ fun VolunteerSignupLinkDialog(viewModel: EventManagerViewModel, onDismiss: () ->
                         CircularProgressIndicator(modifier = Modifier.size(32.dp))
                         Text(stringResource(Res.string.portal_signup_link_creating), style = MaterialTheme.typography.bodyMedium)
                     }
-                    state == SignupFormState.Completed -> DoneMessage(stringResource(Res.string.portal_signup_link_done))
+                    state == SignupFormState.Completed -> DoneMessage(texts.done)
                     state == SignupFormState.Expired -> Text(
                         stringResource(Res.string.portal_signup_link_expired),
                         color = MaterialTheme.colorScheme.error,
                         textAlign = TextAlign.Center,
                     )
                     else -> {
-                        Text(stringResource(Res.string.portal_signup_link_body), style = MaterialTheme.typography.bodyMedium)
+                        Text(texts.body, style = MaterialTheme.typography.bodyMedium)
                         qr?.let { Image(bitmap = it, contentDescription = null, modifier = Modifier.size(200.dp)) }
                         if (url.isNotBlank()) CopyableUrlBox(url = url)
                         Row(
@@ -305,10 +385,8 @@ fun VolunteerSignupLinkDialog(viewModel: EventManagerViewModel, onDismiss: () ->
                         ) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                             Text(
-                                stringResource(
-                                    if (state == SignupFormState.Submitted) Res.string.portal_signup_link_received
-                                    else Res.string.portal_signup_link_waiting,
-                                ),
+                                if (state == SignupFormState.Submitted) texts.received
+                                else stringResource(Res.string.portal_signup_link_waiting),
                                 style = MaterialTheme.typography.bodySmall,
                             )
                         }
@@ -351,6 +429,160 @@ fun PortalAccessToggleRow(checked: Boolean, onCheckedChange: (Boolean) -> Unit, 
     }
 }
 
+/**
+ * The admin actions on one profile's portal access, bound to a volunteer or a permanent guest, so
+ * the card and the password window serve both.
+ */
+class PortalAccessActions(
+    val holder: PortalHolder,
+    val name: String,
+    val grant: suspend () -> PortalGrantResult,
+    val sendReset: suspend () -> Boolean,
+    val revoke: suspend () -> Boolean,
+    val assignGoogle: suspend (String) -> String?,
+    val removeGoogle: suspend () -> Boolean,
+)
+
+fun EventManagerViewModel.portalAccessActions(volunteer: Volunteer) = PortalAccessActions(
+    holder = volunteer.asPortalHolder(),
+    name = volunteer.name,
+    grant = { grantVolunteerPortalAccess(volunteer) },
+    sendReset = { sendVolunteerPortalPasswordReset(volunteer, portalMailLanguage(this)) },
+    revoke = { revokeVolunteerPortalAccess(volunteer) },
+    assignGoogle = { assignVolunteerPortalGoogleAccount(volunteer, it) },
+    removeGoogle = { removeVolunteerPortalGoogleAccount(volunteer) },
+)
+
+fun EventManagerViewModel.portalAccessActions(guest: Guest) = PortalAccessActions(
+    holder = guest.asPortalHolder(),
+    name = guest.name,
+    grant = { grantGuestPortalAccess(guest) },
+    sendReset = { sendGuestPortalPasswordReset(guest, portalMailLanguage(this)) },
+    revoke = { revokeGuestPortalAccess(guest) },
+    assignGoogle = { assignGuestPortalGoogleAccount(guest, it) },
+    removeGoogle = { removeGuestPortalGoogleAccount(guest) },
+)
+
+/** Card and Google texts that name a volunteer or a guest. */
+private data class PortalHolderTexts(
+    val title: String,
+    val noEmail: String,
+    val adminNote: String,
+    val linkedBySelf: String,
+    val googleTaken: String,
+    val googleSameAsEmail: String,
+)
+
+@Composable
+private fun portalHolderTexts(kind: PortalHolderKind): PortalHolderTexts = when (kind) {
+    PortalHolderKind.VOLUNTEER -> PortalHolderTexts(
+        title = stringResource(Res.string.portal_access_title),
+        noEmail = stringResource(Res.string.portal_access_no_email),
+        adminNote = stringResource(Res.string.portal_access_admin_note),
+        linkedBySelf = stringResource(Res.string.portal_access_google_by_volunteer),
+        googleTaken = stringResource(Res.string.portal_access_google_err_taken),
+        googleSameAsEmail = stringResource(Res.string.portal_access_google_err_same_as_email),
+    )
+    PortalHolderKind.GUEST -> PortalHolderTexts(
+        title = stringResource(Res.string.portal_guest_access_title),
+        noEmail = stringResource(Res.string.portal_guest_access_no_email),
+        adminNote = stringResource(Res.string.portal_guest_access_admin_note),
+        linkedBySelf = stringResource(Res.string.portal_access_google_by_guest),
+        googleTaken = stringResource(Res.string.portal_access_google_err_taken_guest),
+        googleSameAsEmail = stringResource(Res.string.portal_access_google_err_same_as_email_guest),
+    )
+}
+
+/** A one-time password with its Copy button. */
+@Composable
+internal fun OneTimePasswordBox(password: String) {
+    val clipboard = LocalClipboardManager.current
+    var copied by remember(password) { mutableStateOf(false) }
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                password,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = {
+                clipboard.setText(AnnotatedString(password))
+                copied = true
+            }) {
+                Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(if (copied) Res.string.portal_password_copied else Res.string.portal_password_copy))
+            }
+        }
+    }
+}
+
+/**
+ * "Send a password reset link", sent only on click, with its outcome below. [once] keeps it
+ * disabled after a successful send (result windows); the card lets the admin send again.
+ */
+@Composable
+internal fun PortalResetLinkButton(
+    email: String,
+    send: suspend () -> Boolean,
+    enabled: Boolean = true,
+    once: Boolean = false,
+) {
+    val scope = rememberCoroutineScope()
+    var sending by remember { mutableStateOf(false) }
+    var outcome by remember { mutableStateOf<Boolean?>(null) }
+    val sentText = stringResource(Res.string.portal_access_reset_sent, email)
+    val failedText = stringResource(Res.string.portal_access_reset_failed)
+    OutlinedButton(
+        onClick = {
+            sending = true
+            outcome = null
+            scope.launch {
+                outcome = send()
+                sending = false
+            }
+        },
+        enabled = enabled && !sending && email.isNotBlank() && !(once && outcome == true),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        if (sending) {
+            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+        } else {
+            Icon(Icons.Default.LockReset, contentDescription = null, modifier = Modifier.size(16.dp))
+        }
+        Spacer(Modifier.width(6.dp))
+        Text(stringResource(Res.string.portal_access_reset))
+    }
+    outcome?.let { ok ->
+        Text(
+            if (ok) sentText else failedText,
+            style = MaterialTheme.typography.bodySmall,
+            color = if (ok) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+        )
+    }
+}
+
+/** "Sign in at" line under a password, when the portal address is known. */
+@Composable
+internal fun PortalSignInAtLine(portalUrl: String) {
+    if (portalUrl.isBlank()) return
+    Text(
+        stringResource(Res.string.portal_password_sign_in_at, portalUrl),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
 /** Shows the generated password exactly once, with copy and the portal address. */
 @Composable
 fun PortalGrantResultDialog(
@@ -359,14 +591,44 @@ fun PortalGrantResultDialog(
     result: PortalGrantResult,
     onDismiss: () -> Unit,
 ) {
-    val clipboard = LocalClipboardManager.current
-    var copied by remember { mutableStateOf(false) }
+    PortalGrantResultDialog(
+        viewModel = viewModel,
+        name = volunteer.name,
+        email = volunteer.email,
+        result = result,
+        sendReset = viewModel?.let { vm -> { vm.sendVolunteerPortalPasswordReset(volunteer, portalMailLanguage(vm)) } },
+        onDismiss = onDismiss,
+    )
+}
+
+/** Same window for a permanent guest. */
+@Composable
+fun PortalGrantResultDialog(
+    viewModel: EventManagerViewModel?,
+    guest: Guest,
+    result: PortalGrantResult,
+    onDismiss: () -> Unit,
+) {
+    PortalGrantResultDialog(
+        viewModel = viewModel,
+        name = guest.name,
+        email = guest.email,
+        result = result,
+        sendReset = viewModel?.let { vm -> { vm.sendGuestPortalPasswordReset(guest, portalMailLanguage(vm)) } },
+        onDismiss = onDismiss,
+    )
+}
+
+@Composable
+private fun PortalGrantResultDialog(
+    viewModel: EventManagerViewModel?,
+    name: String,
+    email: String,
+    result: PortalGrantResult,
+    sendReset: (suspend () -> Boolean)?,
+    onDismiss: () -> Unit,
+) {
     val portalUrl = viewModel?.volunteerPortalUrl().orEmpty()
-    val scope = rememberCoroutineScope()
-    var sending by remember { mutableStateOf(false) }
-    var resetMessage by remember { mutableStateOf<Pair<String, Boolean>?>(null) }
-    val resetSentText = stringResource(Res.string.portal_access_reset_sent, volunteer.email)
-    val resetFailedText = stringResource(Res.string.portal_access_reset_failed)
     AlertDialog(
         onDismissRequest = {},
         icon = { Icon(Icons.Default.Key, contentDescription = null) },
@@ -375,85 +637,39 @@ fun PortalGrantResultDialog(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 when (result) {
                     is PortalGrantResult.Created -> {
-                        Text(stringResource(Res.string.portal_password_body, volunteer.name))
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.secondaryContainer,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    result.password,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    modifier = Modifier.weight(1f),
-                                )
-                                TextButton(onClick = {
-                                    clipboard.setText(AnnotatedString(result.password))
-                                    copied = true
-                                }) {
-                                    Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(Modifier.width(6.dp))
-                                    Text(stringResource(if (copied) Res.string.portal_password_copied else Res.string.portal_password_copy))
-                                }
-                            }
-                        }
+                        Text(stringResource(Res.string.portal_password_body, name))
+                        OneTimePasswordBox(result.password)
                     }
-                    is PortalGrantResult.ExistingAccount -> Text(stringResource(Res.string.portal_access_existing, volunteer.email))
+                    is PortalGrantResult.ExistingAccount -> Text(stringResource(Res.string.portal_access_existing, email))
                     is PortalGrantResult.Failed -> Text(
                         stringResource(Res.string.portal_access_failed, result.code),
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
-                if (result !is PortalGrantResult.Failed && viewModel != null && volunteer.email.isNotBlank()) {
-                    OutlinedButton(
-                        onClick = {
-                            sending = true
-                            resetMessage = null
-                            scope.launch {
-                                val ok = viewModel.sendVolunteerPortalPasswordReset(volunteer, portalMailLanguage(viewModel))
-                                resetMessage = (if (ok) resetSentText else resetFailedText) to ok
-                                sending = false
-                            }
-                        },
-                        enabled = !sending && resetMessage?.second != true,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        if (sending) {
-                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                        } else {
-                            Icon(Icons.Default.LockReset, contentDescription = null, modifier = Modifier.size(16.dp))
-                        }
-                        Spacer(Modifier.width(6.dp))
-                        Text(stringResource(Res.string.portal_access_reset))
-                    }
-                    resetMessage?.let { (text, ok) ->
-                        Text(
-                            text,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (ok) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-                        )
-                    }
+                if (result !is PortalGrantResult.Failed && sendReset != null && email.isNotBlank()) {
+                    PortalResetLinkButton(email = email, send = sendReset, once = true)
                 }
-                if (result !is PortalGrantResult.Failed && portalUrl.isNotBlank()) {
-                    Text(
-                        stringResource(Res.string.portal_password_sign_in_at, portalUrl),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                if (result !is PortalGrantResult.Failed) PortalSignInAtLine(portalUrl)
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(Res.string.close)) } },
     )
 }
 
-/** "Volunteer portal" card on a volunteer profile: status and admin actions. */
+/**
+ * The access opened by `volunteer_portal_auto_access` for a guest just added: its password is
+ * shown once, then forgotten.
+ */
+@Composable
+fun GuestPortalAutoGrantHost(viewModel: EventManagerViewModel?) {
+    if (viewModel == null) return
+    val pending by viewModel.guestPortalAutoGrant.collectAsState()
+    pending?.let { (guest, result) ->
+        PortalGrantResultDialog(viewModel, guest, result, onDismiss = { viewModel.consumeGuestPortalAutoGrant() })
+    }
+}
+
+/** "Portal access" card on a volunteer profile: status and admin actions. */
 @Composable
 fun VolunteerPortalAccessCard(
     viewModel: EventManagerViewModel?,
@@ -461,18 +677,39 @@ fun VolunteerPortalAccessCard(
     modifier: Modifier = Modifier,
 ) {
     if (viewModel == null || !rememberVolunteerPortalEnabled(viewModel)) return
+    PortalAccessCard(viewModel, viewModel.portalAccessActions(volunteer), modifier)
+}
+
+/** Same card on a permanent guest, while the guest space is on. */
+@Composable
+fun GuestPortalAccessCard(
+    viewModel: EventManagerViewModel?,
+    guest: Guest,
+    modifier: Modifier = Modifier,
+) {
+    if (viewModel == null || !rememberVolunteerPortalEnabled(viewModel)) return
+    val guestSpaceOn by viewModel.guestPortalEnabled.collectAsState()
+    if (!guestSpaceOn || !guest.isPermanentPortalGuest) return
+    PortalAccessCard(viewModel, viewModel.portalAccessActions(guest), modifier)
+}
+
+@Composable
+private fun PortalAccessCard(
+    viewModel: EventManagerViewModel,
+    actions: PortalAccessActions,
+    modifier: Modifier = Modifier,
+) {
+    val holder = actions.holder
+    val texts = portalHolderTexts(holder.kind)
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
     var grantResult by remember { mutableStateOf<PortalGrantResult?>(null) }
-    var message by remember { mutableStateOf<String?>(null) }
     var confirmRevoke by remember { mutableStateOf(false) }
     val googleEnabled by viewModel.volunteerPortalGoogleEnabled.collectAsState()
-    val resetSentText = stringResource(Res.string.portal_access_reset_sent, volunteer.email)
-    val resetFailedText = stringResource(Res.string.portal_access_reset_failed)
 
     val (statusText, statusColor) = when {
-        !volunteer.portalEnabled -> stringResource(Res.string.portal_access_status_none) to MaterialTheme.colorScheme.onSurfaceVariant
-        volunteer.portalUid.isBlank() -> stringResource(Res.string.portal_access_status_pending) to MaterialTheme.colorScheme.tertiary
+        !holder.portalEnabled -> stringResource(Res.string.portal_access_status_none) to MaterialTheme.colorScheme.onSurfaceVariant
+        holder.portalUid.isBlank() -> stringResource(Res.string.portal_access_status_pending) to MaterialTheme.colorScheme.tertiary
         else -> stringResource(Res.string.portal_access_status_active) to Color(0xFF2E7D4F)
     }
 
@@ -485,38 +722,37 @@ fun VolunteerPortalAccessCard(
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.Default.Language, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Text(stringResource(Res.string.portal_access_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(texts.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(Modifier.size(8.dp).clip(CircleShape).background(statusColor))
                 Text(statusText, style = MaterialTheme.typography.bodyMedium, color = statusColor, fontWeight = FontWeight.Medium)
             }
-            if (volunteer.isAdmin && volunteer.portalEnabled) {
-                Text(stringResource(Res.string.portal_access_admin_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (holder.isAdmin && holder.portalEnabled) {
+                Text(texts.adminNote, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            if (volunteer.portalEnabled && volunteer.portalUid.isNotBlank()) {
+            if (holder.portalEnabled && holder.portalUid.isNotBlank()) {
                 Text(stringResource(Res.string.portal_access_email_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            message?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) }
             if (busy) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                     Text(stringResource(Res.string.portal_working), style = MaterialTheme.typography.bodySmall)
                 }
             }
-            if (!volunteer.portalEnabled) {
-                if (volunteer.email.isBlank()) {
-                    Text(stringResource(Res.string.portal_access_no_email), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            if (!holder.portalEnabled) {
+                if (holder.email.isBlank()) {
+                    Text(texts.noEmail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                 }
                 OutlinedButton(
                     onClick = {
                         busy = true
                         scope.launch {
-                            grantResult = viewModel.grantVolunteerPortalAccess(volunteer)
+                            grantResult = actions.grant()
                             busy = false
                         }
                     },
-                    enabled = !busy && volunteer.email.isNotBlank(),
+                    enabled = !busy && holder.email.isNotBlank(),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Icon(Icons.Default.Key, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -524,24 +760,8 @@ fun VolunteerPortalAccessCard(
                     Text(stringResource(Res.string.portal_access_create))
                 }
             } else {
-                OutlinedButton(
-                    onClick = {
-                        busy = true
-                        message = null
-                        scope.launch {
-                            val ok = viewModel.sendVolunteerPortalPasswordReset(volunteer, portalMailLanguage(viewModel))
-                            message = if (ok) resetSentText else resetFailedText
-                            busy = false
-                        }
-                    },
-                    enabled = !busy && volunteer.email.isNotBlank(),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Icon(Icons.Default.LockReset, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(Res.string.portal_access_reset))
-                }
-                if (googleEnabled) PortalGoogleAccountRow(viewModel, volunteer)
+                PortalResetLinkButton(email = holder.email, send = actions.sendReset, enabled = !busy)
+                if (googleEnabled) PortalGoogleAccountRow(viewModel, actions, texts)
                 OutlinedButton(
                     onClick = { confirmRevoke = true },
                     enabled = !busy,
@@ -557,20 +777,27 @@ fun VolunteerPortalAccessCard(
     }
 
     grantResult?.let { result ->
-        PortalGrantResultDialog(viewModel, volunteer, result, onDismiss = { grantResult = null })
+        PortalGrantResultDialog(
+            viewModel = viewModel,
+            name = actions.name,
+            email = holder.email,
+            result = result,
+            sendReset = actions.sendReset,
+            onDismiss = { grantResult = null },
+        )
     }
     if (confirmRevoke) {
         AlertDialog(
             onDismissRequest = { confirmRevoke = false },
             title = { Text(stringResource(Res.string.portal_access_revoke_confirm_title)) },
-            text = { Text(stringResource(Res.string.portal_access_revoke_confirm_body, volunteer.name)) },
+            text = { Text(stringResource(Res.string.portal_access_revoke_confirm_body, actions.name)) },
             confirmButton = {
                 TextButton(
                     onClick = {
                         confirmRevoke = false
                         busy = true
                         scope.launch {
-                            viewModel.revokeVolunteerPortalAccess(volunteer)
+                            actions.revoke()
                             busy = false
                         }
                     },
@@ -582,25 +809,23 @@ fun VolunteerPortalAccessCard(
     }
 }
 
-/** Google account of a volunteer whose portal access is open (only when the option is on). */
+/** Google account of a profile whose portal access is open (only when the option is on). */
 @Composable
-private fun PortalGoogleAccountRow(viewModel: EventManagerViewModel, volunteer: Volunteer) {
+private fun PortalGoogleAccountRow(viewModel: EventManagerViewModel, actions: PortalAccessActions, texts: PortalHolderTexts) {
+    val holder = actions.holder
     val scope = rememberCoroutineScope()
     val anyAccount by viewModel.volunteerPortalGoogleAnyAccount.collectAsState()
-    var editing by remember(volunteer.id, volunteer.portalGoogleEmail) { mutableStateOf(volunteer.portalGoogleEmail.isBlank()) }
-    var input by remember(volunteer.id, volunteer.portalGoogleEmail) { mutableStateOf(volunteer.portalGoogleEmail) }
-    var errorCode by remember(volunteer.id) { mutableStateOf<String?>(null) }
-    var busy by remember(volunteer.id) { mutableStateOf(false) }
-    var confirmRemove by remember(volunteer.id) { mutableStateOf(false) }
-    val hasAccount = volunteer.portalGoogleEmail.isNotBlank()
+    var editing by remember(holder.kind, holder.id, holder.portalGoogleEmail) { mutableStateOf(holder.portalGoogleEmail.isBlank()) }
+    var input by remember(holder.kind, holder.id, holder.portalGoogleEmail) { mutableStateOf(holder.portalGoogleEmail) }
+    var errorCode by remember(holder.kind, holder.id) { mutableStateOf<String?>(null) }
+    var busy by remember(holder.kind, holder.id) { mutableStateOf(false) }
+    var confirmRemove by remember(holder.kind, holder.id) { mutableStateOf(false) }
+    val hasAccount = holder.portalGoogleEmail.isNotBlank()
     val errorText = when (errorCode) {
         null -> null
         "DOMAIN" -> stringResource(Res.string.portal_access_google_err_domain)
-        "TAKEN" -> stringResource(Res.string.portal_access_google_err_taken)
-        "SAME_AS_EMAIL" -> stringResource(
-            if (anyAccount) Res.string.portal_access_google_err_same_as_email_any
-            else Res.string.portal_access_google_err_same_as_email,
-        )
+        "TAKEN" -> texts.googleTaken
+        "SAME_AS_EMAIL" -> if (anyAccount) stringResource(Res.string.portal_access_google_err_same_as_email_any) else texts.googleSameAsEmail
         "INVALID" -> stringResource(Res.string.portal_access_google_err_invalid)
         else -> stringResource(Res.string.portal_access_google_err_save)
     }
@@ -612,11 +837,11 @@ private fun PortalGoogleAccountRow(viewModel: EventManagerViewModel, volunteer: 
             fontWeight = FontWeight.Bold,
         )
         if (hasAccount && !editing) {
-            Text(volunteer.portalGoogleEmail, style = MaterialTheme.typography.bodyMedium)
+            Text(holder.portalGoogleEmail, style = MaterialTheme.typography.bodyMedium)
             val state = when {
-                volunteer.portalGoogleUid.isBlank() -> stringResource(Res.string.portal_access_google_pending)
-                volunteer.portalGoogleLinkedBy == Volunteer.GOOGLE_LINKED_BY_VOLUNTEER ->
-                    stringResource(Res.string.portal_access_google_linked) + ", " + stringResource(Res.string.portal_access_google_by_volunteer)
+                holder.portalGoogleUid.isBlank() -> stringResource(Res.string.portal_access_google_pending)
+                holder.portalGoogleLinkedBy == Volunteer.GOOGLE_LINKED_BY_VOLUNTEER ->
+                    stringResource(Res.string.portal_access_google_linked) + ", " + texts.linkedBySelf
                 else -> stringResource(Res.string.portal_access_google_linked)
             }
             Text(state, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -644,7 +869,7 @@ private fun PortalGoogleAccountRow(viewModel: EventManagerViewModel, volunteer: 
                     onClick = {
                         busy = true
                         scope.launch {
-                            errorCode = viewModel.assignVolunteerPortalGoogleAccount(volunteer, input)
+                            errorCode = actions.assignGoogle(input)
                             if (errorCode == null) editing = false
                             busy = false
                         }
@@ -653,7 +878,7 @@ private fun PortalGoogleAccountRow(viewModel: EventManagerViewModel, volunteer: 
                 ) { Text(stringResource(Res.string.save)) }
                 if (hasAccount) {
                     TextButton(
-                        onClick = { input = volunteer.portalGoogleEmail; errorCode = null; editing = false },
+                        onClick = { input = holder.portalGoogleEmail; errorCode = null; editing = false },
                         enabled = !busy,
                     ) { Text(stringResource(Res.string.cancel)) }
                 }
@@ -666,14 +891,14 @@ private fun PortalGoogleAccountRow(viewModel: EventManagerViewModel, volunteer: 
         AlertDialog(
             onDismissRequest = { confirmRemove = false },
             title = { Text(stringResource(Res.string.portal_access_google_remove_title)) },
-            text = { Text(stringResource(Res.string.portal_access_google_remove_body, volunteer.name, volunteer.portalGoogleEmail)) },
+            text = { Text(stringResource(Res.string.portal_access_google_remove_body, actions.name, holder.portalGoogleEmail)) },
             confirmButton = {
                 TextButton(
                     onClick = {
                         confirmRemove = false
                         busy = true
                         scope.launch {
-                            if (!viewModel.removeVolunteerPortalGoogleAccount(volunteer)) errorCode = "SAVE_FAILED"
+                            if (!actions.removeGoogle()) errorCode = "SAVE_FAILED"
                             busy = false
                         }
                     },
@@ -683,4 +908,13 @@ private fun PortalGoogleAccountRow(viewModel: EventManagerViewModel, volunteer: 
             dismissButton = { TextButton(onClick = { confirmRemove = false }) { Text(stringResource(Res.string.cancel)) } },
         )
     }
+}
+
+/** "Send a registration form" for a new permanent guest: portal, guest space and public site ready. */
+@Composable
+fun rememberGuestSignupLinkAvailable(viewModel: EventManagerViewModel?): Boolean {
+    val portalOn = rememberVolunteerPortalEnabled(viewModel)
+    val fallback = remember { MutableStateFlow(false) }
+    val guestSpaceOn by (viewModel?.guestPortalEnabled ?: fallback).collectAsState()
+    return portalOn && guestSpaceOn && viewModel?.isGuestSignupLinkAvailable() == true
 }
