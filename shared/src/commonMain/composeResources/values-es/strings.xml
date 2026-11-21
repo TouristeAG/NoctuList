@@ -346,7 +346,7 @@
     <string name="venue_both">TODOS</string>
 
     <!-- Temporary Guest List -->
-    <string name="temp_guest_artist_label">Artista / Grupo</string>
+    <string name="temp_guest_artist_label">Nombre (artista, institución, amigos…)</string>
     <string name="temp_guest_event_date_label">Fecha del evento</string>
     <string name="temp_guest_contact_phone_label">Teléfono de contacto de emergencia</string>
     <string name="temp_guest_chip_label">Temp</string>
@@ -2091,8 +2091,8 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="temp_guest_access_remove_message">«%1$s» se eliminará de todos los invitados temporales que lo tengan.</string>
     <string name="temp_guest_credits_setting_title">Cuentas de crédito para invitados temporales</string>
     <string name="temp_guest_credits_setting_description">Permite que un invitado temporal tenga saldo en la barra, como un invitado permanente. Desactivado por defecto.</string>
-    <string name="temp_guest_contact_email_label">Correo de contacto</string>
-    <string name="temp_guest_contact_email_hint">Artista o mánager que recibe todos los códigos QR de esta lista.</string>
+    <string name="temp_guest_contact_email_label">Dirección de contacto</string>
+    <string name="temp_guest_contact_email_hint">Persona que recibe todos los códigos QR de esta lista de invitados.</string>
     <string name="temp_guest_venue_label">Local</string>
     <string name="temp_guest_venue_placeholder">Elegir un local</string>
     <string name="temp_guest_access_person_label">Accesos especiales</string>
@@ -2717,19 +2717,19 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="portal_guest_signup_received">Inscripción recibida. Añadiendo al invitado…</string>
     <string name="portal_guest_signup_done">El nuevo invitado se ha añadido.</string>
     <string name="portal_guest_signup_create">Crear el enlace</string>
-    <string name="temp_group_portal_open">Abrir el espacio del grupo</string>
-    <string name="temp_group_portal_close">Cerrar el espacio del grupo</string>
-    <string name="temp_group_portal_close_confirm">¿Cerrar el espacio del grupo?</string>
+    <string name="temp_group_portal_open">Abrir el espacio de invitados</string>
+    <string name="temp_group_portal_close">Cerrar el espacio de invitados</string>
+    <string name="temp_group_portal_close_confirm">¿Cerrar el espacio de invitados?</string>
     <string name="temp_group_portal_opened_for">Espacio abierto para %1$s</string>
     <string name="temp_group_portal_reopen">Reabrir para %1$s</string>
-    <string name="temp_group_portal_no_email">Añade primero el correo del grupo.</string>
-    <string name="temp_group_portal_title">Espacio del grupo</string>
+    <string name="temp_group_portal_no_email">Añada primero la dirección de contacto.</string>
+    <string name="temp_group_portal_title">Espacio de invitados</string>
     <string name="temp_group_portal_password_body">Contraseña de %1$s, se muestra una sola vez.</string>
-    <string name="temp_group_portal_reused">El grupo usa la cuenta existente de %1$s.</string>
-    <string name="temp_group_portal_existing">Ya existe una cuenta para %1$s. El grupo aparecerá en su próximo inicio de sesión.</string>
+    <string name="temp_group_portal_reused">La lista usa la cuenta existente de %1$s.</string>
+    <string name="temp_group_portal_existing">Ya existe una cuenta para %1$s. La lista aparecerá en su próximo inicio de sesión.</string>
     <string name="temp_group_portal_failed">No se pudo abrir el espacio (%1$s).</string>
     <string name="temp_group_portal_close_failed">No se pudo cerrar el espacio.</string>
-    <string name="temp_group_portal_send_mail">Enviar el correo del grupo</string>
+    <string name="temp_group_portal_send_mail">Enviar el correo de los invitados</string>
     <string name="portal_mail_account_title">Espacio en línea</string>
     <string name="portal_mail_account_address">Dirección:</string>
     <string name="portal_mail_account_login">Correo de acceso:</string>

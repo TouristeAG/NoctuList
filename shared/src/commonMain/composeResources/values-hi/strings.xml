@@ -454,7 +454,7 @@
     <string name="venue_both">सब</string>
 
     <!-- Temporary Guest List -->
-    <string name="temp_guest_artist_label">कलाकार/समूह</string>
+    <string name="temp_guest_artist_label">नाम (कलाकार, संस्था, दोस्त…)</string>
     <string name="temp_guest_event_date_label">घटना दिनांक</string>
     <string name="temp_guest_contact_phone_label">आपातकालीन संपर्क फ़ोन</string>
     <string name="temp_guest_chip_label">Temp</string>
@@ -2096,8 +2096,8 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="temp_guest_access_remove_message">“%1$s” उन सभी अस्थायी अतिथियों से हटा दी जाएगी जिनके पास यह है।</string>
     <string name="temp_guest_credits_setting_title">अस्थायी अतिथियों के लिए क्रेडिट खाते</string>
     <string name="temp_guest_credits_setting_description">अस्थायी अतिथि को स्थायी अतिथि की तरह बार बैलेंस रखने देता है। डिफ़ॉल्ट रूप से बंद।</string>
-    <string name="temp_guest_contact_email_label">संपर्क ईमेल</string>
-    <string name="temp_guest_contact_email_hint">कलाकार या प्रबंधक जिसे इस सूची के सभी QR कोड मिलते हैं।</string>
+    <string name="temp_guest_contact_email_label">संपर्क पता</string>
+    <string name="temp_guest_contact_email_hint">वह व्यक्ति जिसे इस मेहमान सूची के सभी QR कोड मिलते हैं।</string>
     <string name="temp_guest_venue_label">स्थल</string>
     <string name="temp_guest_venue_placeholder">स्थल चुनें</string>
     <string name="temp_guest_access_person_label">विशेष पहुँच</string>
@@ -2722,19 +2722,19 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="portal_guest_signup_received">पंजीकरण मिल गया। अतिथि जोड़ा जा रहा है…</string>
     <string name="portal_guest_signup_done">नया अतिथि जोड़ दिया गया।</string>
     <string name="portal_guest_signup_create">लिंक बनाएँ</string>
-    <string name="temp_group_portal_open">समूह का स्थान खोलें</string>
-    <string name="temp_group_portal_close">समूह का स्थान बंद करें</string>
-    <string name="temp_group_portal_close_confirm">समूह का स्थान बंद करें?</string>
+    <string name="temp_group_portal_open">मेहमान स्पेस खोलें</string>
+    <string name="temp_group_portal_close">मेहमान स्पेस बंद करें</string>
+    <string name="temp_group_portal_close_confirm">मेहमान स्पेस बंद करें?</string>
     <string name="temp_group_portal_opened_for">%1$s के लिए स्थान खुला है</string>
     <string name="temp_group_portal_reopen">%1$s के लिए फिर से खोलें</string>
-    <string name="temp_group_portal_no_email">पहले समूह का ई-मेल जोड़ें।</string>
-    <string name="temp_group_portal_title">समूह का स्थान</string>
+    <string name="temp_group_portal_no_email">पहले संपर्क पता जोड़ें।</string>
+    <string name="temp_group_portal_title">मेहमान स्पेस</string>
     <string name="temp_group_portal_password_body">%1$s का पासवर्ड, सिर्फ़ एक बार दिखाया जाता है।</string>
-    <string name="temp_group_portal_reused">समूह %1$s का मौजूदा खाता इस्तेमाल करता है।</string>
-    <string name="temp_group_portal_existing">%1$s के लिए खाता पहले से है। अगली बार साइन इन करने पर समूह दिखेगा।</string>
+    <string name="temp_group_portal_reused">सूची %1$s के मौजूदा खाते का उपयोग करती है।</string>
+    <string name="temp_group_portal_existing">%1$s के लिए खाता पहले से है। अगली बार साइन इन करने पर सूची दिखेगी।</string>
     <string name="temp_group_portal_failed">स्थान नहीं खुल सका (%1$s)।</string>
     <string name="temp_group_portal_close_failed">स्थान बंद नहीं हो सका।</string>
-    <string name="temp_group_portal_send_mail">समूह का ई-मेल भेजें</string>
+    <string name="temp_group_portal_send_mail">मेहमान ईमेल भेजें</string>
     <string name="portal_mail_account_title">ऑनलाइन स्थान</string>
     <string name="portal_mail_account_address">पता:</string>
     <string name="portal_mail_account_login">साइन-इन ई-मेल:</string>

@@ -454,7 +454,7 @@
     <string name="venue_both">ALL</string>
 
     <!-- Temporary Guest List -->
-    <string name="temp_guest_artist_label">Artist / Group</string>
+    <string name="temp_guest_artist_label">Name (artist, institution, friends…)</string>
     <string name="temp_guest_event_date_label">Event date</string>
     <string name="temp_guest_contact_phone_label">Emergency contact phone</string>
     <string name="temp_guest_chip_label">Temp</string>
@@ -2094,8 +2094,8 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="temp_guest_access_remove_message">“%1$s” will be removed from every temporary guest who has it.</string>
     <string name="temp_guest_credits_setting_title">Credit accounts for temporary guests</string>
     <string name="temp_guest_credits_setting_description">Lets a temporary guest hold a bar balance, like a permanent guest. Off by default.</string>
-    <string name="temp_guest_contact_email_label">Contact email</string>
-    <string name="temp_guest_contact_email_hint">Artist or manager who receives every QR code of this guest list.</string>
+    <string name="temp_guest_contact_email_label">Contact address</string>
+    <string name="temp_guest_contact_email_hint">Person who receives every QR code of this guest list.</string>
     <string name="temp_guest_venue_label">Venue</string>
     <string name="temp_guest_venue_placeholder">Choose a venue</string>
     <string name="temp_guest_access_person_label">Special accesses</string>
@@ -2712,19 +2712,19 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="portal_guest_signup_received">Registration received. Adding the guest…</string>
     <string name="portal_guest_signup_done">The new guest has been added.</string>
     <string name="portal_guest_signup_create">Create the link</string>
-    <string name="temp_group_portal_open">Open the group space</string>
-    <string name="temp_group_portal_close">Close the group space</string>
-    <string name="temp_group_portal_close_confirm">Close the group space?</string>
+    <string name="temp_group_portal_open">Open the guest space</string>
+    <string name="temp_group_portal_close">Close the guest space</string>
+    <string name="temp_group_portal_close_confirm">Close the guest space?</string>
     <string name="temp_group_portal_opened_for">Space open for %1$s</string>
     <string name="temp_group_portal_reopen">Reopen for %1$s</string>
-    <string name="temp_group_portal_no_email">Add the group e-mail first.</string>
-    <string name="temp_group_portal_title">Group space</string>
+    <string name="temp_group_portal_no_email">Add the contact address first.</string>
+    <string name="temp_group_portal_title">Guest space</string>
     <string name="temp_group_portal_password_body">Password for %1$s, shown only once.</string>
-    <string name="temp_group_portal_reused">The group uses the existing account of %1$s.</string>
-    <string name="temp_group_portal_existing">An account already exists for %1$s. The group appears when that account next signs in.</string>
+    <string name="temp_group_portal_reused">The list uses the existing account of %1$s.</string>
+    <string name="temp_group_portal_existing">An account already exists for %1$s. The list appears when that account next signs in.</string>
     <string name="temp_group_portal_failed">The space could not be opened (%1$s).</string>
     <string name="temp_group_portal_close_failed">The space could not be closed.</string>
-    <string name="temp_group_portal_send_mail">Send the group e-mail</string>
+    <string name="temp_group_portal_send_mail">Send the guest e-mail</string>
     <string name="portal_mail_account_title">Online space</string>
     <string name="portal_mail_account_address">Address:</string>
     <string name="portal_mail_account_login">Sign-in e-mail:</string>

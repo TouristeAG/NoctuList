@@ -346,7 +346,7 @@
     <string name="venue_both">全部</string>
 
     <!-- Temporary Guest List -->
-    <string name="temp_guest_artist_label">藝人 / 團體</string>
+    <string name="temp_guest_artist_label">名稱（藝人、機構、朋友…）</string>
     <string name="temp_guest_event_date_label">活動日期</string>
     <string name="temp_guest_contact_phone_label">緊急聯絡電話</string>
     <string name="temp_guest_chip_label">臨時</string>
@@ -2091,8 +2091,8 @@
     <string name="temp_guest_access_remove_message">「%1$s」將從所有擁有它的臨時嘉賓中移除。</string>
     <string name="temp_guest_credits_setting_title">臨時嘉賓的信用帳戶</string>
     <string name="temp_guest_credits_setting_description">讓臨時嘉賓像常駐嘉賓一樣擁有吧台餘額。預設關閉。</string>
-    <string name="temp_guest_contact_email_label">聯絡電郵</string>
-    <string name="temp_guest_contact_email_hint">接收該名單全部 QR Code 的藝人或經紀人。</string>
+    <string name="temp_guest_contact_email_label">聯絡地址</string>
+    <string name="temp_guest_contact_email_hint">接收此賓客名單所有 QR 碼的人。</string>
     <string name="temp_guest_venue_label">場地</string>
     <string name="temp_guest_venue_placeholder">選擇場地</string>
     <string name="temp_guest_access_person_label">特殊權限</string>
@@ -2717,19 +2717,19 @@
     <string name="portal_guest_signup_received">已收到註冊。正在新增嘉賓…</string>
     <string name="portal_guest_signup_done">新嘉賓已新增。</string>
     <string name="portal_guest_signup_create">建立連結</string>
-    <string name="temp_group_portal_open">開通團體空間</string>
-    <string name="temp_group_portal_close">關閉團體空間</string>
-    <string name="temp_group_portal_close_confirm">關閉團體空間？</string>
+    <string name="temp_group_portal_open">開啟賓客空間</string>
+    <string name="temp_group_portal_close">關閉賓客空間</string>
+    <string name="temp_group_portal_close_confirm">要關閉賓客空間嗎？</string>
     <string name="temp_group_portal_opened_for">空間已為 %1$s 開通</string>
     <string name="temp_group_portal_reopen">為 %1$s 重新開通</string>
-    <string name="temp_group_portal_no_email">請先新增團體電子郵件。</string>
-    <string name="temp_group_portal_title">團體空間</string>
+    <string name="temp_group_portal_no_email">請先新增聯絡地址。</string>
+    <string name="temp_group_portal_title">賓客空間</string>
     <string name="temp_group_portal_password_body">%1$s 的密碼，僅顯示一次。</string>
-    <string name="temp_group_portal_reused">該團體使用 %1$s 的現有帳戶。</string>
-    <string name="temp_group_portal_existing">%1$s 已有帳戶。下次登入時將看到該團體。</string>
+    <string name="temp_group_portal_reused">名單使用 %1$s 的現有帳戶。</string>
+    <string name="temp_group_portal_existing">%1$s 已有帳戶。下次登入時將看到該名單。</string>
     <string name="temp_group_portal_failed">無法開通空間（%1$s）。</string>
     <string name="temp_group_portal_close_failed">無法關閉空間。</string>
-    <string name="temp_group_portal_send_mail">傳送團體電子郵件</string>
+    <string name="temp_group_portal_send_mail">傳送賓客電郵</string>
     <string name="portal_mail_account_title">線上空間</string>
     <string name="portal_mail_account_address">網址：</string>
     <string name="portal_mail_account_login">登入電子郵件：</string>

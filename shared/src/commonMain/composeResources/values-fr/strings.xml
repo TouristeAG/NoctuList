@@ -857,7 +857,7 @@
     <string name="venue_both">TOUS</string>
 
     <!-- Temporary Guest List -->
-    <string name="temp_guest_artist_label">Artiste / Groupe</string>
+    <string name="temp_guest_artist_label">Nom (artiste, institution, amis…)</string>
     <string name="temp_guest_event_date_label">Date de l’événement</string>
     <string name="temp_guest_contact_phone_label">Numéro de téléphone d’urgence</string>
     <string name="temp_guest_chip_label">Temp</string>
@@ -2091,8 +2091,8 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="temp_guest_access_remove_message">« %1$s » sera retiré de tous les guests temporaires qui en disposent.</string>
     <string name="temp_guest_credits_setting_title">Comptes à crédits pour les guests temporaires</string>
     <string name="temp_guest_credits_setting_description">Permet à un guest temporaire d’avoir un solde au bar, comme un guest permanent. Désactivé par défaut.</string>
-    <string name="temp_guest_contact_email_label">Email de contact</string>
-    <string name="temp_guest_contact_email_hint">Artiste ou manager qui reçoit tous les QR codes de cette guest list.</string>
+    <string name="temp_guest_contact_email_label">Adresse de contact</string>
+    <string name="temp_guest_contact_email_hint">Personne qui reçoit tous les QR codes de cette liste d'invités.</string>
     <string name="temp_guest_venue_label">Lieu</string>
     <string name="temp_guest_venue_placeholder">Choisir un lieu</string>
     <string name="temp_guest_access_person_label">Accès spéciaux</string>
@@ -2709,19 +2709,19 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="portal_guest_signup_received">Inscription reçue. Ajout de l'invité…</string>
     <string name="portal_guest_signup_done">Le nouvel invité a été ajouté.</string>
     <string name="portal_guest_signup_create">Créer le lien</string>
-    <string name="temp_group_portal_open">Ouvrir l'espace du groupe</string>
-    <string name="temp_group_portal_close">Couper l'accès à l'espace</string>
-    <string name="temp_group_portal_close_confirm">Couper l'accès à l'espace ?</string>
+    <string name="temp_group_portal_open">Ouvrir l'espace invités</string>
+    <string name="temp_group_portal_close">Fermer l'espace invités</string>
+    <string name="temp_group_portal_close_confirm">Fermer l'espace invités ?</string>
     <string name="temp_group_portal_opened_for">Espace ouvert pour %1$s</string>
     <string name="temp_group_portal_reopen">Rouvrir pour %1$s</string>
-    <string name="temp_group_portal_no_email">Ajoutez d'abord l'e-mail du groupe.</string>
-    <string name="temp_group_portal_title">Espace du groupe</string>
+    <string name="temp_group_portal_no_email">Ajoutez d'abord l'adresse de contact.</string>
+    <string name="temp_group_portal_title">Espace invités</string>
     <string name="temp_group_portal_password_body">Mot de passe de %1$s, affiché une seule fois.</string>
-    <string name="temp_group_portal_reused">Le groupe utilise le compte existant de %1$s.</string>
-    <string name="temp_group_portal_existing">Un compte existe déjà pour %1$s. Le groupe apparaîtra à sa prochaine connexion.</string>
+    <string name="temp_group_portal_reused">La liste utilise le compte existant de %1$s.</string>
+    <string name="temp_group_portal_existing">Un compte existe déjà pour %1$s. La liste apparaîtra à sa prochaine connexion.</string>
     <string name="temp_group_portal_failed">L'espace n'a pas pu être ouvert (%1$s).</string>
     <string name="temp_group_portal_close_failed">L'accès n'a pas pu être coupé.</string>
-    <string name="temp_group_portal_send_mail">Envoyer l'e-mail du groupe</string>
+    <string name="temp_group_portal_send_mail">Envoyer l'e-mail des invités</string>
     <string name="portal_mail_account_title">Espace en ligne</string>
     <string name="portal_mail_account_address">Adresse :</string>
     <string name="portal_mail_account_login">E-mail de connexion :</string>
@@ -2743,5 +2743,5 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="portal_invites_access_max">Max</string>
     <string name="portal_invites_review_remove">Retrait pour %1$s</string>
     <string name="portal_invites_from_portal">Depuis la plateforme, par %1$s</string>
-    <string name="portal_invites_over_limit">Cela dépasse les limites de l\'événement. Retire des noms ou relève la limite.</string>
+    <string name="portal_invites_over_limit">Cela dépasse les limites de l'événement. Retirez des noms ou relevez la limite.</string>
 </resources>

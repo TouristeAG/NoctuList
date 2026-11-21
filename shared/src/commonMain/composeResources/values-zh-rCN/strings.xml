@@ -346,7 +346,7 @@
     <string name="venue_both">全部</string>
 
     <!-- Temporary Guest List -->
-    <string name="temp_guest_artist_label">艺人 / 团体</string>
+    <string name="temp_guest_artist_label">名称（艺人、机构、朋友…）</string>
     <string name="temp_guest_event_date_label">活动日期</string>
     <string name="temp_guest_contact_phone_label">紧急联系电话</string>
     <string name="temp_guest_chip_label">临时</string>
@@ -2091,8 +2091,8 @@
     <string name="temp_guest_access_remove_message">“%1$s”将从所有拥有它的临时嘉宾中移除。</string>
     <string name="temp_guest_credits_setting_title">临时嘉宾的信用账户</string>
     <string name="temp_guest_credits_setting_description">让临时嘉宾像常驻嘉宾一样拥有吧台余额。默认关闭。</string>
-    <string name="temp_guest_contact_email_label">联系邮箱</string>
-    <string name="temp_guest_contact_email_hint">接收该名单全部二维码的艺人或经纪人。</string>
+    <string name="temp_guest_contact_email_label">联系地址</string>
+    <string name="temp_guest_contact_email_hint">接收此宾客名单所有二维码的人。</string>
     <string name="temp_guest_venue_label">场地</string>
     <string name="temp_guest_venue_placeholder">选择场地</string>
     <string name="temp_guest_access_person_label">特殊权限</string>
@@ -2717,19 +2717,19 @@
     <string name="portal_guest_signup_received">已收到注册。正在添加嘉宾…</string>
     <string name="portal_guest_signup_done">新嘉宾已添加。</string>
     <string name="portal_guest_signup_create">创建链接</string>
-    <string name="temp_group_portal_open">开通团体空间</string>
-    <string name="temp_group_portal_close">关闭团体空间</string>
-    <string name="temp_group_portal_close_confirm">关闭团体空间？</string>
+    <string name="temp_group_portal_open">开启宾客空间</string>
+    <string name="temp_group_portal_close">关闭宾客空间</string>
+    <string name="temp_group_portal_close_confirm">要关闭宾客空间吗？</string>
     <string name="temp_group_portal_opened_for">空间已为 %1$s 开通</string>
     <string name="temp_group_portal_reopen">为 %1$s 重新开通</string>
-    <string name="temp_group_portal_no_email">请先添加团体邮箱。</string>
-    <string name="temp_group_portal_title">团体空间</string>
+    <string name="temp_group_portal_no_email">请先添加联系地址。</string>
+    <string name="temp_group_portal_title">宾客空间</string>
     <string name="temp_group_portal_password_body">%1$s 的密码，仅显示一次。</string>
-    <string name="temp_group_portal_reused">该团体使用 %1$s 的现有账户。</string>
-    <string name="temp_group_portal_existing">%1$s 已有账户。下次登录时将看到该团体。</string>
+    <string name="temp_group_portal_reused">名单使用 %1$s 的现有账户。</string>
+    <string name="temp_group_portal_existing">%1$s 已有账户。下次登录时将看到该名单。</string>
     <string name="temp_group_portal_failed">无法开通空间（%1$s）。</string>
     <string name="temp_group_portal_close_failed">无法关闭空间。</string>
-    <string name="temp_group_portal_send_mail">发送团体邮件</string>
+    <string name="temp_group_portal_send_mail">发送宾客邮件</string>
     <string name="portal_mail_account_title">在线空间</string>
     <string name="portal_mail_account_address">网址：</string>
     <string name="portal_mail_account_login">登录邮箱：</string>

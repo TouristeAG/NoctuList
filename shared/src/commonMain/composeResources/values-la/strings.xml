@@ -454,7 +454,7 @@
     <string name="venue_both">TOUS</string>
 
     <!-- Temporary Guest List -->
-    <string name="temp_guest_artist_label">Artiste / Groupe</string>
+    <string name="temp_guest_artist_label">Nomen (artifex, institutum, amici…)</string>
     <string name="temp_guest_event_date_label">Dies l’eventus</string>
     <string name="temp_guest_contact_phone_label">Subitis telephone numerus</string>
     <string name="temp_guest_chip_label">Temp</string>
@@ -2096,8 +2096,8 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="temp_guest_access_remove_message">«%1$s» ab omnibus hospitibus temporariis qui eum habent tolletur.</string>
     <string name="temp_guest_credits_setting_title">Rationes creditorum hospitibus temporariis</string>
     <string name="temp_guest_credits_setting_description">Sinit hospitem temporarium saldum in taberna habere, ut hospes perpetuus. Praedefinite exstinctum.</string>
-    <string name="temp_guest_contact_email_label">Epistula electronica contactus</string>
-    <string name="temp_guest_contact_email_hint">Artifex vel procurator qui omnes codices QR huius indicis accipit.</string>
+    <string name="temp_guest_contact_email_label">Inscriptio contactus</string>
+    <string name="temp_guest_contact_email_hint">Persona quae omnes codices QR huius indicis hospitum accipit.</string>
     <string name="temp_guest_venue_label">Locus</string>
     <string name="temp_guest_venue_placeholder">Locum elige</string>
     <string name="temp_guest_access_person_label">Aditus speciales</string>
@@ -2722,19 +2722,19 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="portal_guest_signup_received">Inscriptio accepta. Hospes additur…</string>
     <string name="portal_guest_signup_done">Novus hospes additus est.</string>
     <string name="portal_guest_signup_create">Nexum crea</string>
-    <string name="temp_group_portal_open">Spatium gregis aperi</string>
-    <string name="temp_group_portal_close">Spatium gregis claude</string>
-    <string name="temp_group_portal_close_confirm">Spatium gregis claudere?</string>
+    <string name="temp_group_portal_open">Spatium hospitum aperire</string>
+    <string name="temp_group_portal_close">Spatium hospitum claudere</string>
+    <string name="temp_group_portal_close_confirm">Spatiumne hospitum claudere?</string>
     <string name="temp_group_portal_opened_for">Spatium apertum pro %1$s</string>
     <string name="temp_group_portal_reopen">Iterum aperi pro %1$s</string>
-    <string name="temp_group_portal_no_email">Prius inscriptionem electronicam gregis adde.</string>
-    <string name="temp_group_portal_title">Spatium gregis</string>
+    <string name="temp_group_portal_no_email">Primum inscriptionem contactus adde.</string>
+    <string name="temp_group_portal_title">Spatium hospitum</string>
     <string name="temp_group_portal_password_body">Tessera pro %1$s, semel tantum ostenditur.</string>
-    <string name="temp_group_portal_reused">Grex rationem exstantem %1$s adhibet.</string>
-    <string name="temp_group_portal_existing">Ratio pro %1$s iam exstat. Grex proximo introitu apparebit.</string>
+    <string name="temp_group_portal_reused">Index rationem exstantem %1$s adhibet.</string>
+    <string name="temp_group_portal_existing">Ratio pro %1$s iam exstat. Index proximo introitu apparebit.</string>
     <string name="temp_group_portal_failed">Spatium aperiri non potuit (%1$s).</string>
     <string name="temp_group_portal_close_failed">Spatium claudi non potuit.</string>
-    <string name="temp_group_portal_send_mail">Epistulam gregis mitte</string>
+    <string name="temp_group_portal_send_mail">Epistulam hospitum mittere</string>
     <string name="portal_mail_account_title">Spatium interretiale</string>
     <string name="portal_mail_account_address">Inscriptio:</string>
     <string name="portal_mail_account_login">Inscriptio introitus:</string>
