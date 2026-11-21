@@ -46,6 +46,7 @@ import {
   authErrorKey,
   chooseProfile,
   claimReloadKey,
+  claimRetryDelays,
   cleanName,
   cleanPhone,
   clear,
@@ -674,6 +675,7 @@ async function doSignOut(reasonKey) {
   clearQr(path.orgId);
   portalUid = "";
   unlinkSent = false;
+  claimHandled = "";
   resetProfiles();
   photoUrl = "";
   photoVersionLoaded = "";
@@ -909,14 +911,17 @@ let claimHandled = "";
 
 /**
  * A DONE claim linked this account to a profile whose page was missing, and so refused (the
- * temporary page): read the refused pages again, now and once more a little later in case the
- * page is published after the answer.
+ * temporary page, whose listener then stops): read the refused pages again on a short backoff,
+ * since the page can be published minutes after the answer.
  */
 function reloadAfterClaim(uid) {
   const key = claimReloadKey(requests.CLAIM, claimHandled);
   if (!key || activeKind) return;
   claimHandled = key;
-  const reload = () => {
+  const delays = claimRetryDelays();
+  let timer = null;
+  unsubscribers.push(() => clearTimeout(timer));
+  const tick = (step) => {
     if (activeKind || portalUid !== uid) return;
     Object.entries(pages).forEach(([kind, page]) => {
       if (page.state !== "denied") return;
@@ -924,10 +929,20 @@ function reloadAfterClaim(uid) {
       watchPage(kind, uid);
       watchQr(kind, uid);
     });
+    arm(step + 1);
   };
-  reload();
-  const timer = setTimeout(reload, 5000);
-  unsubscribers.push(() => clearTimeout(timer));
+  // The next try waits for the answers of this one and only runs while a page is still refused.
+  const arm = (step) => {
+    if (step >= delays.length) return;
+    timer = setTimeout(() => {
+      if (activeKind || portalUid !== uid) return;
+      const states = Object.values(pages).map((p) => p.state);
+      // Still waiting for the last answers: look again later, as one more step of the schedule.
+      if (states.includes("loading")) return arm(step + 1);
+      if (states.includes("denied")) tick(step);
+    }, delays[step]);
+  };
+  tick(0);
 }
 
 function storedProfile() {

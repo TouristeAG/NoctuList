@@ -2,7 +2,7 @@
   "id": "/v/",
   "name": "Mon espace",
   "short_name": "Mon espace",
-  "description": "Tes shifts, tes avantages et ton porte-monnaie au même endroit.",
+  "description": "Tes avantages, ton porte-monnaie et ton QR code au même endroit.",
   "lang": "fr",
   "start_url": "/v/",
   "scope": "/v/",

@@ -83,6 +83,15 @@ export function profileStoreKey(orgId) {
 }
 
 /**
+ * When the pages refused before a DONE claim are read again, in ms between tries: about 3 minutes
+ * in all, since the page can follow the answer late (sync, 5 s publish debounce, and a device that
+ * only steps in after 2 minutes when the server is down).
+ */
+export function claimRetryDelays() {
+  return [0, 2000, 5000, 10000, 20000, 30000, 30000, 30000, 30000, 30000];
+}
+
+/**
  * A claim just answered DONE: the pages it linked were refused before (a missing temporary page
  * is refused, not empty) and must be read again. Returns the claim's key the first time, then null.
  */

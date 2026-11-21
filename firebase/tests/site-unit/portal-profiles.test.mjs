@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-const { chooseProfile, claimReloadKey, profileKinds, profilesSettled, profileStoreKey } = await import("../site/portal-common.js");
+const { chooseProfile, claimReloadKey, claimRetryDelays, profileKinds, profilesSettled, profileStoreKey } = await import("../site/portal-common.js");
 
 test("noProfileChoosesNothing", () => {
   assert.equal(chooseProfile([], "guest"), null);
@@ -49,4 +49,14 @@ test("aDoneClaimReloadsTheRefusedPagesOncePerClaim", () => {
   assert.ok(claimReloadKey({ status: "DONE", requestedAt: 2000 }, key));
   // A Firestore timestamp works like millis.
   assert.equal(claimReloadKey({ status: "DONE", requestedAt: { toMillis: () => 1000 } }, ""), key);
+});
+
+test("claimRetryDelaysAreABoundedBackoff", () => {
+  const delays = claimRetryDelays();
+  assert.equal(delays[0], 0);
+  assert.ok(delays.length > 3);
+  delays.forEach((d, i) => assert.ok(i === 0 || d >= delays[i - 1], `not monotonic at ${i}`));
+  const total = delays.reduce((a, b) => a + b, 0);
+  assert.ok(total >= 2 * 60_000, `too short: ${total}`);
+  assert.ok(total <= 3.5 * 60_000, `too long: ${total}`);
 });
