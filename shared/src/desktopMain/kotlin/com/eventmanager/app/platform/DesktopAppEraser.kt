@@ -50,7 +50,7 @@ object DesktopAppEraser {
             // ── Java Preferences (settings storage) ──────────────────────────────────
             // Stored outside ~/.noctulist; survives regular uninstall without this step.
             runCatching {
-                val node = Preferences.userRoot().node("com/eventmanager/app/noctulist")
+                val node = Preferences.userRoot().node(desktopPreferencesNode())
                 node.removeNode()
                 Preferences.userRoot().flush()
             }

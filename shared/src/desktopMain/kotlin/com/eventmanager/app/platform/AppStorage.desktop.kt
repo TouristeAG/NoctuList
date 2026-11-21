@@ -4,7 +4,7 @@ import com.russhwolf.settings.PreferencesSettings
 import java.util.prefs.Preferences
 
 actual fun createAppStorage(context: PlatformContext): AppStorage {
-    val prefs = Preferences.userRoot().node("com/eventmanager/app/noctulist")
+    val prefs = Preferences.userRoot().node(desktopPreferencesNode())
     return SettingsAppStorage(PreferencesSettings(prefs))
 }
 

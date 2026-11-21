@@ -10,6 +10,15 @@ actual class PlatformContext internal constructor(
 
 fun desktopDataDir(): File = File(System.getProperty("user.home"), ".noctulist")
 
+/**
+ * Java Preferences node holding the app settings. A development run can pass
+ * `-Dnoctulist.prefsNode=...` to keep its settings apart from the installed app
+ * (macOS stores Preferences per user, whatever `user.home` says).
+ */
+fun desktopPreferencesNode(): String =
+    System.getProperty("noctulist.prefsNode")?.trim()?.takeIf { it.isNotEmpty() }
+        ?: "com/eventmanager/app/noctulist"
+
 actual fun createPlatformContext(): PlatformContext {
     return desktopContext ?: run {
         val dir = desktopDataDir().also { it.mkdirs() }
