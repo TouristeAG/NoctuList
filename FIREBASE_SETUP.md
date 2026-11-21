@@ -139,9 +139,9 @@ How it stays safe:
 - E-mail/password accounts can never become team members.
 - Turning the setting off closes everything in the rules, and NoctuList removes the published pages.
 
-Admins never see passwords. For a volunteer created in the app, NoctuList generates a first password
-(shown once) and sends a "choose your password" e-mail; later, use **Send a password reset link** on
-the volunteer profile.
+Admins never see passwords. When access is opened for a volunteer or a permanent guest, NoctuList
+generates a first password and shows it once; no e-mail is sent. Later, use **Send a password reset
+link** on the profile so the person can choose their own.
 
 ### Optional: guest space
 
