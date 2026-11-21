@@ -2764,4 +2764,27 @@
     <string name="guest_list_access_revoke">移除</string>
     <string name="guest_list_access_given_by">由 %1$s 於 %2$s 給予</string>
     <string name="guest_list_access_revoked_on">已於 %1$s 移除</string>
+    <string name="sales_filter_status_label">狀態</string>
+    <string name="sales_filter_status_all">全部</string>
+    <string name="sales_filter_status_active">已啟用</string>
+    <string name="sales_filter_status_inactive">已停用</string>
+    <string name="sales_filter_category_label">類別</string>
+    <string name="sales_filter_uncategorized">無類別</string>
+    <string name="sales_filter_venue_label">場地</string>
+    <string name="sales_filter_more">更多篩選</string>
+    <string name="sales_filter_more_count">更多篩選 (%1$d)</string>
+    <string name="sales_filter_less">收起篩選</string>
+    <string name="sales_filter_reset">重設篩選</string>
+    <string name="sales_filter_any">不限</string>
+    <string name="sales_filter_price_label">價格</string>
+    <string name="sales_filter_price_min">最低</string>
+    <string name="sales_filter_price_max">最高</string>
+    <string name="sales_filter_empty">沒有符合這些篩選條件的商品</string>
+    <string name="sales_sort_label">排序</string>
+    <string name="sales_sort_name_asc">名稱 A 到 Z</string>
+    <string name="sales_sort_name_desc">名稱 Z 到 A</string>
+    <string name="sales_sort_price_asc">價格從低到高</string>
+    <string name="sales_sort_price_desc">價格從高到低</string>
+    <string name="sales_sort_recent">最近修改</string>
+    <string name="sales_sort_active_first">已啟用優先</string>
 </resources>

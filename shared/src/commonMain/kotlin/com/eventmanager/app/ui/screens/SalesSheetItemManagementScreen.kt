@@ -15,12 +15,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.eventmanager.app.data.models.PosSubcategory
@@ -31,7 +34,11 @@ import com.eventmanager.app.data.models.SalesSheetItem
 import com.eventmanager.app.data.models.VenueEntity
 import com.eventmanager.app.data.models.VolunteerRank
 import com.eventmanager.app.ui.components.EmojiPickerField
-import com.eventmanager.app.ui.components.SearchBarWithFilter
+import com.eventmanager.app.ui.components.SearchBar
+import com.eventmanager.app.data.utils.SalesItemFilter
+import com.eventmanager.app.data.utils.SalesItemFlagFilter
+import com.eventmanager.app.data.utils.SalesItemSort
+import com.eventmanager.app.data.utils.SalesItemStatusFilter
 import com.eventmanager.app.ui.components.phoneFractionDialogProperties
 import com.eventmanager.app.ui.components.DialogFractionSizer
 import com.eventmanager.app.ui.components.FractionalDialogProfile
@@ -55,15 +62,12 @@ fun SalesSheetItemManagementScreen(
     val subcategoriesEnabled = viewModel?.isPosSubcategoriesEnabled() == true
     val subcategoryCatalog by (viewModel?.posSubcategories ?: remember { MutableStateFlow(emptyList()) })
         .collectAsState()
-    var searchText by remember { mutableStateOf("") }
+    var filter by remember { mutableStateOf(SalesItemFilter()) }
     var showAddDialog by remember { mutableStateOf(false) }
     var editItem by remember { mutableStateOf<SalesSheetItem?>(null) }
     val padding = getResponsivePadding()
 
-    val filtered = remember(items, searchText) {
-        if (searchText.isBlank()) items
-        else items.filter { it.name.contains(searchText, ignoreCase = true) }
-    }
+    val filtered = remember(items, filter) { filter.apply(items) }
 
     Column(Modifier.fillMaxSize().padding(padding)) {
         Row(
@@ -89,23 +93,56 @@ fun SalesSheetItemManagementScreen(
         }
 
         Spacer(Modifier.height(12.dp))
-        SearchBarWithFilter(
-            searchText = searchText,
-            onSearchTextChange = { searchText = it },
-            placeholder = stringResource(Res.string.search_sales_items_placeholder),
-            filterOptions = emptyList(),
-            selectedFilter = null,
-            onFilterChange = { }
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = stringResource(Res.string.sales_items_count, filtered.count { it.isActive }, filtered.size),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            SearchBar(
+                searchText = filter.query,
+                onSearchTextChange = { filter = filter.copy(query = it) },
+                placeholder = stringResource(Res.string.search_sales_items_placeholder),
+                modifier = Modifier.weight(1f),
+            )
+            SalesItemSortMenu(sort = filter.sort, onSortChange = { filter = filter.copy(sort = it) })
+        }
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            item(key = "filters") {
+                SalesItemFilterPanel(
+                    filter = filter,
+                    items = items,
+                    venues = venues,
+                    onFilterChange = { filter = it },
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(Res.string.sales_items_count, filtered.count { it.isActive }, filtered.size),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (filter.hasFilters) {
+                        TextButton(onClick = { filter = filter.cleared() }) {
+                            Icon(Icons.Default.FilterAltOff, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(Res.string.sales_filter_reset))
+                        }
+                    }
+                }
+                if (filtered.isEmpty() && items.isNotEmpty()) {
+                    Text(
+                        text = stringResource(Res.string.sales_filter_empty),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
             items(filtered, key = { it.id }) { item ->
                 SalesSheetItemRow(
                     item = item,
@@ -148,6 +185,252 @@ fun SalesSheetItemManagementScreen(
                 editItem = null
             }
         )
+    }
+}
+
+@Composable
+private fun salesCategoryLabel(category: SalesCategory): String = when (category) {
+    SalesCategory.MERCH -> stringResource(Res.string.sales_category_merch)
+    SalesCategory.ENTRY -> stringResource(Res.string.sales_category_entry)
+    SalesCategory.BAR -> stringResource(Res.string.sales_category_bar)
+    SalesCategory.OTHER -> stringResource(Res.string.sales_category_other)
+}
+
+@Composable
+private fun SalesItemSortMenu(sort: SalesItemSort, onSortChange: (SalesItemSort) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    @Composable
+    fun label(option: SalesItemSort): String = stringResource(
+        when (option) {
+            SalesItemSort.NAME_ASC -> Res.string.sales_sort_name_asc
+            SalesItemSort.NAME_DESC -> Res.string.sales_sort_name_desc
+            SalesItemSort.PRICE_ASC -> Res.string.sales_sort_price_asc
+            SalesItemSort.PRICE_DESC -> Res.string.sales_sort_price_desc
+            SalesItemSort.RECENT -> Res.string.sales_sort_recent
+            SalesItemSort.ACTIVE_FIRST -> Res.string.sales_sort_active_first
+        }
+    )
+    Box {
+        OutlinedButton(onClick = { expanded = true }) {
+            Icon(
+                Icons.AutoMirrored.Filled.Sort,
+                contentDescription = stringResource(Res.string.sales_sort_label),
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(label(sort), maxLines = 1)
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            SalesItemSort.entries.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(label(option)) },
+                    leadingIcon = if (option == sort) {
+                        { Icon(Icons.Default.Check, contentDescription = null) }
+                    } else null,
+                    onClick = {
+                        onSortChange(option)
+                        expanded = false
+                    },
+                )
+            }
+        }
+    }
+}
+
+/** One labelled, horizontally scrolling row of chips. */
+@Composable
+private fun SalesFilterGroup(label: String, content: @Composable RowScope.() -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(top = 6.dp)) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            content = content,
+        )
+    }
+}
+
+@Composable
+private fun SalesFlagGroup(label: String, value: SalesItemFlagFilter, onChange: (SalesItemFlagFilter) -> Unit) {
+    SalesFilterGroup(label) {
+        listOf(
+            SalesItemFlagFilter.ANY to Res.string.sales_filter_any,
+            SalesItemFlagFilter.YES to Res.string.yes,
+            SalesItemFlagFilter.NO to Res.string.no,
+        ).forEach { (option, text) ->
+            FilterChip(
+                selected = value == option,
+                onClick = { onChange(option) },
+                label = { Text(stringResource(text)) },
+            )
+        }
+    }
+}
+
+private fun <T> Set<T>.toggle(value: T): Set<T> = if (value in this) this - value else this + value
+
+@Composable
+private fun SalesItemFilterPanel(
+    filter: SalesItemFilter,
+    items: List<SalesSheetItem>,
+    venues: List<VenueEntity>,
+    onFilterChange: (SalesItemFilter) -> Unit,
+) {
+    var showMore by rememberSaveable { mutableStateOf(filter.secondaryCount > 0) }
+
+    SalesFilterGroup(stringResource(Res.string.sales_filter_status_label)) {
+        listOf(
+            SalesItemStatusFilter.ALL to Res.string.sales_filter_status_all,
+            SalesItemStatusFilter.ACTIVE to Res.string.sales_filter_status_active,
+            SalesItemStatusFilter.INACTIVE to Res.string.sales_filter_status_inactive,
+        ).forEach { (option, text) ->
+            FilterChip(
+                selected = filter.status == option,
+                onClick = { onFilterChange(filter.copy(status = option)) },
+                label = { Text(stringResource(text)) },
+            )
+        }
+    }
+
+    SalesFilterGroup(stringResource(Res.string.sales_filter_category_label)) {
+        SalesCategory.entries.forEach { category ->
+            FilterChip(
+                selected = category in filter.categories,
+                onClick = { onFilterChange(filter.copy(categories = filter.categories.toggle(category))) },
+                label = { Text(salesCategoryLabel(category)) },
+            )
+        }
+        FilterChip(
+            selected = filter.includeUncategorized,
+            onClick = { onFilterChange(filter.copy(includeUncategorized = !filter.includeUncategorized)) },
+            label = { Text(stringResource(Res.string.sales_filter_uncategorized)) },
+        )
+    }
+
+    val venueNames = remember(venues) {
+        listOf(PosVenueScope.GLOBAL) + venues.filter { it.isActive }.map { it.name }
+    }
+    SalesFilterGroup(stringResource(Res.string.sales_filter_venue_label)) {
+        venueNames.forEach { name ->
+            FilterChip(
+                selected = name in filter.venues,
+                onClick = { onFilterChange(filter.copy(venues = filter.venues.toggle(name))) },
+                label = {
+                    Text(if (name == PosVenueScope.GLOBAL) stringResource(Res.string.pos_venue_global) else name)
+                },
+            )
+        }
+    }
+
+    TextButton(onClick = { showMore = !showMore }, contentPadding = PaddingValues(horizontal = 4.dp)) {
+        Icon(
+            if (showMore) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(Modifier.width(4.dp))
+        Text(
+            when {
+                showMore -> stringResource(Res.string.sales_filter_less)
+                filter.secondaryCount > 0 -> stringResource(Res.string.sales_filter_more_count, filter.secondaryCount)
+                else -> stringResource(Res.string.sales_filter_more)
+            }
+        )
+    }
+
+    if (!showMore) return
+
+    val subcategories = remember(items) {
+        items.map { it.subcategory.trim() }
+            .filter { it.isNotEmpty() }
+            .distinctBy { it.lowercase() }
+            .sortedBy { it.lowercase() }
+    }
+    if (subcategories.isNotEmpty()) {
+        SalesFilterGroup(stringResource(Res.string.sales_subcategory_label)) {
+            FilterChip(
+                selected = "" in filter.subcategories,
+                onClick = { onFilterChange(filter.copy(subcategories = filter.subcategories.toggle(""))) },
+                label = { Text(stringResource(Res.string.sales_subcategory_none)) },
+            )
+            subcategories.forEach { name ->
+                val key = name.lowercase()
+                FilterChip(
+                    selected = key in filter.subcategories,
+                    onClick = { onFilterChange(filter.copy(subcategories = filter.subcategories.toggle(key))) },
+                    label = { Text(name) },
+                )
+            }
+        }
+    }
+
+    SalesFlagGroup(stringResource(Res.string.sales_deposit_label), filter.deposit) {
+        onFilterChange(filter.copy(deposit = it))
+    }
+    SalesFlagGroup(stringResource(Res.string.sales_discount_label), filter.discount) {
+        onFilterChange(filter.copy(discount = it))
+    }
+
+    // ETOILE is legacy: only offer it while some item still asks for it.
+    val ranks = remember(items) {
+        VolunteerRank.entries.filter { rank -> rank != VolunteerRank.ETOILE || items.any { it.requiredRank == rank } }
+    }
+    SalesFilterGroup(stringResource(Res.string.sales_required_rank_label)) {
+        FilterChip(
+            selected = null in filter.ranks,
+            onClick = { onFilterChange(filter.copy(ranks = filter.ranks.toggle(null))) },
+            label = { Text(stringResource(Res.string.sales_rank_none_required)) },
+        )
+        ranks.forEach { rank ->
+            FilterChip(
+                selected = rank in filter.ranks,
+                onClick = { onFilterChange(filter.copy(ranks = filter.ranks.toggle(rank))) },
+                label = { Text(rank.name) },
+            )
+        }
+    }
+
+    var minText by remember { mutableStateOf(filter.minPrice?.toString().orEmpty()) }
+    var maxText by remember { mutableStateOf(filter.maxPrice?.toString().orEmpty()) }
+    fun parsePrice(text: String): Double? = text.replace(',', '.').toDoubleOrNull()
+    // Keep the fields in step when "Reset filters" clears the bounds.
+    LaunchedEffect(filter.minPrice) { if (filter.minPrice == null && parsePrice(minText) != null) minText = "" }
+    LaunchedEffect(filter.maxPrice) { if (filter.maxPrice == null && parsePrice(maxText) != null) maxText = "" }
+    Column(Modifier.fillMaxWidth().padding(top = 6.dp)) {
+        Text(
+            stringResource(Res.string.sales_filter_price_label),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+                value = minText,
+                onValueChange = {
+                    minText = it
+                    onFilterChange(filter.copy(minPrice = parsePrice(it)))
+                },
+                label = { Text(stringResource(Res.string.sales_filter_price_min)) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                modifier = Modifier.widthIn(max = 140.dp),
+            )
+            OutlinedTextField(
+                value = maxText,
+                onValueChange = {
+                    maxText = it
+                    onFilterChange(filter.copy(maxPrice = parsePrice(it)))
+                },
+                label = { Text(stringResource(Res.string.sales_filter_price_max)) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                modifier = Modifier.widthIn(max = 140.dp),
+            )
+        }
     }
 }
 

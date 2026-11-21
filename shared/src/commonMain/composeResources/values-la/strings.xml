@@ -2769,4 +2769,27 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="guest_list_access_revoke">Removere</string>
     <string name="guest_list_access_given_by">Datus a %1$s die %2$s</string>
     <string name="guest_list_access_revoked_on">Remotus die %1$s</string>
+    <string name="sales_filter_status_label">Status</string>
+    <string name="sales_filter_status_all">Omnia</string>
+    <string name="sales_filter_status_active">Activa</string>
+    <string name="sales_filter_status_inactive">Inactiva</string>
+    <string name="sales_filter_category_label">Categoria</string>
+    <string name="sales_filter_uncategorized">Sine categoria</string>
+    <string name="sales_filter_venue_label">Locus</string>
+    <string name="sales_filter_more">Plura filtra</string>
+    <string name="sales_filter_more_count">Plura filtra (%1$d)</string>
+    <string name="sales_filter_less">Pauciora filtra</string>
+    <string name="sales_filter_reset">Filtra restituere</string>
+    <string name="sales_filter_any">Quodlibet</string>
+    <string name="sales_filter_price_label">Pretium</string>
+    <string name="sales_filter_price_min">Min</string>
+    <string name="sales_filter_price_max">Max</string>
+    <string name="sales_filter_empty">Nulla res his filtris convenit</string>
+    <string name="sales_sort_label">Ordinare</string>
+    <string name="sales_sort_name_asc">Nomen A ad Z</string>
+    <string name="sales_sort_name_desc">Nomen Z ad A</string>
+    <string name="sales_sort_price_asc">Pretium, minimum primum</string>
+    <string name="sales_sort_price_desc">Pretium, maximum primum</string>
+    <string name="sales_sort_recent">Nuper mutata</string>
+    <string name="sales_sort_active_first">Activa prima</string>
 </resources>
