@@ -182,7 +182,12 @@ internal class FakeHost(initial: List<Volunteer>) : VolunteerPortalHost {
 
 internal class FakeAuth(private val create: PortalAuthResult) : PortalAuthApi {
     val resets = mutableListOf<String>()
-    override suspend fun createAccount(email: String, password: String) = create
+    /** Addresses createAccount was called with. */
+    val creates = mutableListOf<String>()
+    override suspend fun createAccount(email: String, password: String): PortalAuthResult {
+        creates += email
+        return create
+    }
     override suspend fun sendPasswordReset(email: String, languageCode: String): PortalAuthResult {
         resets += email
         return PortalAuthResult.Sent

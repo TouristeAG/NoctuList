@@ -1074,9 +1074,34 @@ class VolunteerPortalService(
     suspend fun grantGuestAccess(guest: Guest): PortalGrantResult {
         if (!host.guestPortalEnabled()) return PortalGrantResult.Failed("GUEST_SPACE_OFF")
         if (!guest.isPermanentPortalGuest) return PortalGrantResult.Failed("NOT_PERMANENT")
+        // The address already has a linked account (the guest itself or a volunteer of the same
+        // address): use it. The portal sends no CLAIM for a session that already shows a profile.
+        val email = PortalInputValidator.cleanEmail(guest.email)
+        if (email != null) {
+            val linkedUid = linkedUidOf(email, guest)
+            if (linkedUid != null) {
+                val current = orgGuests().firstOrNull { it.nanoId == guest.nanoId } ?: guest
+                val opened = current.copy(portalEnabled = true, portalUid = linkedUid, lastModified = maxOf(clock(), current.lastModified + 1))
+                if (opened != current && !host.saveGuest(opened)) return PortalGrantResult.Failed("SAVE_FAILED")
+                applyGoogleAddressRule(PortalHolderKind.GUEST, guest.nanoId)
+                return PortalGrantResult.ExistingAccount
+            }
+        }
         return openAccess(guest.asPortalHolder()) { uid ->
             host.saveGuest(guest.copy(portalEnabled = true, portalUid = uid, lastModified = maxOf(clock(), guest.lastModified + 1)))
         }
+    }
+
+    /** Portal uid already linked to [email] in this organization: [guest] itself first, then volunteers and other permanent guests. */
+    private suspend fun linkedUidOf(email: String, guest: Guest): String? {
+        val guests = orgGuests()
+        val self = guests.firstOrNull { it.nanoId == guest.nanoId } ?: guest
+        if (self.portalUid.isNotBlank() && PortalGoogleLinkProcessor.sameAddress(self.email, email)) return self.portalUid
+        orgVolunteers().firstOrNull { it.portalUid.isNotBlank() && PortalGoogleLinkProcessor.sameAddress(it.email, email) }
+            ?.let { return it.portalUid }
+        return guests.firstOrNull {
+            it.isPermanentPortalGuest && it.portalUid.isNotBlank() && PortalGoogleLinkProcessor.sameAddress(it.email, email)
+        }?.portalUid
     }
 
     /**
@@ -1116,6 +1141,7 @@ class VolunteerPortalService(
      * uses for a volunteer or another guest on it (Google alias, account photo) stays.
      */
     suspend fun revokeGuestAccess(guest: Guest): Boolean {
+        if (!guest.isPermanentPortalGuest) return false
         val current = orgGuests().firstOrNull { it.nanoId == guest.nanoId } ?: guest
         val uid = current.portalUid
         val googleUid = current.portalGoogleUid
@@ -1123,15 +1149,16 @@ class VolunteerPortalService(
         if (googleUid.isNotBlank() && !others.carries(googleUid)) {
             runCatching { gateway.deleteDocument(orgId, PortalGoogleAccount.COLLECTION, googleUid) }
         }
-        // An address the admin typed stays, so reopening the access links the same account again.
-        val adminLink = current.portalGoogleLinkedBy == Volunteer.GOOGLE_LINKED_BY_ADMIN
+        // Same rule as revokeAccess: only a link the person made goes; an address the admin typed
+        // stays, so reopening the access links the same account again.
+        val selfLink = current.portalGoogleLinkedBy == Volunteer.GOOGLE_LINKED_BY_VOLUNTEER
         val saved = host.saveGuest(
             current.copy(
                 portalEnabled = false,
                 portalUid = "",
                 portalGoogleUid = "",
-                portalGoogleEmail = if (adminLink) current.portalGoogleEmail else "",
-                portalGoogleLinkedBy = if (adminLink) current.portalGoogleLinkedBy else "",
+                portalGoogleEmail = if (selfLink) "" else current.portalGoogleEmail,
+                portalGoogleLinkedBy = if (selfLink) "" else current.portalGoogleLinkedBy,
                 lastModified = maxOf(clock(), current.lastModified + 1),
             ),
         )
@@ -1158,8 +1185,10 @@ class VolunteerPortalService(
         mutex.withLock {
             unpublishGuest(uid, others)
             if (!others.inUse) runCatchingLogged("portal upload delete") { host.deleteStorage(portalUploadPath(uid)) }
+            val otherGuest = others.holders.any { it.kind == PortalHolderKind.GUEST }
             for (type in PortalRequestType.entries) {
-                if (others.inUse && !isGuestRequestType(type.name)) continue
+                // Guest requests stay for another permanent guest of the uid; the account's own while anyone uses it.
+                if (if (isGuestRequestType(type.name)) otherGuest else others.inUse) continue
                 runCatchingLogged("request delete") { gateway.deleteDocument(orgId, PortalRequest.COLLECTION, "${uid}_${type.name}") }
             }
         }

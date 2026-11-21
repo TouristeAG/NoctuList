@@ -1370,6 +1370,72 @@ class VolunteerPortalServiceTest {
     }
 
     @Test
+    fun grantGuestAccessReusesTheVolunteerAccount() = runBlocking {
+        val host = ruleHost(volunteer("V1", "Max@Example.org", enabled = true, uid = UID)).apply { guestSpace = true }
+        host.guests += guest("G1", "max@example.org", enabled = false)
+        val auth = FakeAuth(PortalAuthResult.EmailExists)
+        assertIs<PortalGrantResult.ExistingAccount>(service(FakeGateway(), host, auth).grantGuestAccess(host.guests.single()))
+        assertTrue(auth.creates.isEmpty(), "no account is created")
+        val g = host.guests.single()
+        assertTrue(g.portalEnabled)
+        assertEquals(UID, g.portalUid)
+        assertEquals("max.dupont@asso.ch", g.portalGoogleEmail, "the Google rule still applies")
+        assertEquals(0, auth.resets.size)
+    }
+
+    @Test
+    fun grantGuestAccessOnAnOpenGuestKeepsItsLink() = runBlocking {
+        val host = FakeHost(emptyList()).apply { guestSpace = true }
+        host.guests += guest("G1", "max@example.org", uid = UID)
+        val auth = FakeAuth(PortalAuthResult.EmailExists)
+        assertIs<PortalGrantResult.ExistingAccount>(service(FakeGateway(), host, auth).grantGuestAccess(host.guests.single()))
+        assertTrue(auth.creates.isEmpty())
+        assertEquals(UID, host.guests.single().portalUid)
+        assertTrue(host.guests.single().portalEnabled)
+    }
+
+    @Test
+    fun revokingAGuestKeepsAnyAddressItDidNotLinkItself() = runBlocking {
+        for ((linkedBy, kept) in listOf("VOLUNTEER" to false, "ADMIN" to true, "" to true)) {
+            val host = FakeHost(emptyList()).apply { guestSpace = true }
+            host.guests += guest("G1", "max@example.org", uid = UID)
+                .copy(portalGoogleEmail = "max@asso.ch", portalGoogleUid = GOOGLE_UID, portalGoogleLinkedBy = linkedBy)
+            assertTrue(service(FakeGateway(), host).revokeGuestAccess(host.guests.single()))
+            val g = host.guests.single()
+            assertEquals(if (kept) "max@asso.ch" else "", g.portalGoogleEmail, linkedBy)
+            assertEquals(if (kept) linkedBy else "", g.portalGoogleLinkedBy, linkedBy)
+            assertEquals("", g.portalGoogleUid)
+        }
+    }
+
+    @Test
+    fun revokeGuestAccessRefusesTemporaryAndBenefitRows() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(emptyList()).apply { guestSpace = true; tempSpace = true }
+        host.guests += tempGroup("T1", "band@example.org", uid = UID)
+        host.guests += guest("B1", "ben@example.org", uid = UID).copy(isVolunteerBenefit = true)
+        gateway.docs["temporaryGuestPortal/$UID"] = mapOf("payload" to "{}")
+        val svc = service(gateway, host)
+        assertFalse(svc.revokeGuestAccess(host.guests[0]))
+        assertFalse(svc.revokeGuestAccess(host.guests[1]))
+        assertTrue(host.guests.all { it.portalEnabled && it.portalUid == UID })
+        assertTrue(gateway.docs.containsKey("temporaryGuestPortal/$UID"))
+    }
+
+    @Test
+    fun forgettingAGuestKeepsGuestRequestsForAnotherGuestOfTheUid() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(emptyList()).apply { guestSpace = true }
+        host.guests += guest("G1", "max@example.org", uid = UID)
+        host.guests += guest("G2", "max@example.org", uid = UID)
+        gateway.docs["guestPortal/$UID"] = mapOf("payload" to "{}")
+        PortalRequestType.entries.forEach { gateway.docs["portalRequests/${UID}_${it.name}"] = mapOf("status" to "DONE") }
+        service(gateway, host).forgetGuest(host.guests[0])
+        PortalRequestType.entries.forEach { assertTrue(gateway.docs.containsKey("portalRequests/${UID}_${it.name}"), it.name) }
+        assertTrue(gateway.docs.containsKey("guestPortal/$UID"), "the other guest's page stays")
+    }
+
+    @Test
     fun guestPasswordResetGoesToTheGuestAddress() = runBlocking {
         val host = FakeHost(emptyList())
         val auth = FakeAuth(PortalAuthResult.Sent)
@@ -1622,7 +1688,7 @@ class VolunteerPortalServiceTest {
         val gateway3 = FakeGateway()
         val host3 = FakeHost(emptyList()).apply { guestSpace = true }
         host3.guests += guest("G1", "max@example.org", uid = UID)
-            .copy(portalGoogleEmail = "max@asso.ch", portalGoogleUid = GOOGLE_UID, portalGoogleLinkedBy = "GUEST")
+            .copy(portalGoogleEmail = "max@asso.ch", portalGoogleUid = GOOGLE_UID, portalGoogleLinkedBy = "VOLUNTEER")
         gateway3.docs["portalGoogleAccounts/$GOOGLE_UID"] = mapOf("volunteerUid" to UID)
         assertTrue(service(gateway3, host3).revokeGuestAccess(host3.guests.single()))
         assertNull(gateway3.docs["portalGoogleAccounts/$GOOGLE_UID"])
