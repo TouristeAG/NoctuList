@@ -308,4 +308,12 @@ class PortalGoogleLinkProcessorTest {
             PortalGoogleLinkProcessor.adminMatch(adminClaim(), listOf(v, g, other), domains, null),
         )
     }
+
+    @Test
+    fun guestHolderNeverPrintsItsNanoId() {
+        val text = guest("PortalUidG1").toString()
+        assertEquals(false, text.contains("GuestPortalUidG1"))
+        assertEquals(true, text.contains("<redacted>"))
+        assertEquals(true, volunteer("V1").toString().contains("id=V1"))
+    }
 }

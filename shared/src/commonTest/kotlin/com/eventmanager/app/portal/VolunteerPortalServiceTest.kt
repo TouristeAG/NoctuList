@@ -1219,5 +1219,96 @@ class VolunteerPortalServiceTest {
         assertEquals("NO_MATCH", gateway.docs["portalGoogleClaims/$other"]!!["reason"])
     }
 
+    @Test
+    fun assigningANewAddressMovesTheGuestsOfTheAccountToo() = runBlocking {
+        val oldGoogle = "OldGoogleUid000000000001"
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(
+            volunteer("V1", "lea@example.org", enabled = true, uid = UID)
+                .copy(portalGoogleEmail = "x@asso.ch", portalGoogleUid = oldGoogle, portalGoogleLinkedBy = "ADMIN"),
+        ))
+        host.guestSpace = true
+        host.guests += guest("G1", "lea@example.org", uid = UID)
+            .copy(portalGoogleEmail = "x@asso.ch", portalGoogleUid = oldGoogle, portalGoogleLinkedBy = "ADMIN")
+        gateway.docs["portalGoogleAccounts/$oldGoogle"] = mapOf("volunteerUid" to UID)
+        val svc = startedService(gateway, host)
+        assertNull(svc.assignGoogleAccount(host.volunteers.single(), "y@asso.ch"))
+
+        assertNull(gateway.docs["portalGoogleAccounts/$oldGoogle"], "the former Google account loses access")
+        val g = host.guests.single()
+        assertEquals("y@asso.ch", g.portalGoogleEmail)
+        assertEquals("", g.portalGoogleUid)
+        assertEquals("ADMIN", g.portalGoogleLinkedBy)
+
+        // The former account signs in again: nobody carries its address any more.
+        val key = "portalGoogleClaims/$oldGoogle"
+        gateway.docs[key] = adminMatchClaim(email = "x@asso.ch")
+        gateway.push("portalGoogleClaims")
+        assertEquals("NO_MATCH", gateway.docs[key]!!["reason"])
+        assertEquals("", host.volunteers.single().portalGoogleUid)
+    }
+
+    @Test
+    fun removingAndUnlinkingClearTheGuestEvenWithTheSpaceOff() = runBlocking {
+        val gateway = FakeGateway()
+        fun linkedHost(linkedBy: String) = FakeHost(listOf(
+            volunteer("V1", "lea@example.org", enabled = true, uid = UID)
+                .copy(portalGoogleEmail = "x@asso.ch", portalGoogleUid = GOOGLE_UID, portalGoogleLinkedBy = linkedBy),
+        )).apply {
+            guests += guest("G1", "lea@example.org", uid = UID)
+                .copy(portalGoogleEmail = "x@asso.ch", portalGoogleUid = GOOGLE_UID, portalGoogleLinkedBy = linkedBy)
+        }
+
+        val removed = linkedHost("ADMIN")
+        gateway.docs["portalGoogleAccounts/$GOOGLE_UID"] = mapOf("volunteerUid" to UID)
+        assertTrue(service(gateway, removed).removeGoogleAccount(removed.volunteers.single()))
+        assertNull(gateway.docs["portalGoogleAccounts/$GOOGLE_UID"])
+        assertEquals("", removed.guests.single().portalGoogleEmail)
+        assertEquals("", removed.guests.single().portalGoogleUid)
+        assertEquals("", removed.guests.single().portalGoogleLinkedBy)
+
+        val unlinked = linkedHost("VOLUNTEER")
+        gateway.docs["portalGoogleAccounts/$GOOGLE_UID"] = mapOf("volunteerUid" to UID)
+        startedService(gateway, unlinked)
+        val key = "portalRequests/${UID}_GOOGLE_UNLINK"
+        gateway.docs[key] = mapOf("uid" to UID, "type" to "GOOGLE_UNLINK", "status" to "PENDING", "email" to "lea@example.org")
+        gateway.push("portalRequests")
+        assertEquals("DONE", gateway.docs[key]!!["status"])
+        assertNull(gateway.docs["portalGoogleAccounts/$GOOGLE_UID"])
+        assertEquals("", unlinked.guests.single().portalGoogleUid)
+        assertEquals("", unlinked.guests.single().portalGoogleEmail)
+        assertEquals("", unlinked.volunteers.single().portalGoogleUid)
+    }
+
+    @Test
+    fun claimByAnExistingOwnerSkipsAGuestLinkedElsewhere() = runBlocking {
+        val gateway = FakeGateway()
+        val other = "OtherUid0000000000000002"
+        val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true, uid = UID)))
+        host.guestSpace = true
+        host.guests += guest("G1", "lea@example.org", uid = other)
+        startedService(gateway, host)
+        val key = "portalRequests/${UID}_CLAIM"
+        gateway.docs[key] = mapOf("uid" to UID, "type" to "CLAIM", "status" to "PENDING", "email" to "lea@example.org")
+        gateway.push("portalRequests")
+        assertEquals("DONE", gateway.docs[key]!!["status"])
+        assertEquals("", gateway.docs[key]!!["reason"])
+        assertEquals(other, host.guests.single().portalUid)
+    }
+
+    @Test
+    fun claimByAnExistingOwnerLinksAFreeGuest() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true, uid = UID)))
+        host.guestSpace = true
+        host.guests += guest("G1", "lea@example.org")
+        startedService(gateway, host)
+        val key = "portalRequests/${UID}_CLAIM"
+        gateway.docs[key] = mapOf("uid" to UID, "type" to "CLAIM", "status" to "PENDING", "email" to "lea@example.org")
+        gateway.push("portalRequests")
+        assertEquals("DONE", gateway.docs[key]!!["status"])
+        assertEquals(UID, host.guests.single().portalUid)
+    }
+
     // endregion
 }

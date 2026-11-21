@@ -19,7 +19,12 @@ data class PortalHolder(
     val portalGoogleUid: String,
     val portalGoogleLinkedBy: String,
     val isAdmin: Boolean,
-)
+) {
+    /** A guest's [id] is its nanoId, which must never reach a log. */
+    override fun toString(): String =
+        "PortalHolder(kind=$kind, id=${if (kind == PortalHolderKind.GUEST) "<redacted>" else id}, " +
+            "portalEnabled=$portalEnabled, portalUid=$portalUid, portalGoogleLinkedBy=$portalGoogleLinkedBy, isAdmin=$isAdmin)"
+}
 
 fun Volunteer.asPortalHolder() = PortalHolder(
     kind = PortalHolderKind.VOLUNTEER,

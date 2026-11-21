@@ -432,14 +432,17 @@ class VolunteerPortalService(
             }
             PortalRequestType.GOOGLE_UNLINK -> {
                 val account = PortalGoogleLinkProcessor.accountOf(request.uid, googleHolders(volunteers, guests))
+                // Clearing never grants access: guests of the account lose the link even with their space off.
+                val accountGuests = if (account.isEmpty()) emptyList() else sameAccountGuests(request.uid, guests)
+                val everyone = account + accountGuests.map { it.asPortalHolder() }
                 // Any admin-held link on the account keeps it, whichever profile carries it.
-                val decider = account.firstOrNull { it.portalGoogleLinkedBy == Volunteer.GOOGLE_LINKED_BY_ADMIN }
+                val decider = everyone.firstOrNull { it.portalGoogleLinkedBy == Volunteer.GOOGLE_LINKED_BY_ADMIN }
                     ?: account.firstOrNull()?.let { PortalGoogleLinkProcessor.primary(account) }
                 val reason = PortalGoogleLinkProcessor.canUnlink(decider)
                 if (reason != null) return complete(requestId, PortalRequest.STATUS_REJECTED, reason)
                 val ok = clearGoogleLink(
                     volunteers.filter { v -> account.any { it.kind == PortalHolderKind.VOLUNTEER && it.id == v.id } },
-                    guests.filter { g -> account.any { it.kind == PortalHolderKind.GUEST && it.id == g.nanoId } },
+                    accountGuests,
                 )
                 complete(requestId, if (ok) PortalRequest.STATUS_DONE else PortalRequest.STATUS_REJECTED, if (ok) "" else "SAVE_FAILED")
             }
@@ -551,18 +554,21 @@ class VolunteerPortalService(
             it.portalUid != uid && (if (it.isTemporaryGuest) it.temporaryContactEmail else it.email).trim()
                 .equals(request.email, ignoreCase = true)
         }
-        if (guestTargets.any { it.portalUid.isNotBlank() }) {
+        val foreign = guestTargets.filter { it.portalUid.isNotBlank() }
+        // Someone who already has access gets no error: the profile linked elsewhere is just skipped.
+        val hasAccess = owner != null || guestOwned
+        if (foreign.isNotEmpty() && !hasAccess) {
             return complete(request.requestId, PortalRequest.STATUS_REJECTED, "LINKED_ELSEWHERE")
         }
-        if (volunteerToLink == null && guestTargets.isEmpty()) {
-            val done = owner != null || guestOwned
-            return complete(request.requestId, if (done) PortalRequest.STATUS_DONE else PortalRequest.STATUS_REJECTED, if (done) "" else "NO_ACCESS")
+        val freeGuests = guestTargets - foreign.toSet()
+        if (volunteerToLink == null && freeGuests.isEmpty()) {
+            return complete(request.requestId, if (hasAccess) PortalRequest.STATUS_DONE else PortalRequest.STATUS_REJECTED, if (hasAccess) "" else "NO_ACCESS")
         }
         var ok = true
         volunteerToLink?.let { v ->
             ok = host.saveVolunteer(v.copy(portalUid = uid, lastModified = maxOf(clock(), v.lastModified + 1))) && ok
         }
-        for (g in guestTargets) {
+        for (g in freeGuests) {
             ok = host.saveGuest(g.copy(portalUid = uid, lastModified = maxOf(clock(), g.lastModified + 1))) && ok
         }
         complete(request.requestId, if (ok) PortalRequest.STATUS_DONE else PortalRequest.STATUS_REJECTED, if (ok) "" else "SAVE_FAILED")
@@ -747,11 +753,13 @@ class VolunteerPortalService(
         return ok
     }
 
-    /** Permanent guests sharing the volunteer's portal account while the guest space is on. */
-    private suspend fun sameAccountGuests(volunteer: Volunteer): List<Guest> {
-        if (volunteer.portalUid.isBlank() || !host.guestPortalEnabled()) return emptyList()
-        return orgGuests().filter { it.isPermanentPortalGuest && it.portalEnabled && it.portalUid == volunteer.portalUid }
-    }
+    /**
+     * Permanent guests on the portal account [portalUid], whatever the guest space setting: the
+     * admin's Google changes and removals must reach them, or a stale link comes back with the space.
+     */
+    private fun sameAccountGuests(portalUid: String, guests: List<Guest>): List<Guest> =
+        if (portalUid.isBlank()) emptyList()
+        else guests.filter { it.isPermanentPortalGuest && it.portalUid == portalUid }
 
     /**
      * Admin types the volunteer's association Google address. Null when saved, else INVALID,
@@ -766,17 +774,22 @@ class VolunteerPortalService(
         if (PortalGoogleLinkProcessor.sameAddress(current.email, clean)) return "SAME_AS_EMAIL"
         if (all.any { it.id != volunteer.id && PortalGoogleLinkProcessor.sameAddress(it.portalGoogleEmail, clean) }) return "TAKEN"
         // A permanent guest of another account holding the address would make the match ambiguous.
-        val ownGuests = sameAccountGuests(current).map { it.nanoId }.toSet()
-        if (host.guestPortalEnabled() && orgGuests().any {
+        val guests = orgGuests()
+        val accountGuests = sameAccountGuests(current.portalUid, guests)
+        val ownGuests = accountGuests.map { it.nanoId }.toSet()
+        if (host.guestPortalEnabled() && guests.any {
                 it.isPermanentPortalGuest && it.nanoId !in ownGuests && PortalGoogleLinkProcessor.sameAddress(it.portalGoogleEmail, clean)
             }
         ) return "TAKEN"
         val sameAddress = PortalGoogleLinkProcessor.sameAddress(current.portalGoogleEmail, clean)
         return try {
             val keptUid = if (sameAddress) current.portalGoogleUid else ""
-            if (!sameAddress && current.portalGoogleUid.isNotBlank()) {
-                gateway.deleteDocument(orgId, PortalGoogleAccount.COLLECTION, current.portalGoogleUid)
-            } else if (keptUid.isNotBlank() && current.portalGoogleLinkedBy != Volunteer.GOOGLE_LINKED_BY_ADMIN) {
+            // Every former Google account of the person loses its alias, the guests' included.
+            (listOf(current.portalGoogleUid) + accountGuests.map { it.portalGoogleUid })
+                .filter { it.isNotBlank() && it != keptUid }
+                .distinct()
+                .forEach { gateway.deleteDocument(orgId, PortalGoogleAccount.COLLECTION, it) }
+            if (keptUid.isNotBlank() && current.portalGoogleLinkedBy != Volunteer.GOOGLE_LINKED_BY_ADMIN) {
                 // Same account, now held by the admin: the volunteer can no longer remove it.
                 gateway.setPlainDocument(
                     orgId, PortalGoogleAccount.COLLECTION, keptUid,
@@ -789,7 +802,18 @@ class VolunteerPortalService(
                 portalGoogleLinkedBy = Volunteer.GOOGLE_LINKED_BY_ADMIN,
                 lastModified = maxOf(clock(), current.lastModified + 1),
             )
-            if (updated == current || host.saveVolunteer(updated)) null else "SAVE_FAILED"
+            var ok = updated == current || host.saveVolunteer(updated)
+            // Same person, same Google account: the guests of the account follow the volunteer.
+            for (guest in accountGuests) {
+                val follows = guest.copy(
+                    portalGoogleEmail = clean,
+                    portalGoogleUid = keptUid,
+                    portalGoogleLinkedBy = Volunteer.GOOGLE_LINKED_BY_ADMIN,
+                    lastModified = maxOf(clock(), guest.lastModified + 1),
+                )
+                ok = (follows == guest || host.saveGuest(follows)) && ok
+            }
+            if (ok) null else "SAVE_FAILED"
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -878,7 +902,7 @@ class VolunteerPortalService(
     suspend fun removeGoogleAccount(volunteer: Volunteer): Boolean {
         val current = host.volunteers().firstOrNull { it.id == volunteer.id } ?: volunteer
         return try {
-            clearGoogleLink(listOf(current), sameAccountGuests(current))
+            clearGoogleLink(listOf(current), sameAccountGuests(current.portalUid, orgGuests()))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
