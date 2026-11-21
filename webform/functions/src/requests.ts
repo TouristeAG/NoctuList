@@ -136,18 +136,20 @@ export async function onRequestDocument(
 
 /**
  * Why a request waits without being claimed, or null to process it now. Guest requests wait while
- * the guest space is off (as on devices); a guest QR mail waits for the published mail template,
- * since there is no guest fallback text on the server: a device sends it after its grace period.
+ * the guest space is off (as on devices); a guest QR mail waits for the published guest mail
+ * template (`portalMail/guest`), since there is no guest fallback text on the server and the
+ * volunteer template is never mailed to guests: a device sends it after its grace period.
  */
 async function waitReason(db: Firestore, orgId: string, type: unknown): Promise<string | null> {
   if (!GUEST_TYPES.includes(type)) return null;
   if (!(await guestPortalEnabled(db, orgId))) return "GUEST_SPACE_OFF";
-  if (type === "GUEST_QR_EMAIL" && (await publishedTemplate(db, orgId)) === null) return "NO_TEMPLATE";
+  if (type === "GUEST_QR_EMAIL" && (await publishedGuestTemplate(db, orgId)) === null) return "NO_TEMPLATE";
   return null;
 }
 
-async function publishedTemplate(db: Firestore, orgId: string) {
-  return parseMailTemplate((await db.doc(`orgs/${orgId}/portalMail/default`).get()).data());
+/** The guest QR mail devices render from the guest e-mail settings (Guest theme), or null. */
+async function publishedGuestTemplate(db: Firestore, orgId: string) {
+  return parseMailTemplate((await db.doc(`orgs/${orgId}/portalMail/guest`).get()).data());
 }
 
 /** Undoes our claim: the request is PENDING again, without the claim fields. */
@@ -466,7 +468,7 @@ async function sendQr(db: Firestore, mail: MailTransport, orgId: string, request
 
 /**
  * GUEST_QR_EMAIL: like QR_EMAIL, on the permanent guest of the account. The QR code is the guest's
- * nanoId, the mail the published template with the guest's first name. An admin guest's QR doubles
+ * nanoId, the mail the published guest template with the guest's first name. An admin guest's QR doubles
  * as an admin key and is never mailed; temporary guests and volunteer benefits have no access.
  */
 async function sendGuestQr(db: Firestore, mail: MailTransport, orgId: string, request: PortalRequest): Promise<RequestResult> {
@@ -478,8 +480,8 @@ async function sendGuestQr(db: Firestore, mail: MailTransport, orgId: string, re
   if (email === "") return rejected("NO_EMAIL");
   const to = safeRecipient(email);
   if (to === null) return rejected("NO_EMAIL");
-  const [template, association] = await Promise.all([publishedTemplate(db, orgId), associationName(db, orgId)]);
-  // Removed since the check: wait for a device rather than send the volunteer fallback text.
+  const [template, association] = await Promise.all([publishedGuestTemplate(db, orgId), associationName(db, orgId)]);
+  // Removed since the check: wait for a device rather than send the volunteer text.
   if (template === null) throw new Deferred("NO_TEMPLATE");
   const message = await buildQrMail(template, stringOf(owner.get("name")), owner.id);
   const result = await sendMail({ ...message, to, fromName: association.trim().slice(0, MAX_LABEL) }, mail);

@@ -74,6 +74,8 @@ interface VolunteerPortalHost {
 
     /** The "my QR code" mail for the server to send, or null when it cannot be rendered. Holds no volunteer data. */
     suspend fun portalMailTemplate(): PortalMailTemplate?
+    /** The guest "my QR code" mail (guest e-mail settings, Guest theme), or null. Holds no guest data. */
+    suspend fun portalGuestMailTemplate(): PortalMailTemplate? = null
     fun canSendQrEmail(): Boolean
     suspend fun sendQrEmail(volunteer: Volunteer): Boolean
 
@@ -1254,11 +1256,13 @@ class VolunteerPortalService(
         host.savePublishedHashes(guestHashes)
         runCatching { gateway.deleteDocument(orgId, BRANDING_COLLECTION, BRANDING_DOC) }
         runCatching { gateway.deleteDocument(orgId, MAIL_COLLECTION, MAIL_DOC) }
+        runCatching { gateway.deleteDocument(orgId, MAIL_COLLECTION, GUEST_MAIL_DOC) }
         // Failed QR deletes stay so the next publish retries them.
         host.savePublishedHashes(
             host.loadPublishedHashes().filterKeys {
                 (!it.startsWith("$orgId/") || it.endsWith(QR_SUFFIX) || it.endsWith(GuestPortalPublisher.GUEST_QR_SUFFIX) ||
-                    it.endsWith(GuestPortalPublisher.TEMP_QR_SUFFIX)) && it != brandingKey && it != mailKey
+                    it.endsWith(GuestPortalPublisher.TEMP_QR_SUFFIX)) && it != brandingKey && it != mailKey &&
+                    it != guestMailKey
             },
         )
     }
@@ -1449,10 +1453,21 @@ class VolunteerPortalService(
     )
 
     private val mailKey get() = "$orgId#mail"
+    private val guestMailKey get() = "$orgId#mailGuest"
 
     private suspend fun publishMailTemplate(hashes: MutableMap<String, String>) {
+        publishMailTemplate(hashes, mailKey, MAIL_DOC) { host.portalMailTemplate() }
+        publishMailTemplate(hashes, guestMailKey, GUEST_MAIL_DOC) { host.portalGuestMailTemplate() }
+    }
+
+    private suspend fun publishMailTemplate(
+        hashes: MutableMap<String, String>,
+        hashKey: String,
+        docId: String,
+        render: suspend () -> PortalMailTemplate?,
+    ) {
         val template = try {
-            host.portalMailTemplate()
+            render()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -1461,10 +1476,10 @@ class VolunteerPortalService(
         } ?: return
         val data = template.toFirestoreMap()
         val hash = PortalProjectionBuilder.sha256(data.toString())
-        if (hashes[mailKey] == hash) return
+        if (hashes[hashKey] == hash) return
         try {
-            gateway.setPlainDocument(orgId, MAIL_COLLECTION, MAIL_DOC, template.toFirestoreMap(clock()), merge = false)
-            hashes[mailKey] = hash
+            gateway.setPlainDocument(orgId, MAIL_COLLECTION, docId, template.toFirestoreMap(clock()), merge = false)
+            hashes[hashKey] = hash
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -1535,6 +1550,7 @@ class VolunteerPortalService(
         const val BRANDING_DOC = "default"
         const val MAIL_COLLECTION = "portalMail"
         const val MAIL_DOC = "default"
+        const val GUEST_MAIL_DOC = "guest"
         private const val QR_SUFFIX = "#qr"
         /** QR hash value meaning "this device deleted the QR doc". */
         internal const val QR_TOMBSTONE = "-"

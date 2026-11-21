@@ -200,6 +200,42 @@ class VolunteerPortalServiceTest {
     }
 
     @Test
+    fun guestMailTemplatePublishedApartFromTheVolunteerOne() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(emptyList())
+        val volunteers = MutableStateFlow(host.volunteers.toList())
+        service(gateway, host).start(volunteers, MutableStateFlow(emptyList<Guest>()), MutableStateFlow(emptyList()), MutableStateFlow(emptyList()), MutableStateFlow(emptyList()))
+        withTimeout(5_000) { while (gateway.docs["portalMail/guest"] == null || gateway.docs["portalMail/default"] == null) delay(20) }
+        assertEquals("Your guest QR code", gateway.docs["portalMail/guest"]!!["subject"])
+        assertEquals(1, gateway.docs["portalMail/guest"]!!["schema"])
+        assertEquals("Your QR code", gateway.docs["portalMail/default"]!!["subject"])
+
+        gateway.docs.remove("portalMail/guest")
+        volunteers.value = listOf(volunteer("V9", "z@example.org"))
+        delay(300)
+        assertNull(gateway.docs["portalMail/guest"], "unchanged guest template is not rewritten")
+
+        host.guestMailSubject = "Another guest subject"
+        volunteers.value = listOf(volunteer("V8", "y@example.org"))
+        withTimeout(5_000) { while (gateway.docs["portalMail/guest"] == null) delay(20) }
+        assertEquals("Another guest subject", gateway.docs["portalMail/guest"]!!["subject"])
+        assertEquals("Your QR code", gateway.docs["portalMail/default"]!!["subject"])
+    }
+
+    @Test
+    fun unpublishAllRemovesBothMailTemplates() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(emptyList())
+        val service = service(gateway, host)
+        service.start(MutableStateFlow(host.volunteers.toList()), MutableStateFlow(emptyList<Guest>()), MutableStateFlow(emptyList()), MutableStateFlow(emptyList()), MutableStateFlow(emptyList()))
+        withTimeout(5_000) { while (gateway.docs["portalMail/guest"] == null || gateway.docs["portalMail/default"] == null) delay(20) }
+        service.unpublishAll()
+        assertTrue("portalMail/guest" in gateway.deleted)
+        assertTrue("portalMail/default" in gateway.deleted)
+        assertFalse(host.loadPublishedHashes().keys.any { it.endsWith("#mailGuest") })
+    }
+
+    @Test
     fun mailTemplateNeverContainsVolunteerId() = runBlocking {
         val gateway = FakeGateway()
         val host = FakeHost(listOf(volunteer("SECRETID123", "lea@example.org", enabled = true, uid = UID)))

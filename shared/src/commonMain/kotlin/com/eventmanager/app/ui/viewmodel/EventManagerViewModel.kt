@@ -3207,6 +3207,11 @@ class EventManagerViewModel(
             return PortalMailTemplate.fromSettings(settings, settings.getInstitutionLogoPng())
         }
 
+        override suspend fun portalGuestMailTemplate(): PortalMailTemplate? {
+            val settings = settingsManagerCached ?: return null
+            return PortalMailTemplate.guestFromSettings(settings, settings.getInstitutionLogoPng())
+        }
+
         override suspend fun sendQrEmail(volunteer: Volunteer): Boolean {
             val ctx = platformContext ?: return false
             val settings = settingsManagerCached ?: return false

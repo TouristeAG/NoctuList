@@ -81,6 +81,8 @@ internal class FakeHost(initial: List<Volunteer>) : VolunteerPortalHost {
     var canMail = true
     var mailSubject = "Your QR code"
     var mailTemplateEnabled = true
+    var guestMailSubject = "Your guest QR code"
+    var guestMailTemplateEnabled = true
     var googleEnabled = true
     var qrEnabled = true
     var googleDomains = listOf("asso.ch")
@@ -172,6 +174,8 @@ internal class FakeHost(initial: List<Volunteer>) : VolunteerPortalHost {
     }
     override suspend fun portalMailTemplate(): PortalMailTemplate? =
         if (mailTemplateEnabled) PortalMailTemplate(mailSubject, "<p>Hello $PORTAL_FIRST_NAME_TOKEN</p>", "Hello $PORTAL_FIRST_NAME_TOKEN", "") else null
+    override suspend fun portalGuestMailTemplate(): PortalMailTemplate? =
+        if (guestMailTemplateEnabled) PortalMailTemplate(guestMailSubject, "<p>Welcome $PORTAL_FIRST_NAME_TOKEN</p>", "Welcome $PORTAL_FIRST_NAME_TOKEN", "") else null
     override fun canSendQrEmail() = canMail
     override suspend fun sendQrEmail(volunteer: Volunteer): Boolean {
         mailed += volunteer

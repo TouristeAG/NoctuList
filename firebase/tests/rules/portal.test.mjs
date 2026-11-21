@@ -429,6 +429,15 @@ describe("portalMail and portalServer", () => {
     await assertFails(setDoc(doc(portal("vol1").firestore(), path("portalMail/default")), { subject: "X" }));
   });
 
+  test("members read and write the guest mail template only", async () => {
+    const db = staff().firestore();
+    await assertSucceeds(setDoc(doc(db, path("portalMail/guest")), { subject: "Hi guest", lastModified: Date.now() }));
+    await assertSucceeds(getDoc(doc(db, path("portalMail/guest"))));
+    await assertFails(getDoc(doc(portal("vol1").firestore(), path("portalMail/guest"))));
+    await assertFails(getDoc(doc(anon().firestore(), path("portalMail/guest"))));
+    await assertFails(setDoc(doc(portal("vol1").firestore(), path("portalMail/guest")), { subject: "X" }));
+  });
+
   test("members read the server status but nobody writes it", async () => {
     await seed((db) => setDoc(doc(db, path("portalServer/status")), { version: "1", lastRunAt: Date.now() }));
     await assertSucceeds(getDoc(doc(staff().firestore(), path("portalServer/status"))));

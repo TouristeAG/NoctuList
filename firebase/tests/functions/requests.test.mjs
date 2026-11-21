@@ -179,6 +179,19 @@ async function publishTemplate(org, overrides = {}) {
   });
 }
 
+/** The guest QR mail template (`portalMail/guest`), rendered by devices from the guest e-mail settings. */
+async function publishGuestTemplate(org, overrides = {}) {
+  await db.doc(`orgs/${org}/portalMail/guest`).set({
+    subject: "Ton QR code invité",
+    html: `<html><body><p>Bienvenue ${TOKEN},</p><img src="cid:qrcode" alt="QR"></body></html>`,
+    text: "Voici ton QR code invité.",
+    logoBase64: "",
+    schema: 1,
+    lastModified: Date.now(),
+    ...overrides,
+  });
+}
+
 /** Proves the function is running: a valid request in another org gets processed. */
 async function barrier() {
   const org = await newOrg();
@@ -630,7 +643,7 @@ describe("onPortalRequestWritten: guests", () => {
 
   test("guest requests left PENDING when guest space off", async () => {
     const org = await newOrg();
-    await publishTemplate(org);
+    await publishGuestTemplate(org);
     const uid = newUid("gOff");
     const g = await addGuest(org, { portalUid: uid });
     const profile = await sendRequest(org, uid, "GUEST_PROFILE", { firstName: "X", lastName: "Y", phone: "079 111 22 33" });
@@ -648,6 +661,7 @@ describe("onPortalRequestWritten: guests", () => {
     const org = await newOrg({ association: "Les Amis du Bar" });
     await setting(org, "guest_portal_enabled", "true");
     await publishTemplate(org);
+    await publishGuestTemplate(org);
     const uid = newUid("gQr");
     const address = `${uid.toLowerCase()}@guest.example`;
     const g = await addGuest(org, { portalUid: uid, email: ` ${address} `, name: "Noé" });
@@ -655,9 +669,10 @@ describe("onPortalRequestWritten: guests", () => {
     const result = await waitResult(ref);
     assertResult(result, "DONE", "");
     const mail = await waitMailTo(address);
-    assert.equal(mail.subject, "Ton QR code bénévole");
+    assert.equal(mail.subject, "Ton QR code invité", "the guest template, not the volunteer one");
     assert.deepEqual(mail.from, { name: "Les Amis du Bar", address: "test@example.org" });
-    assert.ok(mail.html.includes("Salut Noé,"));
+    assert.ok(mail.html.includes("Bienvenue Noé,"));
+    assert.ok(!mail.html.includes("Salut"));
     assert.ok(mail.attachments.some((a) => a.cid === "qrcode"));
     assert.ok(!JSON.stringify(mail).includes(g.nanoId), "the nanoId only lives inside the PNG");
     assert.ok(!JSON.stringify(result).includes(g.nanoId));
@@ -666,7 +681,7 @@ describe("onPortalRequestWritten: guests", () => {
   test("GUEST_QR_EMAIL refused for admin guest", async () => {
     const org = await newOrg();
     await setting(org, "guest_portal_enabled", "true");
-    await publishTemplate(org);
+    await publishGuestTemplate(org);
     const uid = newUid("gQrAdmin");
     const address = `${uid.toLowerCase()}@guest.example`;
     await addGuest(org, { portalUid: uid, email: address, isAdmin: true });
@@ -679,7 +694,7 @@ describe("onPortalRequestWritten: guests", () => {
   test("GUEST_QR_EMAIL refused without e-mail or for a temporary guest", async () => {
     const org = await newOrg();
     await setting(org, "guest_portal_enabled", "true");
-    await publishTemplate(org);
+    await publishGuestTemplate(org);
     const uid = newUid("gQrNoMail");
     await addGuest(org, { portalUid: uid, email: "  " });
     assertResult(await waitResult(await sendRequest(org, uid, "GUEST_QR_EMAIL")), "REJECTED", "NO_EMAIL");
@@ -688,9 +703,11 @@ describe("onPortalRequestWritten: guests", () => {
     assertResult(await waitResult(await sendRequest(org, tempUid, "GUEST_QR_EMAIL")), "REJECTED", "NO_ACCESS");
   });
 
-  test("GUEST_QR_EMAIL left PENDING without a published template", async () => {
+  test("GUEST_QR_EMAIL left PENDING without a published guest template", async () => {
     const org = await newOrg();
     await setting(org, "guest_portal_enabled", "true");
+    // The volunteer template alone is not enough: guests never get the volunteer mail.
+    await publishTemplate(org);
     const uid = newUid("gQrNoTpl");
     const address = `${uid.toLowerCase()}@guest.example`;
     await addGuest(org, { portalUid: uid, email: address });

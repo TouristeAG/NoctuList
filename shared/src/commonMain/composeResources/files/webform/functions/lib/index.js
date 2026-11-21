@@ -1226,11 +1226,11 @@ async function onRequestDocument(db, bucket, mail, orgId, requestId, current) {
 async function waitReason(db, orgId, type) {
   if (!GUEST_TYPES.includes(type)) return null;
   if (!await guestPortalEnabled(db, orgId)) return "GUEST_SPACE_OFF";
-  if (type === "GUEST_QR_EMAIL" && await publishedTemplate(db, orgId) === null) return "NO_TEMPLATE";
+  if (type === "GUEST_QR_EMAIL" && await publishedGuestTemplate(db, orgId) === null) return "NO_TEMPLATE";
   return null;
 }
-async function publishedTemplate(db, orgId) {
-  return parseMailTemplate((await db.doc(`orgs/${orgId}/portalMail/default`).get()).data());
+async function publishedGuestTemplate(db, orgId) {
+  return parseMailTemplate((await db.doc(`orgs/${orgId}/portalMail/guest`).get()).data());
 }
 async function release(ref) {
   await ref.set(
@@ -1459,7 +1459,7 @@ async function sendGuestQr(db, mail, orgId, request) {
   if (email === "") return rejected2("NO_EMAIL");
   const to = safeRecipient(email);
   if (to === null) return rejected2("NO_EMAIL");
-  const [template, association] = await Promise.all([publishedTemplate(db, orgId), associationName(db, orgId)]);
+  const [template, association] = await Promise.all([publishedGuestTemplate(db, orgId), associationName(db, orgId)]);
   if (template === null) throw new Deferred("NO_TEMPLATE");
   const message = await buildQrMail(template, stringOf(owner.get("name")), owner.id);
   const result = await sendMail({ ...message, to, fromName: association.trim().slice(0, MAX_LABEL2) }, mail);

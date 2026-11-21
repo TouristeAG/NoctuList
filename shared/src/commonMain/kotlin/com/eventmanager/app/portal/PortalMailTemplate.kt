@@ -13,14 +13,19 @@ import com.eventmanager.app.resources.email_qr_attachment_note
 import com.eventmanager.app.resources.email_qr_attachment_text
 import com.eventmanager.app.resources.email_signature_default
 import com.eventmanager.app.resources.email_subject_default
+import com.eventmanager.app.resources.guest_email_content_after_default
+import com.eventmanager.app.resources.guest_email_content_before_default
+import com.eventmanager.app.resources.guest_email_html_header
+import com.eventmanager.app.resources.guest_email_subject_default
 import org.jetbrains.compose.resources.getString
 
-/** Placeholder the server swaps for the volunteer's first name when it renders the mail. */
+/** Placeholder the server swaps for the holder's first name when it renders the mail. */
 const val PORTAL_FIRST_NAME_TOKEN = "%%NOCTULIST_FIRST_NAME%%"
 
 /**
  * The "my QR code" mail, rendered once per institution with the institution's own e-mail
- * settings. It holds no volunteer data; the server fills in the name and attaches the QR image
+ * settings: one for volunteers (`portalMail/default`) and one for guests (`portalMail/guest`).
+ * It holds no holder data; the server fills in the name and attaches the QR image
  * (`cid:qrcode`) and the logo (`cid:logo`) when it sends.
  */
 data class PortalMailTemplate(
@@ -40,11 +45,36 @@ data class PortalMailTemplate(
 
     companion object {
         /** Renders the Volunteer-profile mail from [settings], with the same defaults as the device mailer. */
-        suspend fun fromSettings(settings: SettingsManager, logoPngBase64: String): PortalMailTemplate {
-            val subject = settings.getEmailSubject().ifEmpty { getString(Res.string.email_subject_default) }
-            val header = settings.getEmailHeader().ifEmpty { getString(Res.string.email_html_header) }
-            val contentBefore = settings.getEmailContentBefore().ifEmpty { getString(Res.string.email_content_before_default) }
-            val contentAfter = settings.getEmailContentAfter().ifEmpty { getString(Res.string.email_content_after_default) }
+        suspend fun fromSettings(settings: SettingsManager, logoPngBase64: String): PortalMailTemplate = render(
+            settings = settings,
+            logoPngBase64 = logoPngBase64,
+            subject = settings.getEmailSubject().ifEmpty { getString(Res.string.email_subject_default) },
+            header = settings.getEmailHeader().ifEmpty { getString(Res.string.email_html_header) },
+            contentBefore = settings.getEmailContentBefore().ifEmpty { getString(Res.string.email_content_before_default) },
+            contentAfter = settings.getEmailContentAfter().ifEmpty { getString(Res.string.email_content_after_default) },
+            theme = QrEmailTheme.Volunteer,
+        )
+
+        /** Renders the Guest-profile mail from the association's guest e-mail settings. */
+        suspend fun guestFromSettings(settings: SettingsManager, logoPngBase64: String): PortalMailTemplate = render(
+            settings = settings,
+            logoPngBase64 = logoPngBase64,
+            subject = settings.getGuestEmailSubject().ifEmpty { getString(Res.string.guest_email_subject_default) },
+            header = settings.getGuestEmailHeader().ifEmpty { getString(Res.string.guest_email_html_header) },
+            contentBefore = settings.getGuestEmailContentBefore().ifEmpty { getString(Res.string.guest_email_content_before_default) },
+            contentAfter = settings.getGuestEmailContentAfter().ifEmpty { getString(Res.string.guest_email_content_after_default) },
+            theme = QrEmailTheme.Guest,
+        )
+
+        private suspend fun render(
+            settings: SettingsManager,
+            logoPngBase64: String,
+            subject: String,
+            header: String,
+            contentBefore: String,
+            contentAfter: String,
+            theme: QrEmailTheme,
+        ): PortalMailTemplate {
             val signature = settings.resolveAutomaticEmailSignature(getString(Res.string.email_signature_default))
             val logo = logoPngBase64.trim()
             val includeLogo = settings.isEmailIncludeLogoEnabled() && logo.isNotBlank()
@@ -65,7 +95,7 @@ data class PortalMailTemplate(
                     digitalWalletPassCompatibility = "",
                     includeLogo = includeLogo,
                     useContentId = true,
-                    theme = QrEmailTheme.Volunteer,
+                    theme = theme,
                 ),
             )
             val text = QrEmailHtmlBuilder.buildPlainText(
