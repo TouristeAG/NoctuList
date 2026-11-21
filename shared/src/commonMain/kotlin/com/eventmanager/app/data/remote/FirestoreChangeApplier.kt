@@ -11,6 +11,7 @@ import com.eventmanager.app.data.models.Guest
 import com.eventmanager.app.data.models.GuestForm
 import com.eventmanager.app.data.models.GuestFormExpiry
 import com.eventmanager.app.data.models.GuestFormLogoShape
+import com.eventmanager.app.data.models.GuestFormRequestKind
 import com.eventmanager.app.data.models.GuestFormStatus
 import com.eventmanager.app.data.models.shouldIgnoreRemoteOpenGuestForm
 import com.eventmanager.app.data.models.statusValue
@@ -189,6 +190,7 @@ object FirestoreChangeApplier {
             temporaryVenueName = stringOf(decrypted["temporaryVenueName"]).orEmpty(),
             temporaryContactEmail = stringOf(decrypted["temporaryContactEmail"]).orEmpty(),
             temporaryPortalEmail = stringOf(decrypted["temporaryPortalEmail"]).orEmpty(),
+            temporaryPortalCreated = boolOf(decrypted["temporaryPortalCreated"]) ?: false,
             temporaryAccessIds = stringOf(decrypted["temporaryAccessIds"]).orEmpty(),
             temporaryEntryValidatedAt = longOf(decrypted["temporaryEntryValidatedAt"]) ?: 0L,
             temporaryEntryValidatedBy = stringOf(decrypted["temporaryEntryValidatedBy"]).orEmpty(),
@@ -430,6 +432,9 @@ object FirestoreChangeApplier {
             reviewedAt = longOf(data["reviewedAt"]) ?: existing?.reviewedAt ?: 0L,
             reviewedBy = stringOf(data["reviewedBy"]) ?: existing?.reviewedBy.orEmpty(),
             createdAt = longOf(data["createdAt"]) ?: existing?.createdAt ?: remoteLm,
+            portalUid = stringOf(data["portalUid"]) ?: existing?.portalUid.orEmpty(),
+            requestKind = stringOf(data["requestKind"]) ?: existing?.requestKind ?: GuestFormRequestKind.ADD.name,
+            removeGuestKeys = stringOf(data["removeGuestKeys"]) ?: existing?.removeGuestKeys.orEmpty(),
             lastModified = if (publicAnswerArrived || remoteIsAnswer) {
                 maxOf(remoteLm, (existing?.lastModified ?: 0L) + 1L)
             } else {

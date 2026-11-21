@@ -46,6 +46,18 @@ enum class GuestFormExpiry {
     }
 }
 
+/** What a portal answer asks for: adding people to the list or taking guests off it. */
+enum class GuestFormRequestKind {
+    ADD,
+    REMOVE,
+    ;
+
+    companion object {
+        fun parse(raw: String?): GuestFormRequestKind =
+            entries.firstOrNull { it.name.equals(raw?.trim(), ignoreCase = true) } ?: ADD
+    }
+}
+
 /** How a logo is clipped on the public form and in the creator preview. */
 enum class GuestFormLogoShape {
     SQUARE,
@@ -130,6 +142,12 @@ data class GuestForm(
     val reviewedBy: String = "",
     val createdAt: Long = 0L,
     val lastModified: Long = 0L,
+    /** Non-empty: a portal invite template (or its answer) bound to this portal account; no public link. */
+    val portalUid: String = "",
+    /** On a portal answer: [GuestFormRequestKind] name. */
+    val requestKind: String = GuestFormRequestKind.ADD.name,
+    /** On a REMOVE answer: comma-separated guestKeys of the guests to take off the list. */
+    val removeGuestKeys: String = "",
 ) {
     companion object {
         const val DEFAULT_MAX_GUESTS = 10
@@ -147,6 +165,14 @@ data class GuestForm(
 }
 
 val GuestForm.statusValue: GuestFormStatus get() = GuestFormStatus.parse(status)
+
+val GuestForm.requestKindValue: GuestFormRequestKind get() = GuestFormRequestKind.parse(requestKind)
+
+/** A template or answer bound to a portal account rather than a public link. */
+val GuestForm.isPortalInvite: Boolean get() = portalUid.isNotBlank()
+
+fun GuestForm.removeGuestKeyList(): List<String> =
+    removeGuestKeys.split(',').map { it.trim() }.filter { it.isNotEmpty() }
 
 val GuestForm.expiryModeValue: GuestFormExpiry get() = GuestFormExpiry.parse(expiryMode)
 

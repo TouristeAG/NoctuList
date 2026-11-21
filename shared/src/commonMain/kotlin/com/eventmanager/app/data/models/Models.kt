@@ -43,6 +43,8 @@ data class Guest(
     val temporaryContactEmail: String = "",
     /** Address the temporary group's portal account was opened for. Firebase-only; never synced to Google Sheets. */
     val temporaryPortalEmail: String = "",
+    /** True when a device created this list's portal account itself (password known only to that device and the mailbox). Firebase-only. */
+    val temporaryPortalCreated: Boolean = false,
     /** Comma-separated [VenueAccess] IDs. Firebase-only; never synced to Google Sheets. */
     val temporaryAccessIds: String = "",
     /** Epoch millis of the one-shot entry validation; 0 when unused. Firebase-only. */

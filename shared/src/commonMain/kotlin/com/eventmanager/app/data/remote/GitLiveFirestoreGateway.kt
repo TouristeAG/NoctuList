@@ -638,6 +638,7 @@ class GitLiveFirestoreGateway(
             put("temporaryVenueName", guest.temporaryVenueName)
             put("temporaryContactEmail", guest.temporaryContactEmail)
             put("temporaryPortalEmail", guest.temporaryPortalEmail)
+            put("temporaryPortalCreated", guest.temporaryPortalCreated)
             put("temporaryAccessIds", guest.temporaryAccessIds)
             put("temporaryEntryValidatedAt", guest.temporaryEntryValidatedAt)
             put("temporaryEntryValidatedBy", guest.temporaryEntryValidatedBy)
@@ -749,6 +750,9 @@ class GitLiveFirestoreGateway(
         "reviewedBy" to form.reviewedBy,
         "createdAt" to firestoreMillis(form.createdAt),
         "lastModified" to firestoreMillis(form.lastModified),
+        "portalUid" to form.portalUid,
+        "requestKind" to form.requestKind,
+        "removeGuestKeys" to form.removeGuestKeys,
     )
 
     override fun venueToMap(venue: VenueEntity) = mapOf(

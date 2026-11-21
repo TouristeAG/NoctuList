@@ -4,6 +4,9 @@ import com.eventmanager.app.data.models.AccountTransfer
 import com.eventmanager.app.data.models.AccountTransferSyncState
 import com.eventmanager.app.data.models.AccountHolderType
 import com.eventmanager.app.data.models.AccountTransferType
+import com.eventmanager.app.data.models.isPortalInvite
+import com.eventmanager.app.data.models.removeGuestKeyList
+import com.eventmanager.app.data.models.requestKindValue
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -93,6 +96,31 @@ class FirestoreCodecAndRulesShapeTest {
         assertEquals(12.5, fields["balance"])
         val nested = fields["allowedEmailDomains"] as? Map<*, *>
         assertEquals(true, nested?.get("gmail.com"))
+    }
+
+    @Test
+    fun guestFormToMap_carriesPortalInviteFields() {
+        val form = com.eventmanager.app.data.models.GuestForm(
+            formId = "r1",
+            portalUid = "uid-1",
+            requestKind = "REMOVE",
+            removeGuestKeys = "0123456789abcdef,fedcba9876543210",
+        )
+        val mapped = GitLiveFirestoreGateway().guestFormToMap(form)
+        assertEquals("uid-1", mapped["portalUid"])
+        assertEquals("REMOVE", mapped["requestKind"])
+        assertEquals("0123456789abcdef,fedcba9876543210", mapped["removeGuestKeys"])
+        val blank = com.eventmanager.app.data.models.GuestForm(formId = "f0")
+        assertEquals("", blank.portalUid)
+        assertEquals("ADD", blank.requestKind)
+        assertEquals(listOf("0123456789abcdef", "fedcba9876543210"), form.removeGuestKeyList())
+        assertEquals(emptyList(), blank.removeGuestKeyList())
+        assertTrue(form.isPortalInvite)
+        assertEquals(com.eventmanager.app.data.models.GuestFormRequestKind.REMOVE, form.requestKindValue)
+        assertEquals(
+            com.eventmanager.app.data.models.GuestFormRequestKind.ADD,
+            com.eventmanager.app.data.models.GuestForm(formId = "x", requestKind = "junk").requestKindValue,
+        )
     }
 
     @Test

@@ -506,10 +506,13 @@ class FirestoreSyncIntegrityTest {
             portalGoogleUid = "google-uid-1",
             portalGoogleLinkedBy = "ADMIN",
             temporaryPortalEmail = "artist@example.org",
+            temporaryPortalCreated = true,
         )
         val decrypted = com.eventmanager.app.data.security.crypto.SensitiveFieldCodec
             .decryptGuestMap(gateway.guestToMap(guest), "org-a")
         assertEquals("artist@example.org", decrypted["temporaryPortalEmail"])
+        assertEquals(true, decrypted["temporaryPortalCreated"])
+        assertEquals(false, Guest(name = "B", invitations = 1, venueName = "Main").temporaryPortalCreated)
         assertEquals("", Guest(name = "B", invitations = 1, venueName = "Main").temporaryPortalEmail)
         assertEquals(true, decrypted["portalEnabled"])
         assertEquals("portal-uid-1", decrypted["portalUid"])
