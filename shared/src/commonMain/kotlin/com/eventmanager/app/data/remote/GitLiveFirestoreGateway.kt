@@ -649,6 +649,11 @@ class GitLiveFirestoreGateway(
             )
             put("isAdmin", guest.isAdmin)
             put("barDiscountPercent", guest.barDiscountPercent)
+            put("portalEnabled", guest.portalEnabled)
+            put("portalUid", guest.portalUid)
+            put("portalGoogleEmail", guest.portalGoogleEmail)
+            put("portalGoogleUid", guest.portalGoogleUid)
+            put("portalGoogleLinkedBy", guest.portalGoogleLinkedBy)
             putProfilePhotoFields(guest.profilePhotoPath, guest.profilePhotoUrl)
         },
         guest.firebaseOrgId,

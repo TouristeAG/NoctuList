@@ -198,6 +198,11 @@ object FirestoreChangeApplier {
             profilePhotoPath = photos.path,
             profilePhotoUrl = photos.url,
             barDiscountPercent = (intOf(decrypted["barDiscountPercent"]) ?: 0).coerceIn(0, 100),
+            portalEnabled = boolOf(decrypted["portalEnabled"]) ?: false,
+            portalUid = stringOf(decrypted["portalUid"]).orEmpty(),
+            portalGoogleEmail = stringOf(decrypted["portalGoogleEmail"]).orEmpty(),
+            portalGoogleUid = stringOf(decrypted["portalGoogleUid"]).orEmpty(),
+            portalGoogleLinkedBy = stringOf(decrypted["portalGoogleLinkedBy"]).orEmpty(),
         )
         if (existing == null) {
             try {

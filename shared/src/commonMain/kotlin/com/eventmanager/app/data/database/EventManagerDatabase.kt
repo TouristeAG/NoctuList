@@ -53,7 +53,7 @@ private fun SQLiteConnection.query(sql: String): MigrationCursor =
         PendingRemoteWrite::class,
         GuestForm::class,
     ],
-    version = 53,
+    version = 54,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -1706,6 +1706,34 @@ abstract class EventManagerDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_53_54 = object : Migration(53, 54) {
+            override fun migrate(connection: SQLiteConnection) {
+                try {
+                    println("Starting migration 53→54: guest portal fields")
+                    connection.execSQL(
+                        "ALTER TABLE guests ADD COLUMN portalEnabled INTEGER NOT NULL DEFAULT 0",
+                    )
+                    connection.execSQL(
+                        "ALTER TABLE guests ADD COLUMN portalUid TEXT NOT NULL DEFAULT ''",
+                    )
+                    connection.execSQL(
+                        "ALTER TABLE guests ADD COLUMN portalGoogleEmail TEXT NOT NULL DEFAULT ''",
+                    )
+                    connection.execSQL(
+                        "ALTER TABLE guests ADD COLUMN portalGoogleUid TEXT NOT NULL DEFAULT ''",
+                    )
+                    connection.execSQL(
+                        "ALTER TABLE guests ADD COLUMN portalGoogleLinkedBy TEXT NOT NULL DEFAULT ''",
+                    )
+                    println("Migration 53→54 completed successfully")
+                } catch (e: Exception) {
+                    println("Migration 53→54 failed: ${e.message}")
+                    e.printStackTrace()
+                    throw e
+                }
+            }
+        }
+
         private val MIGRATION_50_51 = object : Migration(50, 51) {
             override fun migrate(connection: SQLiteConnection) {
                 try {
@@ -1774,7 +1802,8 @@ abstract class EventManagerDatabase : RoomDatabase() {
             MIGRATION_49_50,
             MIGRATION_50_51,
             MIGRATION_51_52,
-            MIGRATION_52_53
+            MIGRATION_52_53,
+            MIGRATION_53_54
         )
     }
 }

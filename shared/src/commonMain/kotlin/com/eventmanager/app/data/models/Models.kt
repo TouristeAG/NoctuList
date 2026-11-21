@@ -57,6 +57,16 @@ data class Guest(
     val profilePhotoUrl: String = "",
     /** Bar discount granted to a permanent guest, in percent. Firebase-only; never synced to Google Sheets. */
     val barDiscountPercent: Int = 0,
+    /** Guest portal access opened by an admin. Firebase only; never synced to Google Sheets. */
+    val portalEnabled: Boolean = false,
+    /** Firebase Auth uid of the linked portal account; empty until linked. Firebase only. */
+    val portalUid: String = "",
+    /** Association Google account linked to this guest; empty until linked. Firebase only. */
+    val portalGoogleEmail: String = "",
+    /** Firebase Auth uid of the linked Google account; empty until linked. Firebase only. */
+    val portalGoogleUid: String = "",
+    /** Who linked the Google account (ADMIN or GUEST); empty until linked. Firebase only. */
+    val portalGoogleLinkedBy: String = "",
 )
 
 /**

@@ -491,4 +491,48 @@ class FirestoreSyncIntegrityTest {
             }
         }
     }
+
+    @Test
+    fun guestPortalFieldsRoundTrip() {
+        val gateway = GitLiveFirestoreGateway()
+        val guest = Guest(
+            name = "Ada",
+            invitations = 1,
+            venueName = "Main",
+            firebaseOrgId = "org-a",
+            portalEnabled = true,
+            portalUid = "portal-uid-1",
+            portalGoogleEmail = "ada@assoc.org",
+            portalGoogleUid = "google-uid-1",
+            portalGoogleLinkedBy = "ADMIN",
+        )
+        val decrypted = com.eventmanager.app.data.security.crypto.SensitiveFieldCodec
+            .decryptGuestMap(gateway.guestToMap(guest), "org-a")
+        assertEquals(true, decrypted["portalEnabled"])
+        assertEquals("portal-uid-1", decrypted["portalUid"])
+        assertEquals("ada@assoc.org", decrypted["portalGoogleEmail"])
+        assertEquals("google-uid-1", decrypted["portalGoogleUid"])
+        assertEquals("ADMIN", decrypted["portalGoogleLinkedBy"])
+        val blank = Guest(name = "B", invitations = 1, venueName = "Main")
+        assertEquals(false, blank.portalEnabled)
+        assertEquals("", blank.portalUid)
+        assertEquals("", blank.portalGoogleEmail)
+        assertEquals("", blank.portalGoogleUid)
+        assertEquals("", blank.portalGoogleLinkedBy)
+    }
+
+    @Test
+    fun guestPortalFieldsNeverInSheetsRow() {
+        // The Sheets guest row is exactly SheetsColumnContract.GUEST_LIST wide and is built without
+        // any portal field, so no portal column may ever appear in the contract.
+        listOf(
+            com.eventmanager.app.data.sync.SheetsColumnContract.GUEST_LIST,
+            com.eventmanager.app.data.sync.SheetsColumnContract.VOLUNTEER_GUEST_LIST,
+        ).forEach { headers ->
+            headers.forEach { header ->
+                assertFalse(header.contains("portal", ignoreCase = true), header)
+                assertFalse(header.contains("google", ignoreCase = true), header)
+            }
+        }
+    }
 }
