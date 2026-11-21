@@ -1,5 +1,6 @@
 // src/index.ts
 import { getApps, initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import * as logger6 from "firebase-functions/logger";
@@ -14,6 +15,7 @@ import { createHash } from "node:crypto";
 var SERVER_VERSION = "1.0.0";
 var STATUS_PROCESSING = "PROCESSING";
 var PROJECTION_SCHEMA = 2;
+var SERVER_SOURCE = "server";
 var MAX_LABEL = 80;
 var sha256 = (text) => createHash("sha256").update(text, "utf8").digest("hex");
 async function portalEnabled(db, orgId) {
@@ -221,6 +223,7 @@ var isBlank = (s) => kotlinTrim(s) === "";
 function googleVolunteerOf(id, d) {
   return {
     id,
+    email: stringOf(d.get("email")),
     portalEnabled: boolOf(d.get("portalEnabled")),
     portalUid: stringOf(d.get("portalUid")),
     portalGoogleEmail: stringOf(d.get("portalGoogleEmail")),
@@ -271,6 +274,24 @@ function adminMatch(c, volunteers2, domains, aliasTarget, anyAccount = false) {
   const linkedBy = match.portalGoogleLinkedBy === LINKED_BY_VOLUNTEER ? LINKED_BY_VOLUNTEER : LINKED_BY_ADMIN;
   return { kind: "LINK", volunteer: match, linkedBy };
 }
+async function adminMatchUnopened(c, volunteers2, findAccount) {
+  const candidates = volunteers2.filter(
+    (v) => v.portalEnabled && isBlank(v.portalUid) && sameAddress(v.portalGoogleEmail, c.email)
+  );
+  if (candidates.length === 0) return { kind: "REJECT", reason: "NO_MATCH" };
+  if (candidates.length > 1) return { kind: "REJECT", reason: "AMBIGUOUS" };
+  const match = candidates[0];
+  const email = kotlinTrim(match.email).toLowerCase();
+  if (email === "") return { kind: "REJECT", reason: "NO_MATCH" };
+  if (volunteers2.some((v) => v.id !== match.id && v.portalEnabled && sameAddress(v.email, email))) {
+    return { kind: "REJECT", reason: "NO_MATCH" };
+  }
+  const account = await findAccount(email);
+  if (account === null || !account.password || isBlank(account.uid)) return { kind: "REJECT", reason: "NO_MATCH" };
+  if (volunteers2.some((v) => v.portalUid === account.uid)) return { kind: "REJECT", reason: "NO_MATCH" };
+  const linkedBy = match.portalGoogleLinkedBy === LINKED_BY_VOLUNTEER ? LINKED_BY_VOLUNTEER : LINKED_BY_ADMIN;
+  return { kind: "LINK", volunteer: match, linkedBy, openedUid: account.uid };
+}
 function linkCode(c, request, requestedAtMillis, now, volunteers2, domains, aliasTarget, anyAccount = false) {
   const codeOk = request !== null && request.type === "GOOGLE_LINK" && request.status === STATUS_PENDING && c.code !== "" && request.codeHash === sha256(c.code) && requestedAtMillis !== null && now - requestedAtMillis < LINK_CODE_VALIDITY_MS;
   if (!codeOk) return { kind: "REJECT", reason: "CODE" };
@@ -296,7 +317,7 @@ var errorCode = (e) => {
 var volunteersOf = (db, orgId) => db.collection(`orgs/${orgId}/volunteers`);
 var aliasRef = (db, orgId, googleUid) => db.doc(`orgs/${orgId}/portalGoogleAccounts/${googleUid}`);
 var projectionRef = (db, orgId, portalUid) => db.doc(`orgs/${orgId}/volunteerPortal/${portalUid}`);
-var GOOGLE_FIELDS = ["portalEnabled", "portalUid", "portalGoogleEmail", "portalGoogleUid", "portalGoogleLinkedBy"];
+var GOOGLE_FIELDS = ["email", "portalEnabled", "portalUid", "portalGoogleEmail", "portalGoogleUid", "portalGoogleLinkedBy"];
 async function googleOn(db, orgId) {
   return await institutionSetting(db, orgId, "volunteer_portal_google_enabled") === "true";
 }
@@ -319,7 +340,7 @@ function googleProjectionFields(portalGoogleEmail, linkedBy, allowed) {
     googleLinkAvailable: allowed && googleEmail === ""
   };
 }
-async function onGoogleClaimDocument(db, orgId, googleUid, data) {
+async function onGoogleClaimDocument(db, orgId, googleUid, data, findAccount = async () => null) {
   if (data === void 0 || !isClaimable(data)) return;
   let result;
   try {
@@ -330,7 +351,7 @@ async function onGoogleClaimDocument(db, orgId, googleUid, data) {
     const ref = db.doc(`orgs/${orgId}/portalGoogleClaims/${googleUid}`);
     const claimed = await claim(ref, isClaimable);
     if (claimed === null) return;
-    result = await processClaim(db, orgId, googleUid, claimed);
+    result = await processClaim(db, orgId, googleUid, claimed, findAccount);
     await completeClaim(ref, result);
   } catch (e) {
     logger.error("google claim failed", { orgId, reason: "FAILED", code: errorCode(e) });
@@ -346,7 +367,7 @@ async function onGoogleClaimDocument(db, orgId, googleUid, data) {
 async function completeClaim(ref, result) {
   await ref.set({ status: result.status, reason: result.reason, processedAt: Date.now(), code: "" }, { merge: true });
 }
-async function processClaim(db, orgId, googleUid, claimed) {
+async function processClaim(db, orgId, googleUid, claimed, findAccount) {
   const c = parseGoogleClaim(googleUid, claimed);
   if (c === null) return rejected("INVALID");
   const now = Date.now();
@@ -368,6 +389,9 @@ async function processClaim(db, orgId, googleUid, claimed) {
   let decision;
   if (c.type === "ADMIN_MATCH") {
     decision = adminMatch(c, volunteers2, domains, aliasTarget, anyAccount);
+    if (decision.kind === "REJECT" && decision.reason === "NO_MATCH") {
+      decision = await adminMatchUnopened(c, volunteers2, findAccount);
+    }
   } else {
     const found = await db.collection(`orgs/${orgId}/portalRequests`).where("type", "==", "GOOGLE_LINK").where("codeHash", "==", sha256(c.code)).limit(1).get();
     const doc = found.docs[0];
@@ -384,7 +408,7 @@ async function processClaim(db, orgId, googleUid, claimed) {
       result = DONE;
       break;
     case "LINK":
-      result = await writeLink(db, orgId, c, decision.volunteer, decision.linkedBy, aliasTarget);
+      result = await writeLink(db, orgId, c, decision.volunteer, decision.linkedBy, aliasTarget, decision.openedUid);
       break;
   }
   if (result.status === "DONE" && linkRequest !== null) {
@@ -393,13 +417,14 @@ async function processClaim(db, orgId, googleUid, claimed) {
   return result;
 }
 var sameGoogleFields = (a, b) => a.portalEnabled === b.portalEnabled && a.portalUid === b.portalUid && a.portalGoogleEmail === b.portalGoogleEmail && a.portalGoogleUid === b.portalGoogleUid && a.portalGoogleLinkedBy === b.portalGoogleLinkedBy;
-async function writeLink(db, orgId, c, decided, linkedBy, aliasTarget) {
+async function writeLink(db, orgId, c, decided, linkedBy, aliasTarget, openedUid) {
   try {
     const allowed = await googleLinkAllowed(db, orgId);
+    const portalUid = openedUid ?? decided.portalUid;
     return await db.runTransaction(async (tx) => {
       const ref = volunteersOf(db, orgId).doc(decided.id);
       const alias = aliasRef(db, orgId, c.googleUid);
-      const page = projectionRef(db, orgId, decided.portalUid);
+      const page = projectionRef(db, orgId, portalUid);
       const previousUid = decided.portalGoogleUid;
       const previous = !isBlank(previousUid) && previousUid !== c.googleUid ? aliasRef(db, orgId, previousUid) : null;
       const [snap, aliasSnap, pageSnap, previousSnap] = await Promise.all([
@@ -409,6 +434,10 @@ async function writeLink(db, orgId, c, decided, linkedBy, aliasTarget) {
         previous !== null ? tx.get(previous) : Promise.resolve(null)
       ]);
       if (!snap.exists || !sameGoogleFields(googleVolunteerOf(snap.id, snap), decided)) return rejected("SAVE_FAILED");
+      if (openedUid !== void 0) {
+        const holders = await tx.get(volunteersOf(db, orgId).where("portalUid", "==", openedUid));
+        if (!holders.empty) return rejected("SAVE_FAILED");
+      }
       const target = aliasSnap.exists ? aliasSnap.get("volunteerUid") : void 0;
       if ((typeof target === "string" ? target : null) !== aliasTarget) return rejected("SAVE_FAILED");
       const now = Date.now();
@@ -416,12 +445,14 @@ async function writeLink(db, orgId, c, decided, linkedBy, aliasTarget) {
       if (previous !== null && previousSnap?.exists && previousSnap.get("volunteerUid") === decided.portalUid) {
         tx.delete(previous);
       }
-      tx.set(alias, { volunteerUid: decided.portalUid, email: c.email, linkedBy, linkedAt: now });
+      tx.set(alias, { volunteerUid: portalUid, email: c.email, linkedBy, linkedAt: now });
       tx.update(ref, {
+        ...openedUid !== void 0 ? { portalUid: openedUid } : {},
         portalGoogleEmail: email,
         portalGoogleUid: c.googleUid,
         portalGoogleLinkedBy: linkedBy,
-        lastModified: Math.max(now, (millisOf(snap.get("lastModified")) ?? 0) + 1)
+        lastModified: Math.max(now, (millisOf(snap.get("lastModified")) ?? 0) + 1),
+        sourceDeviceId: SERVER_SOURCE
       });
       const patch = patchedProjection(pageSnap.data(), googleProjectionFields(email, linkedBy, allowed), now);
       if (patch !== null) tx.update(page, patch);
@@ -449,7 +480,8 @@ async function unlinkGoogle(db, orgId, requestId, uid) {
         portalGoogleEmail: "",
         portalGoogleUid: "",
         portalGoogleLinkedBy: "",
-        lastModified: Math.max(now, (millisOf(doc.get("lastModified")) ?? 0) + 1)
+        lastModified: Math.max(now, (millisOf(doc.get("lastModified")) ?? 0) + 1),
+        sourceDeviceId: SERVER_SOURCE
       });
       const patch = patchedProjection(pageSnap.data(), googleProjectionFields("", "", allowed), now);
       if (patch !== null) tx.update(page, patch);
@@ -539,8 +571,8 @@ async function gmailSendRaw(token, user, raw, f, timeoutMs = DEFAULT_TIMEOUT_MS)
   });
   if (r.ok) return;
   const body = await jsonOf(r);
-  const error6 = body.error ?? {};
-  const reason = safePart(error6.errors?.[0]?.reason ?? error6.status, "unknown");
+  const error7 = body.error ?? {};
+  const reason = safePart(error7.errors?.[0]?.reason ?? error7.status, "unknown");
   throw new MailSendError(code(`gmail:${r.status}:${reason}`));
 }
 
@@ -859,7 +891,7 @@ async function link(db, bucket, orgId, ref, submission, photo) {
   const linked = await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists || !isBlank2(snap.get("portalUid"))) return null;
-    tx.update(ref, { portalEnabled: true, portalUid: submission.uid, lastModified: Date.now() });
+    tx.update(ref, { portalEnabled: true, portalUid: submission.uid, lastModified: Date.now(), sourceDeviceId: SERVER_SOURCE });
     return snap.data();
   });
   if (linked === null) throw Object.assign(new Error("link conflict"), { code: "LINK_CONFLICT" });
@@ -869,7 +901,7 @@ async function link(db, bucket, orgId, ref, submission, photo) {
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists || !isBlank2(snap.get("profilePhotoPath")) || !isBlank2(snap.get("profilePhotoUrl"))) return;
-    tx.update(ref, { profilePhotoPath: path, lastModified: Date.now() });
+    tx.update(ref, { profilePhotoPath: path, lastModified: Date.now(), sourceDeviceId: SERVER_SOURCE });
   });
 }
 async function create(db, bucket, orgId, submission, photo) {
@@ -1041,7 +1073,8 @@ async function saveProfile(db, bucket, orgId, requestId, request) {
         lastNameAbbreviation: lastName,
         phone: request.phone,
         ...photo !== null ? { profilePhotoPath: photo.path, profilePhotoUrl: photo.url } : {},
-        lastModified: Math.max(now, (millisOf(owner.get("lastModified")) ?? 0) + 1)
+        lastModified: Math.max(now, (millisOf(owner.get("lastModified")) ?? 0) + 1),
+        sourceDeviceId: SERVER_SOURCE
       });
       const fields = { firstName: request.firstName, lastName, phone: request.phone };
       if (photo !== null) Object.assign(fields, { hasPhoto: true, photoVersion: photo.version });
@@ -1085,7 +1118,8 @@ async function handleClaim(db, orgId, requestId, request) {
       }
       tx.update(ref, {
         portalUid: request.uid,
-        lastModified: Math.max(Date.now(), (millisOf(snap.get("lastModified")) ?? 0) + 1)
+        lastModified: Math.max(Date.now(), (millisOf(snap.get("lastModified")) ?? 0) + 1),
+        sourceDeviceId: SERVER_SOURCE
       });
       return DONE2;
     });
@@ -1234,6 +1268,16 @@ function admin() {
   if (!getApps().some((app) => app.name === "[DEFAULT]")) initializeApp();
   return { db: getFirestore(), bucket: getStorage().bucket() };
 }
+async function findEmailAccount(email) {
+  try {
+    const user = await getAuth().getUserByEmail(email);
+    return { uid: user.uid, password: user.providerData.some((p) => p.providerId === "password") };
+  } catch (e) {
+    const code2 = String(e?.code ?? "");
+    if (code2 !== "auth/user-not-found") logger6.error("account lookup failed", { code: code2 });
+    return null;
+  }
+}
 var onSignupWritten = onDocumentWritten(
   { document: "orgs/{orgId}/volunteerSignupForms/{formId}", region: REGION, retry: false },
   async (event) => {
@@ -1282,7 +1326,7 @@ var onPortalGoogleClaimWritten = onDocumentWritten(
     const after = event.data?.after;
     if (!after?.exists) return;
     const { db } = admin();
-    await onGoogleClaimDocument(db, event.params.orgId, event.params.googleUid, after.data());
+    await onGoogleClaimDocument(db, event.params.orgId, event.params.googleUid, after.data(), findEmailAccount);
   }
 );
 export {

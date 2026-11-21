@@ -97,6 +97,8 @@ import androidx.compose.runtime.collectAsState
 import kotlin.math.roundToInt
 import com.eventmanager.app.R
 import com.eventmanager.app.resources.Res
+import com.eventmanager.app.ui.components.KeepAwakeSpace
+import com.eventmanager.app.ui.components.KeepScreenAwakeSettingRow
 import com.eventmanager.app.resources.save
 import com.eventmanager.app.resources.setup_signed_in_as
 import com.eventmanager.app.resources.sync_backup_page_title
@@ -1972,6 +1974,10 @@ actual fun SettingsScreen(
             .padding(16.dp)
     ) {
         if (variant == SettingsScreenVariant.BilleterieBasic) {
+            KeepScreenAwakeSettingRow(
+                space = KeepAwakeSpace.Billeterie,
+                modifier = Modifier.padding(bottom = 16.dp),
+            )
             BackgroundAnimationSettingsSection(
                 settingsManager = settingsManager,
                 isDesktop = false,
@@ -2007,6 +2013,10 @@ actual fun SettingsScreen(
         }
 
         if (variant == SettingsScreenVariant.PosBasic) {
+            KeepScreenAwakeSettingRow(
+                space = KeepAwakeSpace.Pos,
+                modifier = Modifier.padding(bottom = 16.dp),
+            )
             BackgroundAnimationSettingsSection(
                 settingsManager = settingsManager,
                 isDesktop = false,

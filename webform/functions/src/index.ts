@@ -1,5 +1,6 @@
 // Cloud Functions of the volunteer portal: Firestore triggers only, never retried, no HTTP endpoint.
 import { getApps, initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import * as logger from "firebase-functions/logger";
@@ -9,7 +10,7 @@ import type { MailTransport } from "./mail";
 import { onRequestDocument } from "./requests";
 import { onSignupDocument } from "./signup";
 import { onOutboxDocument } from "./outbox";
-import { onGoogleClaimDocument } from "./google";
+import { onGoogleClaimDocument, type EmailAccount } from "./google";
 
 export { cleanName, cleanPhone, cleanEmail, parseSignup, parseRequest, parseGoogleClaim } from "./validate";
 export type { SignupSubmission, PortalRequest, PortalRequestType, PortalGoogleClaim, PortalGoogleClaimType } from "./validate";
@@ -53,6 +54,21 @@ function admin() {
   // firebase-functions may hold a named app of its own: look for the default one.
   if (!getApps().some((app) => app.name === "[DEFAULT]")) initializeApp();
   return { db: getFirestore(), bucket: getStorage().bucket() };
+}
+
+/**
+ * The e-mail account of a roster address (adminMatchUnopened). Needs roles/firebaseauth.viewer on
+ * the account the functions run as; without it the lookup fails and the claim stays NO_MATCH.
+ */
+async function findEmailAccount(email: string): Promise<EmailAccount | null> {
+  try {
+    const user = await getAuth().getUserByEmail(email);
+    return { uid: user.uid, password: user.providerData.some((p) => p.providerId === "password") };
+  } catch (e) {
+    const code = String((e as { code?: unknown })?.code ?? "");
+    if (code !== "auth/user-not-found") logger.error("account lookup failed", { code });
+    return null;
+  }
 }
 
 export const onSignupWritten = onDocumentWritten(
@@ -108,6 +124,6 @@ export const onPortalGoogleClaimWritten = onDocumentWritten(
     const after = event.data?.after;
     if (!after?.exists) return;
     const { db } = admin();
-    await onGoogleClaimDocument(db, event.params.orgId, event.params.googleUid, after.data());
+    await onGoogleClaimDocument(db, event.params.orgId, event.params.googleUid, after.data(), findEmailAccount);
   },
 );

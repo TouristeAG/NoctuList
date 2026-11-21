@@ -598,24 +598,25 @@ class VolunteerPortalServiceTest {
     }
 
     @Test
-    fun grantingAccessStoresTheUidAndSendsTheSetPasswordMail() = runBlocking {
+    fun grantingAccessStoresTheUidWithoutSendingAnyMail() = runBlocking {
         val gateway = FakeGateway()
         val host = FakeHost(listOf(volunteer("V1", "lea@example.org")))
         val auth = FakeAuth(PortalAuthResult.Created("NewUid00000000000000003"))
-        val result = service(gateway, host, auth).grantAccess(host.volunteers.single(), "fr")
+        val result = service(gateway, host, auth).grantAccess(host.volunteers.single())
         val created = assertIs<PortalGrantResult.Created>(result)
         assertTrue(created.password.length >= 12)
-        assertTrue(created.resetSent)
         assertEquals("NewUid00000000000000003", host.volunteers.single().portalUid)
-        assertEquals(listOf("lea@example.org"), auth.resets)
+        assertEquals(emptyList(), auth.resets)
     }
 
     @Test
     fun grantingAccessToAnExistingAccountWaitsForTheClaim() = runBlocking {
         val gateway = FakeGateway()
         val host = FakeHost(listOf(volunteer("V1", "lea@example.org")))
-        val result = service(gateway, host, FakeAuth(PortalAuthResult.EmailExists)).grantAccess(host.volunteers.single(), "fr")
+        val auth = FakeAuth(PortalAuthResult.EmailExists)
+        val result = service(gateway, host, auth).grantAccess(host.volunteers.single())
         assertIs<PortalGrantResult.ExistingAccount>(result)
+        assertEquals(emptyList(), auth.resets)
         assertTrue(host.volunteers.single().portalEnabled)
         assertEquals("", host.volunteers.single().portalUid)
     }

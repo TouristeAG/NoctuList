@@ -5,7 +5,6 @@ import com.eventmanager.app.ui.components.AddVolunteerChoiceDialog
 import com.eventmanager.app.ui.components.PortalAccessToggleRow
 import com.eventmanager.app.ui.components.PortalGrantResultDialog
 import com.eventmanager.app.ui.components.VolunteerSignupLinkDialog
-import com.eventmanager.app.ui.components.portalMailLanguage
 import com.eventmanager.app.ui.components.rememberVolunteerPortalEnabled
 import kotlinx.coroutines.launch
 import com.eventmanager.app.platform.LocalPlatformContext
@@ -326,11 +325,7 @@ fun VolunteerScreen(
                 )
                 if (createPortalAccess && viewModel != null) {
                     portalScope.launch {
-                        val result = viewModel.addVolunteerWithPortalAccess(
-                            newVolunteer,
-                            photo,
-                            portalMailLanguage(viewModel),
-                        )
+                        val result = viewModel.addVolunteerWithPortalAccess(newVolunteer, photo)
                         portalGrant = newVolunteer to result
                     }
                 } else {

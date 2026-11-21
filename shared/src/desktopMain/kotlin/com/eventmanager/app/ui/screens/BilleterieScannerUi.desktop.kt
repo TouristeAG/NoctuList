@@ -1,5 +1,7 @@
 package com.eventmanager.app.ui.screens
 
+import com.eventmanager.app.ui.components.KeepScreenAwakeToggle
+import com.eventmanager.app.ui.components.KeepAwakeSpace
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -76,6 +78,9 @@ fun DesktopBilleterieScanningScreen(
                             contentDescription = stringResource(Res.string.setup_back),
                         )
                     }
+                },
+                actions = {
+                    KeepScreenAwakeToggle(KeepAwakeSpace.Billeterie)
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,

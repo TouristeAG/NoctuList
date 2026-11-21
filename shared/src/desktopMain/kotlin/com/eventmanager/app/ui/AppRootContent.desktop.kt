@@ -1,5 +1,8 @@
 package com.eventmanager.app.ui
 
+import com.eventmanager.app.ui.components.KeepScreenAwakeForSpace
+import com.eventmanager.app.ui.components.KeepScreenAwakeToggle
+import com.eventmanager.app.ui.components.KeepAwakeSpace
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
@@ -1164,6 +1167,9 @@ private fun DesktopBilleterieFlow(
         }
     }
 
+    // POS opened from Billeterie follows the POS switch (PosFlow holds its own lock).
+    KeepScreenAwakeForSpace(KeepAwakeSpace.Billeterie, active = section != BilleterieSection.Pos.name)
+
     PlatformBackHandler(enabled = true) {
         when {
             showBilleterieSettings -> showBilleterieSettings = false
@@ -1254,7 +1260,10 @@ private fun DesktopBilleterieFlow(
                                 IconButton(onClick = { section = BilleterieSection.Home.name }) {
                                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.setup_back))
                                 }
-                            }
+                            },
+                            actions = {
+                                KeepScreenAwakeToggle(KeepAwakeSpace.Billeterie)
+                            },
                         )
                     }
                 ) { padding ->

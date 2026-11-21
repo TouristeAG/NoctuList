@@ -127,7 +127,6 @@ import com.eventmanager.app.resources.portal_access_google_err_same_as_email_any
 import com.eventmanager.app.resources.portal_password_body
 import com.eventmanager.app.resources.portal_password_copied
 import com.eventmanager.app.resources.portal_password_copy
-import com.eventmanager.app.resources.portal_password_reset_sent
 import com.eventmanager.app.resources.portal_password_sign_in_at
 import com.eventmanager.app.resources.portal_password_title
 import com.eventmanager.app.resources.portal_signup_link_body
@@ -363,6 +362,11 @@ fun PortalGrantResultDialog(
     val clipboard = LocalClipboardManager.current
     var copied by remember { mutableStateOf(false) }
     val portalUrl = viewModel?.volunteerPortalUrl().orEmpty()
+    val scope = rememberCoroutineScope()
+    var sending by remember { mutableStateOf(false) }
+    var resetMessage by remember { mutableStateOf<Pair<String, Boolean>?>(null) }
+    val resetSentText = stringResource(Res.string.portal_access_reset_sent, volunteer.email)
+    val resetFailedText = stringResource(Res.string.portal_access_reset_failed)
     AlertDialog(
         onDismissRequest = {},
         icon = { Icon(Icons.Default.Key, contentDescription = null) },
@@ -399,19 +403,42 @@ fun PortalGrantResultDialog(
                                 }
                             }
                         }
-                        if (result.resetSent) {
-                            Text(
-                                stringResource(Res.string.portal_password_reset_sent, volunteer.email),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
                     }
                     is PortalGrantResult.ExistingAccount -> Text(stringResource(Res.string.portal_access_existing, volunteer.email))
                     is PortalGrantResult.Failed -> Text(
                         stringResource(Res.string.portal_access_failed, result.code),
                         color = MaterialTheme.colorScheme.error,
                     )
+                }
+                if (result !is PortalGrantResult.Failed && viewModel != null && volunteer.email.isNotBlank()) {
+                    OutlinedButton(
+                        onClick = {
+                            sending = true
+                            resetMessage = null
+                            scope.launch {
+                                val ok = viewModel.sendVolunteerPortalPasswordReset(volunteer, portalMailLanguage(viewModel))
+                                resetMessage = (if (ok) resetSentText else resetFailedText) to ok
+                                sending = false
+                            }
+                        },
+                        enabled = !sending && resetMessage?.second != true,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        if (sending) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(Icons.Default.LockReset, contentDescription = null, modifier = Modifier.size(16.dp))
+                        }
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(Res.string.portal_access_reset))
+                    }
+                    resetMessage?.let { (text, ok) ->
+                        Text(
+                            text,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (ok) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                        )
+                    }
                 }
                 if (result !is PortalGrantResult.Failed && portalUrl.isNotBlank()) {
                     Text(
@@ -485,7 +512,7 @@ fun VolunteerPortalAccessCard(
                     onClick = {
                         busy = true
                         scope.launch {
-                            grantResult = viewModel.grantVolunteerPortalAccess(volunteer, portalMailLanguage(viewModel))
+                            grantResult = viewModel.grantVolunteerPortalAccess(volunteer)
                             busy = false
                         }
                     },

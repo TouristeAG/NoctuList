@@ -5,6 +5,7 @@ import { after, before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { deleteApp, initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
 import { FieldValue, Timestamp, getFirestore } from "firebase-admin/firestore";
 
 const PROJECT = "demo-noctulist";
@@ -16,6 +17,7 @@ if (!process.env.FIRESTORE_EMULATOR_HOST) {
 
 let app;
 let db;
+let auth;
 let counter = 0;
 
 const sha256 = (s) => createHash("sha256").update(s, "utf8").digest("hex");
@@ -154,6 +156,18 @@ async function barrier() {
   await sleep(1000);
 }
 
+/** The volunteer's e-mail account, as grantAccess created it earlier (Auth emulator). */
+async function addAccount(email, { password = true } = {}) {
+  const user = await auth.createUser({ uid: newUid("account"), email, ...(password ? { password: "Secret-123456" } : {}) });
+  return user.uid;
+}
+
+/** A fresh roster address per test: the Auth emulator keeps accounts across tests. */
+function newEmail() {
+  counter += 1;
+  return `lea${counter}.${Date.now().toString(36)}@mail.example`;
+}
+
 async function alias(org, googleUid) {
   const snap = await db.doc(`orgs/${org}/portalGoogleAccounts/${googleUid}`).get();
   return snap.exists ? snap.data() : null;
@@ -162,6 +176,7 @@ async function alias(org, googleUid) {
 before(async () => {
   app = initializeApp({ projectId: PROJECT }, "google-tests");
   db = getFirestore(app);
+  auth = getAuth(app);
 });
 
 after(async () => {
@@ -324,6 +339,100 @@ describe("onPortalGoogleClaimWritten: protocol", () => {
   });
 });
 
+describe("onPortalGoogleClaimWritten: ADMIN_MATCH on a reopened access", () => {
+  // Reopening an access (or opening one for an address that already has an account) leaves
+  // portalUid empty: the device cannot learn the uid of an existing account. The server can.
+  test("links the volunteer's existing e-mail account, then the Google account", async () => {
+    const org = await newOrg();
+    const email = newEmail();
+    const accountUid = await addAccount(email);
+    const future = Date.now() + 10 * 60 * 1000;
+    const v = await addVolunteer(org, {
+      email: ` ${email.toUpperCase()} `, portalUid: "", portalGoogleEmail: `lea@${DOMAIN}`, portalGoogleLinkedBy: "ADMIN",
+      lastModified: future, sourceDeviceId: "admin-device-1",
+    });
+    const googleUid = newUid("google");
+    assertResult(await waitResult(await sendClaim(org, googleUid, "ADMIN_MATCH", `lea@${DOMAIN}`)), "DONE", "");
+
+    assert.equal((await alias(org, googleUid)).volunteerUid, accountUid);
+    const after = await volunteer(org, v.id);
+    assert.equal(after.portalUid, accountUid);
+    assert.equal(after.portalGoogleUid, googleUid);
+    assert.equal(after.portalGoogleLinkedBy, "ADMIN");
+    assert.equal(after.lastModified, future + 1);
+    assert.equal(after.sourceDeviceId, "server", "the admin device must not drop the change as its own echo");
+    assert.deepEqual(
+      { ...after, portalUid: "", portalGoogleUid: "", lastModified: future, sourceDeviceId: "admin-device-1" },
+      v,
+      "nothing else changes on the roster entry",
+    );
+  });
+
+  test("no account for the roster address: no match", async () => {
+    const org = await newOrg();
+    const v = await addVolunteer(org, { email: newEmail(), portalUid: "", portalGoogleEmail: `lea@${DOMAIN}`, portalGoogleLinkedBy: "ADMIN" });
+    const googleUid = newUid("google");
+    assertResult(await waitResult(await sendClaim(org, googleUid, "ADMIN_MATCH", `lea@${DOMAIN}`)), "REJECTED", "NO_MATCH");
+    assert.equal(await alias(org, googleUid), null);
+    assert.deepEqual(await volunteer(org, v.id), v);
+  });
+
+  test("an account without a password is not a portal account", async () => {
+    const org = await newOrg();
+    const email = newEmail();
+    await addAccount(email, { password: false });
+    const v = await addVolunteer(org, { email, portalUid: "", portalGoogleEmail: `lea@${DOMAIN}`, portalGoogleLinkedBy: "ADMIN" });
+    const googleUid = newUid("google");
+    assertResult(await waitResult(await sendClaim(org, googleUid, "ADMIN_MATCH", `lea@${DOMAIN}`)), "REJECTED", "NO_MATCH");
+    assert.deepEqual(await volunteer(org, v.id), v);
+  });
+
+  test("an account already used by another volunteer is not taken", async () => {
+    const org = await newOrg();
+    const email = newEmail();
+    const accountUid = await addAccount(email);
+    await addVolunteer(org, { email, portalUid: accountUid });
+    const v = await addVolunteer(org, { email, portalUid: "", portalGoogleEmail: `lea@${DOMAIN}`, portalGoogleLinkedBy: "ADMIN" });
+    const googleUid = newUid("google");
+    assertResult(await waitResult(await sendClaim(org, googleUid, "ADMIN_MATCH", `lea@${DOMAIN}`)), "REJECTED", "NO_MATCH");
+    assert.deepEqual(await volunteer(org, v.id), v);
+  });
+
+  test("two entries with portal access share the roster address: no match", async () => {
+    const org = await newOrg();
+    const email = newEmail();
+    await addAccount(email);
+    const v = await addVolunteer(org, { email, portalUid: "", portalGoogleEmail: `lea@${DOMAIN}`, portalGoogleLinkedBy: "ADMIN" });
+    await addVolunteer(org, { email, portalUid: "" });
+    const googleUid = newUid("google");
+    assertResult(await waitResult(await sendClaim(org, googleUid, "ADMIN_MATCH", `lea@${DOMAIN}`)), "REJECTED", "NO_MATCH");
+    assert.deepEqual(await volunteer(org, v.id), v);
+  });
+
+  test("two unopened entries with the same Google address: ambiguous", async () => {
+    const org = await newOrg();
+    const first = newEmail();
+    const second = newEmail();
+    await addAccount(first);
+    await addAccount(second);
+    await addVolunteer(org, { email: first, portalUid: "", portalGoogleEmail: `lea@${DOMAIN}`, portalGoogleLinkedBy: "ADMIN" });
+    await addVolunteer(org, { email: second, portalUid: "", portalGoogleEmail: `lea@${DOMAIN}`, portalGoogleLinkedBy: "ADMIN" });
+    const googleUid = newUid("google");
+    assertResult(await waitResult(await sendClaim(org, googleUid, "ADMIN_MATCH", `lea@${DOMAIN}`)), "REJECTED", "AMBIGUOUS");
+    assert.equal(await alias(org, googleUid), null);
+  });
+
+  test("access closed: never opened through Google", async () => {
+    const org = await newOrg();
+    const email = newEmail();
+    await addAccount(email);
+    const v = await addVolunteer(org, { email, portalEnabled: false, portalUid: "", portalGoogleEmail: `lea@${DOMAIN}`, portalGoogleLinkedBy: "ADMIN" });
+    const googleUid = newUid("google");
+    assertResult(await waitResult(await sendClaim(org, googleUid, "ADMIN_MATCH", `lea@${DOMAIN}`)), "REJECTED", "NO_MATCH");
+    assert.deepEqual(await volunteer(org, v.id), v);
+  });
+});
+
 describe("onPortalGoogleClaimWritten: LINK_CODE", () => {
   test("link code links and removes the code", async () => {
     const org = await newOrg();
@@ -349,6 +458,7 @@ describe("onPortalGoogleClaimWritten: LINK_CODE", () => {
     assert.equal(after.portalGoogleUid, googleUid);
     assert.equal(after.portalGoogleLinkedBy, "VOLUNTEER");
     assert.ok(after.lastModified > 1000);
+    assert.equal(after.sourceDeviceId, "server");
 
     const page = await projection(org, v.portalUid);
     assert.deepEqual(Object.keys(page), Object.keys(before), "key order kept");
@@ -436,6 +546,7 @@ describe("onPortalRequestWritten: Google requests", () => {
     assert.equal(after.portalGoogleUid, "");
     assert.equal(after.portalGoogleLinkedBy, "");
     assert.ok(after.lastModified > 1000);
+    assert.equal(after.sourceDeviceId, "server");
     const page = await projection(org, v.portalUid);
     assert.deepEqual(Object.keys(page), Object.keys(before));
     assert.deepEqual(page, { ...before, googleEmail: "", googleLinkedBy: "", googleLinkAvailable: true });

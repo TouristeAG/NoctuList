@@ -93,6 +93,8 @@ class SettingsManager(private val storage: AppStorage) {
         private const val KEY_POS_SELECTED_CATEGORY = "pos_selected_category"
         private const val KEY_POS_SELECTED_VENUE = "pos_selected_venue"
         private const val KEY_PAGE_ANIMATIONS = "page_animations"
+        private const val KEY_KEEP_SCREEN_ON_POS = "keep_screen_on_pos"
+        private const val KEY_KEEP_SCREEN_ON_BILLETERIE = "keep_screen_on_billeterie"
         /** Legacy: was also updated on upload-only paths; still read for migration. */
         private const val KEY_LAST_SYNC_TIME = "last_sync_time"
         /** Last successful read of Google Sheets data into the app (any tab / scope). */
@@ -1652,6 +1654,20 @@ class SettingsManager(private val storage: AppStorage) {
     
     fun setPageAnimationsEnabled(enabled: Boolean) {
         storage.putBoolean(KEY_PAGE_ANIMATIONS, enabled)
+    }
+
+    /** Keeps the display awake (no sleep, no auto lock) while the POS space is open. Off by default. */
+    fun isKeepScreenOnPosEnabled(): Boolean = storage.getBoolean(KEY_KEEP_SCREEN_ON_POS, false)
+
+    fun setKeepScreenOnPosEnabled(enabled: Boolean) {
+        storage.putBoolean(KEY_KEEP_SCREEN_ON_POS, enabled)
+    }
+
+    /** Keeps the display awake while the Billeterie space (home, guest list, scanner) is open. Off by default. */
+    fun isKeepScreenOnBilleterieEnabled(): Boolean = storage.getBoolean(KEY_KEEP_SCREEN_ON_BILLETERIE, false)
+
+    fun setKeepScreenOnBilleterieEnabled(enabled: Boolean) {
+        storage.putBoolean(KEY_KEEP_SCREEN_ON_BILLETERIE, enabled)
     }
     
     /**

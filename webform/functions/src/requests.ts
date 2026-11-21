@@ -5,7 +5,7 @@
 // after their 2 minute grace period, or when a claim of ours is older than 5 minutes.
 import * as logger from "firebase-functions/logger";
 import type { DocumentReference, Firestore } from "firebase-admin/firestore";
-import { associationName, claim, millisOf, patchedProjection, portalEnabled, sha256, touchStatus } from "./common";
+import { SERVER_SOURCE, associationName, claim, millisOf, patchedProjection, portalEnabled, sha256, touchStatus } from "./common";
 import { unlinkGoogle } from "./google";
 import { buildQrMail, parseMailTemplate, safeRecipient, sendMail, type MailTransport } from "./mail";
 import { kotlinTrim, parseRequest, type PortalRequest } from "./validate";
@@ -217,6 +217,7 @@ async function saveProfile(
         phone: request.phone,
         ...(photo !== null ? { profilePhotoPath: photo.path, profilePhotoUrl: photo.url } : {}),
         lastModified: Math.max(now, (millisOf(owner.get("lastModified")) ?? 0) + 1),
+        sourceDeviceId: SERVER_SOURCE,
       });
       const fields: Data = { firstName: request.firstName, lastName, phone: request.phone };
       if (photo !== null) Object.assign(fields, { hasPhoto: true, photoVersion: photo.version });
@@ -287,6 +288,7 @@ async function handleClaim(
       tx.update(ref, {
         portalUid: request.uid,
         lastModified: Math.max(Date.now(), (millisOf(snap.get("lastModified")) ?? 0) + 1),
+        sourceDeviceId: SERVER_SOURCE,
       });
       return DONE;
     });

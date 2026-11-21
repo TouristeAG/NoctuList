@@ -5,6 +5,7 @@ import * as logger from "firebase-functions/logger";
 import type { DocumentReference, Firestore } from "firebase-admin/firestore";
 import type { Storage } from "firebase-admin/storage";
 import {
+  SERVER_SOURCE,
   associationName,
   claim,
   institutionSetting,
@@ -171,7 +172,7 @@ async function link(
     const snap = await tx.get(ref);
     // Linked by someone else since the scan: leave the answer for a later retry.
     if (!snap.exists || !isBlank(snap.get("portalUid"))) return null;
-    tx.update(ref, { portalEnabled: true, portalUid: submission.uid, lastModified: Date.now() });
+    tx.update(ref, { portalEnabled: true, portalUid: submission.uid, lastModified: Date.now(), sourceDeviceId: SERVER_SOURCE });
     return snap.data() as Data;
   });
   if (linked === null) throw Object.assign(new Error("link conflict"), { code: "LINK_CONFLICT" });
@@ -182,7 +183,7 @@ async function link(
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists || !isBlank(snap.get("profilePhotoPath")) || !isBlank(snap.get("profilePhotoUrl"))) return;
-    tx.update(ref, { profilePhotoPath: path, lastModified: Date.now() });
+    tx.update(ref, { profilePhotoPath: path, lastModified: Date.now(), sourceDeviceId: SERVER_SOURCE });
   });
 }
 

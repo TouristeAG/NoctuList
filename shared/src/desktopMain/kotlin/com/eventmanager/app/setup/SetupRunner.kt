@@ -46,8 +46,10 @@ const val BUILD_ROLE = "roles/cloudbuild.builds.builder"
 /**
  * Roles of the default compute account, which builds the functions and also runs them. New projects leave it
  * without any of these: without Firestore and Storage, every portal request fails with PERMISSION_DENIED.
+ * The Auth viewer role (read only) lets a first Google sign-in find the volunteer's e-mail account when the
+ * portal access was opened for an address that already had one.
  */
-val COMPUTE_ROLES = listOf(BUILD_ROLE, "roles/datastore.user", "roles/storage.objectAdmin")
+val COMPUTE_ROLES = listOf(BUILD_ROLE, "roles/datastore.user", "roles/storage.objectAdmin", "roles/firebaseauth.viewer")
 
 /**
  * Runs the setup steps one at a time and keeps their state for the Automatic tab.
