@@ -20,6 +20,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -179,6 +180,10 @@ fun TemporaryGroupPortalSection(
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(Res.string.temp_group_portal_close))
                 }
+            }
+            if (openForContact && guest.portalUid.isNotBlank() && rememberGuestFormsEnabled(viewModel)) {
+                HorizontalDivider()
+                PortalInvitesPanel(viewModel, contact, guest.portalUid, guest.temporaryContactPhone)
             }
             if (closeFailed) {
                 Text(

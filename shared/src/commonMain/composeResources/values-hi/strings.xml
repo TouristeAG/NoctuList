@@ -2744,4 +2744,17 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="portal_guest_create_access_toggle_desc">एक पासवर्ड बनाया जाता है और सिर्फ़ एक बार दिखाया जाता है।</string>
     <string name="temp_group_portal_joined">इस पते का खाता पहले से है। सूची उसके स्पेस में दिखती है।</string>
     <string name="portal_access_address_conflict">यह पता पहले से दूसरे खाते से जुड़ा है</string>
+    <string name="portal_invites_can_invite">आमंत्रित कर सकते हैं</string>
+    <string name="portal_invites_edit_limits">सीमाएँ बदलें</string>
+    <string name="portal_invites_list_name">सूची का नाम</string>
+    <string name="portal_invites_manage">मेहमान प्रबंधित करें</string>
+    <string name="portal_invites_max_guests">अधिकतम लोग</string>
+    <string name="portal_invites_none">इस पते के लिए कोई आगामी सूची नहीं।</string>
+    <string name="portal_invites_other_event">दूसरे कार्यक्रम के लिए आमंत्रण खोलें</string>
+    <string name="portal_invites_places">स्थान: %2$d में से %1$d</string>
+    <string name="portal_invites_venue">स्थान</string>
+    <string name="portal_invites_access_max">अधिकतम</string>
+    <string name="portal_invites_review_remove">%1$s के लिए हटाना</string>
+    <string name="portal_invites_from_portal">प्लेटफ़ॉर्म से, %1$s द्वारा</string>
+    <string name="portal_invites_over_limit">यह कार्यक्रम की सीमा से अधिक है। नाम हटाएँ या सीमा बढ़ाएँ।</string>
 </resources>

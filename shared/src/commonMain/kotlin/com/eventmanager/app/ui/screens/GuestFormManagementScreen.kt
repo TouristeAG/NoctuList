@@ -43,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.eventmanager.app.data.models.GuestForm
 import com.eventmanager.app.data.models.GuestFormStatus
+import com.eventmanager.app.data.models.isPortalInvite
 import com.eventmanager.app.data.models.closedAtMillis
 import com.eventmanager.app.data.models.isListedAsOpen
 import com.eventmanager.app.data.models.isListedAsPending
@@ -120,9 +121,10 @@ fun GuestFormManagementScreen(
 
     val listed = remember(forms, nowMillis) {
         forms.filter { form ->
-            form.isListedAsOpen(nowMillis) ||
+            // A portal invite template has no public link; its answers are listed like any other.
+            !(form.isPortalInvite && form.parentFormId.isBlank()) && (form.isListedAsOpen(nowMillis) ||
                 form.isListedAsPending() ||
-                form.isListedAsRecentlyClosed(nowMillis)
+                form.isListedAsRecentlyClosed(nowMillis))
         }
     }
     val filtered = remember(listed, searchText, selectedFilter, filterOpen, filterPending, filterClosed, nowMillis) {

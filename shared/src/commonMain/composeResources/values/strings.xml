@@ -2734,4 +2734,17 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="portal_guest_create_access_toggle_desc">A password is generated and shown once.</string>
     <string name="temp_group_portal_joined">This address already has an account. The list appears in its space.</string>
     <string name="portal_access_address_conflict">This address is already linked to another account</string>
+    <string name="portal_invites_can_invite">Can invite</string>
+    <string name="portal_invites_edit_limits">Edit limits</string>
+    <string name="portal_invites_list_name">List name</string>
+    <string name="portal_invites_manage">Manage guests</string>
+    <string name="portal_invites_max_guests">Maximum number of people</string>
+    <string name="portal_invites_none">No upcoming list for this address.</string>
+    <string name="portal_invites_other_event">Open invites for another event</string>
+    <string name="portal_invites_places">Places: %1$d of %2$d</string>
+    <string name="portal_invites_venue">Venue</string>
+    <string name="portal_invites_access_max">Max</string>
+    <string name="portal_invites_review_remove">Removal for %1$s</string>
+    <string name="portal_invites_from_portal">From the platform, by %1$s</string>
+    <string name="portal_invites_over_limit">This goes past the limits of the event. Remove names or raise the limit.</string>
 </resources>

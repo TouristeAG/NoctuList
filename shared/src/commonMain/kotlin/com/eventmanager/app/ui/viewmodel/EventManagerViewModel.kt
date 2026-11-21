@@ -56,6 +56,8 @@ import com.eventmanager.app.data.remote.FirestoreGateway
 import com.eventmanager.app.data.remote.downloadProfilePhotoBytes
 import com.eventmanager.app.portal.DomainCheck
 import com.eventmanager.app.portal.PortalGrantResult
+import com.eventmanager.app.portal.PortalInviteList
+import com.eventmanager.app.portal.PortalInvites
 import com.eventmanager.app.portal.PortalHolderKind
 import com.eventmanager.app.portal.PortalMailTemplate
 import com.eventmanager.app.portal.PortalQrMailer
@@ -1295,7 +1297,9 @@ class EventManagerViewModel(
 
     /**
      * Turns a reviewed answer into real temporary guests. [people] is passed in rather than read
-     * from the form so an admin can edit the list before accepting it.
+     * from the form so an admin can edit the list before accepting it. An answer from the portal
+     * takes the address and phone of its invite template, so the people join the same list, and
+     * is refused (false) when it would go past a limit of the event.
      */
     fun acceptGuestForm(
         form: GuestForm,
@@ -1304,22 +1308,136 @@ class EventManagerViewModel(
         emergencyPhone: String,
         comments: String,
         reviewedBy: String = "",
-    ) {
-        if (!isGuestFormFeaturesEnabled()) return
+    ): Boolean {
+        if (!isGuestFormFeaturesEnabled()) return false
         val entries = people.map { it.copy(name = it.name.trim()) }.filter { it.name.isNotEmpty() }
-        if (entries.isEmpty()) return
+        if (entries.isEmpty()) return false
+        val template = portalInviteTemplateOf(form)
+        if (template != null) {
+            val batch = portalInviteBatch(template)
+            val fits = PortalInvites.canAccept(
+                template, form, batch, emptyList(), entries.map { it.name to it.accessIds },
+            )
+            if (!fits) return false
+        }
         addTemporaryGuestBatch(
             ManualTemporaryGuestBatch(
                 eventDateMillis = form.eventDateMillis,
                 artistName = form.artistName,
-                emergencyContactPhone = emergencyPhone.trim(),
+                emergencyContactPhone = (template?.prefillPhone ?: emergencyPhone).trim(),
                 comments = comments.trim(),
                 guests = entries,
                 venueName = form.venueName,
-                contactEmail = contactEmail.trim(),
+                contactEmail = (template?.prefillEmail ?: contactEmail).trim(),
             ),
         )
         closeGuestForm(form, GuestFormStatus.ACCEPTED, reviewedBy)
+        return true
+    }
+
+    /** The portal invite template a portal answer belongs to, or null for any other form. */
+    fun portalInviteTemplateOf(form: GuestForm): GuestForm? {
+        if (!form.isPortalInvite || form.parentFormId.isBlank()) return null
+        return _guestForms.value.firstOrNull { it.formId == form.parentFormId && it.isPortalInvite }
+    }
+
+    /** Guests already on the list of [template] (same list key and contact address). */
+    fun portalInviteBatch(template: GuestForm): List<Guest> {
+        val key = PortalInvites.listKey(template)
+        val address = template.prefillEmail.trim().lowercase()
+        return _guests.value.filter {
+            it.isTemporaryGuest && it.temporaryBatchKey() == key && it.temporaryContactEmail.trim().lowercase() == address
+        }
+    }
+
+    /**
+     * A REMOVE answer from the portal: takes off the list the guests whose entry was not used and
+     * returns the names kept (entry used). The answer is closed as accepted.
+     */
+    fun acceptGuestFormRemoval(form: GuestForm, reviewedBy: String = ""): List<String> {
+        val template = portalInviteTemplateOf(form) ?: return emptyList()
+        val (remove, kept) = PortalInvites.removalTargets(form, portalInviteBatch(template))
+        remove.forEach { deleteGuest(it) }
+        closeGuestForm(form, GuestFormStatus.ACCEPTED, reviewedBy)
+        return kept.map { "${it.name} ${it.lastNameAbbreviation}".trim() }
+    }
+
+    /** Upcoming lists of [address], each with its invite template if one exists. */
+    fun portalInviteLists(address: String): List<PortalInviteList> =
+        PortalInvites.upcomingLists(_guests.value, _guestForms.value, address, System.currentTimeMillis())
+
+    /** Accesses the admin may offer for an event at [venueName]. */
+    fun portalInviteAccessesFor(venueName: String): List<VenueAccess> =
+        _temporaryGuestVenueAccesses.value.filter { it.venueName.trim().equals(venueName.trim(), ignoreCase = true) }
+
+    /**
+     * Opens (or updates) the invites of one event for the portal account [portalUid]. A new template
+     * is published like a guest form; an existing one keeps its id.
+     */
+    suspend fun openPortalInvites(
+        contactEmail: String,
+        portalUid: String,
+        eventDateMillis: Long,
+        venueName: String,
+        artistName: String,
+        maxGuests: Int,
+        accessLimits: Map<String, Int>,
+        emergencyPhone: String,
+    ): GuestForm? {
+        if (!isGuestFormFeaturesEnabled() || portalUid.isBlank() || contactEmail.isBlank()) return null
+        if (rejectIfCrudSoftLocked("opening portal invites")) return null
+        val orgId = resolveActiveFirebaseOrgIdForWrites().trim()
+        if (orgId.isBlank()) return null
+        val now = System.currentTimeMillis()
+        val probe = GuestForm(formId = "", eventDateMillis = eventDateMillis, venueName = venueName, artistName = artistName)
+        val existing = _guestForms.value.firstOrNull {
+            it.isPortalInvite && it.parentFormId.isBlank() && it.portalUid == portalUid &&
+                PortalInvites.listKey(it) == PortalInvites.listKey(probe)
+        }
+        val form = PortalInvites.template(
+            existing = existing,
+            formId = NanoIdGenerator.generateGuestFormId(),
+            contactEmail = contactEmail,
+            portalUid = portalUid,
+            eventDateMillis = eventDateMillis,
+            venueName = venueName,
+            artistName = artistName,
+            maxGuests = maxGuests,
+            accessLimits = accessLimits,
+            accesses = portalInviteAccessesFor(venueName),
+            emergencyPhone = emergencyPhone,
+            now = now,
+        ).copy(firebaseOrgId = orgId)
+        return try {
+            if (existing == null) {
+                val rowId = repository.insertGuestForm(form)
+                val saved = form.copy(id = rowId)
+                val coordinator = syncCoordinator ?: throw IllegalStateException("Firebase sync is not ready")
+                try {
+                    coordinator.publishGuestForm(saved)
+                } catch (e: Exception) {
+                    repository.deleteGuestForm(saved)
+                    throw e
+                }
+                saved
+            } else {
+                repository.updateGuestForm(form)
+                syncCoordinator?.afterGuestFormSaved(form)
+                form
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            println("Failed to open portal invites: ${e.message}")
+            _syncError.value = "Failed to open invites: ${e.message}"
+            null
+        }
+    }
+
+    /** Stops the invites of one event; answers already sent stay to review. */
+    fun closePortalInvites(template: GuestForm) {
+        if (template.statusValue != GuestFormStatus.OPEN) return
+        closeGuestForm(template, GuestFormStatus.EXPIRED, "")
     }
 
     fun rejectGuestForm(form: GuestForm, reviewedBy: String = "") {

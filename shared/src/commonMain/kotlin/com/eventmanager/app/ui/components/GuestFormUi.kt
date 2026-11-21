@@ -105,6 +105,9 @@ import com.eventmanager.app.data.models.offeredAccesses
 import com.eventmanager.app.data.models.toManualEntries
 import com.eventmanager.app.data.sync.InstitutionLogoStore
 import com.eventmanager.app.resources.Res
+import com.eventmanager.app.data.models.GuestFormRequestKind
+import com.eventmanager.app.data.models.requestKindValue
+import com.eventmanager.app.portal.PortalInvites
 import com.eventmanager.app.resources.*
 import com.eventmanager.app.ui.viewmodel.EventManagerViewModel
 import com.eventmanager.app.utils.QRCodeUtils
@@ -1304,6 +1307,52 @@ fun GuestFormReviewDialog(
         mutableStateOf(submission?.people ?: emptyList())
     }
     val offered = form.offeredAccesses()
+    val template = remember(form) { viewModel.portalInviteTemplateOf(form) }
+    val removal = template != null && form.requestKindValue == GuestFormRequestKind.REMOVE
+    val removing = remember(form, template) {
+        if (template == null) emptyList()
+        else PortalInvites.removalTargets(form, viewModel.portalInviteBatch(template)).let { it.first + it.second }
+    }
+    var overLimit by remember(form) { mutableStateOf(false) }
+
+    if (removal) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(stringResource(Res.string.portal_invites_review_remove, form.artistName)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        stringResource(Res.string.portal_invites_from_portal, template?.prefillEmail.orEmpty()),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (removing.isEmpty()) Text(stringResource(Res.string.guest_form_review_empty))
+                    removing.forEach { g ->
+                        Text("${g.name} ${g.lastNameAbbreviation}".trim(), style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    viewModel.acceptGuestFormRemoval(form)
+                    onDismiss()
+                }) { Text(stringResource(Res.string.guest_form_review_accept)) }
+            },
+            dismissButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    OutlinedButton(
+                        onClick = {
+                            viewModel.rejectGuestForm(form)
+                            onDismiss()
+                        },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    ) { Text(stringResource(Res.string.guest_form_review_reject)) }
+                    TextButton(onClick = onDismiss) { Text(stringResource(Res.string.cancel)) }
+                }
+            },
+        )
+        return
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1315,7 +1364,21 @@ fun GuestFormReviewDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                if (form.isResponseChild) {
+                if (template != null) {
+                    Text(
+                        stringResource(Res.string.portal_invites_from_portal, template.prefillEmail),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (overLimit) {
+                    Text(
+                        stringResource(Res.string.portal_invites_over_limit),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                if (form.isResponseChild && template == null) {
                     Text(
                         stringResource(Res.string.guest_form_review_response_hint),
                         style = MaterialTheme.typography.bodySmall,
@@ -1377,8 +1440,8 @@ fun GuestFormReviewDialog(
                         .map { ManualTemporaryGuestEntry(it.name.trim(), it.requestedAccessIds) }
                         .filter { it.name.isNotEmpty() }
                     if (entries.isEmpty()) return@Button
-                    viewModel.acceptGuestForm(form, entries, email, phone, notes)
-                    onDismiss()
+                    if (viewModel.acceptGuestForm(form, entries, email, phone, notes)) onDismiss()
+                    else overLimit = template != null
                 },
                 enabled = people.any { it.name.isNotBlank() },
             ) {

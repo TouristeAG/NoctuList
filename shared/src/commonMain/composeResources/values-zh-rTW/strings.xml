@@ -2739,4 +2739,17 @@
     <string name="portal_guest_create_access_toggle_desc">系統會產生一組僅顯示一次的密碼。</string>
     <string name="temp_group_portal_joined">此地址已有帳戶。名單會顯示在其空間中。</string>
     <string name="portal_access_address_conflict">此地址已連結到另一個帳戶</string>
+    <string name="portal_invites_can_invite">可邀請</string>
+    <string name="portal_invites_edit_limits">修改上限</string>
+    <string name="portal_invites_list_name">名單名稱</string>
+    <string name="portal_invites_manage">管理賓客</string>
+    <string name="portal_invites_max_guests">人數上限</string>
+    <string name="portal_invites_none">此地址沒有即將到來的名單。</string>
+    <string name="portal_invites_other_event">為其他活動開放邀請</string>
+    <string name="portal_invites_places">名額：%1$d / %2$d</string>
+    <string name="portal_invites_venue">場地</string>
+    <string name="portal_invites_access_max">上限</string>
+    <string name="portal_invites_review_remove">%1$s 的移除申請</string>
+    <string name="portal_invites_from_portal">來自平台，由 %1$s</string>
+    <string name="portal_invites_over_limit">超出活動上限。請移除名字或提高上限。</string>
 </resources>

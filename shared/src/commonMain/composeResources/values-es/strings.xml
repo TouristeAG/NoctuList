@@ -2739,4 +2739,17 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="portal_guest_create_access_toggle_desc">Se genera una contraseña que se muestra una sola vez.</string>
     <string name="temp_group_portal_joined">Esta dirección ya tiene una cuenta. La lista aparece en su espacio.</string>
     <string name="portal_access_address_conflict">Esta dirección ya está vinculada a otra cuenta</string>
+    <string name="portal_invites_can_invite">Puede invitar</string>
+    <string name="portal_invites_edit_limits">Modificar los límites</string>
+    <string name="portal_invites_list_name">Nombre de la lista</string>
+    <string name="portal_invites_manage">Gestionar invitados</string>
+    <string name="portal_invites_max_guests">Número máximo de personas</string>
+    <string name="portal_invites_none">Ninguna lista próxima para esta dirección.</string>
+    <string name="portal_invites_other_event">Abrir invitaciones para otro evento</string>
+    <string name="portal_invites_places">Plazas: %1$d de %2$d</string>
+    <string name="portal_invites_venue">Lugar</string>
+    <string name="portal_invites_access_max">Máx.</string>
+    <string name="portal_invites_review_remove">Retirada para %1$s</string>
+    <string name="portal_invites_from_portal">Desde la plataforma, por %1$s</string>
+    <string name="portal_invites_over_limit">Esto supera los límites del evento. Quita nombres o sube el límite.</string>
 </resources>

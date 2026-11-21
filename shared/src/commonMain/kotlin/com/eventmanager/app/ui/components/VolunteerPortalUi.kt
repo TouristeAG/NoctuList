@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.LinkOff
@@ -80,6 +81,7 @@ import com.eventmanager.app.portal.SignupFormState
 import com.eventmanager.app.portal.VolunteerSignupForm
 import com.eventmanager.app.resources.Res
 import com.eventmanager.app.resources.portal_access_address_conflict
+import com.eventmanager.app.resources.portal_invites_manage
 import com.eventmanager.app.resources.cancel
 import com.eventmanager.app.resources.close
 import com.eventmanager.app.resources.edit
@@ -720,6 +722,7 @@ private fun PortalAccessCard(
     var busy by remember { mutableStateOf(false) }
     var grantResult by remember { mutableStateOf<PortalGrantResult?>(null) }
     var confirmRevoke by remember { mutableStateOf(false) }
+    var manageInvites by remember { mutableStateOf(false) }
     val googleEnabled by viewModel.volunteerPortalGoogleEnabled.collectAsState()
 
     val (statusText, statusColor) = when {
@@ -786,6 +789,13 @@ private fun PortalAccessCard(
                     onBusyChange = { busy = it },
                 )
                 if (googleEnabled) PortalGoogleAccountRow(viewModel, actions, texts)
+                if (holder.portalUid.isNotBlank() && rememberGuestFormsEnabled(viewModel)) {
+                    OutlinedButton(onClick = { manageInvites = true }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Default.GroupAdd, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(Res.string.portal_invites_manage))
+                    }
+                }
                 OutlinedButton(
                     onClick = { confirmRevoke = true },
                     enabled = !busy,
@@ -798,6 +808,10 @@ private fun PortalAccessCard(
                 }
             }
         }
+    }
+
+    if (manageInvites) {
+        PortalInvitesDialog(viewModel, holder.email.trim(), holder.portalUid, onDismiss = { manageInvites = false })
     }
 
     grantResult?.let { result ->
