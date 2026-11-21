@@ -82,6 +82,7 @@ import com.eventmanager.app.portal.VolunteerSignupForm
 import com.eventmanager.app.resources.Res
 import com.eventmanager.app.resources.portal_access_address_conflict
 import com.eventmanager.app.resources.portal_invites_manage
+import com.eventmanager.app.resources.guest_list_access_manage
 import com.eventmanager.app.resources.cancel
 import com.eventmanager.app.resources.close
 import com.eventmanager.app.resources.edit
@@ -723,6 +724,7 @@ private fun PortalAccessCard(
     var grantResult by remember { mutableStateOf<PortalGrantResult?>(null) }
     var confirmRevoke by remember { mutableStateOf(false) }
     var manageInvites by remember { mutableStateOf(false) }
+    var manageGuestList by remember { mutableStateOf(false) }
     val googleEnabled by viewModel.volunteerPortalGoogleEnabled.collectAsState()
 
     val (statusText, statusColor) = when {
@@ -796,6 +798,13 @@ private fun PortalAccessCard(
                         Text(stringResource(Res.string.portal_invites_manage))
                     }
                 }
+                if (holder.portalUid.isNotBlank()) {
+                    OutlinedButton(onClick = { manageGuestList = true }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Default.GroupAdd, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(Res.string.guest_list_access_manage))
+                    }
+                }
                 OutlinedButton(
                     onClick = { confirmRevoke = true },
                     enabled = !busy,
@@ -810,6 +819,9 @@ private fun PortalAccessCard(
         }
     }
 
+    if (manageGuestList) {
+        GuestListGrantsDialog(viewModel, holder, onDismiss = { manageGuestList = false })
+    }
     if (manageInvites) {
         PortalInvitesDialog(viewModel, holder.email.trim(), holder.portalUid, onDismiss = { manageInvites = false })
     }

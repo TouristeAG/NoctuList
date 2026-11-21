@@ -58,6 +58,7 @@ import com.eventmanager.app.portal.DomainCheck
 import com.eventmanager.app.portal.PortalGrantResult
 import com.eventmanager.app.portal.PortalInviteList
 import com.eventmanager.app.portal.PortalInvites
+import com.eventmanager.app.portal.PortalHolder
 import com.eventmanager.app.portal.PortalHolderKind
 import com.eventmanager.app.portal.PortalMailTemplate
 import com.eventmanager.app.portal.PortalQrMailer
@@ -1437,6 +1438,64 @@ class EventManagerViewModel(
             null
         }
     }
+
+    // region Guest list access (spec guest list access §6.1)
+
+    /** The grants a profile carries, as stored (current and history). */
+    fun guestListGrantsOf(holder: PortalHolder): String = when (holder.kind) {
+        PortalHolderKind.VOLUNTEER -> volunteers.value.firstOrNull { it.id == holder.id }?.guestListGrantsJson
+        PortalHolderKind.GUEST -> _guests.value.firstOrNull { it.nanoId == holder.id }?.guestListGrantsJson
+    }.orEmpty()
+
+    private fun guestListActor(): String =
+        com.eventmanager.app.data.remote.FirebaseAuthBridge.currentUserEmail().orEmpty().trim()
+
+    /** Gives [holder] the whole temporary guest list of a date; [venueName] empty = every venue. */
+    suspend fun grantGuestListAccess(holder: PortalHolder, eventDateMillis: Long, venueName: String): Boolean {
+        val grant = com.eventmanager.app.portal.GuestListGrant(
+            id = NanoIdGenerator.generateGuestFormId(),
+            eventDateMillis = eventDateMillis,
+            venueName = venueName.trim(),
+            grantedBy = guestListActor(),
+            grantedAt = System.currentTimeMillis(),
+        )
+        return saveGuestListGrants(holder) { com.eventmanager.app.portal.GuestListGrants.add(it, grant) }
+    }
+
+    suspend fun revokeGuestListAccess(holder: PortalHolder, grantId: String): Boolean =
+        saveGuestListGrants(holder) {
+            com.eventmanager.app.portal.GuestListGrants.revoke(it, grantId, guestListActor(), System.currentTimeMillis())
+        }
+
+    private suspend fun saveGuestListGrants(holder: PortalHolder, change: (String) -> String): Boolean {
+        if (rejectIfCrudSoftLocked("changing guest list access")) return false
+        val now = System.currentTimeMillis()
+        return try {
+            when (holder.kind) {
+                PortalHolderKind.VOLUNTEER -> {
+                    val v = repository.getVolunteerById(holder.id) ?: return false
+                    val saved = tagVolunteerWithActiveOrg(v.copy(guestListGrantsJson = change(v.guestListGrantsJson), lastModified = maxOf(now, v.lastModified + 1)))
+                    repository.updateVolunteer(saved)
+                    syncCoordinator?.afterVolunteerSaved(saved)
+                }
+                PortalHolderKind.GUEST -> {
+                    val g = repository.getGuestByNanoId(holder.id) ?: return false
+                    val saved = tagGuestWithActiveOrg(g.copy(guestListGrantsJson = change(g.guestListGrantsJson), lastModified = maxOf(now, g.lastModified + 1)))
+                    repository.updateGuest(saved)
+                    syncCoordinator?.afterGuestSaved(saved)
+                }
+            }
+            true
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            println("Failed to save guest list access: ${e.message}")
+            _syncError.value = "Failed to save guest list access: ${e.message}"
+            false
+        }
+    }
+
+    // endregion
 
     /** Stops the invites of one event; answers already sent stay to review. */
     fun closePortalInvites(template: GuestForm) {

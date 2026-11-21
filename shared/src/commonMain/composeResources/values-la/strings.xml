@@ -2759,4 +2759,14 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="portal_invites_over_limit">Hoc fines eventus excedit. Nomina remove aut finem auge.</string>
     <string name="portal_invites_entry_used_stays">%1$s: introitus usus, in indice manet</string>
     <string name="portal_invites_list_gone">Index huius petitionis iam non exstat. Tantum recusari potest.</string>
+    <string name="guest_list_access_manage">Aditus ad indicem hospitum curare</string>
+    <string name="guest_list_access_title">Aditus ad indicem hospitum</string>
+    <string name="guest_list_access_current">Aditus currentes</string>
+    <string name="guest_list_access_history">Historia</string>
+    <string name="guest_list_access_none">Nullus aditus currens.</string>
+    <string name="guest_list_access_add">Aditum addere</string>
+    <string name="guest_list_access_all_venues">Omnia loca</string>
+    <string name="guest_list_access_revoke">Removere</string>
+    <string name="guest_list_access_given_by">Datus a %1$s die %2$s</string>
+    <string name="guest_list_access_revoked_on">Remotus die %1$s</string>
 </resources>

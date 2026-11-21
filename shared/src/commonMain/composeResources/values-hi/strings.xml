@@ -2759,4 +2759,14 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="portal_invites_over_limit">यह कार्यक्रम की सीमा से अधिक है। नाम हटाएँ या सीमा बढ़ाएँ।</string>
     <string name="portal_invites_entry_used_stays">%1$s: प्रवेश हो चुका, सूची में रहेंगे</string>
     <string name="portal_invites_list_gone">इस अनुरोध की सूची अब मौजूद नहीं है। इसे केवल अस्वीकार किया जा सकता है।</string>
+    <string name="guest_list_access_manage">मेहमान सूची की पहुँच प्रबंधित करें</string>
+    <string name="guest_list_access_title">मेहमान सूची की पहुँच</string>
+    <string name="guest_list_access_current">वर्तमान पहुँच</string>
+    <string name="guest_list_access_history">इतिहास</string>
+    <string name="guest_list_access_none">कोई वर्तमान पहुँच नहीं।</string>
+    <string name="guest_list_access_add">पहुँच जोड़ें</string>
+    <string name="guest_list_access_all_venues">सभी स्थान</string>
+    <string name="guest_list_access_revoke">हटाएँ</string>
+    <string name="guest_list_access_given_by">%1$s द्वारा %2$s को दिया गया</string>
+    <string name="guest_list_access_revoked_on">%1$s को हटाया गया</string>
 </resources>

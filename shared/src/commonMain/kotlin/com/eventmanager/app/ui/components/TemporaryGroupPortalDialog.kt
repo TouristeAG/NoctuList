@@ -45,6 +45,8 @@ import com.eventmanager.app.portal.TemporaryGroupAccessResult
 import com.eventmanager.app.portal.temporaryGroupMailAccount
 import com.eventmanager.app.resources.Res
 import com.eventmanager.app.resources.temp_group_portal_joined
+import com.eventmanager.app.resources.guest_list_access_manage
+import com.eventmanager.app.portal.asPortalHolder
 import com.eventmanager.app.resources.cancel
 import com.eventmanager.app.resources.close
 import com.eventmanager.app.resources.portal_mail_account_address
@@ -128,6 +130,7 @@ fun TemporaryGroupPortalSection(
     var busy by remember(guest.nanoId) { mutableStateOf(false) }
     var closeFailed by remember(guest.nanoId) { mutableStateOf(false) }
     var confirmClose by remember(guest.nanoId) { mutableStateOf(false) }
+    var manageGuestList by remember(guest.nanoId) { mutableStateOf(false) }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -181,6 +184,11 @@ fun TemporaryGroupPortalSection(
                     Text(stringResource(Res.string.temp_group_portal_close))
                 }
             }
+            if (openForContact && guest.portalUid.isNotBlank()) {
+                OutlinedButton(onClick = { manageGuestList = true }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(Res.string.guest_list_access_manage))
+                }
+            }
             if (openForContact && guest.portalUid.isNotBlank() && rememberGuestFormsEnabled(viewModel)) {
                 HorizontalDivider()
                 PortalInvitesPanel(viewModel, contact, guest.portalUid, guest.temporaryContactPhone)
@@ -195,6 +203,9 @@ fun TemporaryGroupPortalSection(
         }
     }
 
+    if (manageGuestList) {
+        GuestListGrantsDialog(viewModel, guest.asPortalHolder(), onDismiss = { manageGuestList = false })
+    }
     if (confirmClose) {
         AlertDialog(
             onDismissRequest = { confirmClose = false },

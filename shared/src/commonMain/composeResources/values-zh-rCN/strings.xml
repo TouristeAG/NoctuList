@@ -2754,4 +2754,14 @@
     <string name="portal_invites_over_limit">超出活动上限。请移除名字或提高上限。</string>
     <string name="portal_invites_entry_used_stays">%1$s：已入场，仍留在名单上</string>
     <string name="portal_invites_list_gone">此申请的名单已不存在，只能拒绝。</string>
+    <string name="guest_list_access_manage">管理宾客名单访问</string>
+    <string name="guest_list_access_title">宾客名单访问</string>
+    <string name="guest_list_access_current">当前的访问</string>
+    <string name="guest_list_access_history">记录</string>
+    <string name="guest_list_access_none">当前没有访问。</string>
+    <string name="guest_list_access_add">添加访问</string>
+    <string name="guest_list_access_all_venues">所有场地</string>
+    <string name="guest_list_access_revoke">移除</string>
+    <string name="guest_list_access_given_by">由 %1$s 于 %2$s 给予</string>
+    <string name="guest_list_access_revoked_on">已于 %1$s 移除</string>
 </resources>

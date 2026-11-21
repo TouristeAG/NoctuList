@@ -2746,4 +2746,14 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="portal_invites_over_limit">Cela dépasse les limites de l'événement. Retirez des noms ou relevez la limite.</string>
     <string name="portal_invites_entry_used_stays">%1$s : entrée utilisée, reste sur la liste</string>
     <string name="portal_invites_list_gone">La liste de cette demande n'existe plus. Elle peut seulement être refusée.</string>
+    <string name="guest_list_access_manage">Gérer les accès à la guestlist</string>
+    <string name="guest_list_access_title">Accès à la guestlist</string>
+    <string name="guest_list_access_current">Accès en cours</string>
+    <string name="guest_list_access_history">Historique</string>
+    <string name="guest_list_access_none">Aucun accès en cours.</string>
+    <string name="guest_list_access_add">Ajouter un accès</string>
+    <string name="guest_list_access_all_venues">Tous les lieux</string>
+    <string name="guest_list_access_revoke">Retirer</string>
+    <string name="guest_list_access_given_by">Donné par %1$s le %2$s</string>
+    <string name="guest_list_access_revoked_on">Retiré le %1$s</string>
 </resources>
