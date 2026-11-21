@@ -149,7 +149,7 @@ link** on the profile so the person can choose their own.
 own space on the portal.** It builds on the volunteer portal above.
 
 1. **Firestore, Rules:** publish the new [`firebase/firestore.rules`](firebase/firestore.rules)
-   (version 18). Storage rules are unchanged.
+   (version 19). Storage rules are unchanged.
 2. **Hosting and functions:** export the form site again and redeploy both
    (`firebase deploy --only hosting,functions` from the exported folder). Redeploy the functions
    with this version: the old ones drop guest signups.
@@ -164,6 +164,8 @@ One address is one account: a volunteer, a permanent guest and the contact of te
 who share an address see all their profiles in the same space. Lists show until 8:00 the morning
 after the event. Invitations from the portal are opened event by event in the guest space window
 and need guest forms to be on; their answers arrive with the other guest form answers for review.
+Full guest list access for a date is given from the profile's portal access card; the changes the
+person makes are applied by a NoctuList device that is online.
 
 ### Optional: sign in with an association Google account
 
