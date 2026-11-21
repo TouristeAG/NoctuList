@@ -10,17 +10,20 @@ All notable changes to NoctuList are documented here. Version numbers follow [Se
 
 - **Guest portal.** Permanent guests get their own web space, and temporary guest groups get a shared space opened and closed from the app. Both are controlled by two Firebase settings. The "Add guest" dialog has a "create access" switch for permanent guests, guests can sign up and send requests from the site, and an account can link several profiles. Closing a group space keeps its account so reopening reuses it.
 - **Volunteer portal access without an e-mail.** Opening access no longer sends a mail; the first password is shown once.
+- **One address, one portal account.** A volunteer, a permanent guest and the contact of temporary guest lists who share an address get one account with all their profiles; the lists they manage show under their own profile. A cut access stays cut.
+- **Guest lists on the portal.** One card per guest with access, balance, emergency contact and QR; lists show until 8:00 the morning after the event. The contact can correct a guest's name.
+- **Invitations from the portal.** The admin opens invitations event by event, with a maximum number of people and a maximum per access. Additions and removals are reviewed like guest form answers.
 
 ### Fixes
 
 - The volunteer QR code read through a Google account in domain mode exceeded the Firestore document-access limit (12 of 10); the rules helpers now use get-only reads.
-- The portal re-reads its pages for about 3 minutes after a link request is accepted.
+- The portal re-reads its pages for about 3 minutes after a link request is accepted, without closing an open QR code.
 
 ### Upgrade notes
 
-- **Firestore rules:** version 17 (publish again). Storage rules unchanged.
-- **Hosting and functions:** export the form site again and run `firebase deploy --only hosting,functions`. The old functions drop guest signups.
-- **Database:** Room migrations 53 to 55 (guest portal fields, then `temporaryPortalEmail` on guests).
+- **Firestore rules:** version 18 (publish again). Storage rules unchanged.
+- **Hosting and functions:** export the form site again and run `firebase deploy --only hosting,functions`, at the same time as the rules. The old functions drop guest signups and name requests.
+- **Database:** Room migrations 53 to 56 (guest portal fields, `temporaryPortalEmail`, then portal invite fields and `portalRevoked`).
 
 ---
 

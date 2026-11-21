@@ -145,20 +145,25 @@ link** on the profile so the person can choose their own.
 
 ### Optional: guest space
 
-**Skip this unless the association wants permanent guests and temporary guest groups to have their
+**Skip this unless the association wants permanent guests and temporary guest lists to have their
 own space on the portal.** It builds on the volunteer portal above.
 
 1. **Firestore, Rules:** publish the new [`firebase/firestore.rules`](firebase/firestore.rules)
-   (version 17). Storage rules are unchanged.
+   (version 18). Storage rules are unchanged.
 2. **Hosting and functions:** export the form site again and redeploy both
    (`firebase deploy --only hosting,functions` from the exported folder). Redeploy the functions
    with this version: the old ones drop guest signups.
 3. In NoctuList **Settings, Firebase**, turn on the two settings: `guest_portal_enabled` (permanent
-   guests) and `temp_guest_portal_enabled` (temporary guest groups). Both need the volunteer portal
+   guests) and `temp_guest_portal_enabled` (temporary guest lists). Both need the volunteer portal
    to be on.
 4. No new Authentication provider is needed.
 
 With the guest space off, guest requests wait (`PENDING`) until it is turned on again.
+
+One address is one account: a volunteer, a permanent guest and the contact of temporary guest lists
+who share an address see all their profiles in the same space. Lists show until 8:00 the morning
+after the event. Invitations from the portal are opened event by event in the guest space window
+and need guest forms to be on; their answers arrive with the other guest form answers for review.
 
 ### Optional: sign in with an association Google account
 
