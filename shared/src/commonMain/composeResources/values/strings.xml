@@ -2309,8 +2309,8 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="portal_google_scope_all">All Google accounts</string>
     <string name="portal_google_scope_internal">Association Google accounts only</string>
     <string name="portal_auto_access_title">Open portal access for every new volunteer</string>
-    <string name="portal_guest_space_enabled">Permanent guests space</string>
-    <string name="portal_temp_guest_space_enabled">Temporary guests space</string>
+    <string name="portal_guest_space_enabled">Permanent guest space</string>
+    <string name="portal_temp_guest_space_enabled">Temporary guest space</string>
     <string name="portal_google_auto_title">Fill in Google accounts automatically</string>
     <string name="portal_google_auto_desc">Applies to each portal access opened from now on, when the volunteer has no Google account yet.</string>
     <string name="portal_google_template_label">Address rule</string>

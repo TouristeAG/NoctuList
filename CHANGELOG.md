@@ -20,7 +20,7 @@ All notable changes to NoctuList are documented here. Version numbers follow [Se
 
 - **Firestore rules:** version 17 (publish again). Storage rules unchanged.
 - **Hosting and functions:** export the form site again and run `firebase deploy --only hosting,functions`. The old functions drop guest signups.
-- **Database:** Room migration 54 to 55 (`temporaryPortalEmail` on guests).
+- **Database:** Room migrations 53 to 55 (guest portal fields, then `temporaryPortalEmail` on guests).
 
 ---
 
