@@ -65,7 +65,7 @@ data class SignupSubmission(
     val lang: String,
 )
 
-enum class PortalRequestType { PROFILE, QR_EMAIL, CLAIM, GOOGLE_LINK, GOOGLE_UNLINK }
+enum class PortalRequestType { PROFILE, QR_EMAIL, CLAIM, GOOGLE_LINK, GOOGLE_UNLINK, GUEST_PROFILE, GUEST_QR_EMAIL }
 
 enum class PortalGoogleClaimType { ADMIN_MATCH, LINK_CODE }
 
@@ -111,7 +111,7 @@ data class PortalRequest(
     val firstName: String = "",
     val lastName: String = "",
     val phone: String = "",
-    /** PROFILE only: a new photo waits in `portalPhotoUploads/{uid}.jpg`. */
+    /** PROFILE and GUEST_PROFILE only: a new photo waits in `portalPhotoUploads/{uid}.jpg`. */
     val photo: Boolean = false,
     /** GOOGLE_LINK only: SHA-256 hex of the one-time link code. */
     val codeHash: String = "",
@@ -192,7 +192,7 @@ object PortalInputValidator {
         val email = cleanEmail(data["email"]) ?: return null
         val status = data["status"]?.toString().orEmpty()
         return when (type) {
-            PortalRequestType.PROFILE -> PortalRequest(
+            PortalRequestType.PROFILE, PortalRequestType.GUEST_PROFILE -> PortalRequest(
                 requestId = requestId,
                 uid = uid,
                 type = type,

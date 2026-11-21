@@ -972,4 +972,252 @@ class VolunteerPortalServiceTest {
     }
 
     // endregion
+
+    // region Guests
+
+    private fun guest(
+        nanoId: String,
+        email: String,
+        enabled: Boolean = true,
+        uid: String = "",
+        admin: Boolean = false,
+    ) = Guest(
+        nanoId = nanoId,
+        name = "Max",
+        lastNameAbbreviation = "DUPONT",
+        email = email,
+        phoneNumber = "+41 78 000 00 00",
+        invitations = 0,
+        venueName = "",
+        isAdmin = admin,
+        firebaseOrgId = ORG,
+        portalEnabled = enabled,
+        portalUid = uid,
+    )
+
+    private fun tempGroup(nanoId: String, contact: String, uid: String = "") = Guest(
+        nanoId = nanoId,
+        name = "Band",
+        invitations = 0,
+        venueName = "",
+        isTemporaryGuest = true,
+        temporaryContactEmail = contact,
+        firebaseOrgId = ORG,
+        portalEnabled = true,
+        portalUid = uid,
+    )
+
+    private fun guestProfileRequest(photo: Boolean = false) = mapOf(
+        "uid" to UID, "type" to "GUEST_PROFILE", "status" to "PENDING", "email" to "max@example.org",
+        "firstName" to "Maxime", "lastName" to "Dupont-Roy", "phone" to "+41 79 111 22 33", "photo" to photo,
+    )
+
+    @Test
+    fun guestProfileUpdatesGuest() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true, uid = UID)))
+        host.guestSpace = true
+        host.guests += guest("G1", "max@example.org", uid = UID, admin = true)
+        startedService(gateway, host)
+        val key = "portalRequests/${UID}_GUEST_PROFILE"
+        gateway.docs[key] = guestProfileRequest()
+        gateway.push("portalRequests")
+
+        assertEquals("DONE", gateway.docs[key]!!["status"])
+        val g = host.guests.single()
+        assertEquals("Maxime", g.name)
+        assertEquals("DUPONT-ROY", g.lastNameAbbreviation)
+        assertEquals("+41 79 111 22 33", g.phoneNumber)
+        assertEquals("max@example.org", g.email)
+        assertTrue(g.isAdmin)
+        assertEquals("Léa", host.volunteers.single().name, "the volunteer of the same account is untouched")
+    }
+
+    @Test
+    fun guestProfilePhotoAttachesToTheGuest() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(emptyList())
+        host.guestSpace = true
+        host.guests += guest("G1", "max@example.org", uid = UID)
+        val upload = "orgs/$ORG/portalPhotoUploads/$UID.jpg"
+        val jpeg = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xE0.toByte(), 1, 2, 3)
+        host.storage[upload] = jpeg
+        startedService(gateway, host)
+        val key = "portalRequests/${UID}_GUEST_PROFILE"
+        gateway.docs[key] = guestProfileRequest(photo = true)
+        gateway.push("portalRequests")
+
+        assertEquals("DONE", gateway.docs[key]!!["status"])
+        assertEquals("G1", host.guestAttached.single().first)
+        assertTrue(host.guestAttached.single().second.contentEquals(jpeg))
+        assertTrue(host.attached.isEmpty())
+        assertFalse(upload in host.storage)
+    }
+
+    @Test
+    fun guestQrEmailRefusedForAdmin() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(emptyList())
+        host.guestSpace = true
+        host.guests += guest("G1", "max@example.org", uid = UID, admin = true)
+        startedService(gateway, host)
+        val key = "portalRequests/${UID}_GUEST_QR_EMAIL"
+        gateway.docs[key] = mapOf("uid" to UID, "type" to "GUEST_QR_EMAIL", "status" to "PENDING", "email" to "max@example.org")
+        gateway.push("portalRequests")
+        assertEquals("REJECTED", gateway.docs[key]!!["status"])
+        assertEquals("NOT_ALLOWED", gateway.docs[key]!!["reason"])
+        assertTrue(host.guestMailed.isEmpty())
+
+        host.guests[0] = host.guests[0].copy(isAdmin = false, email = "profile@example.org")
+        gateway.docs[key] = mapOf("uid" to UID, "type" to "GUEST_QR_EMAIL", "status" to "PENDING", "email" to "max@example.org")
+        gateway.push("portalRequests")
+        assertEquals("DONE", gateway.docs[key]!!["status"])
+        assertEquals("profile@example.org", host.guestMailed.single().email)
+        assertTrue(host.mailed.isEmpty())
+    }
+
+    @Test
+    fun guestRequestsIgnoredWhenGuestSpaceOff() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(emptyList())
+        host.guests += guest("G1", "max@example.org", uid = UID)
+        startedService(gateway, host)
+        val profileKey = "portalRequests/${UID}_GUEST_PROFILE"
+        val qrKey = "portalRequests/${UID}_GUEST_QR_EMAIL"
+        gateway.docs[profileKey] = guestProfileRequest()
+        gateway.docs[qrKey] = mapOf("uid" to UID, "type" to "GUEST_QR_EMAIL", "status" to "PENDING", "email" to "max@example.org")
+        gateway.push("portalRequests")
+        assertEquals("PENDING", gateway.docs[profileKey]!!["status"])
+        assertEquals("PENDING", gateway.docs[qrKey]!!["status"])
+        assertEquals("Max", host.guests.single().name)
+        assertTrue(host.guestMailed.isEmpty())
+
+        // Space back on: the waiting requests are answered.
+        host.guestSpace = true
+        gateway.push("portalRequests")
+        assertEquals("DONE", gateway.docs[profileKey]!!["status"])
+        assertEquals("Maxime", host.guests.single().name)
+    }
+
+    @Test
+    fun claimLinksVolunteerGuestAndTempGroup() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true)))
+        host.guestSpace = true
+        host.tempSpace = true
+        host.guests += guest("G1", "Lea@Example.org")
+        host.guests += tempGroup("T1", "lea@example.org ")
+        host.guests += tempGroup("T2", "lea@example.org")
+        // Not an enabled kind for the claim: volunteer benefit, closed access, another address.
+        host.guests += guest("B1", "lea@example.org").copy(isVolunteerBenefit = true)
+        host.guests += guest("G2", "lea@example.org", enabled = false)
+        host.guests += guest("G3", "other@example.org")
+        startedService(gateway, host)
+        val key = "portalRequests/${UID}_CLAIM"
+        gateway.docs[key] = mapOf("uid" to UID, "type" to "CLAIM", "status" to "PENDING", "email" to "lea@example.org")
+        gateway.push("portalRequests")
+
+        assertEquals("DONE", gateway.docs[key]!!["status"])
+        assertEquals(UID, host.volunteers.single().portalUid)
+        val byId = host.guests.associateBy { it.nanoId }
+        assertEquals(UID, byId["G1"]!!.portalUid)
+        assertEquals(UID, byId["T1"]!!.portalUid)
+        assertEquals(UID, byId["T2"]!!.portalUid)
+        assertEquals("", byId["B1"]!!.portalUid)
+        assertEquals("", byId["G2"]!!.portalUid)
+        assertEquals("", byId["G3"]!!.portalUid)
+    }
+
+    @Test
+    fun claimSkipsGuestKindsWhoseSpaceIsOff() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(emptyList())
+        host.guests += guest("G1", "lea@example.org")
+        host.guests += tempGroup("T1", "lea@example.org")
+        startedService(gateway, host)
+        val key = "portalRequests/${UID}_CLAIM"
+        gateway.docs[key] = mapOf("uid" to UID, "type" to "CLAIM", "status" to "PENDING", "email" to "lea@example.org")
+        gateway.push("portalRequests")
+        assertEquals("NO_ACCESS", gateway.docs[key]!!["reason"])
+        assertTrue(host.guests.all { it.portalUid.isBlank() })
+
+        host.tempSpace = true
+        gateway.docs[key] = mapOf("uid" to UID, "type" to "CLAIM", "status" to "PENDING", "email" to "lea@example.org")
+        gateway.push("portalRequests")
+        assertEquals("DONE", gateway.docs[key]!!["status"])
+        assertEquals(listOf("", UID), host.guests.map { it.portalUid })
+    }
+
+    @Test
+    fun claimRejectedWhenAnotherUidOwnsAddress() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true)))
+        host.guestSpace = true
+        host.guests += guest("G1", "lea@example.org", uid = "OtherUid0000000000000002")
+        startedService(gateway, host)
+        val key = "portalRequests/${UID}_CLAIM"
+        gateway.docs[key] = mapOf("uid" to UID, "type" to "CLAIM", "status" to "PENDING", "email" to "lea@example.org")
+        gateway.push("portalRequests")
+        assertEquals("REJECTED", gateway.docs[key]!!["status"])
+        assertEquals("LINKED_ELSEWHERE", gateway.docs[key]!!["reason"])
+        assertEquals("", host.volunteers.single().portalUid, "nothing linked")
+    }
+
+    @Test
+    fun googleLinkWrittenOnEveryHolderOfTheAccount() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(
+            volunteer("V1", "lea@example.org", enabled = true, uid = UID)
+                .copy(portalGoogleEmail = "jean@asso.ch", portalGoogleLinkedBy = Volunteer.GOOGLE_LINKED_BY_ADMIN),
+        ))
+        host.guestSpace = true
+        host.guests += guest("G1", "lea@example.org", uid = UID)
+        startedService(gateway, host)
+        val key = "portalGoogleClaims/$GOOGLE_UID"
+        gateway.docs[key] = adminMatchClaim()
+        gateway.push("portalGoogleClaims")
+
+        assertEquals("DONE", gateway.docs[key]!!["status"])
+        assertEquals(UID, gateway.docs["portalGoogleAccounts/$GOOGLE_UID"]!!["volunteerUid"])
+        val g = host.guests.single()
+        assertEquals("jean@asso.ch", g.portalGoogleEmail)
+        assertEquals(GOOGLE_UID, g.portalGoogleUid)
+        assertEquals("ADMIN", g.portalGoogleLinkedBy)
+        assertEquals(GOOGLE_UID, host.volunteers.single().portalGoogleUid)
+
+        // Unlinked from the portal: both lose it.
+        val both = listOf(host.volunteers[0].copy(portalGoogleLinkedBy = "VOLUNTEER"))
+        host.volunteers.clear(); host.volunteers += both
+        host.guests[0] = host.guests[0].copy(portalGoogleLinkedBy = "VOLUNTEER")
+        val unlink = "portalRequests/${UID}_GOOGLE_UNLINK"
+        gateway.docs[unlink] = mapOf("uid" to UID, "type" to "GOOGLE_UNLINK", "status" to "PENDING", "email" to "lea@example.org")
+        gateway.push("portalRequests")
+        assertEquals("DONE", gateway.docs[unlink]!!["status"])
+        assertNull(gateway.docs["portalGoogleAccounts/$GOOGLE_UID"])
+        assertEquals("", host.guests.single().portalGoogleUid)
+        assertEquals("", host.volunteers.single().portalGoogleUid)
+    }
+
+    @Test
+    fun adminMatchLinksAGuestAlone() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(emptyList())
+        host.guestSpace = true
+        host.guests += guest("G1", "max@example.org", uid = UID)
+            .copy(portalGoogleEmail = "jean@asso.ch", portalGoogleLinkedBy = "ADMIN")
+        startedService(gateway, host)
+        gateway.docs["portalGoogleClaims/$GOOGLE_UID"] = adminMatchClaim()
+        gateway.push("portalGoogleClaims")
+        assertEquals("DONE", gateway.docs["portalGoogleClaims/$GOOGLE_UID"]!!["status"])
+        assertEquals(GOOGLE_UID, host.guests.single().portalGoogleUid)
+
+        // Guest space off: the guest is not a holder any more.
+        host.guestSpace = false
+        val other = "GoogleUid000000000000002"
+        gateway.docs["portalGoogleClaims/$other"] = adminMatchClaim()
+        gateway.push("portalGoogleClaims")
+        assertEquals("NO_MATCH", gateway.docs["portalGoogleClaims/$other"]!!["reason"])
+    }
+
+    // endregion
 }

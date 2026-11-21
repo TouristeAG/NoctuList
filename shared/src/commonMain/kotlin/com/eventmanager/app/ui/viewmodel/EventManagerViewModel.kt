@@ -3060,6 +3060,14 @@ class EventManagerViewModel(
             return withPhoto
         }
 
+        override suspend fun attachGuestPhoto(guest: Guest, bytes: ByteArray): Boolean {
+            val tagged = tagGuestWithActiveOrg(repository.getGuestByNanoId(guest.nanoId) ?: return false)
+            val updated = persistGuestPhotoAfterSave(tagged, bytes)
+            if (updated == tagged) return false
+            syncCoordinator?.afterGuestSaved(updated)
+            return true
+        }
+
         override suspend fun guestPhotoBytes(guest: Guest): ByteArray? =
             downloadProfilePhotoBytes(platformContext, guest.profilePhotoUrl, guest.resolvedProfilePhotoPath())
 

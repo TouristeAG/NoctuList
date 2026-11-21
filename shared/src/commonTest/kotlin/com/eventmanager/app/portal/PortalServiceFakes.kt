@@ -139,6 +139,23 @@ internal class FakeHost(initial: List<Volunteer>) : VolunteerPortalHost {
     override fun temporaryGuestCreditsEnabled() = tempCredits
     override suspend fun guests() = guests.toList()
     override suspend fun guestPhotoBytes(guest: Guest): ByteArray? = guestPhotos[guest.nanoId]
+    override suspend fun saveGuest(guest: Guest): Boolean {
+        val i = guests.indexOfFirst { it.nanoId == guest.nanoId }
+        if (i < 0) return false
+        guests[i] = guest
+        return true
+    }
+    /** Photos attached to guests, as nanoId to bytes. */
+    val guestAttached = mutableListOf<Pair<String, ByteArray>>()
+    override suspend fun attachGuestPhoto(guest: Guest, bytes: ByteArray): Boolean {
+        guestAttached += guest.nanoId to bytes
+        return true
+    }
+    val guestMailed = mutableListOf<Guest>()
+    override suspend fun sendGuestQrEmail(guest: Guest): Boolean {
+        guestMailed += guest
+        return true
+    }
     override suspend fun portalMailTemplate(): PortalMailTemplate? =
         if (mailTemplateEnabled) PortalMailTemplate(mailSubject, "<p>Hello $PORTAL_FIRST_NAME_TOKEN</p>", "Hello $PORTAL_FIRST_NAME_TOKEN", "") else null
     override fun canSendQrEmail() = canMail

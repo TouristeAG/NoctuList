@@ -80,6 +80,25 @@ class PortalInputValidatorTest {
     }
 
     @Test
+    fun parsesGuestRequestsLikeTheVolunteerOnes() {
+        val profile = mapOf(
+            "uid" to uid, "type" to "GUEST_PROFILE", "status" to "PENDING", "email" to "lea@example.org",
+            "firstName" to " Léa ", "lastName" to "Martin", "phone" to "079 123 45 67", "photo" to true,
+        )
+        val parsed = assertNotNull(PortalInputValidator.parseRequest("${uid}_GUEST_PROFILE", profile))
+        assertEquals(PortalRequestType.GUEST_PROFILE, parsed.type)
+        assertEquals("Léa", parsed.firstName)
+        assertEquals("Martin", parsed.lastName)
+        assertEquals("079 123 45 67", parsed.phone)
+        assertTrue(parsed.photo)
+        assertNull(PortalInputValidator.parseRequest("${uid}_PROFILE", profile))
+        assertNull(PortalInputValidator.parseRequest("${uid}_GUEST_PROFILE", profile - "phone"))
+        val qr = mapOf("uid" to uid, "type" to "GUEST_QR_EMAIL", "status" to "PENDING", "email" to "lea@example.org")
+        assertEquals(PortalRequestType.GUEST_QR_EMAIL, PortalInputValidator.parseRequest("${uid}_GUEST_QR_EMAIL", qr)!!.type)
+        assertNull(PortalInputValidator.parseRequest("${uid}_QR_EMAIL", qr))
+    }
+
+    @Test
     fun generatedPasswordsAreStrongAndUnambiguous() {
         val random = SecureRandom()
         val seen = mutableSetOf<String>()

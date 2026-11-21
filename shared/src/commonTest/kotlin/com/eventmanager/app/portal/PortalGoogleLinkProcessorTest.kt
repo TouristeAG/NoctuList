@@ -1,5 +1,6 @@
 package com.eventmanager.app.portal
 
+import com.eventmanager.app.data.models.Guest
 import com.eventmanager.app.data.models.Volunteer
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -29,7 +30,25 @@ class PortalGoogleLinkProcessorTest {
         portalGoogleEmail = googleEmail,
         portalGoogleUid = googleUid,
         portalGoogleLinkedBy = linkedBy,
-    )
+    ).asPortalHolder()
+
+    private fun guest(
+        uid: String,
+        googleEmail: String = "",
+        googleUid: String = "",
+        linkedBy: String = "",
+    ) = Guest(
+        nanoId = "Guest$uid",
+        name = "Max",
+        email = "max@example.org",
+        invitations = 0,
+        venueName = "",
+        portalEnabled = true,
+        portalUid = uid,
+        portalGoogleEmail = googleEmail,
+        portalGoogleUid = googleUid,
+        portalGoogleLinkedBy = linkedBy,
+    ).asPortalHolder()
 
     private fun adminClaim(email: String = "jean@asso.ch") =
         PortalGoogleClaim(googleUid, PortalGoogleClaimType.ADMIN_MATCH, "PENDING", email)
@@ -247,5 +266,46 @@ class PortalGoogleLinkProcessorTest {
         assertNull(PortalGoogleLinkProcessor.canUnlink(volunteer("V1", googleEmail = "a@asso.ch", linkedBy = "VOLUNTEER")))
         assertEquals("ADMIN_LINK", PortalGoogleLinkProcessor.canUnlink(volunteer("V1", googleEmail = "a@asso.ch", linkedBy = "ADMIN")))
         assertEquals("NO_ACCESS", PortalGoogleLinkProcessor.canUnlink(null))
+    }
+
+    @Test
+    fun adminMatchFindsGuest() {
+        val g = guest("PortalUidG1", googleEmail = "jean@asso.ch", linkedBy = Volunteer.GOOGLE_LINKED_BY_ADMIN)
+        assertEquals(
+            GoogleLinkDecision.Link(g, "ADMIN"),
+            PortalGoogleLinkProcessor.adminMatch(adminClaim(), listOf(volunteer("V1"), g), domains, null),
+        )
+    }
+
+    @Test
+    fun volunteerAndGuestSameUidAreOnePerson() {
+        val v = volunteer("V1", googleEmail = "jean@asso.ch", linkedBy = "ADMIN")
+        val g = guest("PortalUidV1", googleEmail = "jean@asso.ch", linkedBy = "ADMIN")
+        val decision = PortalGoogleLinkProcessor.adminMatch(adminClaim(), listOf(v, g), domains, null)
+        assertEquals(GoogleLinkDecision.Link(v, "ADMIN"), decision)
+        // A guest listed first still answers with the same person.
+        assertEquals(
+            "PortalUidV1",
+            (PortalGoogleLinkProcessor.adminMatch(adminClaim(), listOf(g, v), domains, null) as GoogleLinkDecision.Link).holder.portalUid,
+        )
+
+        // Link code: the guest of the same account is not "another" holder.
+        val freshV = volunteer("V1")
+        val freshG = guest("PortalUidV1")
+        assertEquals(
+            GoogleLinkDecision.Link(freshV, "VOLUNTEER"),
+            PortalGoogleLinkProcessor.linkCode(
+                codeClaim(), linkRequest("PortalUidV1"), now - 1_000, now, listOf(freshV, freshG), domains, null,
+            ),
+        )
+        val linkedG = guest("PortalUidV1", googleEmail = "jean@asso.ch", googleUid = googleUid, linkedBy = "VOLUNTEER")
+        assertEquals(true, PortalGoogleLinkProcessor.isAliasValid(googleUid, "PortalUidV1", listOf(freshV, linkedG)))
+
+        // A guest of another account with that address keeps it ambiguous.
+        val other = guest("PortalUidG2", googleEmail = "jean@asso.ch", linkedBy = "ADMIN")
+        assertEquals(
+            GoogleLinkDecision.Reject("AMBIGUOUS"),
+            PortalGoogleLinkProcessor.adminMatch(adminClaim(), listOf(v, g, other), domains, null),
+        )
     }
 }
