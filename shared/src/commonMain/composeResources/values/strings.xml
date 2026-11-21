@@ -2721,7 +2721,7 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="temp_group_portal_title">Group space</string>
     <string name="temp_group_portal_password_body">Password for %1$s, shown only once.</string>
     <string name="temp_group_portal_reused">The group uses the existing account of %1$s.</string>
-    <string name="temp_group_portal_existing">An account already exists for %1$s. The group appears at its next sign-in.</string>
+    <string name="temp_group_portal_existing">An account already exists for %1$s. The group appears when that account next signs in.</string>
     <string name="temp_group_portal_failed">The space could not be opened (%1$s).</string>
     <string name="temp_group_portal_close_failed">The space could not be closed.</string>
     <string name="temp_group_portal_send_mail">Send the group e-mail</string>
@@ -2730,4 +2730,6 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="portal_mail_account_login">Sign-in e-mail:</string>
     <string name="portal_mail_account_password">Password:</string>
     <string name="portal_mail_account_usual_password">your usual password</string>
+    <string name="portal_guest_create_access_toggle">Create portal access</string>
+    <string name="portal_guest_create_access_toggle_desc">A password is generated and shown once.</string>
 </resources>

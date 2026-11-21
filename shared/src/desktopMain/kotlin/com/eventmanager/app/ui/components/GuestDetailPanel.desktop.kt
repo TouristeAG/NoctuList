@@ -59,8 +59,8 @@ actual fun GuestDetailPanel(
     var showTempSendChoice by remember { mutableStateOf(false) }
     var tempSendScope by remember { mutableStateOf(TemporaryGuestSendScope.SinglePerson) }
     var showGroupPortal by remember { mutableStateOf(false) }
-    // Default password handed over by the group space window, for the next group mail only.
-    var groupMailPassword by remember { mutableStateOf<String?>(null) }
+    // Address and default password handed over by the group space window, for the next group mail only.
+    var groupMailHandover by remember { mutableStateOf<GroupMailHandover?>(null) }
     val groupPortalOn = rememberTemporaryGroupPortalEnabled(viewModel)
 
     val tempFeatures = rememberTemporaryGuestFeatures(viewModel)
@@ -404,9 +404,9 @@ actual fun GuestDetailPanel(
         TemporaryGroupPortalDialog(
             viewModel = viewModel,
             guest = guest,
-            onSendGroupMail = { password ->
+            onSendGroupMail = { handover ->
                 showGroupPortal = false
-                groupMailPassword = password
+                groupMailHandover = handover
                 tempSendScope = TemporaryGuestSendScope.WholeBatch
                 showEmailConfirm = true
             },
@@ -417,7 +417,7 @@ actual fun GuestDetailPanel(
     if (showEmailConfirm && targetEmail.isNotBlank()) {
         val sendWholeBatch = temporaryEnabled && tempSendScope == TemporaryGuestSendScope.WholeBatch
         val portalAccount = if (sendWholeBatch) {
-            viewModel?.groupMailPortalAccount(guest, targetEmail, groupMailPassword)
+            viewModel?.groupMailPortalAccount(guest, targetEmail, groupMailHandover)
         } else {
             null
         }
@@ -434,11 +434,11 @@ actual fun GuestDetailPanel(
             platformContext = platformContext,
             onDismiss = {
                 showEmailConfirm = false
-                groupMailPassword = null
+                groupMailHandover = null
             },
             onSent = {
                 showEmailConfirm = false
-                groupMailPassword = null
+                groupMailHandover = null
             },
             codes = if (sendWholeBatch) {
                 batch.map { QrEmailRecipientCode(holderName = it.name, qrPayload = it.nanoId) }

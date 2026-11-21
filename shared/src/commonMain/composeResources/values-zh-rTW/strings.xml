@@ -2735,4 +2735,6 @@
     <string name="portal_mail_account_login">登入電子郵件：</string>
     <string name="portal_mail_account_password">密碼：</string>
     <string name="portal_mail_account_usual_password">你平常使用的密碼</string>
+    <string name="portal_guest_create_access_toggle">建立入口網站帳號</string>
+    <string name="portal_guest_create_access_toggle_desc">系統會產生一組僅顯示一次的密碼。</string>
 </resources>

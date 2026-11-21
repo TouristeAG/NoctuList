@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextRange
@@ -44,6 +45,12 @@ import com.eventmanager.app.ui.components.EventDatePickerField
 import com.eventmanager.app.ui.components.GuestFormCreatorDialog
 import com.eventmanager.app.ui.components.GuestFormPendingCard
 import com.eventmanager.app.ui.components.GuestPortalAutoGrantHost
+import com.eventmanager.app.ui.components.PortalAccessToggleRow
+import com.eventmanager.app.ui.components.PortalGrantResultDialog
+import com.eventmanager.app.ui.components.rememberGuestPortalAccessToggle
+import com.eventmanager.app.portal.PortalGrantResult
+import com.eventmanager.app.resources.portal_guest_create_access_toggle
+import com.eventmanager.app.resources.portal_guest_create_access_toggle_desc
 import com.eventmanager.app.ui.components.GuestSignupLinkDialog
 import com.eventmanager.app.ui.components.rememberGuestSignupLinkAvailable
 import com.eventmanager.app.resources.portal_add_choice_link
@@ -146,6 +153,10 @@ actual fun GuestListScreen(
     var showGuestFormCreator by remember { mutableStateOf(false) }
     var showGuestSignupLink by remember { mutableStateOf(false) }
     val guestSignupAvailable = rememberGuestSignupLinkAvailable(viewModel)
+    // Same switch as "Add volunteer": portal and guest space on, automatic access off.
+    val guestPortalAccessToggle = rememberGuestPortalAccessToggle(viewModel)
+    val portalScope = rememberCoroutineScope()
+    var guestPortalGrant by remember { mutableStateOf<Pair<Guest, PortalGrantResult>?>(null) }
     val guestFormsEnabled by viewModel?.guestFormsEnabled?.collectAsState()
         ?: remember { mutableStateOf(false) }
     val guestFormsBilleterieValidateEnabled by viewModel?.guestFormsBilleterieValidateEnabled?.collectAsState()
@@ -807,7 +818,8 @@ actual fun GuestListScreen(
                     showGuestSignupLink = true
                 }
             } else null,
-            onConfirmPermanent = { name, email, phoneNumber, invitations, venueName, notes, barDiscountPercent, photoBytes ->
+            portalAccessToggle = guestPortalAccessToggle,
+            onConfirmPermanent = { name, email, phoneNumber, invitations, venueName, notes, barDiscountPercent, photoBytes, createPortalAccess ->
                 val newGuest = Guest(
                     name = name,
                     email = email,
@@ -817,7 +829,14 @@ actual fun GuestListScreen(
                     notes = notes,
                     barDiscountPercent = barDiscountPercent
                 )
-                onAddGuest(newGuest, photoBytes)
+                if (createPortalAccess && viewModel != null) {
+                    // Saves the guest and opens the access; addGuest is not called as well.
+                    portalScope.launch {
+                        guestPortalGrant = newGuest to viewModel.addGuestWithPortalAccess(newGuest, photoBytes)
+                    }
+                } else {
+                    onAddGuest(newGuest, photoBytes)
+                }
                 showAddDialog = false
             },
             onConfirmTemporary = { batch ->
@@ -832,6 +851,10 @@ actual fun GuestListScreen(
     }
 
     GuestPortalAutoGrantHost(viewModel)
+
+    guestPortalGrant?.let { (guest, result) ->
+        PortalGrantResultDialog(viewModel, guest, result, onDismiss = { guestPortalGrant = null })
+    }
 
     if (showGuestFormCreator && viewModel != null) {
         GuestFormCreatorDialog(
@@ -2058,7 +2081,8 @@ private fun guestStableKey(guest: Guest): String {
 fun AddGuestDialog(
     venues: List<VenueEntity>,
     onDismiss: () -> Unit,
-    onConfirmPermanent: (String, String, String, Int, String, String, Int, ByteArray?) -> Unit,
+    /** The last value asks for the portal access to be opened right after saving. */
+    onConfirmPermanent: (String, String, String, Int, String, String, Int, ByteArray?, Boolean) -> Unit,
     onConfirmTemporary: (ManualTemporaryGuestBatch) -> Unit,
     profilePhotosEnabled: Boolean = false,
     barDiscountEnabled: Boolean = false,
@@ -2068,8 +2092,11 @@ fun AddGuestDialog(
     onCreateForm: () -> Unit = {},
     /** Registration form for a new permanent guest; null while the guest space cannot offer one. */
     onSendSignupForm: (() -> Unit)? = null,
+    /** Shows the "create portal access" switch (needs an e-mail). */
+    portalAccessToggle: Boolean = false,
 ) {
     val context = LocalContext.current
+    var createPortalAccess by remember { mutableStateOf(true) }
     var selectedTab by remember { mutableStateOf(0) }
 
     var name by remember { mutableStateOf("") }
@@ -2283,6 +2310,15 @@ fun AddGuestDialog(
                                 onPicked = { pendingPhotoBytes = it },
                                 onClearPending = { pendingPhotoBytes = null },
                             )
+                            if (portalAccessToggle && email.isNotBlank()) {
+                                PortalAccessToggleRow(
+                                checked = createPortalAccess,
+                                onCheckedChange = { createPortalAccess = it },
+                                enabled = true,
+                                title = org.jetbrains.compose.resources.stringResource(com.eventmanager.app.resources.Res.string.portal_guest_create_access_toggle),
+                                description = org.jetbrains.compose.resources.stringResource(com.eventmanager.app.resources.Res.string.portal_guest_create_access_toggle_desc),
+                            )
+                            }
                         } else {
                             if (guestFormsEnabled) {
                                 OutlinedButton(
@@ -2426,7 +2462,8 @@ fun AddGuestDialog(
                                         selectedVenueName ?: defaultVenue,
                                         notes,
                                         if (barDiscountEnabled) barDiscount.toIntOrNull() ?: 0 else 0,
-                                        pendingPhotoBytes
+                                        pendingPhotoBytes,
+                                        portalAccessToggle && email.isNotBlank() && createPortalAccess,
                                     )
                                 } else {
                                     val millis = temporaryEventDateMillis ?: return@TextButton

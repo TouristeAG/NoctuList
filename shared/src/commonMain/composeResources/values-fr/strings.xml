@@ -2726,5 +2726,7 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="portal_mail_account_address">Adresse :</string>
     <string name="portal_mail_account_login">E-mail de connexion :</string>
     <string name="portal_mail_account_password">Mot de passe :</string>
-    <string name="portal_mail_account_usual_password">ton mot de passe habituel</string>
+    <string name="portal_mail_account_usual_password">votre mot de passe habituel</string>
+    <string name="portal_guest_create_access_toggle">Créer l'accès à la plateforme</string>
+    <string name="portal_guest_create_access_toggle_desc">Un mot de passe est généré et affiché une seule fois.</string>
 </resources>

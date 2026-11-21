@@ -117,8 +117,8 @@ actual fun GuestDetailPanel(
     var showQrDialog by remember { mutableStateOf(false) }
     var showNfcDialog by remember { mutableStateOf(false) }
     var showGroupPortal by remember { mutableStateOf(false) }
-    // Default password handed over by the group space window, for the next group mail only.
-    var groupMailPassword by remember { mutableStateOf<String?>(null) }
+    // Address and default password handed over by the group space window, for the next group mail only.
+    var groupMailHandover by remember { mutableStateOf<GroupMailHandover?>(null) }
     val groupPortalOn = rememberTemporaryGroupPortalEnabled(viewModel)
 
     val temporaryGuestFeatures = rememberTemporaryGuestFeatures(viewModel)
@@ -496,9 +496,9 @@ actual fun GuestDetailPanel(
         TemporaryGroupPortalDialog(
             viewModel = viewModel,
             guest = guest,
-            onSendGroupMail = { password ->
+            onSendGroupMail = { handover ->
                 showGroupPortal = false
-                groupMailPassword = password
+                groupMailHandover = handover
                 tempSendScope = TemporaryGuestSendScope.WholeBatch
                 showEmailConfirmDialog = true
             },
@@ -508,7 +508,7 @@ actual fun GuestDetailPanel(
 
     // A closed send window forgets the default password.
     LaunchedEffect(showEmailConfirmDialog) {
-        if (!showEmailConfirmDialog) groupMailPassword = null
+        if (!showEmailConfirmDialog) groupMailHandover = null
     }
 
     // Whole artist guest list, or just this person?
@@ -612,7 +612,7 @@ actual fun GuestDetailPanel(
         }
         val batchCodes = if (sendWholeBatch) temporaryBatch else listOf(guest)
         val portalAccount = if (sendWholeBatch) {
-            viewModel?.groupMailPortalAccount(guest, targetEmail, groupMailPassword)
+            viewModel?.groupMailPortalAccount(guest, targetEmail, groupMailHandover)
         } else {
             null
         }

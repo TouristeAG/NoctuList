@@ -2735,4 +2735,6 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="portal_mail_account_login">Correo de acceso:</string>
     <string name="portal_mail_account_password">Contraseña:</string>
     <string name="portal_mail_account_usual_password">tu contraseña habitual</string>
+    <string name="portal_guest_create_access_toggle">Crear el acceso al portal</string>
+    <string name="portal_guest_create_access_toggle_desc">Se genera una contraseña que se muestra una sola vez.</string>
 </resources>

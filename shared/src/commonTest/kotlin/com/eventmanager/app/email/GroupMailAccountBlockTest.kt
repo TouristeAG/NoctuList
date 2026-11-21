@@ -126,4 +126,17 @@ class GroupMailAccountBlockTest {
         // Space opened for an old address: a mail to the new contact must not hand out that account.
         assertNull(temporaryGroupMailAccount(open, "new@example.org", URL, null, true))
     }
+
+    @Test
+    fun handedOverLoginKeepsThePasswordWhileTheBatchIsStale() {
+        // The window just opened the space; the guests in memory do not show it yet.
+        val stale = listOf(temp("A1", "Alpha", "alpha@example.org", "", false))
+        val block = assertNotNull(
+            temporaryGroupMailAccount(stale, "Alpha@example.org", URL, "pw-once", true, knownLogin = "alpha@example.org"),
+        )
+        assertEquals("alpha@example.org", block.loginEmail)
+        assertEquals("pw-once", block.password)
+        assertNull(temporaryGroupMailAccount(stale, "other@example.org", URL, "pw-once", true, knownLogin = "alpha@example.org"))
+        assertNull(temporaryGroupMailAccount(stale, "alpha@example.org", URL, "pw-once", false, knownLogin = "alpha@example.org"))
+    }
 }

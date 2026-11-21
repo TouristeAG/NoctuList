@@ -2740,4 +2740,6 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="portal_mail_account_login">साइन-इन ई-मेल:</string>
     <string name="portal_mail_account_password">पासवर्ड:</string>
     <string name="portal_mail_account_usual_password">आपका सामान्य पासवर्ड</string>
+    <string name="portal_guest_create_access_toggle">पोर्टल पहुँच बनाएँ</string>
+    <string name="portal_guest_create_access_toggle_desc">एक पासवर्ड बनाया जाता है और सिर्फ़ एक बार दिखाया जाता है।</string>
 </resources>

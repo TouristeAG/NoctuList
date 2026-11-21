@@ -409,18 +409,24 @@ private fun DoneMessage(text: String) {
     Text(text, style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
 }
 
-/** Switch shown in "Add volunteer" while the portal is on. */
+/** Switch shown in "Add volunteer" (and "Add guest") while the portal is on. */
 @Composable
-fun PortalAccessToggleRow(checked: Boolean, onCheckedChange: (Boolean) -> Unit, enabled: Boolean) {
+fun PortalAccessToggleRow(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    enabled: Boolean,
+    title: String = stringResource(Res.string.portal_create_access_toggle),
+    description: String = stringResource(Res.string.portal_create_access_toggle_desc),
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(stringResource(Res.string.portal_create_access_toggle), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+            Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
             Text(
-                stringResource(Res.string.portal_create_access_toggle_desc),
+                description,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -530,6 +536,7 @@ internal fun OneTimePasswordBox(password: String) {
 /**
  * "Send a password reset link", sent only on click, with its outcome below. [once] keeps it
  * disabled after a successful send (result windows); the card lets the admin send again.
+ * [onBusyChange] lets a card hold its other actions while the link is being sent.
  */
 @Composable
 internal fun PortalResetLinkButton(
@@ -537,6 +544,7 @@ internal fun PortalResetLinkButton(
     send: suspend () -> Boolean,
     enabled: Boolean = true,
     once: Boolean = false,
+    onBusyChange: (Boolean) -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     var sending by remember { mutableStateOf(false) }
@@ -546,10 +554,15 @@ internal fun PortalResetLinkButton(
     OutlinedButton(
         onClick = {
             sending = true
+            onBusyChange(true)
             outcome = null
             scope.launch {
-                outcome = send()
-                sending = false
+                try {
+                    outcome = send()
+                } finally {
+                    sending = false
+                    onBusyChange(false)
+                }
             }
         },
         enabled = enabled && !sending && email.isNotBlank() && !(once && outcome == true),
@@ -760,7 +773,12 @@ private fun PortalAccessCard(
                     Text(stringResource(Res.string.portal_access_create))
                 }
             } else {
-                PortalResetLinkButton(email = holder.email, send = actions.sendReset, enabled = !busy)
+                PortalResetLinkButton(
+                    email = holder.email,
+                    send = actions.sendReset,
+                    enabled = !busy,
+                    onBusyChange = { busy = it },
+                )
                 if (googleEnabled) PortalGoogleAccountRow(viewModel, actions, texts)
                 OutlinedButton(
                     onClick = { confirmRevoke = true },
@@ -917,4 +935,14 @@ fun rememberGuestSignupLinkAvailable(viewModel: EventManagerViewModel?): Boolean
     val fallback = remember { MutableStateFlow(false) }
     val guestSpaceOn by (viewModel?.guestPortalEnabled ?: fallback).collectAsState()
     return portalOn && guestSpaceOn && viewModel?.isGuestSignupLinkAvailable() == true
+}
+
+/** "Create portal access" switch in "Add guest": portal and guest space on, automatic access off. */
+@Composable
+fun rememberGuestPortalAccessToggle(viewModel: EventManagerViewModel?): Boolean {
+    val portalOn = rememberVolunteerPortalEnabled(viewModel)
+    val fallback = remember { MutableStateFlow(false) }
+    val guestSpaceOn by (viewModel?.guestPortalEnabled ?: fallback).collectAsState()
+    val autoAccess by (viewModel?.volunteerPortalAutoAccess ?: fallback).collectAsState()
+    return viewModel != null && portalOn && guestSpaceOn && !autoAccess
 }

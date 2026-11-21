@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -44,6 +45,10 @@ import com.eventmanager.app.ui.components.EventDatePickerField
 import com.eventmanager.app.ui.components.GuestFormCreatorDialog
 import com.eventmanager.app.ui.components.GuestFormPendingCard
 import com.eventmanager.app.ui.components.GuestPortalAutoGrantHost
+import com.eventmanager.app.ui.components.PortalAccessToggleRow
+import com.eventmanager.app.ui.components.PortalGrantResultDialog
+import com.eventmanager.app.ui.components.rememberGuestPortalAccessToggle
+import com.eventmanager.app.portal.PortalGrantResult
 import com.eventmanager.app.ui.components.GuestSignupLinkDialog
 import com.eventmanager.app.ui.components.rememberGuestSignupLinkAvailable
 import com.eventmanager.app.ui.components.TemporaryGuestAccessSelector
@@ -113,6 +118,10 @@ actual fun GuestListScreen(
     var showGuestFormCreator by remember { mutableStateOf(false) }
     var showGuestSignupLink by remember { mutableStateOf(false) }
     val guestSignupAvailable = rememberGuestSignupLinkAvailable(viewModel)
+    // Same switch as "Add volunteer": portal and guest space on, automatic access off.
+    val guestPortalAccessToggle = rememberGuestPortalAccessToggle(viewModel)
+    val portalScope = rememberCoroutineScope()
+    var guestPortalGrant by remember { mutableStateOf<Pair<Guest, PortalGrantResult>?>(null) }
     val guestFormsEnabled by viewModel?.guestFormsEnabled?.collectAsState()
         ?: remember { mutableStateOf(false) }
     val guestFormsBilleterieValidateEnabled by viewModel?.guestFormsBilleterieValidateEnabled?.collectAsState()
@@ -393,8 +402,16 @@ actual fun GuestListScreen(
                 }
             } else null,
             onDismiss = { showAddDialog = false },
-            onConfirmPermanent = { guest, photo ->
-                onAddGuest(guest, photo)
+            portalAccessToggle = guestPortalAccessToggle,
+            onConfirmPermanent = { guest, photo, createPortalAccess ->
+                if (createPortalAccess && viewModel != null) {
+                    // Saves the guest and opens the access; addGuest is not called as well.
+                    portalScope.launch {
+                        guestPortalGrant = guest to viewModel.addGuestWithPortalAccess(guest, photo)
+                    }
+                } else {
+                    onAddGuest(guest, photo)
+                }
                 showAddDialog = false
             },
             onConfirmTemporary = { batch ->
@@ -409,6 +426,10 @@ actual fun GuestListScreen(
     }
 
     GuestPortalAutoGrantHost(viewModel)
+
+    guestPortalGrant?.let { (guest, result) ->
+        PortalGrantResultDialog(viewModel, guest, result, onDismiss = { guestPortalGrant = null })
+    }
 
     if (showGuestFormCreator && viewModel != null) {
         GuestFormCreatorDialog(
@@ -1006,8 +1027,11 @@ private fun DesktopAddGuestDialog(
     onCreateForm: () -> Unit = {},
     /** Registration form for a new permanent guest; null while the guest space cannot offer one. */
     onSendSignupForm: (() -> Unit)? = null,
+    /** Shows the "create portal access" switch (needs an e-mail). */
+    portalAccessToggle: Boolean = false,
     onDismiss: () -> Unit,
-    onConfirmPermanent: (Guest, ByteArray?) -> Unit,
+    /** The last value asks for the portal access to be opened right after saving. */
+    onConfirmPermanent: (Guest, ByteArray?, Boolean) -> Unit,
     onConfirmTemporary: (ManualTemporaryGuestBatch) -> Unit
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -1021,6 +1045,7 @@ private fun DesktopAddGuestDialog(
     var notes by remember { mutableStateOf("") }
     var barDiscount by remember { mutableStateOf("0") }
     var pendingPhotoBytes by remember { mutableStateOf<ByteArray?>(null) }
+    var createPortalAccess by remember { mutableStateOf(true) }
 
     var temporaryArtist by remember { mutableStateOf("") }
     var temporaryEventDateMillis by remember { mutableStateOf<Long?>(null) }
@@ -1101,6 +1126,15 @@ private fun DesktopAddGuestDialog(
                             onPicked = { pendingPhotoBytes = it },
                             onClearPending = { pendingPhotoBytes = null },
                         )
+                        if (portalAccessToggle && email.isNotBlank()) {
+                            PortalAccessToggleRow(
+                                checked = createPortalAccess,
+                                onCheckedChange = { createPortalAccess = it },
+                                enabled = true,
+                                title = stringResource(Res.string.portal_guest_create_access_toggle),
+                                description = stringResource(Res.string.portal_guest_create_access_toggle_desc),
+                            )
+                        }
                     } else {
                         if (guestFormsEnabled) {
                             OutlinedButton(
@@ -1227,6 +1261,7 @@ private fun DesktopAddGuestDialog(
                                         barDiscountPercent = if (barDiscountEnabled) barDiscount.toIntOrNull() ?: 0 else 0
                                     ),
                                     pendingPhotoBytes,
+                                    portalAccessToggle && email.isNotBlank() && createPortalAccess,
                                 )
                             } else {
                                 val millis = temporaryEventDateMillis ?: return@Button

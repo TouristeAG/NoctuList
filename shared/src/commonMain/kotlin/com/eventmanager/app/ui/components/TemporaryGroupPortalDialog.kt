@@ -91,17 +91,21 @@ fun rememberTemporaryGroupPortalEnabled(viewModel: EventManagerViewModel?): Bool
 private fun groupContactEmail(viewModel: EventManagerViewModel, guest: Guest): String =
     viewModel.temporaryGuestBatch(guest).map { it.temporaryContactEmail.trim() }.firstOrNull { it.isNotEmpty() }.orEmpty()
 
+/** What [TemporaryGroupPortalDialog] hands to the group mail: the address it opened and the password, if any. */
+data class GroupMailHandover(val loginEmail: String, val password: String?)
+
 /**
  * Account block for a group mail sent from the guest panel: only for the whole group, while its
- * space is open, to the address it was opened for. [password] comes from [TemporaryGroupPortalDialog].
+ * space is open, to the address it was opened for. [handover] comes from [TemporaryGroupPortalDialog].
  */
-fun EventManagerViewModel.groupMailPortalAccount(guest: Guest, recipient: String, password: String?): PortalAccountBlock? =
+fun EventManagerViewModel.groupMailPortalAccount(guest: Guest, recipient: String, handover: GroupMailHandover?): PortalAccountBlock? =
     temporaryGroupMailAccount(
         batch = temporaryGuestBatch(guest),
         recipient = recipient,
         portalUrl = volunteerPortalUrl(),
-        password = password,
+        password = handover?.password,
         spaceOn = isVolunteerPortalFeatureEnabled() && temporaryGuestPortalEnabled.value,
+        knownLogin = handover?.loginEmail,
     )
 
 /**
@@ -157,6 +161,7 @@ fun TemporaryGroupPortalSection(
                         email = openedFor,
                         send = { viewModel.sendTemporaryGroupPasswordReset(guest, portalMailLanguage(viewModel)) },
                         enabled = !busy,
+                        onBusyChange = { busy = it },
                     )
                 }
                 OutlinedButton(
@@ -210,14 +215,14 @@ fun TemporaryGroupPortalSection(
 /**
  * Opens the group's web space and shows the outcome: the default password once, with Copy, and two
  * optional actions, "Send the group e-mail" (handed back through [onSendGroupMail] with the
- * password, which is kept nowhere else) and a reset link. When the space is open for another
+ * opened address and the password, which is kept nowhere else) and a reset link. When the space is open for another
  * address than the group's current one, it offers to close it and open it again for the new one.
  */
 @Composable
 fun TemporaryGroupPortalDialog(
     viewModel: EventManagerViewModel,
     guest: Guest,
-    onSendGroupMail: (password: String?) -> Unit,
+    onSendGroupMail: (GroupMailHandover) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -286,7 +291,7 @@ private fun GroupAccessOutcome(
     guest: Guest,
     contact: String,
     result: TemporaryGroupAccessResult,
-    onSendGroupMail: (password: String?) -> Unit,
+    onSendGroupMail: (GroupMailHandover) -> Unit,
 ) {
     when (result) {
         is TemporaryGroupAccessResult.Created -> {
@@ -306,7 +311,10 @@ private fun GroupAccessOutcome(
     }
     if (result is TemporaryGroupAccessResult.Failed) return
     Button(
-        onClick = { onSendGroupMail((result as? TemporaryGroupAccessResult.Created)?.password) },
+        onClick = {
+            // Same address as the one the space was opened for (TemporaryGuestPortalAccess cleans it the same way).
+            onSendGroupMail(GroupMailHandover(contact.trim().lowercase(), (result as? TemporaryGroupAccessResult.Created)?.password))
+        },
         modifier = Modifier.fillMaxWidth(),
     ) {
         Icon(Icons.Default.Email, contentDescription = null, modifier = Modifier.size(16.dp))

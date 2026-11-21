@@ -117,7 +117,9 @@ class TemporaryGuestPortalAccess(
 /**
  * Account block of a group mail: only while the group's space is open ([spaceOn] and an opened
  * address) and the mail goes to that very address, so another person never gets this sign-in.
- * [password] is set only when the mail is sent from the window that just opened the space.
+ * [password] is set only when the mail is sent from the window that just opened the space; that
+ * window also gives [knownLogin], the address it opened the space for, which wins over [batch]
+ * (the batch may not show the new state yet, and the password must not drop out of the mail).
  */
 fun temporaryGroupMailAccount(
     batch: List<Guest>,
@@ -125,9 +127,11 @@ fun temporaryGroupMailAccount(
     portalUrl: String,
     password: String?,
     spaceOn: Boolean,
+    knownLogin: String? = null,
 ): PortalAccountBlock? {
     if (!spaceOn) return null
-    val openedFor = TemporaryGuestPortalAccess.openedForAddress(batch) ?: return null
+    val openedFor = knownLogin?.trim()?.takeIf { it.isNotEmpty() }
+        ?: TemporaryGuestPortalAccess.openedForAddress(batch) ?: return null
     if (!recipient.trim().equals(openedFor, ignoreCase = true)) return null
     return PortalAccountBlock(portalUrl = portalUrl, loginEmail = openedFor, password = password)
 }
