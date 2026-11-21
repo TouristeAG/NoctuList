@@ -145,6 +145,13 @@ internal class FakeHost(initial: List<Volunteer>) : VolunteerPortalHost {
         guests[i] = guest
         return true
     }
+    /** Guests created through [createGuest], with the photo they came with. */
+    val createdGuests = mutableListOf<Pair<Guest, ByteArray?>>()
+    override suspend fun createGuest(guest: Guest, photo: ByteArray?): Guest {
+        createdGuests += guest to photo
+        guests += guest
+        return guest
+    }
     /** Photos attached to guests, as nanoId to bytes. */
     val guestAttached = mutableListOf<Pair<String, ByteArray>>()
     override suspend fun attachGuestPhoto(guest: Guest, bytes: ByteArray): Boolean {

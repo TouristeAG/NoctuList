@@ -65,6 +65,32 @@ class PortalInputValidatorTest {
     }
 
     @Test
+    fun parseGuestSignupWithoutBirthDate() {
+        val guestForm = submission(mapOf("holderType" to "GUEST", "venueName" to " Main hall ")) - "dateOfBirth" - "gender"
+        val parsed = assertNotNull(PortalInputValidator.parseSignup(form, org, guestForm))
+        assertEquals(PortalHolderKind.GUEST, parsed.holderType)
+        assertEquals("Main hall", parsed.venueName)
+        assertEquals("", parsed.dateOfBirth)
+        // Never read for a guest, even when the document carries them.
+        val withJunk = PortalInputValidator.parseSignup(form, org, guestForm + ("dateOfBirth" to "12.04.1998") + ("gender" to "ROBOT"))
+        assertEquals("", assertNotNull(withJunk).dateOfBirth)
+        // Everything else is checked as for a volunteer.
+        assertNull(PortalInputValidator.parseSignup(form, org, guestForm + ("phone" to "call me")))
+        assertNull(PortalInputValidator.parseSignup(form, org, guestForm + ("consent" to false)))
+    }
+
+    @Test
+    fun volunteerSignupStillNeedsBirthDateAndGender() {
+        val parsed = assertNotNull(PortalInputValidator.parseSignup(form, org, submission()))
+        assertEquals(PortalHolderKind.VOLUNTEER, parsed.holderType)
+        assertEquals("1998-04-12", parsed.dateOfBirth)
+        assertNull(PortalInputValidator.parseSignup(form, org, submission() - "dateOfBirth"))
+        assertNull(PortalInputValidator.parseSignup(form, org, submission(mapOf("holderType" to "VOLUNTEER")) - "gender"))
+        // Unknown holder types are read as a volunteer, as in the rules.
+        assertNull(PortalInputValidator.parseSignup(form, org, submission(mapOf("holderType" to "ROBOT")) - "gender"))
+    }
+
+    @Test
     fun parsesRequestsOnlyWhenTheIdMatches() {
         val profile = mapOf(
             "uid" to uid, "type" to "PROFILE", "status" to "PENDING", "email" to "lea@example.org",

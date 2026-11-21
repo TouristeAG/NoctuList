@@ -1,5 +1,6 @@
 package com.eventmanager.app.portal
 
+import com.eventmanager.app.data.models.Guest
 import com.eventmanager.app.data.models.Volunteer
 import com.eventmanager.app.data.sync.SettingsManager
 import com.eventmanager.app.platform.PlatformContext
@@ -14,4 +15,7 @@ expect object PortalQrMailer {
     fun canSend(context: PlatformContext): Boolean
 
     suspend fun send(context: PlatformContext, settings: SettingsManager, volunteer: Volunteer): Boolean
+
+    /** Same mail for a permanent guest, with the guest e-mail template. Refused for admins ([guestQrMailRecipient]). */
+    suspend fun sendGuest(context: PlatformContext, settings: SettingsManager, guest: Guest): Boolean
 }

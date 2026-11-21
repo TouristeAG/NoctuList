@@ -103,6 +103,31 @@ internal class GuestPortalPublisher(
         for (uid in uidsWith(hashes, TEMP_QR_SUFFIX)) deleteQr(TemporaryGuestPortalQrDocument.COLLECTION, uid, TEMP_QR_SUFFIX, hashes)
     }
 
+    /**
+     * One guest's access closed or the guest deleted: deletes its page and QR document right away
+     * ([removePage]) and the account photo ([removePhoto]), whoever wrote them. A failed page or
+     * QR delete keeps its key, so the next publish retries.
+     */
+    suspend fun unpublishGuest(uid: String, hashes: MutableMap<String, String>, removePage: Boolean, removePhoto: Boolean) {
+        if (removePage) {
+            try {
+                gateway.deleteDocument(orgId, GuestPortalProjectionBuilder.COLLECTION, uid)
+                hashes.remove(key(uid, GUEST_SUFFIX))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                hashes[key(uid, GUEST_SUFFIX)] = hashes[key(uid, GUEST_SUFFIX)] ?: VolunteerPortalService.QR_RETRY
+                println("Portal: guest page delete failed: ${e.message}")
+            }
+            hashes.remove(key(uid, GUEST_QR_SUFFIX))
+            deleteQr(GuestPortalQrDocument.COLLECTION, uid, GUEST_QR_SUFFIX, hashes)
+        }
+        if (removePhoto) {
+            runCatching { host.deleteStorage(photoPath(uid)) }
+            hashes.remove(key(uid, PHOTO_SUFFIX))
+        }
+    }
+
     private suspend fun publishGuest(
         uid: String,
         guest: Guest,

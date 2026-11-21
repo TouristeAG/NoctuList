@@ -210,7 +210,11 @@ class VolunteerPortalService(
 
     // region Registration links
 
-    suspend fun createSignupForm(): VolunteerSignupForm? {
+    /** A single-use registration link; [venueName] is the venue of the guest a GUEST link creates. */
+    suspend fun createSignupForm(
+        holderType: PortalHolderKind = PortalHolderKind.VOLUNTEER,
+        venueName: String = "",
+    ): VolunteerSignupForm? {
         val now = clock()
         val form = VolunteerSignupForm(
             formId = NanoIdGenerator.generateGuestFormId(),
@@ -218,6 +222,8 @@ class VolunteerPortalService(
             createdAt = now,
             expiresAtMillis = now + VolunteerSignupForm.VALIDITY_MILLIS,
             photosEnabled = host.profilePhotosEnabled(),
+            holderType = holderType,
+            venueName = if (holderType == PortalHolderKind.GUEST) venueName.trim() else "",
         )
         return try {
             gateway.setPlainDocument(
@@ -263,6 +269,8 @@ class VolunteerPortalService(
             val retryable = status == VolunteerSignupForm.STATUS_SUBMITTED || isStaleProcessing(data)
             if (!retryable) continue
             if (isFreshForServer(data["submittedAt"])) continue
+            // Guest space off: guest registrations wait, like the guest requests.
+            if (isGuestSignup(data) && !host.guestPortalEnabled()) continue
             mutex.withLock { runCatchingLogged("signup $formId") { processSignup(formId) } }
         }
     }
@@ -273,7 +281,10 @@ class VolunteerPortalService(
             orgId,
             VolunteerSignupForm.COLLECTION,
             formId,
-            claimable = { it["status"] == VolunteerSignupForm.STATUS_SUBMITTED || isStaleProcessing(it) },
+            claimable = {
+                (it["status"] == VolunteerSignupForm.STATUS_SUBMITTED || isStaleProcessing(it)) &&
+                    (!isGuestSignup(it) || host.guestPortalEnabled())
+            },
             claimFields = processingFields(now),
         ) ?: return
         val submission = PortalInputValidator.parseSignup(formId, orgId, claimed.withStatus(VolunteerSignupForm.STATUS_SUBMITTED))
@@ -284,6 +295,10 @@ class VolunteerPortalService(
             return
         }
         val photo = submission.photoPath.takeIf { it.isNotBlank() }?.let { host.downloadStorage(it) }
+        if (submission.holderType == PortalHolderKind.GUEST) {
+            if (registerGuest(formId, submission, photo, now)) finishSignup(formId, submission.photoPath)
+            return
+        }
         val all = host.volunteers()
         val alreadyLinked = all.firstOrNull { it.portalUid == submission.uid }
         if (alreadyLinked == null) {
@@ -320,6 +335,51 @@ class VolunteerPortalService(
         }
         finishSignup(formId, submission.photoPath)
     }
+
+    /**
+     * A GUEST link: links the permanent guest of the same address that has no account yet, else
+     * creates one (no invitations, no discount, the venue of the link). False when a save failed.
+     */
+    private suspend fun registerGuest(formId: String, submission: SignupSubmission, photo: ByteArray?, now: Long): Boolean {
+        val permanents = orgGuests().filter { it.isPermanentPortalGuest }
+        if (permanents.any { it.portalUid == submission.uid }) return true
+        val sameEmail = permanents.firstOrNull {
+            it.email.trim().equals(submission.email, ignoreCase = true) && it.portalUid.isBlank()
+        }
+        if (sameEmail != null) {
+            // Reading the portal still requires verifying this e-mail address.
+            val linked = sameEmail.copy(
+                portalEnabled = true,
+                portalUid = submission.uid,
+                lastModified = maxOf(now, sameEmail.lastModified + 1),
+            )
+            if (!host.saveGuest(linked)) return false
+            if (photo != null && linked.profilePhotoPath.isBlank()) host.attachGuestPhoto(linked, photo)
+            applyGoogleAddressRule(PortalHolderKind.GUEST, linked.nanoId)
+            return true
+        }
+        val created = host.createGuest(
+            Guest(
+                name = submission.firstName,
+                lastNameAbbreviation = submission.lastName.uppercase(),
+                email = submission.email,
+                phoneNumber = submission.phone,
+                invitations = 0,
+                venueName = submission.venueName,
+                barDiscountPercent = 0,
+                firebaseOrgId = orgId,
+                portalEnabled = true,
+                portalUid = submission.uid,
+                lastModified = now,
+            ),
+            photo,
+        ) ?: return false
+        println("Portal: registered a guest from link $formId")
+        applyGoogleAddressRule(PortalHolderKind.GUEST, created.nanoId)
+        return true
+    }
+
+    private fun isGuestSignup(data: Map<String, Any?>): Boolean = data["holderType"] == PortalHolderKind.GUEST.name
 
     private suspend fun finishSignup(formId: String, photoPath: String) {
         if (photoPath.isNotBlank()) runCatching { host.deleteStorage(photoPath) }
@@ -781,30 +841,67 @@ class VolunteerPortalService(
                 it.isPermanentPortalGuest && it.nanoId !in ownGuests && PortalGoogleLinkProcessor.sameAddress(it.portalGoogleEmail, clean)
             }
         ) return "TAKEN"
+        // Same person, same Google account: the guests of the account follow the volunteer.
+        return writeAdminGoogleAddress(current.asPortalHolder(), listOf(current), accountGuests, clean)
+    }
+
+    /**
+     * Admin types the permanent guest's association Google address; same answers as
+     * [assignGoogleAccount]. The volunteer and other guests of the same portal account follow.
+     */
+    suspend fun assignGuestGoogleAccount(guest: Guest, email: String): String? {
+        val clean = PortalInputValidator.cleanEmail(email) ?: return "INVALID"
+        if (!PortalGoogleLinkProcessor.accountAllowed(clean, host.portalGoogleDomains(), host.portalGoogleAnyAccount())) return "DOMAIN"
+        val guests = orgGuests()
+        val current = guests.firstOrNull { it.nanoId == guest.nanoId } ?: guest
+        if (PortalGoogleLinkProcessor.sameAddress(current.email, clean)) return "SAME_AS_EMAIL"
+        val (accountVolunteers, accountGuests) = accountOf(current, guests)
+        val ownVolunteers = accountVolunteers.map { it.id }.toSet()
+        val ownGuests = accountGuests.map { it.nanoId }.toSet()
+        if (orgVolunteers().any { it.id !in ownVolunteers && PortalGoogleLinkProcessor.sameAddress(it.portalGoogleEmail, clean) }) return "TAKEN"
+        if (guests.any {
+                it.isPermanentPortalGuest && it.nanoId !in ownGuests && PortalGoogleLinkProcessor.sameAddress(it.portalGoogleEmail, clean)
+            }
+        ) return "TAKEN"
+        return writeAdminGoogleAddress(current.asPortalHolder(), accountVolunteers, accountGuests, clean)
+    }
+
+    /**
+     * Saves [clean] as the admin-held Google address of every given profile ([current] among them).
+     * Every former Google account of the person loses its alias; the same account keeps its link,
+     * now held by the admin. Null when saved, else SAVE_FAILED.
+     */
+    private suspend fun writeAdminGoogleAddress(
+        current: PortalHolder,
+        volunteers: List<Volunteer>,
+        guests: List<Guest>,
+        clean: String,
+    ): String? {
         val sameAddress = PortalGoogleLinkProcessor.sameAddress(current.portalGoogleEmail, clean)
         return try {
             val keptUid = if (sameAddress) current.portalGoogleUid else ""
-            // Every former Google account of the person loses its alias, the guests' included.
-            (listOf(current.portalGoogleUid) + accountGuests.map { it.portalGoogleUid })
+            (volunteers.map { it.portalGoogleUid } + guests.map { it.portalGoogleUid })
                 .filter { it.isNotBlank() && it != keptUid }
                 .distinct()
                 .forEach { gateway.deleteDocument(orgId, PortalGoogleAccount.COLLECTION, it) }
             if (keptUid.isNotBlank() && current.portalGoogleLinkedBy != Volunteer.GOOGLE_LINKED_BY_ADMIN) {
-                // Same account, now held by the admin: the volunteer can no longer remove it.
+                // Same account, now held by the admin: the person can no longer remove it.
                 gateway.setPlainDocument(
                     orgId, PortalGoogleAccount.COLLECTION, keptUid,
                     mapOf("linkedBy" to Volunteer.GOOGLE_LINKED_BY_ADMIN), merge = true,
                 )
             }
-            val updated = current.copy(
-                portalGoogleEmail = clean,
-                portalGoogleUid = keptUid,
-                portalGoogleLinkedBy = Volunteer.GOOGLE_LINKED_BY_ADMIN,
-                lastModified = maxOf(clock(), current.lastModified + 1),
-            )
-            var ok = updated == current || host.saveVolunteer(updated)
-            // Same person, same Google account: the guests of the account follow the volunteer.
-            for (guest in accountGuests) {
+            var ok = true
+            for (volunteer in volunteers) {
+                val updated = volunteer.copy(
+                    portalGoogleEmail = clean,
+                    portalGoogleUid = keptUid,
+                    portalGoogleLinkedBy = Volunteer.GOOGLE_LINKED_BY_ADMIN,
+                    lastModified = maxOf(clock(), volunteer.lastModified + 1),
+                )
+                ok = (updated == volunteer || host.saveVolunteer(updated)) && ok
+            }
+            for (guest in guests) {
                 val follows = guest.copy(
                     portalGoogleEmail = clean,
                     portalGoogleUid = keptUid,
@@ -822,21 +919,64 @@ class VolunteerPortalService(
         }
     }
 
+    /** [guest] and every volunteer and permanent guest sharing its portal account. */
+    private suspend fun accountOf(guest: Guest, guests: List<Guest>): Pair<List<Volunteer>, List<Guest>> {
+        val uid = guest.portalUid
+        if (uid.isBlank()) return emptyList<Volunteer>() to listOf(guest)
+        return orgVolunteers().filter { it.portalUid == uid } to
+            (listOf(guest) + sameAccountGuests(uid, guests).filter { it.nanoId != guest.nanoId })
+    }
+
+    private suspend fun orgVolunteers(): List<Volunteer> =
+        host.volunteers().filter { it.firebaseOrgId.isBlank() || it.firebaseOrgId == orgId }
+
+    /** Who else still uses the portal account [uid] once the profile [kind]/[id] is gone. */
+    private data class AccountSharing(
+        /** Open volunteers and permanent guests of the account: Google link and account photo. */
+        val holders: List<PortalHolder>,
+        /** An open temporary group signs in with the same account. */
+        val temporaryGroups: Boolean,
+    ) {
+        /** Requests and uploads of the account itself (CLAIM, Google, photo upload) are still in use. */
+        val inUse: Boolean get() = holders.isNotEmpty() || temporaryGroups
+
+        fun carries(googleUid: String): Boolean = holders.any { it.portalGoogleUid == googleUid }
+    }
+
+    private suspend fun othersOnAccount(uid: String, kind: PortalHolderKind, id: String): AccountSharing {
+        if (uid.isBlank()) return AccountSharing(emptyList(), false)
+        val guests = orgGuests().filter { it.portalEnabled && it.portalUid == uid }
+        val holders = orgVolunteers().filter { it.portalEnabled && it.portalUid == uid }.map { it.asPortalHolder() } +
+            guests.filter { it.isPermanentPortalGuest }.map { it.asPortalHolder() }
+        return AccountSharing(
+            holders = holders.filterNot { it.kind == kind && it.id == id },
+            temporaryGroups = guests.any { it.isTemporaryGuest },
+        )
+    }
+
     /**
      * A portal access was just opened: links the Google address built by the team's rule, if the
      * rule is on and the volunteer has none yet. Never fails the caller; a refused address
      * (taken, wrong domain, unusable name) leaves the field empty for the admin to fill in.
      */
-    private suspend fun applyGoogleAddressRule(volunteerId: String) {
+    private suspend fun applyGoogleAddressRule(volunteerId: String) =
+        applyGoogleAddressRule(PortalHolderKind.VOLUNTEER, volunteerId)
+
+    /** Same rule for a permanent guest ([id] is then its nanoId, never logged). */
+    private suspend fun applyGoogleAddressRule(kind: PortalHolderKind, id: String) {
         if (!host.portalGoogleEnabled()) return
         val template = host.portalGoogleAddressTemplate().trim()
         if (template.isEmpty()) return
         runCatchingLogged("Google address rule") {
-            val current = host.volunteers().firstOrNull { it.id == volunteerId } ?: return@runCatchingLogged
-            if (current.portalGoogleEmail.isNotBlank()) return@runCatchingLogged
-            val address = PortalGoogleAddressTemplate.render(template, current.name, current.lastNameAbbreviation)
+            val who = if (kind == PortalHolderKind.GUEST) "guest" else "volunteer"
+            val volunteer = if (kind == PortalHolderKind.VOLUNTEER) host.volunteers().firstOrNull { it.id == id } else null
+            val guest = if (kind == PortalHolderKind.GUEST) orgGuests().firstOrNull { it.nanoId == id } else null
+            val name = volunteer?.name ?: guest?.name ?: return@runCatchingLogged
+            val lastName = volunteer?.lastNameAbbreviation ?: guest?.lastNameAbbreviation.orEmpty()
+            if ((volunteer?.portalGoogleEmail ?: guest?.portalGoogleEmail).orEmpty().isNotBlank()) return@runCatchingLogged
+            val address = PortalGoogleAddressTemplate.render(template, name, lastName)
             if (address == null) {
-                println("Portal: Google address rule gave no address for a volunteer")
+                println("Portal: Google address rule gave no address for a $who")
                 return@runCatchingLogged
             }
             // Never a guessed address outside the verified domains, even when any account may sign in.
@@ -844,7 +984,8 @@ class VolunteerPortalService(
                 println("Portal: Google address rule refused: DOMAIN")
                 return@runCatchingLogged
             }
-            assignGoogleAccount(current, address)?.let { println("Portal: Google address rule refused: $it") }
+            val refused = if (volunteer != null) assignGoogleAccount(volunteer, address) else assignGuestGoogleAccount(guest!!, address)
+            refused?.let { println("Portal: Google address rule refused: $it") }
         }
     }
 
@@ -855,8 +996,10 @@ class VolunteerPortalService(
      */
     suspend fun forgetVolunteer(volunteer: Volunteer) {
         if (volunteer.firebaseOrgId.isNotBlank() && volunteer.firebaseOrgId != orgId) return
+        // A permanent guest on the same account keeps what it still uses (alias, photo, shared requests).
+        val others = othersOnAccount(volunteer.portalUid.trim(), PortalHolderKind.VOLUNTEER, volunteer.id)
         val googleUid = volunteer.portalGoogleUid.trim()
-        if (googleUid.isNotBlank()) {
+        if (googleUid.isNotBlank() && !others.carries(googleUid)) {
             // Alias first, so the Google account loses access before anything else.
             runCatchingLogged("Google alias delete") { gateway.deleteDocument(orgId, PortalGoogleAccount.COLLECTION, googleUid) }
             runCatchingLogged("Google claim delete") { gateway.deleteDocument(orgId, PortalGoogleClaim.COLLECTION, googleUid) }
@@ -876,9 +1019,11 @@ class VolunteerPortalService(
                 // The key stays, so the next publish sees a stale page and deletes it.
                 println("Portal: page delete failed for a deleted volunteer: ${e.message}")
             }
-            runCatchingLogged("portal photo delete") { host.deleteStorage(portalPhotoPath(uid)) }
-            runCatchingLogged("portal upload delete") { host.deleteStorage(portalUploadPath(uid)) }
-            hashes.remove("$key#photo")
+            if (others.holders.isEmpty()) {
+                runCatchingLogged("portal photo delete") { host.deleteStorage(portalPhotoPath(uid)) }
+                hashes.remove("$key#photo")
+            }
+            if (!others.inUse) runCatchingLogged("portal upload delete") { host.deleteStorage(portalUploadPath(uid)) }
             try {
                 gateway.deleteDocument(orgId, PortalQrDocument.COLLECTION, uid)
                 hashes.remove(qrKey)
@@ -890,6 +1035,7 @@ class VolunteerPortalService(
             }
             // Old requests keep the e-mail, name and phone the volunteer sent.
             for (type in PortalRequestType.entries) {
+                if (others.inUse && type != PortalRequestType.PROFILE && type != PortalRequestType.QR_EMAIL) continue
                 runCatchingLogged("request delete") {
                     gateway.deleteDocument(orgId, PortalRequest.COLLECTION, "${uid}_${type.name}")
                 }
@@ -916,26 +1062,42 @@ class VolunteerPortalService(
     // region Admin actions
 
     /** Opens the access without e-mailing the volunteer: the admin sends the reset link from the dialog if wanted. */
-    suspend fun grantAccess(volunteer: Volunteer): PortalGrantResult {
-        val email = volunteer.email.trim()
+    suspend fun grantAccess(volunteer: Volunteer): PortalGrantResult =
+        openAccess(volunteer.asPortalHolder()) { uid ->
+            host.saveVolunteer(volunteer.copy(portalEnabled = true, portalUid = uid, lastModified = clock()))
+        }
+
+    /**
+     * Same as [grantAccess] for a permanent guest, with the guest space on. Nothing is mailed.
+     * Failed with GUEST_SPACE_OFF, NOT_PERMANENT (temporary guest or volunteer benefit) or INVALID_EMAIL.
+     */
+    suspend fun grantGuestAccess(guest: Guest): PortalGrantResult {
+        if (!host.guestPortalEnabled()) return PortalGrantResult.Failed("GUEST_SPACE_OFF")
+        if (!guest.isPermanentPortalGuest) return PortalGrantResult.Failed("NOT_PERMANENT")
+        return openAccess(guest.asPortalHolder()) { uid ->
+            host.saveGuest(guest.copy(portalEnabled = true, portalUid = uid, lastModified = maxOf(clock(), guest.lastModified + 1)))
+        }
+    }
+
+    /**
+     * Creates the Firebase account of [holder] and saves the profile through [save] with its uid,
+     * or a blank uid when the address already has an account (linked at sign-in by CLAIM). Then
+     * applies the Google address rule. No e-mail is sent.
+     */
+    private suspend fun openAccess(holder: PortalHolder, save: suspend (portalUid: String) -> Boolean): PortalGrantResult {
+        val email = holder.email.trim()
         if (PortalInputValidator.cleanEmail(email) == null) return PortalGrantResult.Failed("INVALID_EMAIL")
         val client = authClientFactory(host.apiKey())
         val password = PortalPasswordGenerator.generate()
         return when (val created = client.createAccount(email, password)) {
             is PortalAuthResult.Created -> {
-                val saved = host.saveVolunteer(
-                    volunteer.copy(portalEnabled = true, portalUid = created.uid, lastModified = clock()),
-                )
-                if (!saved) return PortalGrantResult.Failed("SAVE_FAILED")
-                applyGoogleAddressRule(volunteer.id)
+                if (!save(created.uid)) return PortalGrantResult.Failed("SAVE_FAILED")
+                applyGoogleAddressRule(holder.kind, holder.id)
                 PortalGrantResult.Created(password)
             }
             PortalAuthResult.EmailExists -> {
-                val saved = host.saveVolunteer(
-                    volunteer.copy(portalEnabled = true, portalUid = "", lastModified = clock()),
-                )
-                if (!saved) return PortalGrantResult.Failed("SAVE_FAILED")
-                applyGoogleAddressRule(volunteer.id)
+                if (!save("")) return PortalGrantResult.Failed("SAVE_FAILED")
+                applyGoogleAddressRule(holder.kind, holder.id)
                 PortalGrantResult.ExistingAccount
             }
             is PortalAuthResult.Failed -> PortalGrantResult.Failed(created.code)
@@ -946,10 +1108,96 @@ class VolunteerPortalService(
     suspend fun sendPasswordReset(volunteer: Volunteer, languageCode: String): Boolean =
         authClientFactory(host.apiKey()).sendPasswordReset(volunteer.email, languageCode) is PortalAuthResult.Sent
 
+    suspend fun sendGuestPasswordReset(guest: Guest, languageCode: String): Boolean =
+        authClientFactory(host.apiKey()).sendPasswordReset(guest.email, languageCode) is PortalAuthResult.Sent
+
+    /**
+     * Closes the guest's access and takes its page and QR document down. What the account still
+     * uses for a volunteer or another guest on it (Google alias, account photo) stays.
+     */
+    suspend fun revokeGuestAccess(guest: Guest): Boolean {
+        val current = orgGuests().firstOrNull { it.nanoId == guest.nanoId } ?: guest
+        val uid = current.portalUid
+        val googleUid = current.portalGoogleUid
+        val others = othersOnAccount(uid, PortalHolderKind.GUEST, current.nanoId)
+        if (googleUid.isNotBlank() && !others.carries(googleUid)) {
+            runCatching { gateway.deleteDocument(orgId, PortalGoogleAccount.COLLECTION, googleUid) }
+        }
+        // An address the admin typed stays, so reopening the access links the same account again.
+        val adminLink = current.portalGoogleLinkedBy == Volunteer.GOOGLE_LINKED_BY_ADMIN
+        val saved = host.saveGuest(
+            current.copy(
+                portalEnabled = false,
+                portalUid = "",
+                portalGoogleUid = "",
+                portalGoogleEmail = if (adminLink) current.portalGoogleEmail else "",
+                portalGoogleLinkedBy = if (adminLink) current.portalGoogleLinkedBy else "",
+                lastModified = maxOf(clock(), current.lastModified + 1),
+            ),
+        )
+        if (uid.isNotBlank()) mutex.withLock { unpublishGuest(uid, others) }
+        return saved
+    }
+
+    /**
+     * The permanent guest was deleted: same as [forgetVolunteer] for its page, QR document and
+     * guest requests. The account's own documents (Google alias, photo, CLAIM and Google requests,
+     * upload) go only when nobody else uses the account.
+     */
+    suspend fun forgetGuest(guest: Guest) {
+        if (guest.firebaseOrgId.isNotBlank() && guest.firebaseOrgId != orgId) return
+        if (!guest.isPermanentPortalGuest) return
+        val uid = guest.portalUid.trim()
+        val others = othersOnAccount(uid, PortalHolderKind.GUEST, guest.nanoId)
+        val googleUid = guest.portalGoogleUid.trim()
+        if (googleUid.isNotBlank() && !others.carries(googleUid)) {
+            runCatchingLogged("Google alias delete") { gateway.deleteDocument(orgId, PortalGoogleAccount.COLLECTION, googleUid) }
+            runCatchingLogged("Google claim delete") { gateway.deleteDocument(orgId, PortalGoogleClaim.COLLECTION, googleUid) }
+        }
+        if (uid.isBlank()) return
+        mutex.withLock {
+            unpublishGuest(uid, others)
+            if (!others.inUse) runCatchingLogged("portal upload delete") { host.deleteStorage(portalUploadPath(uid)) }
+            for (type in PortalRequestType.entries) {
+                if (others.inUse && !isGuestRequestType(type.name)) continue
+                runCatchingLogged("request delete") { gateway.deleteDocument(orgId, PortalRequest.COLLECTION, "${uid}_${type.name}") }
+            }
+        }
+    }
+
+    /** Call under [mutex]. Another permanent guest of the account keeps the page; any holder keeps the photo. */
+    private suspend fun unpublishGuest(uid: String, others: AccountSharing) {
+        val hashes = host.loadPublishedHashes().toMutableMap()
+        guestPublisher.unpublishGuest(
+            uid,
+            hashes,
+            removePage = others.holders.none { it.kind == PortalHolderKind.GUEST },
+            removePhoto = others.holders.isEmpty(),
+        )
+        host.savePublishedHashes(hashes)
+    }
+
+    /** Admin "Remove" on a guest: drops the link of the whole portal account, whoever made it. */
+    suspend fun removeGuestGoogleAccount(guest: Guest): Boolean {
+        val guests = orgGuests()
+        val current = guests.firstOrNull { it.nanoId == guest.nanoId } ?: guest
+        return try {
+            val (volunteers, accountGuests) = accountOf(current, guests)
+            clearGoogleLink(volunteers, accountGuests)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            println("Portal: Google account removal failed: ${e.message}")
+            false
+        }
+    }
+
     suspend fun revokeAccess(volunteer: Volunteer): Boolean {
         val uid = volunteer.portalUid
         val googleUid = volunteer.portalGoogleUid
-        if (googleUid.isNotBlank()) runCatching { gateway.deleteDocument(orgId, PortalGoogleAccount.COLLECTION, googleUid) }
+        // A permanent guest on the same account keeps its Google alias and the account photo.
+        val others = othersOnAccount(uid, PortalHolderKind.VOLUNTEER, volunteer.id)
+        if (googleUid.isNotBlank() && !others.carries(googleUid)) runCatching { gateway.deleteDocument(orgId, PortalGoogleAccount.COLLECTION, googleUid) }
         // An address the admin typed stays, so reopening the access links the same account again.
         val volunteerLink = volunteer.portalGoogleLinkedBy == Volunteer.GOOGLE_LINKED_BY_VOLUNTEER
         val saved = host.saveVolunteer(
@@ -962,7 +1210,7 @@ class VolunteerPortalService(
                 lastModified = clock(),
             ),
         )
-        if (uid.isNotBlank()) unpublish(uid)
+        if (uid.isNotBlank()) unpublish(uid, keepPhoto = others.holders.isNotEmpty())
         return saved
     }
 
@@ -1209,12 +1457,13 @@ class VolunteerPortalService(
         return host.uploadStorageJpeg(path, bytes)
     }
 
-    private suspend fun unpublish(uid: String) {
+    /** [keepPhoto]: the account photo stays for a guest of the account (with its hash, so the guest publish replaces it). */
+    private suspend fun unpublish(uid: String, keepPhoto: Boolean = false) {
         runCatching { gateway.deleteDocument(orgId, PortalProjection.COLLECTION, uid) }
-        runCatching { host.deleteStorage(portalPhotoPath(uid)) }
+        if (!keepPhoto) runCatching { host.deleteStorage(portalPhotoPath(uid)) }
         val hashes = host.loadPublishedHashes().toMutableMap()
         hashes.remove("$orgId/$uid")
-        hashes.remove("$orgId/$uid#photo")
+        if (!keepPhoto) hashes.remove("$orgId/$uid#photo")
         hashes.remove("$orgId/$uid$QR_SUFFIX")
         deleteQrDocument(uid, hashes)
         host.savePublishedHashes(hashes)

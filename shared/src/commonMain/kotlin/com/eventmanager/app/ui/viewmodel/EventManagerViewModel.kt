@@ -56,6 +56,7 @@ import com.eventmanager.app.data.remote.FirestoreGateway
 import com.eventmanager.app.data.remote.downloadProfilePhotoBytes
 import com.eventmanager.app.portal.DomainCheck
 import com.eventmanager.app.portal.PortalGrantResult
+import com.eventmanager.app.portal.PortalHolderKind
 import com.eventmanager.app.portal.PortalMailTemplate
 import com.eventmanager.app.portal.PortalQrMailer
 import com.eventmanager.app.portal.PortalServerStatus
@@ -64,6 +65,8 @@ import com.eventmanager.app.portal.VolunteerPortalHost
 import com.eventmanager.app.portal.VolunteerPortalService
 import com.eventmanager.app.portal.VolunteerSignupForm
 import com.eventmanager.app.portal.WorkspaceDomainVerifier
+import com.eventmanager.app.portal.guestAutoAccessApplies
+import com.eventmanager.app.portal.guestQrMailRecipient
 import com.eventmanager.app.data.remote.createFirebaseAuthService
 import com.eventmanager.app.data.remote.GitLiveProfilePhotoStorageGateway
 import com.eventmanager.app.data.remote.FirestoreApplyPolicy
@@ -2080,6 +2083,10 @@ class EventManagerViewModel(
                     ?: twoWaySyncService?.backupGuestsToSheets()?.also {
                         recalcAndUploadVolunteerGuestList()
                     }
+                if (guestPortalAutoAccessApplies(withPhoto)) {
+                    // Same rule as new volunteers: the access opens, nothing is mailed.
+                    _guestPortalAutoGrant.value = withPhoto to grantGuestPortalAccess(withPhoto)
+                }
             } catch (e: Exception) {
             println("Failed to add guest: ${e.message}")
             _syncError.value = "Failed to add guest: ${e.message}"
@@ -2176,6 +2183,7 @@ class EventManagerViewModel(
                 } else {
                     // Track the deletion (businessKey = nanoId for merge-safe upload)
                     deletionTracker?.trackGuestDeletion(guest.id.toString(), guest.sheetsId, businessKey = guest.nanoId)
+                    forgetPortalGuest(guest)
 
                     // Delete from local database
                     repository.deleteGuest(guest)
@@ -2961,6 +2969,80 @@ class EventManagerViewModel(
         return service.revokeAccess(tagVolunteerWithActiveOrg(volunteer))
     }
 
+    private val _guestPortalAutoGrant = MutableStateFlow<Pair<Guest, PortalGrantResult>?>(null)
+
+    /** Access opened by `volunteer_portal_auto_access` for a guest just added: its password, shown once. */
+    val guestPortalAutoGrant: StateFlow<Pair<Guest, PortalGrantResult>?> = _guestPortalAutoGrant.asStateFlow()
+
+    fun consumeGuestPortalAutoGrant() {
+        _guestPortalAutoGrant.value = null
+    }
+
+    /** A guest added in the app gets its access right away (no e-mail): same switch as volunteers, guest space on. */
+    fun guestPortalAutoAccessApplies(guest: Guest): Boolean = guestAutoAccessApplies(
+        guest,
+        portalOn = isVolunteerPortalFeatureEnabled(),
+        autoAccess = settingsManagerCached?.isVolunteerPortalAutoAccess() == true,
+        guestSpaceOn = settingsManagerCached?.isGuestPortalEnabled() == true,
+    )
+
+    /** GUEST registration links need the guest space on as well. */
+    fun isGuestSignupLinkAvailable(): Boolean =
+        isVolunteerSignupLinkAvailable() && settingsManagerCached?.isGuestPortalEnabled() == true
+
+    /** A registration link that creates a permanent guest of [venueName]. */
+    suspend fun createGuestSignupForm(venueName: String): VolunteerSignupForm? {
+        if (!isGuestSignupLinkAvailable()) {
+            _syncError.value = "Guest registration links need the portal, the guest space and the public form site."
+            return null
+        }
+        return requirePortalService()?.createSignupForm(PortalHolderKind.GUEST, venueName)
+            ?: null.also { _syncError.value = "Registration link could not be created. Check the connection and Firestore rules." }
+    }
+
+    suspend fun grantGuestPortalAccess(guest: Guest): PortalGrantResult {
+        if (rejectIfCrudSoftLocked("updating guests")) return PortalGrantResult.Failed("LOCKED")
+        val service = requirePortalService() ?: return PortalGrantResult.Failed("UNAVAILABLE")
+        return service.grantGuestAccess(tagGuestWithActiveOrg(guest))
+    }
+
+    /** "Add guest" with portal access: saves the guest first, then opens the access (password shown once, no e-mail). */
+    suspend fun addGuestWithPortalAccess(guest: Guest, profilePhotoJpeg: ByteArray?): PortalGrantResult {
+        if (rejectIfCrudSoftLocked("adding guests")) return PortalGrantResult.Failed("LOCKED")
+        val created = volunteerPortalHost.createGuest(guest, profilePhotoJpeg)
+            ?: return PortalGrantResult.Failed("SAVE_FAILED")
+        return grantGuestPortalAccess(created)
+    }
+
+    suspend fun sendGuestPortalPasswordReset(guest: Guest, languageCode: String): Boolean =
+        requirePortalService()?.sendGuestPasswordReset(guest, languageCode) ?: false
+
+    suspend fun revokeGuestPortalAccess(guest: Guest): Boolean {
+        if (rejectIfCrudSoftLocked("updating guests")) return false
+        val service = requirePortalService() ?: return false
+        return service.revokeGuestAccess(tagGuestWithActiveOrg(guest))
+    }
+
+    suspend fun assignGuestPortalGoogleAccount(guest: Guest, email: String): String? {
+        if (rejectIfCrudSoftLocked("updating guests")) return "SAVE_FAILED"
+        val service = requirePortalService() ?: return "SAVE_FAILED"
+        return service.assignGuestGoogleAccount(tagGuestWithActiveOrg(guest), email)
+    }
+
+    suspend fun removeGuestPortalGoogleAccount(guest: Guest): Boolean {
+        if (rejectIfCrudSoftLocked("updating guests")) return false
+        val service = requirePortalService() ?: return false
+        return service.removeGuestGoogleAccount(tagGuestWithActiveOrg(guest))
+    }
+
+    /** A deleted permanent guest: the portal forgets its page, QR and requests, keeping what the account still uses. */
+    private suspend fun forgetPortalGuest(guest: Guest) {
+        val current = repository.getGuestByNanoId(guest.nanoId) ?: guest
+        if (current.portalGoogleUid.isBlank() && current.portalUid.isBlank()) return
+        ensureVolunteerPortalService()
+        volunteerPortalService?.forgetGuest(current)
+    }
+
     private val volunteerPortalHost = object : VolunteerPortalHost {
         override val deviceId: String
             get() = settingsManagerCached?.getOrCreatePersistentDeviceId().orEmpty()
@@ -3071,8 +3153,13 @@ class EventManagerViewModel(
         override suspend fun guestPhotoBytes(guest: Guest): ByteArray? =
             downloadProfilePhotoBytes(platformContext, guest.profilePhotoUrl, guest.resolvedProfilePhotoPath())
 
-        // No guest QR mail exists on devices yet; the guest QR requests are wired with the guest requests.
-        override suspend fun sendGuestQrEmail(guest: Guest): Boolean = false
+        /** Same path as [sendQrEmail] (Gmail on this device), with the guest e-mail template; never for an admin. */
+        override suspend fun sendGuestQrEmail(guest: Guest): Boolean {
+            if (guestQrMailRecipient(guest) == null) return false
+            val ctx = platformContext ?: return false
+            val settings = settingsManagerCached ?: return false
+            return PortalQrMailer.sendGuest(ctx, settings, guest)
+        }
 
         override fun canSendQrEmail(): Boolean =
             platformContext?.let { PortalQrMailer.canSend(it) } ?: false

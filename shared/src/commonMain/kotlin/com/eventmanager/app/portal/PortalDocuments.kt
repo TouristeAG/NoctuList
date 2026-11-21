@@ -16,6 +16,10 @@ data class VolunteerSignupForm(
     val createdAt: Long,
     val expiresAtMillis: Long,
     val photosEnabled: Boolean,
+    /** Who the link registers: a volunteer, or a permanent guest (no birth date nor gender). */
+    val holderType: PortalHolderKind = PortalHolderKind.VOLUNTEER,
+    /** GUEST links: venue of the guest created from the answer, chosen by the admin. */
+    val venueName: String = "",
 ) {
     fun isExpiredAt(now: Long): Boolean = now >= expiresAtMillis
 
@@ -24,6 +28,8 @@ data class VolunteerSignupForm(
         "status" to STATUS_OPEN,
         "photosEnabled" to photosEnabled,
         "associationName" to associationName.trim().take(80),
+        "holderType" to holderType.name,
+        "venueName" to venueName,
         "createdAt" to createdAt,
         "expiresAtMillis" to expiresAtMillis,
         "lastModified" to createdAt,
@@ -59,10 +65,15 @@ data class SignupSubmission(
     val firstName: String,
     val lastName: String,
     val phone: String,
+    /** Empty for a guest. */
     val dateOfBirth: String,
+    /** Not asked of a guest: [Gender.PREFER_NOT_TO_DISCLOSE] there, never used. */
     val gender: Gender,
     val photoPath: String,
     val lang: String,
+    val holderType: PortalHolderKind = PortalHolderKind.VOLUNTEER,
+    /** GUEST only: the venue stored on the link by the app (the public side cannot change it). */
+    val venueName: String = "",
 )
 
 enum class PortalRequestType { PROFILE, QR_EMAIL, CLAIM, GOOGLE_LINK, GOOGLE_UNLINK, GUEST_PROFILE, GUEST_QR_EMAIL }
@@ -164,8 +175,15 @@ object PortalInputValidator {
         val firstName = cleanName(data["firstName"]) ?: return null
         val lastName = cleanName(data["lastName"]) ?: return null
         val phone = cleanPhone(data["phone"]) ?: return null
-        val dateOfBirth = (data["dateOfBirth"] as? String)?.takeIf { DATE.matches(it) } ?: return null
-        val gender = runCatching { Gender.valueOf(data["gender"].toString()) }.getOrNull() ?: return null
+        // Same test as the rules: only "GUEST" makes a guest link, anything else is a volunteer one.
+        val holderType = if (data["holderType"] == PortalHolderKind.GUEST.name) PortalHolderKind.GUEST else PortalHolderKind.VOLUNTEER
+        val guest = holderType == PortalHolderKind.GUEST
+        val dateOfBirth = if (guest) "" else (data["dateOfBirth"] as? String)?.takeIf { DATE.matches(it) } ?: return null
+        val gender = if (guest) {
+            Gender.PREFER_NOT_TO_DISCLOSE
+        } else {
+            runCatching { Gender.valueOf(data["gender"].toString()) }.getOrNull() ?: return null
+        }
         if (data["consent"] != true) return null
         val photoPath = (data["photoPath"] as? String).orEmpty()
         // Only ever trust the path this form owns, whatever the document says.
@@ -182,6 +200,8 @@ object PortalInputValidator {
             gender = gender,
             photoPath = if (photoPath == ownPhoto) ownPhoto else "",
             lang = lang,
+            holderType = holderType,
+            venueName = if (guest) (data["venueName"] as? String).orEmpty().trim() else "",
         )
     }
 

@@ -2,6 +2,7 @@ package com.eventmanager.app.portal
 
 import android.graphics.Bitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
+import com.eventmanager.app.data.models.Guest
 import com.eventmanager.app.data.models.Volunteer
 import com.eventmanager.app.data.sync.GmailAuthService
 import com.eventmanager.app.data.sync.GmailAuthorizationRequiredException
@@ -20,6 +21,9 @@ import com.eventmanager.app.resources.email_qr_attachment_note
 import com.eventmanager.app.resources.email_qr_attachment_text
 import com.eventmanager.app.resources.email_signature_default
 import com.eventmanager.app.resources.email_subject_default
+import com.eventmanager.app.resources.guest_email_content_after_default
+import com.eventmanager.app.resources.guest_email_content_before_default
+import com.eventmanager.app.resources.guest_email_subject_default
 import com.eventmanager.app.utils.QRCodeUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -34,6 +38,45 @@ actual object PortalQrMailer {
     actual suspend fun send(context: PlatformContext, settings: SettingsManager, volunteer: Volunteer): Boolean {
         val to = volunteer.email.trim()
         if (to.isBlank() || volunteer.isAdmin) return false
+        return sendQr(
+            context = context,
+            settings = settings,
+            to = to,
+            holderName = volunteer.name,
+            qrPayload = volunteer.id,
+            subject = settings.getEmailSubject().ifEmpty { getString(Res.string.email_subject_default) },
+            contentBefore = settings.getEmailContentBefore().ifEmpty { getString(Res.string.email_content_before_default) },
+            contentAfter = settings.getEmailContentAfter().ifEmpty { getString(Res.string.email_content_after_default) },
+            theme = QrEmailTheme.Volunteer,
+        )
+    }
+
+    actual suspend fun sendGuest(context: PlatformContext, settings: SettingsManager, guest: Guest): Boolean {
+        val to = guestQrMailRecipient(guest) ?: return false
+        return sendQr(
+            context = context,
+            settings = settings,
+            to = to,
+            holderName = guest.name,
+            qrPayload = guest.nanoId,
+            subject = settings.getGuestEmailSubject().ifEmpty { getString(Res.string.guest_email_subject_default) },
+            contentBefore = settings.getGuestEmailContentBefore().ifEmpty { getString(Res.string.guest_email_content_before_default) },
+            contentAfter = settings.getGuestEmailContentAfter().ifEmpty { getString(Res.string.guest_email_content_after_default) },
+            theme = QrEmailTheme.Guest,
+        )
+    }
+
+    private suspend fun sendQr(
+        context: PlatformContext,
+        settings: SettingsManager,
+        to: String,
+        holderName: String,
+        qrPayload: String,
+        subject: String,
+        contentBefore: String,
+        contentAfter: String,
+        theme: QrEmailTheme,
+    ): Boolean {
         val android = context.androidContext
         val gmail = try {
             GmailAuthService(android).createGmailService()
@@ -42,13 +85,10 @@ actual object PortalQrMailer {
             null
         } ?: return false
 
-        val subject = settings.getEmailSubject().ifEmpty { getString(Res.string.email_subject_default) }
-        val contentBefore = settings.getEmailContentBefore().ifEmpty { getString(Res.string.email_content_before_default) }
-        val contentAfter = settings.getEmailContentAfter().ifEmpty { getString(Res.string.email_content_after_default) }
         val signature = settings.resolveAutomaticEmailSignature(getString(Res.string.email_signature_default))
         val html = QrEmailHtmlBuilder.build(
             QrEmailHtmlOptions(
-                holderName = volunteer.name,
+                holderName = holderName,
                 contentBefore = contentBefore,
                 contentAfter = contentAfter,
                 signature = signature,
@@ -63,7 +103,7 @@ actual object PortalQrMailer {
                 digitalWalletPassCompatibility = "",
                 includeLogo = false,
                 useContentId = true,
-                theme = QrEmailTheme.Volunteer,
+                theme = theme,
             ),
         )
         val plain = QrEmailHtmlBuilder.buildPlainText(
@@ -76,7 +116,7 @@ actual object PortalQrMailer {
         return withContext(Dispatchers.IO) {
             val qrFile = File(android.cacheDir, "portal_qr_${System.nanoTime()}.png")
             try {
-                val bitmap = QRCodeUtils.generateQrImageBitmap(volunteer.id, 512)?.asAndroidBitmap()
+                val bitmap = QRCodeUtils.generateQrImageBitmap(qrPayload, 512)?.asAndroidBitmap()
                     ?: return@withContext false
                 FileOutputStream(qrFile).use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
                 GmailSendService(android).sendEmail(
