@@ -99,9 +99,10 @@ export function cachedQrEntries(cached) {
   return out;
 }
 
-/** Without `kind`, forgets every stored code of this organisation. */
-export function clearQr(orgId, kind) {
-  if (!kind) {
+/** Without `kind`, or when the stored copy belongs to another account than `uid`, forgets every stored code. */
+export function clearQr(orgId, kind, uid) {
+  const current = kind ? readRaw(orgId) : null;
+  if (!kind || (current && uid && current.uid !== uid)) {
     try {
       localStorage.removeItem(keyFor(orgId));
     } catch {
@@ -109,7 +110,6 @@ export function clearQr(orgId, kind) {
     }
     return;
   }
-  const current = readRaw(orgId);
   if (!current?.profiles[kind]) return;
   const profiles = { ...current.profiles };
   delete profiles[kind];

@@ -64,6 +64,17 @@ test("clearOneProfileKeepsTheOthers", () => {
   assert.equal(data.has(KEY), false);
 });
 
+test("clearOneProfileOfAnotherAccountClearsEverything", () => {
+  storeQr(ORG, "u1", "volunteer", MINE);
+  storeQr(ORG, "u1", "guest", GUEST);
+  clearQr(ORG, "guest", "u2");
+  assert.equal(readCachedQr(ORG), null);
+  storeQr(ORG, "u1", "volunteer", MINE);
+  storeQr(ORG, "u1", "guest", GUEST);
+  clearQr(ORG, "guest", "u1");
+  assert.deepEqual(readCachedQr(ORG).profiles, { volunteer: MINE });
+});
+
 test("clearRemovesEverything", () => {
   storeQr(ORG, "u1", "volunteer", MINE);
   storeQr(ORG, "u1", "temporary", GROUP);

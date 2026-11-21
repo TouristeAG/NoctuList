@@ -82,6 +82,16 @@ export function profileStoreKey(orgId) {
   return `noctulist.portalProfile.${orgId}`;
 }
 
+/**
+ * A claim just answered DONE: the pages it linked were refused before (a missing temporary page
+ * is refused, not empty) and must be read again. Returns the claim's key the first time, then null.
+ */
+export function claimReloadKey(claim, handledKey) {
+  if (claim?.status !== "DONE") return null;
+  const key = `DONE:${millisOf(claim.requestedAt)}`;
+  return key === handledKey ? null : key;
+}
+
 /** `el("p", { class: "muted", text: "…" }, child1, child2)` */
 export function el(tag, props = {}, ...children) {
   const node = document.createElement(tag);

@@ -45,6 +45,7 @@ import {
   EMAIL_RE,
   authErrorKey,
   chooseProfile,
+  claimReloadKey,
   cleanName,
   cleanPhone,
   clear,
@@ -773,7 +774,10 @@ function watchProfiles(kinds) {
     const ref = doc(db, "orgs", path.orgId, "portalRequests", `${portalUid}_${type}`);
     unsubscribers.push(onSnapshot(ref, (snap) => {
       requests[type] = snap.exists() ? snap.data() : null;
-      if (type === "CLAIM") renderPending();
+      if (type === "CLAIM") {
+        renderPending();
+        reloadAfterClaim(uidAtStart);
+      }
       else if (type.startsWith("GOOGLE_")) renderGoogleBox();
       else render();
     }, () => {}));
@@ -806,7 +810,7 @@ function watchQr(kind, uidAtStart) {
   const ref = doc(db, "orgs", path.orgId, PAGES[kind].qr, uidAtStart);
   const drop = () => {
     qrDocs[kind] = null;
-    clearQr(path.orgId, kind);
+    clearQr(path.orgId, kind, uidAtStart);
     closeQrDialog();
     render();
   };
@@ -877,7 +881,8 @@ function showProfiles() {
   if (!done) return;
   clearTimeout(offlineTimer);
   offlineTimer = null;
-  activeKind = chooseProfile(available, storedProfile());
+  // The profile on screen stays while it exists; the stored choice only decides the first one.
+  if (!available.includes(activeKind)) activeKind = chooseProfile(available, storedProfile());
   render();
   renderGoogleBox();
   showView("view-dash");
@@ -897,6 +902,32 @@ function showNoProfile() {
     return showView("view-disabled");
   }
   showPending();
+}
+
+/** Key of the last DONE claim whose pages were read again, so each answer reloads only once. */
+let claimHandled = "";
+
+/**
+ * A DONE claim linked this account to a profile whose page was missing, and so refused (the
+ * temporary page): read the refused pages again, now and once more a little later in case the
+ * page is published after the answer.
+ */
+function reloadAfterClaim(uid) {
+  const key = claimReloadKey(requests.CLAIM, claimHandled);
+  if (!key || activeKind) return;
+  claimHandled = key;
+  const reload = () => {
+    if (activeKind || portalUid !== uid) return;
+    Object.entries(pages).forEach(([kind, page]) => {
+      if (page.state !== "denied") return;
+      page.state = "loading";
+      watchPage(kind, uid);
+      watchQr(kind, uid);
+    });
+  };
+  reload();
+  const timer = setTimeout(reload, 5000);
+  unsubscribers.push(() => clearTimeout(timer));
 }
 
 function storedProfile() {

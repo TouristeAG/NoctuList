@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-const { chooseProfile, profileKinds, profilesSettled, profileStoreKey } = await import("../site/portal-common.js");
+const { chooseProfile, claimReloadKey, profileKinds, profilesSettled, profileStoreKey } = await import("../site/portal-common.js");
 
 test("noProfileChoosesNothing", () => {
   assert.equal(chooseProfile([], "guest"), null);
@@ -36,4 +36,17 @@ test("settledOnlyOnceEveryReadAnswered", () => {
 
 test("storeKeyPerOrg", () => {
   assert.equal(profileStoreKey("org1"), "noctulist.portalProfile.org1");
+});
+
+test("aDoneClaimReloadsTheRefusedPagesOncePerClaim", () => {
+  const done = { status: "DONE", requestedAt: 1000 };
+  assert.equal(claimReloadKey(null, ""), null);
+  assert.equal(claimReloadKey({ status: "PENDING", requestedAt: 1000 }, ""), null);
+  assert.equal(claimReloadKey({ status: "REJECTED", requestedAt: 1000 }, ""), null);
+  const key = claimReloadKey(done, "");
+  assert.ok(key);
+  assert.equal(claimReloadKey(done, key), null);
+  assert.ok(claimReloadKey({ status: "DONE", requestedAt: 2000 }, key));
+  // A Firestore timestamp works like millis.
+  assert.equal(claimReloadKey({ status: "DONE", requestedAt: { toMillis: () => 1000 } }, ""), key);
 });

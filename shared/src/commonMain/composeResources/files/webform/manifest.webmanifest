@@ -1,7 +1,7 @@
 {
   "id": "/v/",
-  "name": "Espace bénévole",
-  "short_name": "Bénévoles",
+  "name": "Mon espace",
+  "short_name": "Mon espace",
   "description": "Tes shifts, tes avantages et ton porte-monnaie au même endroit.",
   "lang": "fr",
   "start_url": "/v/",
