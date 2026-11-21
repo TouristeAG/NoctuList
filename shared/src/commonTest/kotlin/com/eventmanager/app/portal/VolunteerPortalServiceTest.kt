@@ -1460,6 +1460,7 @@ class VolunteerPortalServiceTest {
             assertEquals(if (kept) "max@asso.ch" else "", g.portalGoogleEmail, linkedBy)
             assertEquals(if (kept) linkedBy else "", g.portalGoogleLinkedBy, linkedBy)
             assertEquals("", g.portalGoogleUid)
+            assertTrue(g.portalRevoked, "a cut access is not joined back to its address's account")
         }
     }
 

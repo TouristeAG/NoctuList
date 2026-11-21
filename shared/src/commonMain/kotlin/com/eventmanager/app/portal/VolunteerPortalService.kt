@@ -2,6 +2,7 @@ package com.eventmanager.app.portal
 
 import com.eventmanager.app.data.models.AccountTransfer
 import com.eventmanager.app.data.models.Guest
+import com.eventmanager.app.data.models.GuestForm
 import com.eventmanager.app.data.models.GuestFormLogoCodec
 import com.eventmanager.app.data.models.Job
 import com.eventmanager.app.data.models.JobTypeConfig
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
@@ -57,6 +59,9 @@ interface VolunteerPortalHost {
 
     /** Temporary guest credits are turned on. */
     fun temporaryGuestCreditsEnabled(): Boolean = false
+
+    /** Venue access id to name, for the temporary guest page (ids never reach it). */
+    fun venueAccessNames(): Map<String, String> = emptyMap()
 
     suspend fun volunteers(): List<Volunteer>
     /** Inserts a new volunteer through the normal save + sync pipeline (with its optional photo). */
@@ -149,6 +154,7 @@ class VolunteerPortalService(
         jobs: Flow<List<Job>>,
         transfers: Flow<List<AccountTransfer>>,
         jobTypeConfigs: Flow<List<JobTypeConfig>>,
+        guestForms: Flow<List<GuestForm>> = flowOf(emptyList()),
     ) {
         if (started) return
         started = true
@@ -169,9 +175,10 @@ class VolunteerPortalService(
                 ?.let { PortalServerStatus.fromMap(it.second) }
         }?.let { listeners += it }
         publisherJob = scope.launch {
-            combine(volunteers, guests, jobs, transfers, jobTypeConfigs) { v, g, j, t, c ->
-                Snapshot(v, g, j, t, c).also { latestSnapshot = it }
-            }
+            combine(
+                combine(volunteers, guests, jobs, transfers, jobTypeConfigs) { v, g, j, t, c -> Snapshot(v, g, j, t, c) },
+                guestForms,
+            ) { snapshot, forms -> snapshot.copy(guestForms = forms).also { latestSnapshot = it } }
                 .debounce(publishDebounceMs)
                 .collect { snapshot ->
                     runCatchingLogged("publish") { publishAll(snapshot) }
@@ -1280,6 +1287,7 @@ class VolunteerPortalService(
         val jobs: List<Job>,
         val transfers: List<AccountTransfer>,
         val configs: List<JobTypeConfig>,
+        val guestForms: List<GuestForm> = emptyList(),
     )
 
     private val _addressConflicts = MutableStateFlow<Set<String>>(emptySet())
@@ -1392,7 +1400,7 @@ class VolunteerPortalService(
             deleteQrDocument(qrKey.removePrefix("$orgId/").removeSuffix(QR_SUFFIX), hashes)
         }
         // After the volunteers: a page they just took down may hand the shared photo to a guest.
-        guestPublisher.publish(snapshot.guests, snapshot.volunteers, snapshot.transfers, hashes, googleLinkAllowed, now)
+        guestPublisher.publish(snapshot.guests, snapshot.volunteers, snapshot.transfers, hashes, googleLinkAllowed, now, snapshot.guestForms)
         host.savePublishedHashes(hashes)
         lastPublishDay = DateTimeUtils.getStartOfDayWithOffset(now, host.dateOffsetHours())
     }

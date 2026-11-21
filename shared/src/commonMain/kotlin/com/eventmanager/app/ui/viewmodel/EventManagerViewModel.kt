@@ -2881,7 +2881,7 @@ class EventManagerViewModel(
         )
         volunteerPortalService = service
         volunteerPortalServiceOrg = org
-        service.start(volunteers, guests, jobs, accountTransfers, jobTypeConfigs)
+        service.start(volunteers, guests, jobs, accountTransfers, jobTypeConfigs, guestForms)
         portalServerStatusJob?.cancel()
         portalServerStatusJob = viewModelScope.launch { service.serverStatus.collect { _portalServerStatus.value = it } }
         portalAddressConflictsJob?.cancel()
@@ -3103,6 +3103,8 @@ class EventManagerViewModel(
         override fun guestPortalEnabled(): Boolean = settingsManagerCached?.isGuestPortalEnabled() == true
         override fun temporaryGuestPortalEnabled(): Boolean = settingsManagerCached?.isTemporaryGuestPortalEnabled() == true
         override fun temporaryGuestCreditsEnabled(): Boolean = settingsManagerCached?.isTemporaryGuestCreditsEnabled() == true
+        override fun venueAccessNames(): Map<String, String> =
+            settingsManagerCached?.getTemporaryGuestVenueAccesses().orEmpty().associate { it.id to it.name }
         override fun portalGoogleEnabled(): Boolean = settingsManagerCached?.isVolunteerPortalGoogleEnabled() == true
         override fun portalGoogleDomains(): List<String> = settingsManagerCached?.volunteerPortalGoogleDomains().orEmpty()
         override fun portalGoogleAnyAccount(): Boolean = settingsManagerCached?.isVolunteerPortalGoogleAnyAccount() == true

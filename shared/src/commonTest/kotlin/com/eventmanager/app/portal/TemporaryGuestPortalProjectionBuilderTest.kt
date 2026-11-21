@@ -203,4 +203,89 @@ class TemporaryGuestPortalProjectionBuilderTest {
         assertEquals(listOf("Bob", "zoe"), g.getValue("guests").jsonArray.map { it.jsonObject.getValue("firstName").jsonPrimitive.content })
         assertEquals("Main", g.getValue("venueName").jsonPrimitive.content)
     }
+
+    private fun tpl(open: Boolean = true, artist: String = "Band", event: Long = event1, max: Int = 4) = com.eventmanager.app.data.models.GuestForm(
+        formId = "TPL-$artist",
+        portalUid = "U1",
+        allowMultipleResponses = true,
+        eventDateMillis = event,
+        venueName = "Terreau",
+        artistName = artist,
+        maxGuests = max,
+        status = if (open) "OPEN" else "EXPIRED",
+        expiresAtMillis = TemporaryGuestPortalProjectionBuilder.visibleUntil(event),
+        offeredAccessIds = """[{"id":"acc-bs","name":"Backstage","maxRequests":1}]""",
+    )
+
+    private fun input2(guests: List<Guest>, now: Long, forms: List<com.eventmanager.app.data.models.GuestForm> = emptyList(), created: Boolean = true) =
+        TemporaryGuestPortalInput(
+            guests, emptyList(), true, "CHF", "Asso", now,
+            deviceCreated = created,
+            accessNames = mapOf("acc-bs" to "Backstage", "acc-vip" to "VIP"),
+            inviteForms = forms,
+        )
+
+    @Test
+    fun schema2CarriesAccessNamesNotIds() {
+        val g = guest("A1").copy(temporaryAccessIds = "acc-bs,acc-vip,acc-gone")
+        val p = TemporaryGuestPortalProjectionBuilder.build(input2(listOf(g), event1))!!
+        assertEquals(2, p.schema)
+        val names = groups(p).single().getValue("guests").jsonArray.single().jsonObject.getValue("accessNames").jsonArray
+            .map { it.jsonPrimitive.content }
+        assertEquals(listOf("Backstage", "VIP"), names)
+        assertFalse(p.payload.contains("acc-bs") || p.payload.contains("acc-vip") || p.payload.contains("A1"))
+    }
+
+    @Test
+    fun deviceCreatedIsCarried() {
+        val p = TemporaryGuestPortalProjectionBuilder.build(input2(listOf(guest("A1")), event1, created = false))!!
+        assertEquals(false, p.extraFields["deviceCreated"])
+        assertEquals(false, Json.parseToJsonElement(p.payload).jsonObject.getValue("deviceCreated").jsonPrimitive.boolean)
+        assertEquals(true, TemporaryGuestPortalProjectionBuilder.build(input2(listOf(guest("A1")), event1))!!.extraFields["deviceCreated"])
+    }
+
+    @Test
+    fun emptyListWithOpenTemplateIsPublished() {
+        val p = TemporaryGuestPortalProjectionBuilder.build(input2(emptyList(), event1, listOf(tpl(artist = "Friends"))))!!
+        val group = groups(p).single()
+        assertEquals("Friends", group.getValue("artistName").jsonPrimitive.content)
+        assertEquals(0, group.getValue("guests").jsonArray.size)
+        val invite = group.getValue("invite").jsonObject
+        assertEquals("TPL-Friends", invite.getValue("formId").jsonPrimitive.content)
+        assertEquals(4, invite.getValue("remaining").jsonPrimitive.content.toInt())
+        assertEquals("Backstage", invite.getValue("accesses").jsonArray.single().jsonObject.getValue("name").jsonPrimitive.content)
+        assertNull(TemporaryGuestPortalProjectionBuilder.build(input2(emptyList(), event1, listOf(tpl(open = false, artist = "Friends")))))
+    }
+
+    @Test
+    fun inviteBlockNullWithoutTemplate() {
+        val group = groups(TemporaryGuestPortalProjectionBuilder.build(input2(listOf(guest("A1")), event1))!!).single()
+        assertEquals(JsonNull, group.getValue("invite"))
+        assertEquals(0, group.getValue("pending").jsonArray.size)
+    }
+
+    @Test
+    fun pendingAddAndRemoveListed() {
+        val a = guest("A1", name = "Ann")
+        val add = com.eventmanager.app.data.models.GuestForm(
+            formId = "R1", parentFormId = "TPL-Band", portalUid = "U1", status = "PENDING_REVIEW", requestKind = "ADD",
+            submissionJson = com.eventmanager.app.data.models.GuestFormSubmissionCodec.encode(
+                com.eventmanager.app.data.models.GuestFormSubmission(people = listOf(com.eventmanager.app.data.models.GuestFormPerson("Cy Doe"))),
+            ),
+        )
+        val rm = com.eventmanager.app.data.models.GuestForm(
+            formId = "R2", parentFormId = "TPL-Band", portalUid = "U1", status = "REJECTED", requestKind = "REMOVE",
+            removeGuestKeys = TemporaryGuestPortalQrDocument.guestKey(a),
+        )
+        val group = groups(TemporaryGuestPortalProjectionBuilder.build(input2(listOf(a), event1, listOf(tpl(), add, rm)))!!).single()
+        val pending = group.getValue("pending").jsonArray.map { it.jsonObject }
+        assertEquals(listOf("R1", "R2"), pending.map { it.getValue("responseId").jsonPrimitive.content })
+        assertEquals(listOf("Cy Doe"), pending[0].getValue("names").jsonArray.map { it.jsonPrimitive.content })
+        assertEquals("ADD", pending[0].getValue("kind").jsonPrimitive.content)
+        assertEquals(listOf("Ann X"), pending[1].getValue("names").jsonArray.map { it.jsonPrimitive.content })
+        assertEquals(TemporaryGuestPortalQrDocument.guestKey(a), pending[1].getValue("guestKeys").jsonArray.single().jsonPrimitive.content)
+        assertEquals("REJECTED", pending[1].getValue("status").jsonPrimitive.content)
+        // 4 places, Ann accepted, Cy pending; the refused removal frees nothing.
+        assertEquals(2, group.getValue("invite").jsonObject.getValue("remaining").jsonPrimitive.content.toInt())
+    }
 }

@@ -3,6 +3,8 @@ package com.eventmanager.app.portal
 import com.eventmanager.app.data.models.AccountHolderType
 import com.eventmanager.app.data.models.AccountTransfer
 import com.eventmanager.app.data.models.Guest
+import com.eventmanager.app.data.models.GuestForm
+import com.eventmanager.app.data.models.isPortalInvite
 import com.eventmanager.app.data.models.Volunteer
 import com.eventmanager.app.data.remote.FirestoreGateway
 import kotlin.coroutines.cancellation.CancellationException
@@ -55,6 +57,7 @@ internal class GuestPortalPublisher(
         hashes: MutableMap<String, String>,
         googleLinkAllowed: Boolean,
         now: Long,
+        inviteForms: List<GuestForm> = emptyList(),
     ) {
         val inOrg = inOrg(guests)
         val volunteerPhotoUids = volunteerPhotoUids(volunteers)
@@ -81,11 +84,20 @@ internal class GuestPortalPublisher(
             val groups = inOrg
                 .filter { it.isTemporaryGuest && it.portalEnabled && it.portalUid.isNotBlank() }
                 .groupBy { it.portalUid }
-            for ((uid, members) in groups) {
+            val formsByUid = inviteForms
+                .filter { (it.firebaseOrgId.isBlank() || it.firebaseOrgId == orgId) && it.isPortalInvite }
+                .groupBy { it.portalUid.trim() }
+            // A volunteer or permanent guest on the uid means the account was not made for a list alone.
+            val holderUids = volunteers.filter { it.portalUid.isNotBlank() }.map { it.portalUid }.toSet() +
+                inOrg.filter { !it.isTemporaryGuest && it.portalUid.isNotBlank() }.map { it.portalUid }
+            for (uid in groups.keys + formsByUid.keys) {
+                val members = groups[uid].orEmpty()
+                val forms = formsByUid[uid].orEmpty()
+                val deviceCreated = members.isNotEmpty() && members.all { it.temporaryPortalCreated } && uid !in holderUids
                 TemporaryGuestPortalProjectionBuilder.runningBatches(members, now).minOfOrNull { it.second }
                     ?.let { until -> nextExpiry = minOf(nextExpiry ?: until, until) }
                 keptTemps += uid
-                publishTemporary(uid, members, guestTransfers, hashes, now)
+                publishTemporary(uid, members, guestTransfers, hashes, now, forms, deviceCreated)
             }
         }
         nextTemporaryExpiry = nextExpiry
@@ -168,6 +180,8 @@ internal class GuestPortalPublisher(
         transfers: List<AccountTransfer>,
         hashes: MutableMap<String, String>,
         now: Long,
+        inviteForms: List<GuestForm>,
+        deviceCreated: Boolean,
     ) {
         val projection = TemporaryGuestPortalProjectionBuilder.build(
             TemporaryGuestPortalInput(
@@ -177,6 +191,9 @@ internal class GuestPortalPublisher(
                 currencyCode = host.currencyCode(),
                 associationName = host.associationName(),
                 now = now,
+                deviceCreated = deviceCreated,
+                accessNames = host.venueAccessNames(),
+                inviteForms = inviteForms,
             ),
         )
         if (projection == null) {
