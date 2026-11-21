@@ -2568,6 +2568,8 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="email_logo_missing_hint">Nullum signum adhuc. Adde in Optionibus, Societas.</string>
     <string name="email_site_unavailable">Ex computatro mittitur per situm societatis, qui hic praesto non est. Utere missione manuali.</string>
     <string name="portal_auto_access_title">Aditum ad portam cuique voluntario novo aperi</string>
+    <string name="portal_guest_space_enabled">Spatium hospitum perpetuorum</string>
+    <string name="portal_temp_guest_space_enabled">Spatium hospitum temporalium</string>
     <string name="portal_google_auto_title">Rationes Google sponte imple</string>
     <string name="portal_google_auto_desc">Valet in omni aditu ad portam ab hoc tempore aperto, si voluntarius nondum rationem Google habet.</string>
     <string name="portal_google_template_label">Regula inscriptionum</string>

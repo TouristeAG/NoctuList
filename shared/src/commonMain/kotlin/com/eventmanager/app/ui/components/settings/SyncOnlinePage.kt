@@ -216,6 +216,22 @@ private fun PortalOptions(b: SyncSettingsBindings, canEdit: Boolean) {
         enabled = canEdit,
         onCheckedChange = b.onVolunteerPortalAutoAccessChange,
     )
+    SettingsSwitchRow(
+        title = stringResource(Res.string.portal_guest_space_enabled),
+        subtitle = null,
+        checked = b.guestPortalEnabled,
+        enabled = canEdit,
+        onCheckedChange = b.onGuestPortalEnabledChange,
+    )
+    if (b.temporaryGuestCreditsAvailable) {
+        SettingsSwitchRow(
+            title = stringResource(Res.string.portal_temp_guest_space_enabled),
+            subtitle = null,
+            checked = b.temporaryGuestPortalEnabled,
+            enabled = canEdit,
+            onCheckedChange = b.onTemporaryGuestPortalEnabledChange,
+        )
+    }
     PortalGoogleOptions(b, canEdit)
 }
 

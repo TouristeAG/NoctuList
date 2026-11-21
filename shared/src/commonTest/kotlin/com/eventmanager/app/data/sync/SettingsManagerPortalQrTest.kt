@@ -25,6 +25,37 @@ class SettingsManagerPortalQrTest {
     }
 
     @Test
+    fun guestSpacesAreOffByDefaultAndSyncAsFirebaseOnlySettings() {
+        val s = settings()
+        assertFalse(s.isGuestPortalEnabled())
+        assertFalse(s.isTemporaryGuestPortalEnabled())
+        s.setGuestPortalEnabled(true)
+        s.setTemporaryGuestPortalEnabled(true)
+        assertEquals("true", s.rowValue(InstitutionSettingsKeys.GUEST_PORTAL_ENABLED))
+        assertEquals("true", s.rowValue(InstitutionSettingsKeys.TEMP_GUEST_PORTAL_ENABLED))
+        assertEquals("guest_portal_enabled", InstitutionSettingsKeys.GUEST_PORTAL_ENABLED)
+        assertEquals("temp_guest_portal_enabled", InstitutionSettingsKeys.TEMP_GUEST_PORTAL_ENABLED)
+        listOf(
+            InstitutionSettingsKeys.GUEST_PORTAL_ENABLED,
+            InstitutionSettingsKeys.TEMP_GUEST_PORTAL_ENABLED,
+        ).forEach {
+            assertTrue(it in InstitutionSettingsKeys.ALL)
+            assertFalse(InstitutionSettingsKeys.isSyncedToSheets(it))
+        }
+    }
+
+    @Test
+    fun guestSpacesApplyFromAnotherDevice() {
+        val s = settings()
+        s.applyInstitutionSettingFromRemote(InstitutionSettingsKeys.GUEST_PORTAL_ENABLED, "true", 10L)
+        s.applyInstitutionSettingFromRemote(InstitutionSettingsKeys.TEMP_GUEST_PORTAL_ENABLED, "TRUE", 10L)
+        assertTrue(s.isGuestPortalEnabled())
+        assertTrue(s.isTemporaryGuestPortalEnabled())
+        s.applyInstitutionSettingFromRemote(InstitutionSettingsKeys.GUEST_PORTAL_ENABLED, "false", 11L)
+        assertFalse(s.isGuestPortalEnabled())
+    }
+
+    @Test
     fun automaticAccessAndGoogleRuleAreOffByDefault() {
         val s = settings()
         assertFalse(s.isVolunteerPortalAutoAccess())

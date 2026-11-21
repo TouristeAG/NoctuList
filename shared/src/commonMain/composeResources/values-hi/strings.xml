@@ -2568,6 +2568,8 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="email_logo_missing_hint">अभी कोई लोगो नहीं है। इसे सेटिंग्स, संस्था में जोड़ें।</string>
     <string name="email_site_unavailable">कंप्यूटर से भेजना संस्था की साइट के ज़रिए होता है, जो यहाँ उपलब्ध नहीं है। मैन्युअल भेजना इस्तेमाल करें।</string>
     <string name="portal_auto_access_title">हर नए स्वयंसेवक के लिए पोर्टल एक्सेस खोलें</string>
+    <string name="portal_guest_space_enabled">स्थायी अतिथियों का स्थान</string>
+    <string name="portal_temp_guest_space_enabled">अस्थायी अतिथियों का स्थान</string>
     <string name="portal_google_auto_title">Google खाते अपने-आप भरें</string>
     <string name="portal_google_auto_desc">अब से खोले गए हर पोर्टल एक्सेस पर लागू होता है, अगर स्वयंसेवक का अभी तक कोई Google खाता नहीं है।</string>
     <string name="portal_google_template_label">पते का नियम</string>

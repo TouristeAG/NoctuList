@@ -216,6 +216,8 @@ class SettingsManager(private val storage: AppStorage) {
         private const val KEY_VOLUNTEER_PORTAL_GOOGLE_ENABLED = "volunteer_portal_google_enabled"
         private const val KEY_VOLUNTEER_PORTAL_SHOW_LOGO = "volunteer_portal_show_logo"
         private const val KEY_VOLUNTEER_PORTAL_QR_ENABLED = "volunteer_portal_qr_enabled"
+        private const val KEY_GUEST_PORTAL_ENABLED = "guest_portal_enabled"
+        private const val KEY_TEMP_GUEST_PORTAL_ENABLED = "temp_guest_portal_enabled"
         private const val KEY_VOLUNTEER_PORTAL_GOOGLE_DOMAINS = "volunteer_portal_google_domains"
         private const val KEY_VOLUNTEER_PORTAL_GOOGLE_ANY_ACCOUNT = "volunteer_portal_google_any_account"
         private const val KEY_VOLUNTEER_PORTAL_AUTO_ACCESS = "volunteer_portal_auto_access"
@@ -506,6 +508,22 @@ class SettingsManager(private val storage: AppStorage) {
     fun setVolunteerPortalGoogleAnyAccount(any: Boolean) {
         storage.putBoolean(KEY_VOLUNTEER_PORTAL_GOOGLE_ANY_ACCOUNT, any)
         touchInstitutionSettingLastModified(InstitutionSettingsKeys.VOLUNTEER_PORTAL_GOOGLE_ANY_ACCOUNT)
+    }
+
+    /** Permanent guests have their own space in the portal. Off by default. */
+    fun isGuestPortalEnabled(): Boolean = storage.getBoolean(KEY_GUEST_PORTAL_ENABLED, false)
+
+    fun setGuestPortalEnabled(enabled: Boolean) {
+        storage.putBoolean(KEY_GUEST_PORTAL_ENABLED, enabled)
+        touchInstitutionSettingLastModified(InstitutionSettingsKeys.GUEST_PORTAL_ENABLED)
+    }
+
+    /** Temporary guests have their own space in the portal. Off by default. */
+    fun isTemporaryGuestPortalEnabled(): Boolean = storage.getBoolean(KEY_TEMP_GUEST_PORTAL_ENABLED, false)
+
+    fun setTemporaryGuestPortalEnabled(enabled: Boolean) {
+        storage.putBoolean(KEY_TEMP_GUEST_PORTAL_ENABLED, enabled)
+        touchInstitutionSettingLastModified(InstitutionSettingsKeys.TEMP_GUEST_PORTAL_ENABLED)
     }
 
     /** Every volunteer added in the app gets portal access right away. Off by default. */
@@ -1265,6 +1283,8 @@ class SettingsManager(private val storage: AppStorage) {
             InstitutionSettingsKeys.VOLUNTEER_PORTAL_GOOGLE_ANY_ACCOUNT ->
                 isVolunteerPortalGoogleAnyAccount().toString()
             InstitutionSettingsKeys.VOLUNTEER_PORTAL_AUTO_ACCESS -> isVolunteerPortalAutoAccess().toString()
+            InstitutionSettingsKeys.GUEST_PORTAL_ENABLED -> isGuestPortalEnabled().toString()
+            InstitutionSettingsKeys.TEMP_GUEST_PORTAL_ENABLED -> isTemporaryGuestPortalEnabled().toString()
             InstitutionSettingsKeys.VOLUNTEER_PORTAL_GOOGLE_AUTO -> isVolunteerPortalGoogleAuto().toString()
             InstitutionSettingsKeys.VOLUNTEER_PORTAL_GOOGLE_TEMPLATE -> volunteerPortalGoogleTemplate()
             InstitutionSettingsKeys.GUEST_FORMS_BILLETERIE_VALIDATE_ENABLED ->
@@ -1445,6 +1465,10 @@ class SettingsManager(private val storage: AppStorage) {
                 )
             InstitutionSettingsKeys.VOLUNTEER_PORTAL_AUTO_ACCESS ->
                 storage.putBoolean(KEY_VOLUNTEER_PORTAL_AUTO_ACCESS, value.trim().equals("true", ignoreCase = true))
+            InstitutionSettingsKeys.GUEST_PORTAL_ENABLED ->
+                storage.putBoolean(KEY_GUEST_PORTAL_ENABLED, value.trim().equals("true", ignoreCase = true))
+            InstitutionSettingsKeys.TEMP_GUEST_PORTAL_ENABLED ->
+                storage.putBoolean(KEY_TEMP_GUEST_PORTAL_ENABLED, value.trim().equals("true", ignoreCase = true))
             InstitutionSettingsKeys.VOLUNTEER_PORTAL_GOOGLE_AUTO ->
                 storage.putBoolean(KEY_VOLUNTEER_PORTAL_GOOGLE_AUTO, value.trim().equals("true", ignoreCase = true))
             InstitutionSettingsKeys.VOLUNTEER_PORTAL_GOOGLE_TEMPLATE ->

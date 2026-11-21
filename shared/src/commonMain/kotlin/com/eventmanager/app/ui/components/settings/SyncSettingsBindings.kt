@@ -93,6 +93,10 @@ class SyncSettingsBindings(
     val volunteerPortalGoogleDomains: List<String>,
     val onAddVolunteerPortalGoogleDomain: suspend (String) -> DomainCheck,
     val onRemoveVolunteerPortalGoogleDomain: (String) -> Unit,
+    val guestPortalEnabled: Boolean,
+    val onGuestPortalEnabledChange: (Boolean) -> Unit,
+    val temporaryGuestPortalEnabled: Boolean,
+    val onTemporaryGuestPortalEnabledChange: (Boolean) -> Unit,
     val volunteerPortalAutoAccess: Boolean,
     val onVolunteerPortalAutoAccessChange: (Boolean) -> Unit,
     val volunteerPortalGoogleAuto: Boolean,
@@ -177,6 +181,8 @@ fun rememberSyncSettingsBindings(
     val volunteerPortalQrEnabled by viewModel.volunteerPortalQrEnabled.collectAsState()
     val volunteerPortalGoogleAnyAccount by viewModel.volunteerPortalGoogleAnyAccount.collectAsState()
     val volunteerPortalGoogleDomains by viewModel.volunteerPortalGoogleDomains.collectAsState()
+    val guestPortalEnabled by viewModel.guestPortalEnabled.collectAsState()
+    val temporaryGuestPortalEnabled by viewModel.temporaryGuestPortalEnabled.collectAsState()
     val volunteerPortalAutoAccess by viewModel.volunteerPortalAutoAccess.collectAsState()
     val volunteerPortalGoogleAuto by viewModel.volunteerPortalGoogleAuto.collectAsState()
     val volunteerPortalGoogleTemplate by viewModel.volunteerPortalGoogleTemplate.collectAsState()
@@ -335,6 +341,10 @@ fun rememberSyncSettingsBindings(
         volunteerPortalGoogleDomains = volunteerPortalGoogleDomains,
         onAddVolunteerPortalGoogleDomain = { viewModel.addVolunteerPortalGoogleDomain(it) },
         onRemoveVolunteerPortalGoogleDomain = { viewModel.removeVolunteerPortalGoogleDomain(it) },
+        guestPortalEnabled = guestPortalEnabled,
+        onGuestPortalEnabledChange = { viewModel.setGuestPortalEnabled(it) },
+        temporaryGuestPortalEnabled = temporaryGuestPortalEnabled,
+        onTemporaryGuestPortalEnabledChange = { viewModel.setTemporaryGuestPortalEnabled(it) },
         volunteerPortalAutoAccess = volunteerPortalAutoAccess,
         onVolunteerPortalAutoAccessChange = { viewModel.setVolunteerPortalAutoAccess(it) },
         volunteerPortalGoogleAuto = volunteerPortalGoogleAuto,

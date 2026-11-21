@@ -2563,6 +2563,8 @@
     <string name="email_logo_missing_hint">还没有标志。请在“设置 > 协会”中添加。</string>
     <string name="email_site_unavailable">在电脑上发送需要通过协会网站，但这里无法使用。请使用手动发送。</string>
     <string name="portal_auto_access_title">为每位新志愿者开通门户访问权限</string>
+    <string name="portal_guest_space_enabled">长期嘉宾空间</string>
+    <string name="portal_temp_guest_space_enabled">临时嘉宾空间</string>
     <string name="portal_google_auto_title">自动填写 Google 账号</string>
     <string name="portal_google_auto_desc">适用于从现在起开通的每个门户访问权限，前提是志愿者还没有 Google 账号。</string>
     <string name="portal_google_template_label">地址规则</string>

@@ -2306,6 +2306,8 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="portal_google_scope_all">Tous les comptes Google</string>
     <string name="portal_google_scope_internal">Comptes Google de l'association uniquement</string>
     <string name="portal_auto_access_title">Ouvrir l'accès pour chaque nouveau bénévole</string>
+    <string name="portal_guest_space_enabled">Espace des invités permanents</string>
+    <string name="portal_temp_guest_space_enabled">Espace des invités temporaires</string>
     <string name="portal_google_auto_title">Remplir les comptes Google automatiquement</string>
     <string name="portal_google_auto_desc">S'applique à chaque accès ouvert à partir de maintenant, si le bénévole n'a pas encore de compte Google.</string>
     <string name="portal_google_template_label">Règle des adresses</string>

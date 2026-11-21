@@ -2563,6 +2563,8 @@
     <string name="email_logo_missing_hint">還沒有標誌。請在「設定 > 協會」中新增。</string>
     <string name="email_site_unavailable">在電腦上寄送需要透過協會網站，但這裡無法使用。請使用手動寄送。</string>
     <string name="portal_auto_access_title">為每位新志工開啟入口網站存取權</string>
+    <string name="portal_guest_space_enabled">長期嘉賓空間</string>
+    <string name="portal_temp_guest_space_enabled">臨時嘉賓空間</string>
     <string name="portal_google_auto_title">自動填入 Google 帳號</string>
     <string name="portal_google_auto_desc">適用於從現在起開啟的每個入口網站存取權，前提是志工還沒有 Google 帳號。</string>
     <string name="portal_google_template_label">地址規則</string>

@@ -2654,6 +2654,16 @@ class EventManagerViewModel(
     /** Every volunteer added in the app gets portal access right away. */
     val volunteerPortalAutoAccess: StateFlow<Boolean> = _volunteerPortalAutoAccess.asStateFlow()
 
+    private val _guestPortalEnabled = MutableStateFlow(false)
+
+    /** Permanent guests have their own space in the portal. */
+    val guestPortalEnabled: StateFlow<Boolean> = _guestPortalEnabled.asStateFlow()
+
+    private val _temporaryGuestPortalEnabled = MutableStateFlow(false)
+
+    /** Temporary guests have their own space in the portal. */
+    val temporaryGuestPortalEnabled: StateFlow<Boolean> = _temporaryGuestPortalEnabled.asStateFlow()
+
     private val _volunteerPortalGoogleAuto = MutableStateFlow(false)
 
     /** A newly opened portal access gets its Google address from [volunteerPortalGoogleTemplate]. */
@@ -2683,6 +2693,8 @@ class EventManagerViewModel(
         _volunteerPortalGoogleDomains.value = settingsManagerCached?.volunteerPortalGoogleDomains().orEmpty()
         _volunteerPortalGoogleAnyAccount.value = settingsManagerCached?.isVolunteerPortalGoogleAnyAccount() == true
         _volunteerPortalAutoAccess.value = settingsManagerCached?.isVolunteerPortalAutoAccess() == true
+        _guestPortalEnabled.value = settingsManagerCached?.isGuestPortalEnabled() == true
+        _temporaryGuestPortalEnabled.value = settingsManagerCached?.isTemporaryGuestPortalEnabled() == true
         _volunteerPortalGoogleAuto.value = settingsManagerCached?.isVolunteerPortalGoogleAuto() == true
         _volunteerPortalGoogleTemplate.value = settingsManagerCached?.volunteerPortalGoogleTemplate().orEmpty()
     }
@@ -2725,6 +2737,24 @@ class EventManagerViewModel(
         if (getActiveBackendType() != BackendType.FIREBASE) return
         settings.setVolunteerPortalAutoAccess(enabled)
         publishVolunteerPortalSettings()
+        backupInstitutionSettingsToSheets()
+    }
+
+    fun setGuestPortalEnabled(enabled: Boolean) {
+        val settings = settingsManagerCached ?: return
+        if (getActiveBackendType() != BackendType.FIREBASE) return
+        settings.setGuestPortalEnabled(enabled)
+        publishVolunteerPortalSettings()
+        republishVolunteerPortal()
+        backupInstitutionSettingsToSheets()
+    }
+
+    fun setTemporaryGuestPortalEnabled(enabled: Boolean) {
+        val settings = settingsManagerCached ?: return
+        if (getActiveBackendType() != BackendType.FIREBASE) return
+        settings.setTemporaryGuestPortalEnabled(enabled)
+        publishVolunteerPortalSettings()
+        republishVolunteerPortal()
         backupInstitutionSettingsToSheets()
     }
 
@@ -2943,6 +2973,9 @@ class EventManagerViewModel(
             if (settingsManagerCached?.isVolunteerPortalShowLogo() == false) "" else settingsManagerCached?.getInstitutionLogoPng().orEmpty()
         override fun profilePhotosEnabled(): Boolean = isProfilePhotoUploadEnabled()
         override fun portalQrEnabled() = settingsManagerCached?.isVolunteerPortalQrEnabled() != false
+        override fun guestPortalEnabled(): Boolean = settingsManagerCached?.isGuestPortalEnabled() == true
+        override fun temporaryGuestPortalEnabled(): Boolean = settingsManagerCached?.isTemporaryGuestPortalEnabled() == true
+        override fun temporaryGuestCreditsEnabled(): Boolean = settingsManagerCached?.isTemporaryGuestCreditsEnabled() == true
         override fun portalGoogleEnabled(): Boolean = settingsManagerCached?.isVolunteerPortalGoogleEnabled() == true
         override fun portalGoogleDomains(): List<String> = settingsManagerCached?.volunteerPortalGoogleDomains().orEmpty()
         override fun portalGoogleAnyAccount(): Boolean = settingsManagerCached?.isVolunteerPortalGoogleAnyAccount() == true

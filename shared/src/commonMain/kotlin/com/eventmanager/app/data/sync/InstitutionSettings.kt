@@ -122,6 +122,12 @@ object InstitutionSettingsKeys {
     /** Let each volunteer see their own QR code in the volunteer portal. On by default. */
     const val VOLUNTEER_PORTAL_QR_ENABLED = "volunteer_portal_qr_enabled"
 
+    /** Permanent guests get their own space in the portal. Off by default. */
+    const val GUEST_PORTAL_ENABLED = "guest_portal_enabled"
+
+    /** Temporary guests get their own space in the portal. Off by default. */
+    const val TEMP_GUEST_PORTAL_ENABLED = "temp_guest_portal_enabled"
+
     /** Everything driving the Firebase-only artist guest list forms. */
     val GUEST_FORM_KEYS: List<String> = listOf(
         GUEST_FORMS_ENABLED,
@@ -217,6 +223,8 @@ object InstitutionSettingsKeys {
         VOLUNTEER_PORTAL_AUTO_ACCESS,
         VOLUNTEER_PORTAL_GOOGLE_AUTO,
         VOLUNTEER_PORTAL_GOOGLE_TEMPLATE,
+        GUEST_PORTAL_ENABLED,
+        TEMP_GUEST_PORTAL_ENABLED,
     ) + TEMP_GUEST_KEYS + GUEST_FORM_KEYS + BACKEND_KEYS + SHEETS_MIRROR_KEYS
 
     /**
@@ -236,6 +244,8 @@ object InstitutionSettingsKeys {
         VOLUNTEER_PORTAL_AUTO_ACCESS,
         VOLUNTEER_PORTAL_GOOGLE_AUTO,
         VOLUNTEER_PORTAL_GOOGLE_TEMPLATE,
+        GUEST_PORTAL_ENABLED,
+        TEMP_GUEST_PORTAL_ENABLED,
     ) + TEMP_GUEST_KEYS + GUEST_FORM_KEYS
 
     fun isSyncedToSheets(key: String): Boolean = key !in FIREBASE_ONLY_KEYS

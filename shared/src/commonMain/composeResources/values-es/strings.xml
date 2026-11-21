@@ -2563,6 +2563,8 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="email_logo_missing_hint">Todavía no hay logotipo. Añádalo en Ajustes, Asociación.</string>
     <string name="email_site_unavailable">Desde un ordenador, el envío pasa por el sitio de la asociación, que no está disponible aquí. Use el envío manual.</string>
     <string name="portal_auto_access_title">Abrir el acceso al portal para cada voluntario nuevo</string>
+    <string name="portal_guest_space_enabled">Espacio de invitados permanentes</string>
+    <string name="portal_temp_guest_space_enabled">Espacio de invitados temporales</string>
     <string name="portal_google_auto_title">Rellenar las cuentas de Google automáticamente</string>
     <string name="portal_google_auto_desc">Se aplica a cada acceso al portal abierto a partir de ahora, si el voluntario aún no tiene cuenta de Google.</string>
     <string name="portal_google_template_label">Regla de las direcciones</string>

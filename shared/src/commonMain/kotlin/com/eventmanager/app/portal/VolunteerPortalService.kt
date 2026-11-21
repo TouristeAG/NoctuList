@@ -47,6 +47,15 @@ interface VolunteerPortalHost {
     /** Non-admin volunteers get their own QR code in the portal. */
     fun portalQrEnabled(): Boolean = true
 
+    /** Permanent guests have their own space in the portal. */
+    fun guestPortalEnabled(): Boolean = false
+
+    /** Temporary guests have their own space in the portal. */
+    fun temporaryGuestPortalEnabled(): Boolean = false
+
+    /** Temporary guest credits are turned on. */
+    fun temporaryGuestCreditsEnabled(): Boolean = false
+
     suspend fun volunteers(): List<Volunteer>
     /** Inserts a new volunteer through the normal save + sync pipeline (with its optional photo). */
     suspend fun createVolunteer(volunteer: Volunteer, photo: ByteArray?): Volunteer?
