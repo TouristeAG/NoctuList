@@ -71,6 +71,7 @@ class SharedValidationCasesTest {
                             "firstName" to it.firstName, "lastName" to it.lastName, "phone" to it.phone,
                             "dateOfBirth" to it.dateOfBirth, "gender" to it.gender.name,
                             "photoPath" to it.photoPath, "lang" to it.lang,
+                            "holderType" to it.holderType.name, "venueName" to it.venueName,
                         )
                     }
                     assertEquals(expect.toKotlin(), actualMap, label)

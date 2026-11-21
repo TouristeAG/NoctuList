@@ -1,5 +1,5 @@
-// Registration links answered on the public page. Mirrors VolunteerPortalService.processSignup
-// and finishSignup (Kotlin); devices only step in after their 2 minute grace period, or when a
+// Registration links answered on the public page. Mirrors VolunteerPortalService.processSignup,
+// registerGuest and finishSignup (Kotlin); devices only step in after their 2 minute grace period, or when a
 // claim of ours is older than 5 minutes.
 import * as logger from "firebase-functions/logger";
 import type { DocumentReference, Firestore } from "firebase-admin/firestore";
@@ -7,12 +7,18 @@ import type { Storage } from "firebase-admin/storage";
 import {
   associationName,
   claim,
+  guestPortalEnabled,
   institutionSetting,
+  isBlankValue,
+  isPermanentGuest,
+  millisOf,
+  minimalGuestProjection,
   minimalProjection,
   portalEnabled,
   sha256,
   touchStatus,
 } from "./common";
+import { googleLinkAllowed } from "./google";
 import { volunteerId } from "./nanoid";
 import { parseSignup, type SignupSubmission } from "./validate";
 
@@ -40,6 +46,9 @@ export const signupPhotoPath = (orgId: string, formId: string): string =>
   `orgs/${orgId.trim()}/portalSignupPhotos/${formId.trim()}.jpg`;
 export const volunteerPhotoPath = (orgId: string, id: string): string =>
   `orgs/${orgId.trim()}/profilePhotos/volunteers/${id.trim()}.jpg`;
+/** profilePhotoStoragePath(orgId, GUEST, nanoId) (Kotlin). */
+export const guestPhotoPath = (orgId: string, nanoId: string): string =>
+  `orgs/${orgId.trim()}/profilePhotos/guests/${nanoId.trim()}.jpg`;
 export const portalPhotoPath = (orgId: string, uid: string): string => `orgs/${orgId}/portalPhotos/${uid}.jpg`;
 /** A new photo picked in the portal, waiting for the PROFILE request that announces it. */
 export const portalUploadPath = (orgId: string, uid: string): string => `orgs/${orgId}/portalPhotoUploads/${uid}.jpg`;
@@ -59,6 +68,11 @@ export async function onSignupDocument(
   if (current === undefined || !isClaimable(current)) return;
   if (!(await portalEnabled(db, orgId))) {
     logger.info("signup skipped", { orgId, formId, reason: "PORTAL_OFF" });
+    return;
+  }
+  // Guest space off: guest registrations wait, like on devices.
+  if (current.holderType === "GUEST" && !(await guestPortalEnabled(db, orgId))) {
+    logger.info("signup skipped", { orgId, formId, reason: "GUEST_SPACE_OFF" });
     return;
   }
   const ref = db.doc(`orgs/${orgId}/volunteerSignupForms/${formId}`);
@@ -98,6 +112,11 @@ async function processClaimed(
     return "INVALID";
   }
   const photo = await readSignupPhoto(db, bucket, orgId, submission.photoPath);
+  if (submission.holderType === "GUEST") {
+    const outcome = await registerGuest(db, bucket, orgId, submission, photo);
+    await finish(bucket, ref, orgId, formId);
+    return outcome;
+  }
   const volunteers = await db
     .collection(`orgs/${orgId}/volunteers`)
     .select("email", "portalUid", "profilePhotoPath", "profilePhotoUrl")
@@ -245,6 +264,157 @@ async function create(
     batch.set(db.doc(`orgs/${orgId}/volunteerPortalQr/${submission.uid}`), {
       schema: 1,
       payload: id,
+      name: `${submission.firstName} ${lastName}`.trim(),
+    });
+  }
+  await batch.commit();
+}
+
+/**
+ * registerGuest (Kotlin): links the permanent guest of the same address that has no account yet,
+ * else creates one (no invitations, no discount, the venue of the link).
+ */
+async function registerGuest(
+  db: Firestore,
+  bucket: PhotoBucket,
+  orgId: string,
+  submission: SignupSubmission,
+  photo: Buffer | null,
+): Promise<Outcome> {
+  const all = await db
+    .collection(`orgs/${orgId}/guests`)
+    .select("email", "portalUid", "isTemporaryGuest", "isVolunteerBenefit")
+    .get();
+  const permanents = all.docs.filter(isPermanentGuest);
+  if (permanents.some((d) => d.get("portalUid") === submission.uid)) return "ALREADY_LINKED";
+  const sameEmail = permanents.find(
+    (d) => typeof d.get("email") === "string" &&
+      (d.get("email") as string).trim().toLowerCase() === submission.email &&
+      isBlank(d.get("portalUid")),
+  );
+  if (sameEmail !== undefined) {
+    // Reading the portal still requires verifying this e-mail address, so nothing is published.
+    await linkGuest(db, bucket, orgId, sameEmail.ref, submission, photo);
+    return "LINKED";
+  }
+  await createGuest(db, bucket, orgId, submission, photo);
+  return "CREATED";
+}
+
+async function linkGuest(
+  db: Firestore,
+  bucket: PhotoBucket,
+  orgId: string,
+  ref: DocumentReference,
+  submission: SignupSubmission,
+  photo: Buffer | null,
+): Promise<void> {
+  const linked = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    // Linked by someone else since the scan: leave the answer for a later retry.
+    if (!snap.exists || !isBlank(snap.get("portalUid")) || !isPermanentGuest(snap)) return null;
+    tx.update(ref, {
+      portalEnabled: true,
+      portalUid: submission.uid,
+      lastModified: Math.max(Date.now(), (millisOf(snap.get("lastModified")) ?? 0) + 1),
+    });
+    return snap.data() as Data;
+  });
+  if (linked === null) throw Object.assign(new Error("link conflict"), { code: "LINK_CONFLICT" });
+  // Only a guest without any photo gets the one from the form.
+  if (photo === null || !isBlank(linked.profilePhotoPath) || !isBlank(linked.profilePhotoUrl)) return;
+  const path = guestPhotoPath(orgId, ref.id);
+  await saveJpeg(bucket, path, photo);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists || !isBlank(snap.get("profilePhotoPath")) || !isBlank(snap.get("profilePhotoUrl"))) return;
+    tx.update(ref, {
+      profilePhotoPath: path,
+      lastModified: Math.max(Date.now(), (millisOf(snap.get("lastModified")) ?? 0) + 1),
+    });
+  });
+}
+
+async function createGuest(
+  db: Firestore,
+  bucket: PhotoBucket,
+  orgId: string,
+  submission: SignupSubmission,
+  photo: Buffer | null,
+): Promise<void> {
+  const nanoId = volunteerId();
+  // §6.3: a volunteer of the same account with a photo keeps the shared portal photo.
+  const sameAccount = await db.collection(`orgs/${orgId}/volunteers`).where("portalUid", "==", submission.uid).get();
+  const volunteerOwnsPhoto = sameAccount.docs.some(
+    (d) => !isBlankValue(d.get("profilePhotoPath")) || !isBlankValue(d.get("profilePhotoUrl")),
+  );
+  let profilePhotoPath = "";
+  if (photo !== null) {
+    profilePhotoPath = guestPhotoPath(orgId, nanoId);
+    await saveJpeg(bucket, profilePhotoPath, photo);
+    if (!volunteerOwnsPhoto) await saveJpeg(bucket, portalPhotoPath(orgId, submission.uid), photo);
+  }
+  const lastName = submission.lastName.toUpperCase();
+  const now = Date.now();
+  // Exactly the keys of GitLiveFirestoreGateway.guestToMap; blank photo fields are omitted.
+  const guest: Data = {
+    nanoId,
+    name: submission.firstName,
+    lastNameAbbreviation: lastName,
+    email: submission.email,
+    phone: submission.phone,
+    invitations: 0,
+    venueName: submission.venueName,
+    notes: "",
+    isVolunteerBenefit: false,
+    volunteerId: null,
+    lastModified: now,
+    isTemporaryGuest: false,
+    temporaryArtistName: "",
+    temporaryEventDate: null,
+    temporaryContactPhone: "",
+    temporaryVenueName: "",
+    temporaryContactEmail: "",
+    temporaryPortalEmail: "",
+    temporaryAccessIds: "",
+    temporaryEntryValidatedAt: 0,
+    temporaryEntryValidatedBy: "",
+    nfcCardUid: "",
+    nfcCardUidHash: "",
+    isAdmin: false,
+    barDiscountPercent: 0,
+    portalEnabled: true,
+    portalUid: submission.uid,
+    portalGoogleEmail: "",
+    portalGoogleUid: "",
+    portalGoogleLinkedBy: "",
+    ...(profilePhotoPath !== "" ? { profilePhotoPath } : {}),
+  };
+  const [currency, association, qrEnabled, googleAllowed] = await Promise.all([
+    institutionSetting(db, orgId, "currency_code"),
+    associationName(db, orgId),
+    institutionSetting(db, orgId, "volunteer_portal_qr_enabled"),
+    googleLinkAllowed(db, orgId),
+  ]);
+  const projection = minimalGuestProjection({
+    firstName: submission.firstName,
+    lastName,
+    email: submission.email,
+    phone: submission.phone,
+    venueName: submission.venueName,
+    photoVersion: profilePhotoPath !== "" && !volunteerOwnsPhoto ? sha256(profilePhotoPath).slice(0, 16) : "",
+    currency: currency.trim().toUpperCase(),
+    association,
+    googleLinkAllowed: googleAllowed,
+  }, now);
+  const batch = db.batch();
+  batch.create(db.doc(`orgs/${orgId}/guests/${nanoId}`), guest);
+  batch.set(db.doc(`orgs/${orgId}/guestPortal/${submission.uid}`), projection);
+  // GuestPortalQrDocument.build: never for an admin guest (a new one never is).
+  if (qrEnabled.trim() !== "false") {
+    batch.set(db.doc(`orgs/${orgId}/guestPortalQr/${submission.uid}`), {
+      schema: 1,
+      payload: nanoId,
       name: `${submission.firstName} ${lastName}`.trim(),
     });
   }

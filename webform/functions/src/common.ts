@@ -1,10 +1,13 @@
 // Shared by every portal trigger. Mirrors the device side (VolunteerPortalService, PortalProjection).
 import { createHash } from "node:crypto";
 import type { DocumentReference, Firestore } from "firebase-admin/firestore";
+import { kotlinTrim } from "./validate";
 
 export const SERVER_VERSION = "1.0.0";
 export const STATUS_PROCESSING = "PROCESSING";
 export const PROJECTION_SCHEMA = 2;
+/** GuestPortalProjectionBuilder.SCHEMA. */
+export const GUEST_PROJECTION_SCHEMA = 1;
 const MAX_LABEL = 80;
 
 type Data = Record<string, unknown>;
@@ -16,6 +19,61 @@ export async function portalEnabled(db: Firestore, orgId: string): Promise<boole
   const snap = await db.doc(`orgs/${orgId}/institutionSettings/volunteer_portal_enabled`).get();
   const value = snap.exists ? snap.get("value") : undefined;
   return value === "true" || value === true;
+}
+
+/**
+ * `guest_portal_enabled` under the portal switch, as the rules' guestPortalOn: the permanent
+ * guests' space. Volunteers are never affected by it.
+ */
+export async function guestPortalEnabled(db: Firestore, orgId: string): Promise<boolean> {
+  if (!(await portalEnabled(db, orgId))) return false;
+  return (await institutionSetting(db, orgId, "guest_portal_enabled")) === "true";
+}
+
+/** `temp_guest_portal_enabled` (the portal switch is checked by the caller). */
+export async function temporaryGuestPortalEnabled(db: Firestore, orgId: string): Promise<boolean> {
+  return (await institutionSetting(db, orgId, "temp_guest_portal_enabled")) === "true";
+}
+
+/** stringOf (FirestoreChangeApplier): null is "", other values are their text. */
+export const stringOf = (v: unknown): string =>
+  v === null || v === undefined ? "" : typeof v === "string" ? v : String(v);
+
+/** boolOf (FirestoreChangeApplier): booleans, "true" in any case, non-zero numbers. */
+export function boolOf(v: unknown): boolean {
+  if (typeof v === "boolean") return v;
+  if (typeof v === "string") return v.toLowerCase() === "true";
+  if (typeof v === "number") return Number.isFinite(v) && Math.trunc(v) !== 0;
+  return false;
+}
+
+/** Kotlin `isBlank()` of a Firestore value. */
+export const isBlankValue = (v: unknown): boolean => kotlinTrim(stringOf(v)) === "";
+
+/** A document read whole or through a query. */
+export type Fields = { get(field: string): unknown };
+
+/** Guest.isPermanentPortalGuest (Kotlin): neither a temporary guest nor a volunteer benefit. */
+export const isPermanentGuest = (d: Fields): boolean =>
+  !boolOf(d.get("isTemporaryGuest")) && !boolOf(d.get("isVolunteerBenefit"));
+
+/**
+ * guestOwner (Kotlin): the published permanent guest of [uid], the most recently modified one,
+ * as GuestPortalPublisher picks it. Null when there is none.
+ */
+export function guestOwnerOf<T extends Fields>(docs: readonly T[], uid: string): T | null {
+  let best: T | null = null;
+  let bestAt = -Infinity;
+  for (const d of docs) {
+    if (!isPermanentGuest(d) || !boolOf(d.get("portalEnabled")) || stringOf(d.get("portalUid")) !== uid) continue;
+    const at = millisOf(d.get("lastModified")) ?? 0;
+    // maxByOrNull keeps the first of equal values.
+    if (best === null || at > bestAt) {
+      best = d;
+      bestAt = at;
+    }
+  }
+  return best;
 }
 
 /** Plain string value of `institutionSettings/{key}`, or "" when unset. */
@@ -116,6 +174,50 @@ export function minimalProjection(v: MinimalProjectionInput, now = Date.now()): 
     association: v.association.trim().slice(0, MAX_LABEL),
   });
   return { schema: PROJECTION_SCHEMA, payload, contentHash: sha256(payload), updatedAt: now };
+}
+
+export interface MinimalGuestProjectionInput {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  venueName: string;
+  /** First 16 hex characters of sha256(photo path), or "" without a published photo. */
+  photoVersion: string;
+  currency: string;
+  association: string;
+  /** googleLoginOn (Kotlin): Google sign-in on with an account rule that admits someone. */
+  googleLinkAllowed: boolean;
+}
+
+/**
+ * The first page of a brand-new permanent guest, in the format of GuestPortalProjectionBuilder:
+ * no invitations, no discount, an empty wallet, no Google link. Never carries the nanoId.
+ * A device republishes the full page as soon as it sees the guest.
+ */
+export function minimalGuestProjection(g: MinimalGuestProjectionInput, now = Date.now()): Projection {
+  const hasPhoto = g.photoVersion !== "";
+  // Key order matters for the hash and follows GuestPortalProjectionBuilder.build.
+  const payload = JSON.stringify({
+    firstName: g.firstName.trim(),
+    lastName: g.lastName.trim(),
+    email: g.email.trim(),
+    phone: g.phone.trim(),
+    hasPhoto,
+    photoVersion: hasPhoto ? g.photoVersion : "",
+    venueName: g.venueName.trim().slice(0, MAX_LABEL),
+    invitations: 0,
+    barDiscountPercent: 0,
+    wallet: { balance: 0, currency: g.currency.trim() || "CHF", transfers: [] },
+    // A new guest is never an admin, so only a missing e-mail forbids the QR mail.
+    qrEmailAllowed: g.email.trim() !== "",
+    mustSetPassword: false,
+    association: g.association.trim().slice(0, MAX_LABEL),
+    googleEmail: "",
+    googleLinkedBy: "",
+    googleLinkAvailable: g.googleLinkAllowed,
+  });
+  return { schema: GUEST_PROJECTION_SCHEMA, payload, contentHash: sha256(payload), updatedAt: now };
 }
 
 /**

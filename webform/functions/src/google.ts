@@ -1,13 +1,27 @@
 // Google account links: `portalGoogleClaims/{googleUid}` written by the portal page after a Google
 // sign-in. Same decisions as PortalGoogleLinkProcessor and the Google region of
 // VolunteerPortalService (Kotlin); devices only step in after their 2 minute grace period.
+// Holders are volunteers and, while the guest space is on, permanent guests; holders sharing a
+// portal uid are one person, and a link is written on every holder of the account.
 import * as logger from "firebase-functions/logger";
-import type { DocumentReference, Firestore, Transaction } from "firebase-admin/firestore";
-import { claim, institutionSetting, millisOf, patchedProjection, portalEnabled, sha256, touchStatus } from "./common";
+import type { DocumentReference, DocumentSnapshot, Firestore, Transaction } from "firebase-admin/firestore";
+import {
+  boolOf,
+  claim,
+  guestPortalEnabled,
+  institutionSetting,
+  isPermanentGuest,
+  millisOf,
+  patchedProjection,
+  portalEnabled,
+  sha256,
+  stringOf,
+  touchStatus,
+  type Fields,
+} from "./common";
 import { kotlinTrim, parseGoogleClaim, parseRequest, type PortalGoogleClaim, type PortalRequest } from "./validate";
 
 type Data = Record<string, unknown>;
-type Fields = { get(field: string): unknown };
 
 export type GoogleReason =
   | ""
@@ -37,8 +51,14 @@ const rejected = (reason: Exclude<GoogleReason, "">): GoogleResult => ({ status:
 /** Only pending claims; a PROCESSING one, however old, is left to devices (as in requests.ts). */
 const isClaimable = (d: Data): boolean => d.status === STATUS_PENDING;
 
-/** The fields of a volunteer document the decisions need. */
-export interface GoogleVolunteer {
+export type HolderKind = "VOLUNTEER" | "GUEST";
+
+/**
+ * PortalHolder (Kotlin): the fields of a volunteer or permanent guest document the decisions need.
+ * [id] is the volunteer id or the guest nanoId (the document id); it never reaches a log.
+ */
+export interface PortalHolderDoc {
+  kind: HolderKind;
   id: string;
   portalEnabled: boolean;
   portalUid: string;
@@ -48,23 +68,15 @@ export interface GoogleVolunteer {
 }
 
 export type GoogleDecision =
-  | { kind: "LINK"; volunteer: GoogleVolunteer; linkedBy: string }
+  | { kind: "LINK"; holder: PortalHolderDoc; linkedBy: string }
   | { kind: "ALREADY_LINKED" }
   | { kind: "REJECT"; reason: Exclude<GoogleReason, "" | "INVALID" | "SAVE_FAILED"> };
 
-const stringOf = (v: unknown): string => (v === null || v === undefined ? "" : typeof v === "string" ? v : String(v));
-
-function boolOf(v: unknown): boolean {
-  if (typeof v === "boolean") return v;
-  if (typeof v === "string") return v.toLowerCase() === "true";
-  if (typeof v === "number") return Number.isFinite(v) && Math.trunc(v) !== 0;
-  return false;
-}
-
 const isBlank = (s: string): boolean => kotlinTrim(s) === "";
 
-export function googleVolunteerOf(id: string, d: Fields): GoogleVolunteer {
+export function holderOf(kind: HolderKind, id: string, d: Fields): PortalHolderDoc {
   return {
+    kind,
     id,
     portalEnabled: boolOf(d.get("portalEnabled")),
     portalUid: stringOf(d.get("portalUid")),
@@ -115,16 +127,27 @@ export function sameAddress(a: string, b: string): boolean {
   return left !== "" && left === kotlinTrim(b).toLowerCase();
 }
 
-/** True when the alias target is a volunteer that still carries [googleUid]; anything else is stale. */
-export function isAliasValid(googleUid: string, aliasTarget: string | null, volunteers: readonly GoogleVolunteer[]): boolean {
+/** True when the alias target is a holder that still carries [googleUid]; anything else is stale. */
+export function isAliasValid(googleUid: string, aliasTarget: string | null, holders: readonly PortalHolderDoc[]): boolean {
   return (
     aliasTarget !== null &&
     !isBlank(aliasTarget) &&
-    volunteers.some((v) => v.portalUid === aliasTarget && v.portalGoogleUid === googleUid)
+    holders.some((v) => v.portalUid === aliasTarget && v.portalGoogleUid === googleUid)
   );
 }
 
-const hasPortal = (v: GoogleVolunteer): boolean => v.portalEnabled && !isBlank(v.portalUid);
+const hasPortal = (v: PortalHolderDoc): boolean => v.portalEnabled && !isBlank(v.portalUid);
+const sameHolder = (a: PortalHolderDoc, b: PortalHolderDoc): boolean => a.kind === b.kind && a.id === b.id;
+
+/** PortalGoogleLinkProcessor.accountOf: holders with open access on the portal account [uid]. */
+export function accountOf(uid: string, holders: readonly PortalHolderDoc[]): PortalHolderDoc[] {
+  return isBlank(uid) ? [] : holders.filter((h) => h.portalEnabled && h.portalUid === uid);
+}
+
+/** PortalGoogleLinkProcessor.primary: the volunteer when the account has one, else the first holder. */
+export function primary(account: readonly PortalHolderDoc[]): PortalHolderDoc {
+  return account.find((h) => h.kind === "VOLUNTEER") ?? account[0];
+}
 
 /**
  * PortalGoogleLinkProcessor.adminMatch. A match already linked by the volunteer keeps VOLUNTEER,
@@ -132,19 +155,23 @@ const hasPortal = (v: GoogleVolunteer): boolean => v.portalEnabled && !isBlank(v
  */
 export function adminMatch(
   c: PortalGoogleClaim,
-  volunteers: readonly GoogleVolunteer[],
+  holders: readonly PortalHolderDoc[],
   domains: readonly string[],
   aliasTarget: string | null,
   anyAccount = false,
 ): GoogleDecision {
   if (!accountAllowed(c.email, domains, anyAccount)) return { kind: "REJECT", reason: "DOMAIN" };
-  if (isAliasValid(c.googleUid, aliasTarget, volunteers)) return { kind: "ALREADY_LINKED" };
-  const candidates = volunteers.filter((v) => hasPortal(v) && sameAddress(v.portalGoogleEmail, c.email));
-  if (candidates.length === 0) return { kind: "REJECT", reason: "NO_MATCH" };
-  if (candidates.length > 1) return { kind: "REJECT", reason: "AMBIGUOUS" };
-  const match = candidates[0];
+  if (isAliasValid(c.googleUid, aliasTarget, holders)) return { kind: "ALREADY_LINKED" };
+  const candidates = holders.filter((v) => hasPortal(v) && sameAddress(v.portalGoogleEmail, c.email));
+  // One person per portal account; the volunteer answers for it when there is one.
+  const byUid = new Map<string, PortalHolderDoc[]>();
+  for (const h of candidates) byUid.set(h.portalUid, [...(byUid.get(h.portalUid) ?? []), h]);
+  const people = [...byUid.values()].map(primary);
+  if (people.length === 0) return { kind: "REJECT", reason: "NO_MATCH" };
+  if (people.length > 1) return { kind: "REJECT", reason: "AMBIGUOUS" };
+  const match = people[0];
   const linkedBy = match.portalGoogleLinkedBy === LINKED_BY_VOLUNTEER ? LINKED_BY_VOLUNTEER : LINKED_BY_ADMIN;
-  return { kind: "LINK", volunteer: match, linkedBy };
+  return { kind: "LINK", holder: match, linkedBy };
 }
 
 /** PortalGoogleLinkProcessor.linkCode; [requestedAtMillis] is the request's `requestedAt`. */
@@ -153,7 +180,7 @@ export function linkCode(
   request: PortalRequest | null,
   requestedAtMillis: number | null,
   now: number,
-  volunteers: readonly GoogleVolunteer[],
+  holders: readonly PortalHolderDoc[],
   domains: readonly string[],
   aliasTarget: string | null,
   anyAccount = false,
@@ -167,20 +194,23 @@ export function linkCode(
     requestedAtMillis !== null &&
     now - requestedAtMillis < LINK_CODE_VALIDITY_MS;
   if (!codeOk) return { kind: "REJECT", reason: "CODE" };
-  const owner = volunteers.find((v) => hasPortal(v) && v.portalUid === request.uid);
-  if (owner === undefined) return { kind: "REJECT", reason: "NO_MATCH" };
+  const account = accountOf(request.uid, holders);
+  if (account.length === 0) return { kind: "REJECT", reason: "NO_MATCH" };
+  const owner = primary(account);
   // Retry after the link was already written (stopped before answering).
-  if (aliasTarget === owner.portalUid && owner.portalGoogleUid === c.googleUid) return { kind: "ALREADY_LINKED" };
-  if (!isBlank(owner.portalGoogleEmail)) return { kind: "REJECT", reason: "ALREADY_LINKED" };
+  if (aliasTarget === owner.portalUid && account.some((h) => h.portalGoogleUid === c.googleUid)) {
+    return { kind: "ALREADY_LINKED" };
+  }
+  if (account.some((h) => !isBlank(h.portalGoogleEmail))) return { kind: "REJECT", reason: "ALREADY_LINKED" };
   if (!accountAllowed(c.email, domains, anyAccount)) return { kind: "REJECT", reason: "DOMAIN" };
-  const others = volunteers.filter((v) => v.id !== owner.id);
+  const others = holders.filter((h) => !account.some((a) => sameHolder(a, h)));
   if (others.some((v) => v.portalGoogleUid === c.googleUid)) return { kind: "REJECT", reason: "TAKEN" };
   if (others.some((v) => sameAddress(v.portalGoogleEmail, c.email))) return { kind: "REJECT", reason: "TAKEN" };
-  return { kind: "LINK", volunteer: owner, linkedBy: LINKED_BY_VOLUNTEER };
+  return { kind: "LINK", holder: owner, linkedBy: LINKED_BY_VOLUNTEER };
 }
 
 /** PortalGoogleLinkProcessor.canUnlink: null when allowed. */
-export function canUnlink(owner: GoogleVolunteer | null): "NO_ACCESS" | "ADMIN_LINK" | null {
+export function canUnlink(owner: PortalHolderDoc | null): "NO_ACCESS" | "ADMIN_LINK" | null {
   if (owner === null) return "NO_ACCESS";
   if (owner.portalGoogleLinkedBy === LINKED_BY_ADMIN) return "ADMIN_LINK";
   return null;
@@ -191,13 +221,40 @@ const errorCode = (e: unknown): string => {
   return code === undefined ? "" : String(code);
 };
 
-const volunteersOf = (db: Firestore, orgId: string) => db.collection(`orgs/${orgId}/volunteers`);
+const COLLECTION: Record<HolderKind, string> = { VOLUNTEER: "volunteers", GUEST: "guests" };
+const PAGE: Record<HolderKind, string> = { VOLUNTEER: "volunteerPortal", GUEST: "guestPortal" };
+const holderRef = (db: Firestore, orgId: string, h: { kind: HolderKind; id: string }) =>
+  db.doc(`orgs/${orgId}/${COLLECTION[h.kind]}/${h.id}`);
 const aliasRef = (db: Firestore, orgId: string, googleUid: string) =>
   db.doc(`orgs/${orgId}/portalGoogleAccounts/${googleUid}`);
-const projectionRef = (db: Firestore, orgId: string, portalUid: string) =>
-  db.doc(`orgs/${orgId}/volunteerPortal/${portalUid}`);
+const pageRef = (db: Firestore, orgId: string, kind: HolderKind, portalUid: string) =>
+  db.doc(`orgs/${orgId}/${PAGE[kind]}/${portalUid}`);
 
 const GOOGLE_FIELDS = ["portalEnabled", "portalUid", "portalGoogleEmail", "portalGoogleUid", "portalGoogleLinkedBy"];
+const GUEST_FIELDS = [...GOOGLE_FIELDS, "isTemporaryGuest", "isVolunteerBenefit", "lastModified"];
+
+/**
+ * googleHolders (Kotlin): every volunteer, plus the permanent guests while the guest space is on.
+ * Guests come with their `lastModified`, so the guest page follows the guest the publisher shows.
+ */
+async function loadHolders(db: Firestore, orgId: string): Promise<PortalHolderDoc[]> {
+  const [volunteers, guestSpace] = await Promise.all([
+    db.collection(`orgs/${orgId}/volunteers`).select(...GOOGLE_FIELDS).get(),
+    guestPortalEnabled(db, orgId),
+  ]);
+  const holders = volunteers.docs.map((d) => holderOf("VOLUNTEER", d.id, d));
+  if (!guestSpace) return holders;
+  const guests = await db.collection(`orgs/${orgId}/guests`).select(...GUEST_FIELDS).get();
+  return [...holders, ...guestsByRecency(guests.docs.filter(isPermanentGuest)).map((d) => holderOf("GUEST", d.id, d))];
+}
+
+/** Most recently modified first (stable), so the first guest of an account is the published one. */
+function guestsByRecency<T extends Fields>(docs: readonly T[]): T[] {
+  return docs
+    .map((d, i) => ({ d, i, at: millisOf(d.get("lastModified")) ?? 0 }))
+    .sort((a, b) => b.at - a.at || a.i - b.i)
+    .map((x) => x.d);
+}
 
 /** The Google sign-in option, as the rules read it (the portal switch is checked separately). */
 async function googleOn(db: Firestore, orgId: string): Promise<boolean> {
@@ -275,17 +332,16 @@ async function processClaim(db: Firestore, orgId: string, googleUid: string, cla
   const c = parseGoogleClaim(googleUid, claimed);
   if (c === null) return rejected("INVALID");
   const now = Date.now();
-  const [all, domainSetting, anyAccount, aliasSnap] = await Promise.all([
-    volunteersOf(db, orgId).select(...GOOGLE_FIELDS).get(),
+  const [holders, domainSetting, anyAccount, aliasSnap] = await Promise.all([
+    loadHolders(db, orgId),
     institutionSetting(db, orgId, "volunteer_portal_google_domains"),
     anyAccountOn(db, orgId),
     aliasRef(db, orgId, googleUid).get(),
   ]);
-  const volunteers = all.docs.map((d) => googleVolunteerOf(d.id, d));
   const domains = parseDomains(domainSetting);
   const rawTarget = aliasSnap.exists ? aliasSnap.get("volunteerUid") : undefined;
   let aliasTarget = typeof rawTarget === "string" ? rawTarget : null;
-  if (aliasTarget !== null && !isAliasValid(googleUid, aliasTarget, volunteers)) {
+  if (aliasTarget !== null && !isAliasValid(googleUid, aliasTarget, holders)) {
     // Revoked, deleted or relinked volunteer: the alias must not keep answering for them.
     await aliasRef(db, orgId, googleUid).delete();
     aliasTarget = null;
@@ -293,7 +349,7 @@ async function processClaim(db: Firestore, orgId: string, googleUid: string, cla
   let linkRequest: DocumentReference | null = null;
   let decision: GoogleDecision;
   if (c.type === "ADMIN_MATCH") {
-    decision = adminMatch(c, volunteers, domains, aliasTarget, anyAccount);
+    decision = adminMatch(c, holders, domains, aliasTarget, anyAccount);
   } else {
     const found = await db
       .collection(`orgs/${orgId}/portalRequests`)
@@ -305,7 +361,7 @@ async function processClaim(db: Firestore, orgId: string, googleUid: string, cla
     linkRequest = doc?.ref ?? null;
     const request = doc !== undefined ? parseRequest(doc.id, doc.data()) : null;
     const requestedAt = doc !== undefined ? millisOf(doc.get("requestedAt")) : null;
-    decision = linkCode(c, request, requestedAt, now, volunteers, domains, aliasTarget, anyAccount);
+    decision = linkCode(c, request, requestedAt, now, holders, domains, aliasTarget, anyAccount);
   }
   let result: GoogleResult;
   switch (decision.kind) {
@@ -315,7 +371,7 @@ async function processClaim(db: Firestore, orgId: string, googleUid: string, cla
       result = DONE;
       break;
     case "LINK":
-      result = await writeLink(db, orgId, c, decision.volunteer, decision.linkedBy, aliasTarget);
+      result = await writeLink(db, orgId, c, accountOf(decision.holder.portalUid, holders), decision.linkedBy, aliasTarget);
       break;
   }
   if (result.status === "DONE" && linkRequest !== null) {
@@ -324,60 +380,69 @@ async function processClaim(db: Firestore, orgId: string, googleUid: string, cla
   return result;
 }
 
-const sameGoogleFields = (a: GoogleVolunteer, b: GoogleVolunteer): boolean =>
+const sameGoogleFields = (a: PortalHolderDoc, b: PortalHolderDoc): boolean =>
   a.portalEnabled === b.portalEnabled &&
   a.portalUid === b.portalUid &&
   a.portalGoogleEmail === b.portalGoogleEmail &&
   a.portalGoogleUid === b.portalGoogleUid &&
   a.portalGoogleLinkedBy === b.portalGoogleLinkedBy;
 
+/** The address stored on [h] by a link: the one an admin typed is kept (`trim().ifBlank { email }`). */
+const linkedAddress = (h: PortalHolderDoc, email: string): string =>
+  isBlank(h.portalGoogleEmail) ? email : kotlinTrim(h.portalGoogleEmail);
+
 /**
- * writeGoogleLink (Kotlin), in one transaction: the alias, the three volunteer fields and
- * `lastModified`, and the published page. A previous Google account of the volunteer loses its
- * alias. Re-reads the volunteer and the alias: if either changed since the decision, nothing is
- * written and the claim is answered SAVE_FAILED.
+ * writeGoogleLink (Kotlin), in one transaction: the alias, the three fields and `lastModified` on
+ * every holder of the account, and the published pages. A previous Google account of the account
+ * loses its alias. Re-reads the holders and the alias: if any changed since the decision, nothing
+ * is written and the claim is answered SAVE_FAILED.
  */
 async function writeLink(
   db: Firestore,
   orgId: string,
   c: PortalGoogleClaim,
-  decided: GoogleVolunteer,
+  account: readonly PortalHolderDoc[],
   linkedBy: string,
   aliasTarget: string | null,
 ): Promise<GoogleResult> {
   try {
     const allowed = await googleLinkAllowed(db, orgId);
+    const portalUid = account[0].portalUid;
+    const previousUids = [...new Set(account.map((h) => h.portalGoogleUid))].filter(
+      (u) => !isBlank(u) && u !== c.googleUid,
+    );
     return await db.runTransaction(async (tx: Transaction) => {
-      const ref = volunteersOf(db, orgId).doc(decided.id);
       const alias = aliasRef(db, orgId, c.googleUid);
-      const page = projectionRef(db, orgId, decided.portalUid);
-      const previousUid = decided.portalGoogleUid;
-      const previous = !isBlank(previousUid) && previousUid !== c.googleUid ? aliasRef(db, orgId, previousUid) : null;
-      const [snap, aliasSnap, pageSnap, previousSnap] = await Promise.all([
-        tx.get(ref),
+      const kinds = [...new Set(account.map((h) => h.kind))];
+      const [aliasSnap, snaps, pages, previous] = await Promise.all([
         tx.get(alias),
-        tx.get(page),
-        previous !== null ? tx.get(previous) : Promise.resolve(null),
+        Promise.all(account.map((h) => tx.get(holderRef(db, orgId, h)))),
+        Promise.all(kinds.map((k) => tx.get(pageRef(db, orgId, k, portalUid)))),
+        Promise.all(previousUids.map((u) => tx.get(aliasRef(db, orgId, u)))),
       ]);
-      if (!snap.exists || !sameGoogleFields(googleVolunteerOf(snap.id, snap), decided)) return rejected("SAVE_FAILED");
+      const changed = snaps.some((snap, i) => !snap.exists || !sameGoogleFields(holderOf(account[i].kind, snap.id, snap), account[i]));
+      if (changed) return rejected("SAVE_FAILED");
       const target = aliasSnap.exists ? aliasSnap.get("volunteerUid") : undefined;
       if ((typeof target === "string" ? target : null) !== aliasTarget) return rejected("SAVE_FAILED");
       const now = Date.now();
-      // `portalGoogleEmail.trim().ifBlank { email }` (Kotlin): the address an admin typed is kept.
-      const email = isBlank(decided.portalGoogleEmail) ? c.email : kotlinTrim(decided.portalGoogleEmail);
-      // Only an alias that still answers for this volunteer.
-      if (previous !== null && previousSnap?.exists && previousSnap.get("volunteerUid") === decided.portalUid) {
-        tx.delete(previous);
-      }
-      tx.set(alias, { volunteerUid: decided.portalUid, email: c.email, linkedBy, linkedAt: now });
-      tx.update(ref, {
-        portalGoogleEmail: email,
-        portalGoogleUid: c.googleUid,
-        portalGoogleLinkedBy: linkedBy,
-        lastModified: Math.max(now, (millisOf(snap.get("lastModified")) ?? 0) + 1),
+      // Only an alias that still answers for this account.
+      for (const p of previous) if (p.exists && p.get("volunteerUid") === portalUid) tx.delete(p.ref);
+      tx.set(alias, { volunteerUid: portalUid, email: c.email, linkedBy, linkedAt: now });
+      snaps.forEach((snap, i) => {
+        tx.update(snap.ref, {
+          portalGoogleEmail: linkedAddress(account[i], c.email),
+          portalGoogleUid: c.googleUid,
+          portalGoogleLinkedBy: linkedBy,
+          lastModified: Math.max(now, (millisOf(snap.get("lastModified")) ?? 0) + 1),
+        });
       });
-      const patch = patchedProjection(pageSnap.data(), googleProjectionFields(email, linkedBy, allowed), now);
-      if (patch !== null) tx.update(page, patch);
+      // Each page shows the address of the profile it is built from (account order: volunteer
+      // first, guests most recent first).
+      kinds.forEach((kind, i) => {
+        const shown = account.find((h) => h.kind === kind)!;
+        const patch = patchedProjection(pages[i].data(), googleProjectionFields(linkedAddress(shown, c.email), linkedBy, allowed), now);
+        if (patch !== null) tx.update(pages[i].ref, patch);
+      });
       return DONE;
     });
   } catch (e) {
@@ -388,7 +453,9 @@ async function writeLink(
 
 /**
  * GOOGLE_UNLINK from the portal (processRequest and clearGoogleLink, Kotlin): only a link the
- * volunteer made. Deletes the alias, blanks the three fields and patches the page in one transaction.
+ * holder made. Any admin-held link on the account keeps it, whichever profile carries it. Clearing
+ * reaches the account's permanent guests even with their space off (it never grants access).
+ * Deletes the aliases, blanks the three fields and patches the pages in one transaction.
  */
 export async function unlinkGoogle(
   db: Firestore,
@@ -397,25 +464,48 @@ export async function unlinkGoogle(
   uid: string,
 ): Promise<"" | "NO_ACCESS" | "ADMIN_LINK" | "SAVE_FAILED"> {
   try {
-    const allowed = await googleLinkAllowed(db, orgId);
+    const [allowed, guestSpace] = await Promise.all([googleLinkAllowed(db, orgId), guestPortalEnabled(db, orgId)]);
     return await db.runTransaction(async (tx: Transaction) => {
-      const linked = await tx.get(volunteersOf(db, orgId).where("portalUid", "==", uid));
-      const doc = linked.docs.find((d) => boolOf(d.get("portalEnabled")) && stringOf(d.get("portalUid")) === uid);
-      const owner = doc !== undefined ? googleVolunteerOf(doc.id, doc) : null;
-      const reason = canUnlink(owner);
-      if (reason !== null || doc === undefined) return reason ?? "NO_ACCESS";
-      const page = projectionRef(db, orgId, uid);
-      const pageSnap = await tx.get(page);
+      const [linkedVolunteers, linkedGuests] = await Promise.all([
+        tx.get(db.collection(`orgs/${orgId}/volunteers`).where("portalUid", "==", uid)),
+        tx.get(db.collection(`orgs/${orgId}/guests`).where("portalUid", "==", uid)),
+      ]);
+      const permanentGuests = guestsByRecency(linkedGuests.docs.filter(isPermanentGuest));
+      const holders = [
+        ...linkedVolunteers.docs.map((d) => holderOf("VOLUNTEER", d.id, d)),
+        ...(guestSpace ? permanentGuests.map((d) => holderOf("GUEST", d.id, d)) : []),
+      ];
+      const account = accountOf(uid, holders);
+      const accountGuests = account.length === 0 ? [] : permanentGuests;
+      const everyone = [
+        ...account,
+        ...accountGuests.map((d) => holderOf("GUEST", d.id, d)).filter((g) => !account.some((a) => sameHolder(a, g))),
+      ];
+      const decider = everyone.find((h) => h.portalGoogleLinkedBy === LINKED_BY_ADMIN) ?? (account.length > 0 ? primary(account) : null);
+      const reason = canUnlink(decider);
+      if (reason !== null) return reason;
+      const docs: DocumentSnapshot[] = [
+        ...linkedVolunteers.docs.filter((d) => account.some((a) => a.kind === "VOLUNTEER" && a.id === d.id)),
+        ...accountGuests,
+      ];
+      const pageKinds = [...new Set(everyone.map((h) => h.kind))];
+      const pages = await Promise.all(pageKinds.map((k) => tx.get(pageRef(db, orgId, k, uid))));
       const now = Date.now();
-      if (!isBlank(owner!.portalGoogleUid)) tx.delete(aliasRef(db, orgId, owner!.portalGoogleUid));
-      tx.update(doc.ref, {
-        portalGoogleEmail: "",
-        portalGoogleUid: "",
-        portalGoogleLinkedBy: "",
-        lastModified: Math.max(now, (millisOf(doc.get("lastModified")) ?? 0) + 1),
+      for (const googleUid of new Set(everyone.map((h) => h.portalGoogleUid))) {
+        if (!isBlank(googleUid)) tx.delete(aliasRef(db, orgId, googleUid));
+      }
+      for (const doc of docs) {
+        tx.update(doc.ref, {
+          portalGoogleEmail: "",
+          portalGoogleUid: "",
+          portalGoogleLinkedBy: "",
+          lastModified: Math.max(now, (millisOf(doc.get("lastModified")) ?? 0) + 1),
+        });
+      }
+      pages.forEach((page) => {
+        const patch = patchedProjection(page.data(), googleProjectionFields("", "", allowed), now);
+        if (patch !== null) tx.update(page.ref, patch);
       });
-      const patch = patchedProjection(pageSnap.data(), googleProjectionFields("", "", allowed), now);
-      if (patch !== null) tx.update(page, patch);
       return "";
     });
   } catch (e) {

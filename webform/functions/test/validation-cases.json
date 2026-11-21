@@ -188,7 +188,9 @@
    "dateOfBirth": "1999-05-17",
    "gender": "FEMALE",
    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
-   "lang": "de"
+   "lang": "de",
+   "holderType": "VOLUNTEER",
+   "venueName": ""
   }
  },
  {
@@ -262,7 +264,9 @@
    "dateOfBirth": "1900-01-01",
    "gender": "FEMALE",
    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
-   "lang": "de"
+   "lang": "de",
+   "holderType": "VOLUNTEER",
+   "venueName": ""
   }
  },
  {
@@ -294,7 +298,9 @@
    "dateOfBirth": "2099-12-31",
    "gender": "FEMALE",
    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
-   "lang": "de"
+   "lang": "de",
+   "holderType": "VOLUNTEER",
+   "venueName": ""
   }
  },
  {
@@ -431,7 +437,9 @@
    "dateOfBirth": "1999-05-17",
    "gender": "FEMALE",
    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
-   "lang": "fr"
+   "lang": "fr",
+   "holderType": "VOLUNTEER",
+   "venueName": ""
   }
  },
  {
@@ -463,7 +471,9 @@
    "dateOfBirth": "1999-05-17",
    "gender": "FEMALE",
    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
-   "lang": "fr"
+   "lang": "fr",
+   "holderType": "VOLUNTEER",
+   "venueName": ""
   }
  },
  {
@@ -495,7 +505,9 @@
    "dateOfBirth": "1999-05-17",
    "gender": "FEMALE",
    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
-   "lang": "it"
+   "lang": "it",
+   "holderType": "VOLUNTEER",
+   "venueName": ""
   }
  },
  {
@@ -526,7 +538,9 @@
    "dateOfBirth": "1999-05-17",
    "gender": "FEMALE",
    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
-   "lang": "fr"
+   "lang": "fr",
+   "holderType": "VOLUNTEER",
+   "venueName": ""
   }
  },
  {
@@ -579,7 +593,9 @@
    "dateOfBirth": "1999-05-17",
    "gender": "NON_BINARY",
    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
-   "lang": "de"
+   "lang": "de",
+   "holderType": "VOLUNTEER",
+   "venueName": ""
   }
  },
  {
@@ -611,7 +627,9 @@
    "dateOfBirth": "1999-05-17",
    "gender": "PREFER_NOT_TO_DISCLOSE",
    "photoPath": "orgs/org1/portalSignupPhotos/form1.jpg",
-   "lang": "de"
+   "lang": "de",
+   "holderType": "VOLUNTEER",
+   "venueName": ""
   }
  },
  {
@@ -685,7 +703,9 @@
    "dateOfBirth": "1999-05-17",
    "gender": "FEMALE",
    "photoPath": "",
-   "lang": "de"
+   "lang": "de",
+   "holderType": "VOLUNTEER",
+   "venueName": ""
   }
  },
  {
@@ -716,7 +736,9 @@
    "dateOfBirth": "1999-05-17",
    "gender": "FEMALE",
    "photoPath": "",
-   "lang": "de"
+   "lang": "de",
+   "holderType": "VOLUNTEER",
+   "venueName": ""
   }
  },
  {
@@ -1310,6 +1332,242 @@
     "type": "ADMIN_MATCH",
     "status": "PENDING",
     "email": "nope"
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseSignup",
+  "input": {
+   "formId": "formG",
+   "orgId": "org1",
+   "data": {
+    "status": "SUBMITTED",
+    "submittedUid": "Guest12345",
+    "email": " Noe@Example.com ",
+    "firstName": "Noé",
+    "lastName": "Blanc",
+    "phone": "079 123 45 67",
+    "consent": true,
+    "photoPath": "orgs/org1/portalSignupPhotos/formG.jpg",
+    "lang": "en",
+    "holderType": "GUEST",
+    "venueName": "  Club Nord  "
+   }
+  },
+  "expect": {
+   "formId": "formG",
+   "uid": "Guest12345",
+   "email": "noe@example.com",
+   "firstName": "Noé",
+   "lastName": "Blanc",
+   "phone": "079 123 45 67",
+   "dateOfBirth": "",
+   "gender": "PREFER_NOT_TO_DISCLOSE",
+   "photoPath": "orgs/org1/portalSignupPhotos/formG.jpg",
+   "lang": "en",
+   "holderType": "GUEST",
+   "venueName": "Club Nord"
+  }
+ },
+ {
+  "fn": "parseSignup",
+  "input": {
+   "formId": "formG",
+   "orgId": "org1",
+   "data": {
+    "status": "SUBMITTED",
+    "submittedUid": "Guest12345",
+    "email": " Noe@Example.com ",
+    "firstName": "Noé",
+    "lastName": "Blanc",
+    "phone": "079 123 45 67",
+    "consent": true,
+    "photoPath": "orgs/org1/portalSignupPhotos/formG.jpg",
+    "lang": "en",
+    "holderType": "GUEST",
+    "venueName": "  Club Nord  ",
+    "dateOfBirth": "nope",
+    "gender": "X"
+   }
+  },
+  "expect": {
+   "formId": "formG",
+   "uid": "Guest12345",
+   "email": "noe@example.com",
+   "firstName": "Noé",
+   "lastName": "Blanc",
+   "phone": "079 123 45 67",
+   "dateOfBirth": "",
+   "gender": "PREFER_NOT_TO_DISCLOSE",
+   "photoPath": "orgs/org1/portalSignupPhotos/formG.jpg",
+   "lang": "en",
+   "holderType": "GUEST",
+   "venueName": "Club Nord"
+  }
+ },
+ {
+  "fn": "parseSignup",
+  "input": {
+   "formId": "formG",
+   "orgId": "org1",
+   "data": {
+    "status": "SUBMITTED",
+    "submittedUid": "Guest12345",
+    "email": " Noe@Example.com ",
+    "firstName": "Noé",
+    "lastName": "Blanc",
+    "phone": "079 123 45 67",
+    "consent": false,
+    "photoPath": "orgs/org1/portalSignupPhotos/formG.jpg",
+    "lang": "en",
+    "holderType": "GUEST",
+    "venueName": "  Club Nord  "
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseSignup",
+  "input": {
+   "formId": "formG",
+   "orgId": "org1",
+   "data": {
+    "status": "SUBMITTED",
+    "submittedUid": "Guest12345",
+    "email": " Noe@Example.com ",
+    "firstName": "Noé",
+    "lastName": "Blanc",
+    "phone": "079 123 45 67",
+    "consent": true,
+    "photoPath": "orgs/org1/portalSignupPhotos/formG.jpg",
+    "lang": "en",
+    "holderType": "guest",
+    "venueName": "  Club Nord  "
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseSignup",
+  "input": {
+   "formId": "formG",
+   "orgId": "org1",
+   "data": {
+    "status": "SUBMITTED",
+    "submittedUid": "Guest12345",
+    "email": " Noe@Example.com ",
+    "firstName": "Noé",
+    "lastName": "Blanc",
+    "phone": "079 123 45 67",
+    "consent": true,
+    "photoPath": "orgs/org1/portalSignupPhotos/formG.jpg",
+    "lang": "en",
+    "holderType": "VOLUNTEER",
+    "venueName": "  Club Nord  ",
+    "dateOfBirth": "1999-05-17",
+    "gender": "MALE"
+   }
+  },
+  "expect": {
+   "formId": "formG",
+   "uid": "Guest12345",
+   "email": "noe@example.com",
+   "firstName": "Noé",
+   "lastName": "Blanc",
+   "phone": "079 123 45 67",
+   "dateOfBirth": "1999-05-17",
+   "gender": "MALE",
+   "photoPath": "orgs/org1/portalSignupPhotos/formG.jpg",
+   "lang": "en",
+   "holderType": "VOLUNTEER",
+   "venueName": ""
+  }
+ },
+ {
+  "fn": "parseRequest",
+  "input": {
+   "requestId": "Guest12345_GUEST_PROFILE",
+   "data": {
+    "uid": "Guest12345",
+    "type": "GUEST_PROFILE",
+    "status": "PENDING",
+    "email": "Noe@Example.com",
+    "firstName": " Noé  P ",
+    "lastName": "Blanc",
+    "phone": "079 123 45 67",
+    "photo": true
+   }
+  },
+  "expect": {
+   "requestId": "Guest12345_GUEST_PROFILE",
+   "uid": "Guest12345",
+   "type": "GUEST_PROFILE",
+   "status": "PENDING",
+   "email": "noe@example.com",
+   "firstName": "Noé P",
+   "lastName": "Blanc",
+   "phone": "079 123 45 67",
+   "photo": true
+  }
+ },
+ {
+  "fn": "parseRequest",
+  "input": {
+   "requestId": "Guest12345_GUEST_PROFILE",
+   "data": {
+    "uid": "Guest12345",
+    "type": "GUEST_PROFILE",
+    "status": "PENDING",
+    "email": "Noe@Example.com",
+    "firstName": " Noé  P ",
+    "lastName": "Blanc",
+    "phone": "x",
+    "photo": true
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseRequest",
+  "input": {
+   "requestId": "Guest12345_GUEST_QR_EMAIL",
+   "data": {
+    "uid": "Guest12345",
+    "type": "GUEST_QR_EMAIL",
+    "status": "PENDING",
+    "email": "Noe@Example.com",
+    "firstName": " Noé  P ",
+    "lastName": "Blanc",
+    "phone": "079 123 45 67",
+    "photo": true
+   }
+  },
+  "expect": {
+   "requestId": "Guest12345_GUEST_QR_EMAIL",
+   "uid": "Guest12345",
+   "type": "GUEST_QR_EMAIL",
+   "status": "PENDING",
+   "email": "noe@example.com",
+   "firstName": "",
+   "lastName": "",
+   "phone": "",
+   "photo": false
+  }
+ },
+ {
+  "fn": "parseRequest",
+  "input": {
+   "requestId": "Guest12345_PROFILE",
+   "data": {
+    "uid": "Guest12345",
+    "type": "GUEST_QR_EMAIL",
+    "status": "PENDING",
+    "email": "Noe@Example.com",
+    "firstName": " Noé  P ",
+    "lastName": "Blanc",
+    "phone": "079 123 45 67",
+    "photo": true
    }
   },
   "expect": null

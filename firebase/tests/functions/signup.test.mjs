@@ -17,6 +17,21 @@ const VOLUNTEER_KEYS = [
   "isActive", "lastShiftDate", "lastModified", "nfcCardUid", "nfcCardUidHash", "isAdmin",
   "portalEnabled", "portalUid",
 ];
+// GitLiveFirestoreGateway.guestToMap; blank photo fields are omitted.
+const GUEST_KEYS = [
+  "nanoId", "name", "lastNameAbbreviation", "email", "phone", "invitations", "venueName", "notes",
+  "isVolunteerBenefit", "volunteerId", "lastModified", "isTemporaryGuest", "temporaryArtistName",
+  "temporaryEventDate", "temporaryContactPhone", "temporaryVenueName", "temporaryContactEmail",
+  "temporaryPortalEmail", "temporaryAccessIds", "temporaryEntryValidatedAt", "temporaryEntryValidatedBy",
+  "nfcCardUid", "nfcCardUidHash", "isAdmin", "barDiscountPercent", "portalEnabled", "portalUid",
+  "portalGoogleEmail", "portalGoogleUid", "portalGoogleLinkedBy",
+];
+// GuestPortalProjectionBuilder.build, in order.
+const GUEST_PAYLOAD_KEYS = [
+  "firstName", "lastName", "email", "phone", "hasPhoto", "photoVersion", "venueName", "invitations",
+  "barDiscountPercent", "wallet", "qrEmailAllowed", "mustSetPassword", "association", "googleEmail",
+  "googleLinkedBy", "googleLinkAvailable",
+];
 const PAYLOAD_KEYS = [
   "firstName", "lastName", "email", "phone", "dateOfBirth", "gender", "hasPhoto", "photoVersion",
   "shifts", "olderShifts", "lastShiftFloor", "timeline", "wallet", "qrEmailAllowed", "mustSetPassword",
@@ -84,12 +99,12 @@ function submission(uid, overrides = {}) {
 }
 
 /** Opens a registration link, then answers it the way the public page does. */
-async function submit(org, formId, data) {
+async function submit(org, formId, data, form = {}) {
   const ref = db.doc(`orgs/${org}/volunteerSignupForms/${formId}`);
   const now = Date.now();
   await ref.set({
     formId, status: "OPEN", expiresAtMillis: now + 7 * DAY, photosEnabled: true,
-    associationName: "Asso Test", createdAt: now, lastModified: now,
+    associationName: "Asso Test", createdAt: now, lastModified: now, ...form,
   });
   await ref.set(data, { merge: true });
   return ref;
@@ -109,6 +124,37 @@ async function fileExists(path) {
 async function volunteers(org) {
   const snap = await db.collection(`orgs/${org}/volunteers`).get();
   return snap.docs.map((d) => ({ docId: d.id, ...d.data() }));
+}
+
+async function guests(org) {
+  const snap = await db.collection(`orgs/${org}/guests`).get();
+  return snap.docs.map((d) => ({ docId: d.id, ...d.data() }));
+}
+
+async function guestSpace(org, value = "true") {
+  await db.doc(`orgs/${org}/institutionSettings/guest_portal_enabled`).set({ value, lastModified: Date.now() });
+}
+
+/** A GUEST registration answer: no date of birth nor gender. */
+function guestSubmission(uid, overrides = {}) {
+  const { dateOfBirth, gender, ...rest } = submission(uid, overrides);
+  return rest;
+}
+
+const GUEST_FORM = { holderType: "GUEST", venueName: " Club Nord " };
+
+/** A guest row in the format of GitLiveFirestoreGateway.guestToMap. */
+function guestDoc(nanoId, overrides = {}) {
+  return {
+    nanoId, name: "Léa", lastNameAbbreviation: "M", email: "lea@mail.example", phone: "079",
+    invitations: 2, venueName: "Main", notes: "VIP", isVolunteerBenefit: false, volunteerId: null,
+    lastModified: 1000, isTemporaryGuest: false, temporaryArtistName: "", temporaryEventDate: null,
+    temporaryContactPhone: "", temporaryVenueName: "", temporaryContactEmail: "", temporaryPortalEmail: "",
+    temporaryAccessIds: "", temporaryEntryValidatedAt: 0, temporaryEntryValidatedBy: "", nfcCardUid: "04AA",
+    nfcCardUidHash: "", isAdmin: false, barDiscountPercent: 10, portalEnabled: false, portalUid: "",
+    portalGoogleEmail: "", portalGoogleUid: "", portalGoogleLinkedBy: "",
+    ...overrides,
+  };
 }
 
 async function waitProcessed(ref) {
@@ -408,6 +454,123 @@ describe("onSignupWritten", () => {
     assert.equal(doc.status, "PROCESSING");
     assert.equal(doc.processingDevice, "device-1");
     assert.equal(doc.processingAt, processingAt);
+    assert.equal((await volunteers(org)).length, 0);
+  });
+});
+
+describe("onSignupWritten: guests", () => {
+  test("guest signup creates a permanent guest", async () => {
+    const org = await newOrg();
+    await guestSpace(org);
+    const uid = "guestNewUid1";
+    const before = Date.now();
+    const ref = await submit(org, newFormId(), guestSubmission(uid, {
+      email: " Lea.Martin@Mail.Example ", lastName: "martin  dupont",
+      // Not asked of a guest: ignored even when present.
+      dateOfBirth: "1998-04-12", gender: "FEMALE",
+    }), GUEST_FORM);
+    await waitProcessed(ref);
+
+    assert.equal((await volunteers(org)).length, 0, "no volunteer created");
+    const all = await guests(org);
+    assert.equal(all.length, 1);
+    const { docId, ...g } = all[0];
+    assert.match(g.nanoId, /^[A-Za-z0-9_-]{21}$/);
+    assert.equal(docId, g.nanoId);
+    assert.deepEqual(Object.keys(g).sort(), [...GUEST_KEYS].sort());
+    assert.ok(g.lastModified >= before);
+    assert.deepEqual({ ...g, nanoId: "", lastModified: 0 }, {
+      nanoId: "", name: "Léa", lastNameAbbreviation: "MARTIN DUPONT", email: "lea.martin@mail.example",
+      phone: "+41 79 123 45 67", invitations: 0, venueName: "Club Nord", notes: "", isVolunteerBenefit: false,
+      volunteerId: null, lastModified: 0, isTemporaryGuest: false, temporaryArtistName: "",
+      temporaryEventDate: null, temporaryContactPhone: "", temporaryVenueName: "", temporaryContactEmail: "",
+      temporaryPortalEmail: "", temporaryAccessIds: "", temporaryEntryValidatedAt: 0,
+      temporaryEntryValidatedBy: "", nfcCardUid: "", nfcCardUidHash: "", isAdmin: false, barDiscountPercent: 0,
+      portalEnabled: true, portalUid: uid, portalGoogleEmail: "", portalGoogleUid: "", portalGoogleLinkedBy: "",
+    });
+
+    const page = (await db.doc(`orgs/${org}/guestPortal/${uid}`).get()).data();
+    assert.ok(page, "guest page written");
+    assert.deepEqual(Object.keys(page).sort(), ["contentHash", "payload", "schema", "updatedAt"]);
+    assert.equal(page.schema, 1);
+    assert.equal(page.contentHash, sha256(page.payload));
+    assert.ok(!page.payload.includes(g.nanoId), "payload never carries the nanoId");
+    const payload = JSON.parse(page.payload);
+    assert.deepEqual(Object.keys(payload), GUEST_PAYLOAD_KEYS);
+    assert.deepEqual(payload, {
+      firstName: "Léa", lastName: "MARTIN DUPONT", email: "lea.martin@mail.example", phone: "+41 79 123 45 67",
+      hasPhoto: false, photoVersion: "", venueName: "Club Nord", invitations: 0, barDiscountPercent: 0,
+      wallet: { balance: 0, currency: "CHF", transfers: [] }, qrEmailAllowed: true, mustSetPassword: false,
+      association: "Asso Test", googleEmail: "", googleLinkedBy: "", googleLinkAvailable: false,
+    });
+    assert.equal((await db.doc(`orgs/${org}/volunteerPortal/${uid}`).get()).exists, false);
+
+    const qr = (await db.doc(`orgs/${org}/guestPortalQr/${uid}`).get()).data();
+    assert.deepEqual(qr, { schema: 1, payload: g.nanoId, name: "Léa MARTIN DUPONT" });
+    assert.equal((await db.doc(`orgs/${org}/volunteerPortalQr/${uid}`).get()).exists, false);
+  });
+
+  test("guest signup copies the photo and skips the QR document when the QR is off", async () => {
+    const org = await newOrg();
+    await guestSpace(org);
+    await db.doc(`orgs/${org}/institutionSettings/volunteer_portal_qr_enabled`).set({ value: "false", lastModified: Date.now() });
+    const uid = "guestPhoto01";
+    const formId = newFormId();
+    const photoPath = await uploadSignupPhoto(org, formId);
+    const ref = await submit(org, formId, guestSubmission(uid, { photoPath }), GUEST_FORM);
+    await waitProcessed(ref);
+
+    const [g] = await guests(org);
+    const profilePath = `orgs/${org}/profilePhotos/guests/${g.nanoId}.jpg`;
+    assert.equal(g.profilePhotoPath, profilePath);
+    assert.equal("profilePhotoUrl" in g, false);
+    assert.equal(await fileExists(photoPath), false, "original removed");
+    for (const path of [profilePath, `orgs/${org}/portalPhotos/${uid}.jpg`]) {
+      assert.deepEqual((await bucket.file(path).download())[0], JPEG, path);
+    }
+    const payload = JSON.parse((await db.doc(`orgs/${org}/guestPortal/${uid}`).get()).data().payload);
+    assert.equal(payload.hasPhoto, true);
+    assert.equal(payload.photoVersion, sha256(profilePath).slice(0, 16));
+    assert.equal((await db.doc(`orgs/${org}/guestPortalQr/${uid}`).get()).exists, false);
+  });
+
+  test("guest signup links an existing guest", async () => {
+    const org = await newOrg();
+    await guestSpace(org);
+    const uid = "guestLinkUid";
+    const existing = guestDoc("existingGuest00000001", { email: " LEA@Mail.example " });
+    // Same address, but not permanent guests: never linked by a guest registration.
+    const temporary = guestDoc("temporaryGuest0000001", { email: "lea@mail.example", isTemporaryGuest: true });
+    const benefit = guestDoc("benefitGuest000000001", { email: "lea@mail.example", isVolunteerBenefit: true });
+    for (const d of [existing, temporary, benefit]) await db.doc(`orgs/${org}/guests/${d.nanoId}`).set(d);
+    const ref = await submit(org, newFormId(), guestSubmission(uid, { email: "lea@mail.example", firstName: "Other" }), GUEST_FORM);
+    await waitProcessed(ref);
+
+    const all = await guests(org);
+    assert.equal(all.length, 3, "nothing created");
+    const byId = Object.fromEntries(all.map(({ docId, ...d }) => [docId, d]));
+    const linked = byId[existing.nanoId];
+    assert.equal(linked.portalUid, uid);
+    assert.equal(linked.portalEnabled, true);
+    assert.ok(linked.lastModified > existing.lastModified);
+    assert.deepEqual({ ...linked, portalUid: "", portalEnabled: false, lastModified: existing.lastModified }, existing);
+    assert.deepEqual(byId[temporary.nanoId], temporary);
+    assert.deepEqual(byId[benefit.nanoId], benefit);
+    // Reading the portal still requires verifying the address: nothing is published.
+    assert.equal((await db.doc(`orgs/${org}/guestPortal/${uid}`).get()).exists, false);
+    assert.equal((await volunteers(org)).length, 0);
+  });
+
+  test("guest signup ignored when guest space off", async () => {
+    const org = await newOrg();
+    await guestSpace(org, "false");
+    const ref = await submit(org, newFormId(), guestSubmission("guestOffUid1"), GUEST_FORM);
+    await barrier();
+
+    const doc = (await ref.get()).data();
+    assert.equal(doc.status, "SUBMITTED");
+    assert.equal("processingDevice" in doc, false);
+    assert.equal((await guests(org)).length, 0);
     assert.equal((await volunteers(org)).length, 0);
   });
 });

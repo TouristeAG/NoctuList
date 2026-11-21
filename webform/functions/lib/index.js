@@ -8,18 +8,169 @@ import { defineSecret, defineString } from "firebase-functions/params";
 
 // src/requests.ts
 import * as logger4 from "firebase-functions/logger";
+import { FieldValue } from "firebase-admin/firestore";
 
 // src/common.ts
 import { createHash } from "node:crypto";
+
+// src/validate.ts
+var NAME = /^[^<>{}\\]{1,60}$/u;
+var PHONE = /^[0-9+() .-]{4,32}$/u;
+var DATE = /^(19|20)[0-9]{2}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/u;
+var EMAIL = /^[^@ \t\n\x0B\f\r]{1,64}@[^@ \t\n\x0B\f\r]{1,190}\.[^@ \t\n\x0B\f\r]{2,}$/u;
+var UID = /^[A-Za-z0-9]{6,128}$/u;
+var CODE_HASH = /^[0-9a-f]{64}$/u;
+var LINK_CODE = /^[A-Za-z0-9_-]{32,64}$/u;
+var LANGS = /* @__PURE__ */ new Set(["fr", "en", "es", "de", "it"]);
+var TYPES = [
+  "PROFILE",
+  "QR_EMAIL",
+  "CLAIM",
+  "GOOGLE_LINK",
+  "GOOGLE_UNLINK",
+  "GUEST_PROFILE",
+  "GUEST_QR_EMAIL"
+];
+var CLAIM_TYPES = ["ADMIN_MATCH", "LINK_CODE"];
+var GENDERS = /* @__PURE__ */ new Set(["FEMALE", "MALE", "NON_BINARY", "OTHER", "PREFER_NOT_TO_DISCLOSE"]);
+var WS = "\\t-\\r\\u001C-\\u0020\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000";
+var TRIM = new RegExp(`^[${WS}]+|[${WS}]+$`, "gu");
+var ASCII_RUN = /[ \t\n\x0B\f\r]+/g;
+var kotlinTrim = (s) => s.replace(TRIM, "");
+function cleanName(raw) {
+  if (typeof raw !== "string") return null;
+  const value = kotlinTrim(raw).replace(ASCII_RUN, " ");
+  return value.length > 0 && NAME.test(value) ? value : null;
+}
+function cleanPhone(raw) {
+  if (typeof raw !== "string") return null;
+  const value = kotlinTrim(raw);
+  return PHONE.test(value) ? value : null;
+}
+function cleanEmail(raw) {
+  if (typeof raw !== "string") return null;
+  const value = kotlinTrim(raw).toLowerCase();
+  return value.length <= 254 && EMAIL.test(value) ? value : null;
+}
+var str = (v) => typeof v === "string" ? v : void 0;
+function parseSignup(formId, data, orgId = "") {
+  if (String(data.status) !== "SUBMITTED") return null;
+  const uid = str(data.submittedUid);
+  if (uid === void 0 || !UID.test(uid)) return null;
+  const email = cleanEmail(data.email);
+  if (email === null) return null;
+  const firstName = cleanName(data.firstName);
+  if (firstName === null) return null;
+  const lastName = cleanName(data.lastName);
+  if (lastName === null) return null;
+  const phone = cleanPhone(data.phone);
+  if (phone === null) return null;
+  const holderType = data.holderType === "GUEST" ? "GUEST" : "VOLUNTEER";
+  const guest = holderType === "GUEST";
+  const dateOfBirth = guest ? "" : str(data.dateOfBirth);
+  if (dateOfBirth === void 0 || !guest && !DATE.test(dateOfBirth)) return null;
+  const gender = guest ? "PREFER_NOT_TO_DISCLOSE" : String(data.gender);
+  if (!GENDERS.has(gender)) return null;
+  if (data.consent !== true) return null;
+  const photoPath = str(data.photoPath) ?? "";
+  const ownPhoto = `orgs/${orgId.trim()}/portalSignupPhotos/${formId.trim()}.jpg`;
+  const lang = str(data.lang);
+  return {
+    formId,
+    uid,
+    email,
+    firstName,
+    lastName,
+    phone,
+    dateOfBirth,
+    gender,
+    photoPath: photoPath === ownPhoto && orgId !== "" ? ownPhoto : "",
+    lang: lang !== void 0 && LANGS.has(lang) ? lang : "fr",
+    holderType,
+    venueName: guest ? kotlinTrim(str(data.venueName) ?? "") : ""
+  };
+}
+function parseRequest(requestId, data) {
+  const uid = str(data.uid);
+  if (uid === void 0 || !UID.test(uid)) return null;
+  const typeName = String(data.type);
+  if (!TYPES.includes(typeName)) return null;
+  const type = typeName;
+  if (requestId !== `${uid}_${type}`) return null;
+  const email = cleanEmail(data.email);
+  if (email === null) return null;
+  const status = data.status === null || data.status === void 0 ? "" : String(data.status);
+  if (type === "PROFILE" || type === "GUEST_PROFILE") {
+    const firstName = cleanName(data.firstName);
+    const lastName = cleanName(data.lastName);
+    const phone = cleanPhone(data.phone);
+    if (firstName === null || lastName === null || phone === null) return null;
+    return { requestId, uid, type, status, email, firstName, lastName, phone, photo: data.photo === true };
+  }
+  if (type === "GOOGLE_LINK") {
+    const codeHash = str(data.codeHash);
+    if (codeHash === void 0 || !CODE_HASH.test(codeHash)) return null;
+    return { requestId, uid, type, status, email, firstName: "", lastName: "", phone: "", photo: false, codeHash };
+  }
+  return { requestId, uid, type, status, email, firstName: "", lastName: "", phone: "", photo: false };
+}
+function parseGoogleClaim(googleUid, data) {
+  if (!UID.test(googleUid)) return null;
+  const typeName = String(data.type);
+  if (!CLAIM_TYPES.includes(typeName)) return null;
+  const type = typeName;
+  const email = cleanEmail(data.email);
+  if (email === null) return null;
+  const status = data.status === null || data.status === void 0 ? "" : String(data.status);
+  let code2 = "";
+  if (type === "LINK_CODE") {
+    const raw = str(data.code);
+    if (raw === void 0 || !LINK_CODE.test(raw)) return null;
+    code2 = raw;
+  }
+  return { googleUid, type, status, email, code: code2 };
+}
+
+// src/common.ts
 var SERVER_VERSION = "1.0.0";
 var STATUS_PROCESSING = "PROCESSING";
 var PROJECTION_SCHEMA = 2;
+var GUEST_PROJECTION_SCHEMA = 1;
 var MAX_LABEL = 80;
 var sha256 = (text) => createHash("sha256").update(text, "utf8").digest("hex");
 async function portalEnabled(db, orgId) {
   const snap = await db.doc(`orgs/${orgId}/institutionSettings/volunteer_portal_enabled`).get();
   const value = snap.exists ? snap.get("value") : void 0;
   return value === "true" || value === true;
+}
+async function guestPortalEnabled(db, orgId) {
+  if (!await portalEnabled(db, orgId)) return false;
+  return await institutionSetting(db, orgId, "guest_portal_enabled") === "true";
+}
+async function temporaryGuestPortalEnabled(db, orgId) {
+  return await institutionSetting(db, orgId, "temp_guest_portal_enabled") === "true";
+}
+var stringOf = (v) => v === null || v === void 0 ? "" : typeof v === "string" ? v : String(v);
+function boolOf(v) {
+  if (typeof v === "boolean") return v;
+  if (typeof v === "string") return v.toLowerCase() === "true";
+  if (typeof v === "number") return Number.isFinite(v) && Math.trunc(v) !== 0;
+  return false;
+}
+var isBlankValue = (v) => kotlinTrim(stringOf(v)) === "";
+var isPermanentGuest = (d) => !boolOf(d.get("isTemporaryGuest")) && !boolOf(d.get("isVolunteerBenefit"));
+function guestOwnerOf(docs, uid) {
+  let best = null;
+  let bestAt = -Infinity;
+  for (const d of docs) {
+    if (!isPermanentGuest(d) || !boolOf(d.get("portalEnabled")) || stringOf(d.get("portalUid")) !== uid) continue;
+    const at = millisOf(d.get("lastModified")) ?? 0;
+    if (best === null || at > bestAt) {
+      best = d;
+      bestAt = at;
+    }
+  }
+  return best;
 }
 async function institutionSetting(db, orgId, key) {
   const snap = await db.doc(`orgs/${orgId}/institutionSettings/${key}`).get();
@@ -80,6 +231,29 @@ function minimalProjection(v, now = Date.now()) {
   });
   return { schema: PROJECTION_SCHEMA, payload, contentHash: sha256(payload), updatedAt: now };
 }
+function minimalGuestProjection(g, now = Date.now()) {
+  const hasPhoto = g.photoVersion !== "";
+  const payload = JSON.stringify({
+    firstName: g.firstName.trim(),
+    lastName: g.lastName.trim(),
+    email: g.email.trim(),
+    phone: g.phone.trim(),
+    hasPhoto,
+    photoVersion: hasPhoto ? g.photoVersion : "",
+    venueName: g.venueName.trim().slice(0, MAX_LABEL),
+    invitations: 0,
+    barDiscountPercent: 0,
+    wallet: { balance: 0, currency: g.currency.trim() || "CHF", transfers: [] },
+    // A new guest is never an admin, so only a missing e-mail forbids the QR mail.
+    qrEmailAllowed: g.email.trim() !== "",
+    mustSetPassword: false,
+    association: g.association.trim().slice(0, MAX_LABEL),
+    googleEmail: "",
+    googleLinkedBy: "",
+    googleLinkAvailable: g.googleLinkAllowed
+  });
+  return { schema: GUEST_PROJECTION_SCHEMA, payload, contentHash: sha256(payload), updatedAt: now };
+}
 function patchedProjection(data, fields, now) {
   if (data === void 0 || typeof data.payload !== "string") return null;
   let payload;
@@ -95,114 +269,6 @@ function patchedProjection(data, fields, now) {
 
 // src/google.ts
 import * as logger from "firebase-functions/logger";
-
-// src/validate.ts
-var NAME = /^[^<>{}\\]{1,60}$/u;
-var PHONE = /^[0-9+() .-]{4,32}$/u;
-var DATE = /^(19|20)[0-9]{2}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/u;
-var EMAIL = /^[^@ \t\n\x0B\f\r]{1,64}@[^@ \t\n\x0B\f\r]{1,190}\.[^@ \t\n\x0B\f\r]{2,}$/u;
-var UID = /^[A-Za-z0-9]{6,128}$/u;
-var CODE_HASH = /^[0-9a-f]{64}$/u;
-var LINK_CODE = /^[A-Za-z0-9_-]{32,64}$/u;
-var LANGS = /* @__PURE__ */ new Set(["fr", "en", "es", "de", "it"]);
-var TYPES = ["PROFILE", "QR_EMAIL", "CLAIM", "GOOGLE_LINK", "GOOGLE_UNLINK"];
-var CLAIM_TYPES = ["ADMIN_MATCH", "LINK_CODE"];
-var GENDERS = /* @__PURE__ */ new Set(["FEMALE", "MALE", "NON_BINARY", "OTHER", "PREFER_NOT_TO_DISCLOSE"]);
-var WS = "\\t-\\r\\u001C-\\u0020\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000";
-var TRIM = new RegExp(`^[${WS}]+|[${WS}]+$`, "gu");
-var ASCII_RUN = /[ \t\n\x0B\f\r]+/g;
-var kotlinTrim = (s) => s.replace(TRIM, "");
-function cleanName(raw) {
-  if (typeof raw !== "string") return null;
-  const value = kotlinTrim(raw).replace(ASCII_RUN, " ");
-  return value.length > 0 && NAME.test(value) ? value : null;
-}
-function cleanPhone(raw) {
-  if (typeof raw !== "string") return null;
-  const value = kotlinTrim(raw);
-  return PHONE.test(value) ? value : null;
-}
-function cleanEmail(raw) {
-  if (typeof raw !== "string") return null;
-  const value = kotlinTrim(raw).toLowerCase();
-  return value.length <= 254 && EMAIL.test(value) ? value : null;
-}
-var str = (v) => typeof v === "string" ? v : void 0;
-function parseSignup(formId, data, orgId = "") {
-  if (String(data.status) !== "SUBMITTED") return null;
-  const uid = str(data.submittedUid);
-  if (uid === void 0 || !UID.test(uid)) return null;
-  const email = cleanEmail(data.email);
-  if (email === null) return null;
-  const firstName = cleanName(data.firstName);
-  if (firstName === null) return null;
-  const lastName = cleanName(data.lastName);
-  if (lastName === null) return null;
-  const phone = cleanPhone(data.phone);
-  if (phone === null) return null;
-  const dateOfBirth = str(data.dateOfBirth);
-  if (dateOfBirth === void 0 || !DATE.test(dateOfBirth)) return null;
-  const gender = String(data.gender);
-  if (!GENDERS.has(gender)) return null;
-  if (data.consent !== true) return null;
-  const photoPath = str(data.photoPath) ?? "";
-  const ownPhoto = `orgs/${orgId.trim()}/portalSignupPhotos/${formId.trim()}.jpg`;
-  const lang = str(data.lang);
-  return {
-    formId,
-    uid,
-    email,
-    firstName,
-    lastName,
-    phone,
-    dateOfBirth,
-    gender,
-    photoPath: photoPath === ownPhoto && orgId !== "" ? ownPhoto : "",
-    lang: lang !== void 0 && LANGS.has(lang) ? lang : "fr"
-  };
-}
-function parseRequest(requestId, data) {
-  const uid = str(data.uid);
-  if (uid === void 0 || !UID.test(uid)) return null;
-  const typeName = String(data.type);
-  if (!TYPES.includes(typeName)) return null;
-  const type = typeName;
-  if (requestId !== `${uid}_${type}`) return null;
-  const email = cleanEmail(data.email);
-  if (email === null) return null;
-  const status = data.status === null || data.status === void 0 ? "" : String(data.status);
-  if (type === "PROFILE") {
-    const firstName = cleanName(data.firstName);
-    const lastName = cleanName(data.lastName);
-    const phone = cleanPhone(data.phone);
-    if (firstName === null || lastName === null || phone === null) return null;
-    return { requestId, uid, type, status, email, firstName, lastName, phone, photo: data.photo === true };
-  }
-  if (type === "GOOGLE_LINK") {
-    const codeHash = str(data.codeHash);
-    if (codeHash === void 0 || !CODE_HASH.test(codeHash)) return null;
-    return { requestId, uid, type, status, email, firstName: "", lastName: "", phone: "", photo: false, codeHash };
-  }
-  return { requestId, uid, type, status, email, firstName: "", lastName: "", phone: "", photo: false };
-}
-function parseGoogleClaim(googleUid, data) {
-  if (!UID.test(googleUid)) return null;
-  const typeName = String(data.type);
-  if (!CLAIM_TYPES.includes(typeName)) return null;
-  const type = typeName;
-  const email = cleanEmail(data.email);
-  if (email === null) return null;
-  const status = data.status === null || data.status === void 0 ? "" : String(data.status);
-  let code2 = "";
-  if (type === "LINK_CODE") {
-    const raw = str(data.code);
-    if (raw === void 0 || !LINK_CODE.test(raw)) return null;
-    code2 = raw;
-  }
-  return { googleUid, type, status, email, code: code2 };
-}
-
-// src/google.ts
 var LINKED_BY_ADMIN = "ADMIN";
 var LINKED_BY_VOLUNTEER = "VOLUNTEER";
 var LINK_CODE_VALIDITY_MS = 10 * 60 * 1e3;
@@ -210,16 +276,10 @@ var STATUS_PENDING = "PENDING";
 var DONE = { status: "DONE", reason: "" };
 var rejected = (reason) => ({ status: "REJECTED", reason });
 var isClaimable = (d) => d.status === STATUS_PENDING;
-var stringOf = (v) => v === null || v === void 0 ? "" : typeof v === "string" ? v : String(v);
-function boolOf(v) {
-  if (typeof v === "boolean") return v;
-  if (typeof v === "string") return v.toLowerCase() === "true";
-  if (typeof v === "number") return Number.isFinite(v) && Math.trunc(v) !== 0;
-  return false;
-}
 var isBlank = (s) => kotlinTrim(s) === "";
-function googleVolunteerOf(id, d) {
+function holderOf(kind, id, d) {
   return {
+    kind,
     id,
     portalEnabled: boolOf(d.get("portalEnabled")),
     portalUid: stringOf(d.get("portalUid")),
@@ -257,32 +317,45 @@ function sameAddress(a, b) {
   const left = kotlinTrim(a).toLowerCase();
   return left !== "" && left === kotlinTrim(b).toLowerCase();
 }
-function isAliasValid(googleUid, aliasTarget, volunteers2) {
-  return aliasTarget !== null && !isBlank(aliasTarget) && volunteers2.some((v) => v.portalUid === aliasTarget && v.portalGoogleUid === googleUid);
+function isAliasValid(googleUid, aliasTarget, holders) {
+  return aliasTarget !== null && !isBlank(aliasTarget) && holders.some((v) => v.portalUid === aliasTarget && v.portalGoogleUid === googleUid);
 }
 var hasPortal = (v) => v.portalEnabled && !isBlank(v.portalUid);
-function adminMatch(c, volunteers2, domains, aliasTarget, anyAccount = false) {
-  if (!accountAllowed(c.email, domains, anyAccount)) return { kind: "REJECT", reason: "DOMAIN" };
-  if (isAliasValid(c.googleUid, aliasTarget, volunteers2)) return { kind: "ALREADY_LINKED" };
-  const candidates = volunteers2.filter((v) => hasPortal(v) && sameAddress(v.portalGoogleEmail, c.email));
-  if (candidates.length === 0) return { kind: "REJECT", reason: "NO_MATCH" };
-  if (candidates.length > 1) return { kind: "REJECT", reason: "AMBIGUOUS" };
-  const match = candidates[0];
-  const linkedBy = match.portalGoogleLinkedBy === LINKED_BY_VOLUNTEER ? LINKED_BY_VOLUNTEER : LINKED_BY_ADMIN;
-  return { kind: "LINK", volunteer: match, linkedBy };
+var sameHolder = (a, b) => a.kind === b.kind && a.id === b.id;
+function accountOf(uid, holders) {
+  return isBlank(uid) ? [] : holders.filter((h) => h.portalEnabled && h.portalUid === uid);
 }
-function linkCode(c, request, requestedAtMillis, now, volunteers2, domains, aliasTarget, anyAccount = false) {
+function primary(account) {
+  return account.find((h) => h.kind === "VOLUNTEER") ?? account[0];
+}
+function adminMatch(c, holders, domains, aliasTarget, anyAccount = false) {
+  if (!accountAllowed(c.email, domains, anyAccount)) return { kind: "REJECT", reason: "DOMAIN" };
+  if (isAliasValid(c.googleUid, aliasTarget, holders)) return { kind: "ALREADY_LINKED" };
+  const candidates = holders.filter((v) => hasPortal(v) && sameAddress(v.portalGoogleEmail, c.email));
+  const byUid = /* @__PURE__ */ new Map();
+  for (const h of candidates) byUid.set(h.portalUid, [...byUid.get(h.portalUid) ?? [], h]);
+  const people = [...byUid.values()].map(primary);
+  if (people.length === 0) return { kind: "REJECT", reason: "NO_MATCH" };
+  if (people.length > 1) return { kind: "REJECT", reason: "AMBIGUOUS" };
+  const match = people[0];
+  const linkedBy = match.portalGoogleLinkedBy === LINKED_BY_VOLUNTEER ? LINKED_BY_VOLUNTEER : LINKED_BY_ADMIN;
+  return { kind: "LINK", holder: match, linkedBy };
+}
+function linkCode(c, request, requestedAtMillis, now, holders, domains, aliasTarget, anyAccount = false) {
   const codeOk = request !== null && request.type === "GOOGLE_LINK" && request.status === STATUS_PENDING && c.code !== "" && request.codeHash === sha256(c.code) && requestedAtMillis !== null && now - requestedAtMillis < LINK_CODE_VALIDITY_MS;
   if (!codeOk) return { kind: "REJECT", reason: "CODE" };
-  const owner = volunteers2.find((v) => hasPortal(v) && v.portalUid === request.uid);
-  if (owner === void 0) return { kind: "REJECT", reason: "NO_MATCH" };
-  if (aliasTarget === owner.portalUid && owner.portalGoogleUid === c.googleUid) return { kind: "ALREADY_LINKED" };
-  if (!isBlank(owner.portalGoogleEmail)) return { kind: "REJECT", reason: "ALREADY_LINKED" };
+  const account = accountOf(request.uid, holders);
+  if (account.length === 0) return { kind: "REJECT", reason: "NO_MATCH" };
+  const owner = primary(account);
+  if (aliasTarget === owner.portalUid && account.some((h) => h.portalGoogleUid === c.googleUid)) {
+    return { kind: "ALREADY_LINKED" };
+  }
+  if (account.some((h) => !isBlank(h.portalGoogleEmail))) return { kind: "REJECT", reason: "ALREADY_LINKED" };
   if (!accountAllowed(c.email, domains, anyAccount)) return { kind: "REJECT", reason: "DOMAIN" };
-  const others = volunteers2.filter((v) => v.id !== owner.id);
+  const others = holders.filter((h) => !account.some((a) => sameHolder(a, h)));
   if (others.some((v) => v.portalGoogleUid === c.googleUid)) return { kind: "REJECT", reason: "TAKEN" };
   if (others.some((v) => sameAddress(v.portalGoogleEmail, c.email))) return { kind: "REJECT", reason: "TAKEN" };
-  return { kind: "LINK", volunteer: owner, linkedBy: LINKED_BY_VOLUNTEER };
+  return { kind: "LINK", holder: owner, linkedBy: LINKED_BY_VOLUNTEER };
 }
 function canUnlink(owner) {
   if (owner === null) return "NO_ACCESS";
@@ -293,10 +366,26 @@ var errorCode = (e) => {
   const code2 = e?.code;
   return code2 === void 0 ? "" : String(code2);
 };
-var volunteersOf = (db, orgId) => db.collection(`orgs/${orgId}/volunteers`);
+var COLLECTION = { VOLUNTEER: "volunteers", GUEST: "guests" };
+var PAGE = { VOLUNTEER: "volunteerPortal", GUEST: "guestPortal" };
+var holderRef = (db, orgId, h) => db.doc(`orgs/${orgId}/${COLLECTION[h.kind]}/${h.id}`);
 var aliasRef = (db, orgId, googleUid) => db.doc(`orgs/${orgId}/portalGoogleAccounts/${googleUid}`);
-var projectionRef = (db, orgId, portalUid) => db.doc(`orgs/${orgId}/volunteerPortal/${portalUid}`);
+var pageRef = (db, orgId, kind, portalUid) => db.doc(`orgs/${orgId}/${PAGE[kind]}/${portalUid}`);
 var GOOGLE_FIELDS = ["portalEnabled", "portalUid", "portalGoogleEmail", "portalGoogleUid", "portalGoogleLinkedBy"];
+var GUEST_FIELDS = [...GOOGLE_FIELDS, "isTemporaryGuest", "isVolunteerBenefit", "lastModified"];
+async function loadHolders(db, orgId) {
+  const [volunteers2, guestSpace] = await Promise.all([
+    db.collection(`orgs/${orgId}/volunteers`).select(...GOOGLE_FIELDS).get(),
+    guestPortalEnabled(db, orgId)
+  ]);
+  const holders = volunteers2.docs.map((d) => holderOf("VOLUNTEER", d.id, d));
+  if (!guestSpace) return holders;
+  const guests2 = await db.collection(`orgs/${orgId}/guests`).select(...GUEST_FIELDS).get();
+  return [...holders, ...guestsByRecency(guests2.docs.filter(isPermanentGuest)).map((d) => holderOf("GUEST", d.id, d))];
+}
+function guestsByRecency(docs) {
+  return docs.map((d, i) => ({ d, i, at: millisOf(d.get("lastModified")) ?? 0 })).sort((a, b) => b.at - a.at || a.i - b.i).map((x) => x.d);
+}
 async function googleOn(db, orgId) {
   return await institutionSetting(db, orgId, "volunteer_portal_google_enabled") === "true";
 }
@@ -350,31 +439,30 @@ async function processClaim(db, orgId, googleUid, claimed) {
   const c = parseGoogleClaim(googleUid, claimed);
   if (c === null) return rejected("INVALID");
   const now = Date.now();
-  const [all, domainSetting, anyAccount, aliasSnap] = await Promise.all([
-    volunteersOf(db, orgId).select(...GOOGLE_FIELDS).get(),
+  const [holders, domainSetting, anyAccount, aliasSnap] = await Promise.all([
+    loadHolders(db, orgId),
     institutionSetting(db, orgId, "volunteer_portal_google_domains"),
     anyAccountOn(db, orgId),
     aliasRef(db, orgId, googleUid).get()
   ]);
-  const volunteers2 = all.docs.map((d) => googleVolunteerOf(d.id, d));
   const domains = parseDomains(domainSetting);
   const rawTarget = aliasSnap.exists ? aliasSnap.get("volunteerUid") : void 0;
   let aliasTarget = typeof rawTarget === "string" ? rawTarget : null;
-  if (aliasTarget !== null && !isAliasValid(googleUid, aliasTarget, volunteers2)) {
+  if (aliasTarget !== null && !isAliasValid(googleUid, aliasTarget, holders)) {
     await aliasRef(db, orgId, googleUid).delete();
     aliasTarget = null;
   }
   let linkRequest = null;
   let decision;
   if (c.type === "ADMIN_MATCH") {
-    decision = adminMatch(c, volunteers2, domains, aliasTarget, anyAccount);
+    decision = adminMatch(c, holders, domains, aliasTarget, anyAccount);
   } else {
     const found = await db.collection(`orgs/${orgId}/portalRequests`).where("type", "==", "GOOGLE_LINK").where("codeHash", "==", sha256(c.code)).limit(1).get();
     const doc = found.docs[0];
     linkRequest = doc?.ref ?? null;
     const request = doc !== void 0 ? parseRequest(doc.id, doc.data()) : null;
     const requestedAt = doc !== void 0 ? millisOf(doc.get("requestedAt")) : null;
-    decision = linkCode(c, request, requestedAt, now, volunteers2, domains, aliasTarget, anyAccount);
+    decision = linkCode(c, request, requestedAt, now, holders, domains, aliasTarget, anyAccount);
   }
   let result;
   switch (decision.kind) {
@@ -384,7 +472,7 @@ async function processClaim(db, orgId, googleUid, claimed) {
       result = DONE;
       break;
     case "LINK":
-      result = await writeLink(db, orgId, c, decision.volunteer, decision.linkedBy, aliasTarget);
+      result = await writeLink(db, orgId, c, accountOf(decision.holder.portalUid, holders), decision.linkedBy, aliasTarget);
       break;
   }
   if (result.status === "DONE" && linkRequest !== null) {
@@ -393,38 +481,43 @@ async function processClaim(db, orgId, googleUid, claimed) {
   return result;
 }
 var sameGoogleFields = (a, b) => a.portalEnabled === b.portalEnabled && a.portalUid === b.portalUid && a.portalGoogleEmail === b.portalGoogleEmail && a.portalGoogleUid === b.portalGoogleUid && a.portalGoogleLinkedBy === b.portalGoogleLinkedBy;
-async function writeLink(db, orgId, c, decided, linkedBy, aliasTarget) {
+var linkedAddress = (h, email) => isBlank(h.portalGoogleEmail) ? email : kotlinTrim(h.portalGoogleEmail);
+async function writeLink(db, orgId, c, account, linkedBy, aliasTarget) {
   try {
     const allowed = await googleLinkAllowed(db, orgId);
+    const portalUid = account[0].portalUid;
+    const previousUids = [...new Set(account.map((h) => h.portalGoogleUid))].filter(
+      (u) => !isBlank(u) && u !== c.googleUid
+    );
     return await db.runTransaction(async (tx) => {
-      const ref = volunteersOf(db, orgId).doc(decided.id);
       const alias = aliasRef(db, orgId, c.googleUid);
-      const page = projectionRef(db, orgId, decided.portalUid);
-      const previousUid = decided.portalGoogleUid;
-      const previous = !isBlank(previousUid) && previousUid !== c.googleUid ? aliasRef(db, orgId, previousUid) : null;
-      const [snap, aliasSnap, pageSnap, previousSnap] = await Promise.all([
-        tx.get(ref),
+      const kinds = [...new Set(account.map((h) => h.kind))];
+      const [aliasSnap, snaps, pages, previous] = await Promise.all([
         tx.get(alias),
-        tx.get(page),
-        previous !== null ? tx.get(previous) : Promise.resolve(null)
+        Promise.all(account.map((h) => tx.get(holderRef(db, orgId, h)))),
+        Promise.all(kinds.map((k) => tx.get(pageRef(db, orgId, k, portalUid)))),
+        Promise.all(previousUids.map((u) => tx.get(aliasRef(db, orgId, u))))
       ]);
-      if (!snap.exists || !sameGoogleFields(googleVolunteerOf(snap.id, snap), decided)) return rejected("SAVE_FAILED");
+      const changed = snaps.some((snap, i) => !snap.exists || !sameGoogleFields(holderOf(account[i].kind, snap.id, snap), account[i]));
+      if (changed) return rejected("SAVE_FAILED");
       const target = aliasSnap.exists ? aliasSnap.get("volunteerUid") : void 0;
       if ((typeof target === "string" ? target : null) !== aliasTarget) return rejected("SAVE_FAILED");
       const now = Date.now();
-      const email = isBlank(decided.portalGoogleEmail) ? c.email : kotlinTrim(decided.portalGoogleEmail);
-      if (previous !== null && previousSnap?.exists && previousSnap.get("volunteerUid") === decided.portalUid) {
-        tx.delete(previous);
-      }
-      tx.set(alias, { volunteerUid: decided.portalUid, email: c.email, linkedBy, linkedAt: now });
-      tx.update(ref, {
-        portalGoogleEmail: email,
-        portalGoogleUid: c.googleUid,
-        portalGoogleLinkedBy: linkedBy,
-        lastModified: Math.max(now, (millisOf(snap.get("lastModified")) ?? 0) + 1)
+      for (const p of previous) if (p.exists && p.get("volunteerUid") === portalUid) tx.delete(p.ref);
+      tx.set(alias, { volunteerUid: portalUid, email: c.email, linkedBy, linkedAt: now });
+      snaps.forEach((snap, i) => {
+        tx.update(snap.ref, {
+          portalGoogleEmail: linkedAddress(account[i], c.email),
+          portalGoogleUid: c.googleUid,
+          portalGoogleLinkedBy: linkedBy,
+          lastModified: Math.max(now, (millisOf(snap.get("lastModified")) ?? 0) + 1)
+        });
       });
-      const patch = patchedProjection(pageSnap.data(), googleProjectionFields(email, linkedBy, allowed), now);
-      if (patch !== null) tx.update(page, patch);
+      kinds.forEach((kind, i) => {
+        const shown = account.find((h) => h.kind === kind);
+        const patch = patchedProjection(pages[i].data(), googleProjectionFields(linkedAddress(shown, c.email), linkedBy, allowed), now);
+        if (patch !== null) tx.update(pages[i].ref, patch);
+      });
       return DONE;
     });
   } catch (e) {
@@ -434,25 +527,48 @@ async function writeLink(db, orgId, c, decided, linkedBy, aliasTarget) {
 }
 async function unlinkGoogle(db, orgId, requestId, uid) {
   try {
-    const allowed = await googleLinkAllowed(db, orgId);
+    const [allowed, guestSpace] = await Promise.all([googleLinkAllowed(db, orgId), guestPortalEnabled(db, orgId)]);
     return await db.runTransaction(async (tx) => {
-      const linked = await tx.get(volunteersOf(db, orgId).where("portalUid", "==", uid));
-      const doc = linked.docs.find((d) => boolOf(d.get("portalEnabled")) && stringOf(d.get("portalUid")) === uid);
-      const owner = doc !== void 0 ? googleVolunteerOf(doc.id, doc) : null;
-      const reason = canUnlink(owner);
-      if (reason !== null || doc === void 0) return reason ?? "NO_ACCESS";
-      const page = projectionRef(db, orgId, uid);
-      const pageSnap = await tx.get(page);
+      const [linkedVolunteers, linkedGuests] = await Promise.all([
+        tx.get(db.collection(`orgs/${orgId}/volunteers`).where("portalUid", "==", uid)),
+        tx.get(db.collection(`orgs/${orgId}/guests`).where("portalUid", "==", uid))
+      ]);
+      const permanentGuests = guestsByRecency(linkedGuests.docs.filter(isPermanentGuest));
+      const holders = [
+        ...linkedVolunteers.docs.map((d) => holderOf("VOLUNTEER", d.id, d)),
+        ...guestSpace ? permanentGuests.map((d) => holderOf("GUEST", d.id, d)) : []
+      ];
+      const account = accountOf(uid, holders);
+      const accountGuests = account.length === 0 ? [] : permanentGuests;
+      const everyone = [
+        ...account,
+        ...accountGuests.map((d) => holderOf("GUEST", d.id, d)).filter((g) => !account.some((a) => sameHolder(a, g)))
+      ];
+      const decider = everyone.find((h) => h.portalGoogleLinkedBy === LINKED_BY_ADMIN) ?? (account.length > 0 ? primary(account) : null);
+      const reason = canUnlink(decider);
+      if (reason !== null) return reason;
+      const docs = [
+        ...linkedVolunteers.docs.filter((d) => account.some((a) => a.kind === "VOLUNTEER" && a.id === d.id)),
+        ...accountGuests
+      ];
+      const pageKinds = [...new Set(everyone.map((h) => h.kind))];
+      const pages = await Promise.all(pageKinds.map((k) => tx.get(pageRef(db, orgId, k, uid))));
       const now = Date.now();
-      if (!isBlank(owner.portalGoogleUid)) tx.delete(aliasRef(db, orgId, owner.portalGoogleUid));
-      tx.update(doc.ref, {
-        portalGoogleEmail: "",
-        portalGoogleUid: "",
-        portalGoogleLinkedBy: "",
-        lastModified: Math.max(now, (millisOf(doc.get("lastModified")) ?? 0) + 1)
+      for (const googleUid of new Set(everyone.map((h) => h.portalGoogleUid))) {
+        if (!isBlank(googleUid)) tx.delete(aliasRef(db, orgId, googleUid));
+      }
+      for (const doc of docs) {
+        tx.update(doc.ref, {
+          portalGoogleEmail: "",
+          portalGoogleUid: "",
+          portalGoogleLinkedBy: "",
+          lastModified: Math.max(now, (millisOf(doc.get("lastModified")) ?? 0) + 1)
+        });
+      }
+      pages.forEach((page) => {
+        const patch = patchedProjection(page.data(), googleProjectionFields("", "", allowed), now);
+        if (patch !== null) tx.update(page.ref, patch);
       });
-      const patch = patchedProjection(pageSnap.data(), googleProjectionFields("", "", allowed), now);
-      if (patch !== null) tx.update(page, patch);
       return "";
     });
   } catch (e) {
@@ -783,12 +899,17 @@ var errorCode2 = (e) => {
 };
 var signupPhotoPath = (orgId, formId) => `orgs/${orgId.trim()}/portalSignupPhotos/${formId.trim()}.jpg`;
 var volunteerPhotoPath = (orgId, id) => `orgs/${orgId.trim()}/profilePhotos/volunteers/${id.trim()}.jpg`;
+var guestPhotoPath = (orgId, nanoId) => `orgs/${orgId.trim()}/profilePhotos/guests/${nanoId.trim()}.jpg`;
 var portalPhotoPath = (orgId, uid) => `orgs/${orgId}/portalPhotos/${uid}.jpg`;
 var portalUploadPath = (orgId, uid) => `orgs/${orgId}/portalPhotoUploads/${uid}.jpg`;
 async function onSignupDocument(db, bucket, orgId, formId, current) {
   if (current === void 0 || !isClaimable2(current)) return;
   if (!await portalEnabled(db, orgId)) {
     logger3.info("signup skipped", { orgId, formId, reason: "PORTAL_OFF" });
+    return;
+  }
+  if (current.holderType === "GUEST" && !await guestPortalEnabled(db, orgId)) {
+    logger3.info("signup skipped", { orgId, formId, reason: "GUEST_SPACE_OFF" });
     return;
   }
   const ref = db.doc(`orgs/${orgId}/volunteerSignupForms/${formId}`);
@@ -815,6 +936,11 @@ async function processClaimed(db, bucket, orgId, formId, ref, claimed) {
     return "INVALID";
   }
   const photo = await readSignupPhoto(db, bucket, orgId, submission.photoPath);
+  if (submission.holderType === "GUEST") {
+    const outcome2 = await registerGuest(db, bucket, orgId, submission, photo);
+    await finish(bucket, ref, orgId, formId);
+    return outcome2;
+  }
   const volunteers2 = await db.collection(`orgs/${orgId}/volunteers`).select("email", "portalUid", "profilePhotoPath", "profilePhotoUrl").get();
   let outcome;
   if (volunteers2.docs.some((d) => d.get("portalUid") === submission.uid)) {
@@ -929,6 +1055,120 @@ async function create(db, bucket, orgId, submission, photo) {
   }
   await batch.commit();
 }
+async function registerGuest(db, bucket, orgId, submission, photo) {
+  const all = await db.collection(`orgs/${orgId}/guests`).select("email", "portalUid", "isTemporaryGuest", "isVolunteerBenefit").get();
+  const permanents = all.docs.filter(isPermanentGuest);
+  if (permanents.some((d) => d.get("portalUid") === submission.uid)) return "ALREADY_LINKED";
+  const sameEmail = permanents.find(
+    (d) => typeof d.get("email") === "string" && d.get("email").trim().toLowerCase() === submission.email && isBlank2(d.get("portalUid"))
+  );
+  if (sameEmail !== void 0) {
+    await linkGuest(db, bucket, orgId, sameEmail.ref, submission, photo);
+    return "LINKED";
+  }
+  await createGuest(db, bucket, orgId, submission, photo);
+  return "CREATED";
+}
+async function linkGuest(db, bucket, orgId, ref, submission, photo) {
+  const linked = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists || !isBlank2(snap.get("portalUid")) || !isPermanentGuest(snap)) return null;
+    tx.update(ref, {
+      portalEnabled: true,
+      portalUid: submission.uid,
+      lastModified: Math.max(Date.now(), (millisOf(snap.get("lastModified")) ?? 0) + 1)
+    });
+    return snap.data();
+  });
+  if (linked === null) throw Object.assign(new Error("link conflict"), { code: "LINK_CONFLICT" });
+  if (photo === null || !isBlank2(linked.profilePhotoPath) || !isBlank2(linked.profilePhotoUrl)) return;
+  const path = guestPhotoPath(orgId, ref.id);
+  await saveJpeg(bucket, path, photo);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists || !isBlank2(snap.get("profilePhotoPath")) || !isBlank2(snap.get("profilePhotoUrl"))) return;
+    tx.update(ref, {
+      profilePhotoPath: path,
+      lastModified: Math.max(Date.now(), (millisOf(snap.get("lastModified")) ?? 0) + 1)
+    });
+  });
+}
+async function createGuest(db, bucket, orgId, submission, photo) {
+  const nanoId = volunteerId();
+  const sameAccount = await db.collection(`orgs/${orgId}/volunteers`).where("portalUid", "==", submission.uid).get();
+  const volunteerOwnsPhoto = sameAccount.docs.some(
+    (d) => !isBlankValue(d.get("profilePhotoPath")) || !isBlankValue(d.get("profilePhotoUrl"))
+  );
+  let profilePhotoPath = "";
+  if (photo !== null) {
+    profilePhotoPath = guestPhotoPath(orgId, nanoId);
+    await saveJpeg(bucket, profilePhotoPath, photo);
+    if (!volunteerOwnsPhoto) await saveJpeg(bucket, portalPhotoPath(orgId, submission.uid), photo);
+  }
+  const lastName = submission.lastName.toUpperCase();
+  const now = Date.now();
+  const guest = {
+    nanoId,
+    name: submission.firstName,
+    lastNameAbbreviation: lastName,
+    email: submission.email,
+    phone: submission.phone,
+    invitations: 0,
+    venueName: submission.venueName,
+    notes: "",
+    isVolunteerBenefit: false,
+    volunteerId: null,
+    lastModified: now,
+    isTemporaryGuest: false,
+    temporaryArtistName: "",
+    temporaryEventDate: null,
+    temporaryContactPhone: "",
+    temporaryVenueName: "",
+    temporaryContactEmail: "",
+    temporaryPortalEmail: "",
+    temporaryAccessIds: "",
+    temporaryEntryValidatedAt: 0,
+    temporaryEntryValidatedBy: "",
+    nfcCardUid: "",
+    nfcCardUidHash: "",
+    isAdmin: false,
+    barDiscountPercent: 0,
+    portalEnabled: true,
+    portalUid: submission.uid,
+    portalGoogleEmail: "",
+    portalGoogleUid: "",
+    portalGoogleLinkedBy: "",
+    ...profilePhotoPath !== "" ? { profilePhotoPath } : {}
+  };
+  const [currency, association, qrEnabled, googleAllowed] = await Promise.all([
+    institutionSetting(db, orgId, "currency_code"),
+    associationName(db, orgId),
+    institutionSetting(db, orgId, "volunteer_portal_qr_enabled"),
+    googleLinkAllowed(db, orgId)
+  ]);
+  const projection = minimalGuestProjection({
+    firstName: submission.firstName,
+    lastName,
+    email: submission.email,
+    phone: submission.phone,
+    venueName: submission.venueName,
+    photoVersion: profilePhotoPath !== "" && !volunteerOwnsPhoto ? sha256(profilePhotoPath).slice(0, 16) : "",
+    currency: currency.trim().toUpperCase(),
+    association,
+    googleLinkAllowed: googleAllowed
+  }, now);
+  const batch = db.batch();
+  batch.create(db.doc(`orgs/${orgId}/guests/${nanoId}`), guest);
+  batch.set(db.doc(`orgs/${orgId}/guestPortal/${submission.uid}`), projection);
+  if (qrEnabled.trim() !== "false") {
+    batch.set(db.doc(`orgs/${orgId}/guestPortalQr/${submission.uid}`), {
+      schema: 1,
+      payload: nanoId,
+      name: `${submission.firstName} ${lastName}`.trim()
+    });
+  }
+  await batch.commit();
+}
 async function finish(bucket, ref, orgId, formId) {
   await bucket.file(signupPhotoPath(orgId, formId)).delete({ ignoreNotFound: true }).catch(() => void 0);
   await ref.delete();
@@ -940,15 +1180,11 @@ var MAX_LABEL2 = 80;
 var DONE2 = { status: "DONE", reason: "" };
 var rejected2 = (reason) => ({ status: "REJECTED", reason });
 var isClaimable3 = (d) => d.status === STATUS_PENDING2 && d.type !== "GOOGLE_LINK";
-var stringOf2 = (v) => v === null || v === void 0 ? "" : typeof v === "string" ? v : String(v);
-function boolOf2(v) {
-  if (typeof v === "boolean") return v;
-  if (typeof v === "string") return v.toLowerCase() === "true";
-  if (typeof v === "number") return Number.isFinite(v) && Math.trunc(v) !== 0;
-  return false;
-}
-var isBlank3 = (v) => kotlinTrim(stringOf2(v)) === "";
-var isOwner = (d, uid) => boolOf2(d.get("portalEnabled")) && stringOf2(d.get("portalUid")) === uid;
+var GUEST_TYPES = ["GUEST_PROFILE", "GUEST_QR_EMAIL"];
+var Deferred = class extends Error {
+  code = "DEFERRED";
+};
+var isOwner = (d, uid) => boolOf(d.get("portalEnabled")) && stringOf(d.get("portalUid")) === uid;
 var errorCode3 = (e) => {
   const code2 = e?.code;
   return code2 === void 0 ? "" : String(code2);
@@ -956,17 +1192,27 @@ var errorCode3 = (e) => {
 async function onRequestDocument(db, bucket, mail, orgId, requestId, current) {
   if (current === void 0 || !isClaimable3(current)) return;
   let result;
+  const ref = db.doc(`orgs/${orgId}/portalRequests/${requestId}`);
   try {
     if (!await portalEnabled(db, orgId)) {
       logger4.info("request skipped", { orgId, requestId, reason: "PORTAL_OFF" });
       return;
     }
-    const ref = db.doc(`orgs/${orgId}/portalRequests/${requestId}`);
+    const wait = await waitReason(db, orgId, current.type);
+    if (wait !== null) {
+      logger4.info("request skipped", { orgId, requestId, reason: wait });
+      return;
+    }
     const claimed = await claim(ref, isClaimable3);
     if (claimed === null) return;
     result = await processClaimed2(db, bucket, mail, orgId, requestId, claimed);
     await complete(ref, result);
   } catch (e) {
+    if (e instanceof Deferred) {
+      await release(ref).catch(() => void 0);
+      logger4.info("request skipped", { orgId, requestId, reason: e.message });
+      return;
+    }
     logger4.error("request failed", { orgId, requestId, reason: "FAILED", code: errorCode3(e) });
     return;
   }
@@ -977,16 +1223,37 @@ async function onRequestDocument(db, bucket, mail, orgId, requestId, current) {
   }
   logger4.info("request processed", { orgId, requestId, status: result.status, reason: result.reason });
 }
+async function waitReason(db, orgId, type) {
+  if (!GUEST_TYPES.includes(type)) return null;
+  if (!await guestPortalEnabled(db, orgId)) return "GUEST_SPACE_OFF";
+  if (type === "GUEST_QR_EMAIL" && await publishedTemplate(db, orgId) === null) return "NO_TEMPLATE";
+  return null;
+}
+async function publishedTemplate(db, orgId) {
+  return parseMailTemplate((await db.doc(`orgs/${orgId}/portalMail/default`).get()).data());
+}
+async function release(ref) {
+  await ref.set(
+    { status: STATUS_PENDING2, processingAt: FieldValue.delete(), processingDevice: FieldValue.delete() },
+    { merge: true }
+  );
+}
 async function processClaimed2(db, bucket, mail, orgId, requestId, claimed) {
   const request = parseRequest(requestId, claimed);
   if (request === null) return rejected2("INVALID");
   switch (request.type) {
     case "PROFILE":
-      return updateProfile(db, bucket, orgId, requestId, request);
+      return updateProfile(db, bucket, orgId, requestId, request, "VOLUNTEER");
+    case "GUEST_PROFILE":
+      await checkGuestSpace(db, orgId);
+      return updateProfile(db, bucket, orgId, requestId, request, "GUEST");
     case "CLAIM":
       return handleClaim(db, orgId, requestId, request);
     case "QR_EMAIL":
       return sendQr(db, mail, orgId, request);
+    case "GUEST_QR_EMAIL":
+      await checkGuestSpace(db, orgId);
+      return sendGuestQr(db, mail, orgId, request);
     case "GOOGLE_UNLINK": {
       const reason = await unlinkGoogle(db, orgId, requestId, request.uid);
       return reason === "" ? DONE2 : rejected2(reason);
@@ -998,29 +1265,56 @@ async function processClaimed2(db, bucket, mail, orgId, requestId, claimed) {
 async function complete(ref, result) {
   await ref.set({ status: result.status, reason: result.reason, processedAt: Date.now() }, { merge: true });
 }
+async function checkGuestSpace(db, orgId) {
+  if (!await guestPortalEnabled(db, orgId)) throw new Deferred("GUEST_SPACE_OFF");
+}
 var volunteers = (db, orgId) => db.collection(`orgs/${orgId}/volunteers`);
-async function updateProfile(db, bucket, orgId, requestId, request) {
+var guests = (db, orgId) => db.collection(`orgs/${orgId}/guests`);
+var PROFILE_KINDS = {
+  VOLUNTEER: {
+    collection: volunteers,
+    page: "volunteerPortal",
+    photoPath: volunteerPhotoPath,
+    owner: (docs, uid) => docs.find((d) => isOwner(d, uid))
+  },
+  GUEST: {
+    collection: guests,
+    page: "guestPortal",
+    photoPath: guestPhotoPath,
+    owner: (docs, uid) => guestOwnerOf(docs, uid) ?? void 0
+  }
+};
+async function volunteerHasPhoto(db, orgId, uid) {
+  if (!await profilePhotosOn(db, orgId)) return false;
+  const linked = await volunteers(db, orgId).where("portalUid", "==", uid).get();
+  return linked.docs.some(
+    (d) => isOwner(d, uid) && (!isBlankValue(d.get("profilePhotoPath")) || !isBlankValue(d.get("profilePhotoUrl")))
+  );
+}
+async function updateProfile(db, bucket, orgId, requestId, request, kind) {
   try {
-    return await saveProfile(db, bucket, orgId, requestId, request);
+    return await saveProfile(db, bucket, orgId, requestId, request, kind);
   } finally {
     if (request.photo) {
       await bucket.file(portalUploadPath(orgId, request.uid)).delete({ ignoreNotFound: true }).catch(() => void 0);
     }
   }
 }
-async function saveProfile(db, bucket, orgId, requestId, request) {
-  const projectionRef2 = db.doc(`orgs/${orgId}/volunteerPortal/${request.uid}`);
+async function saveProfile(db, bucket, orgId, requestId, request, kind) {
+  const k = PROFILE_KINDS[kind];
+  const projectionRef = db.doc(`orgs/${orgId}/${k.page}/${request.uid}`);
   let photo = null;
   let ownerId = "";
   if (request.photo) {
-    const linked = await volunteers(db, orgId).where("portalUid", "==", request.uid).get();
-    const owner = linked.docs.find((d) => isOwner(d, request.uid));
+    const linked = await k.collection(db, orgId).where("portalUid", "==", request.uid).get();
+    const owner = k.owner(linked.docs, request.uid);
     if (owner === void 0) return rejected2("NO_ACCESS");
     if (!await profilePhotosOn(db, orgId)) return rejected2("INVALID");
     const bytes = await readJpeg(bucket, portalUploadPath(orgId, request.uid));
     if (bytes === null) return rejected2("INVALID");
+    const accountPhoto = kind === "VOLUNTEER" || !await volunteerHasPhoto(db, orgId, request.uid);
     try {
-      photo = await savePhoto(bucket, orgId, owner.id, request.uid, bytes);
+      photo = await savePhoto(bucket, orgId, k.photoPath(orgId, owner.id), accountPhoto ? request.uid : null, bytes);
     } catch (e) {
       logger4.error("photo not saved", { orgId, requestId, code: errorCode3(e) });
       return rejected2("SAVE_FAILED");
@@ -1029,11 +1323,11 @@ async function saveProfile(db, bucket, orgId, requestId, request) {
   }
   try {
     return await db.runTransaction(async (tx) => {
-      const linked = await tx.get(volunteers(db, orgId).where("portalUid", "==", request.uid));
-      const owner = linked.docs.find((d) => isOwner(d, request.uid));
+      const linked = await tx.get(k.collection(db, orgId).where("portalUid", "==", request.uid));
+      const owner = k.owner(linked.docs, request.uid);
       if (owner === void 0) return rejected2("NO_ACCESS");
       if (photo !== null && owner.id !== ownerId) return rejected2("SAVE_FAILED");
-      const projection = await tx.get(projectionRef2);
+      const projection = await tx.get(projectionRef);
       const now = Date.now();
       const lastName = request.lastName.toUpperCase();
       tx.update(owner.ref, {
@@ -1044,9 +1338,9 @@ async function saveProfile(db, bucket, orgId, requestId, request) {
         lastModified: Math.max(now, (millisOf(owner.get("lastModified")) ?? 0) + 1)
       });
       const fields = { firstName: request.firstName, lastName, phone: request.phone };
-      if (photo !== null) Object.assign(fields, { hasPhoto: true, photoVersion: photo.version });
+      if (photo !== null && photo.account) Object.assign(fields, { hasPhoto: true, photoVersion: photo.version });
       const patch = patchedProjection(projection.data(), fields, now);
-      if (patch !== null) tx.update(projectionRef2, patch);
+      if (patch !== null) tx.update(projectionRef, patch);
       return DONE2;
     });
   } catch (e) {
@@ -1054,39 +1348,84 @@ async function saveProfile(db, bucket, orgId, requestId, request) {
     return rejected2("SAVE_FAILED");
   }
 }
-async function savePhoto(bucket, orgId, volunteerId2, uid, bytes) {
-  const path = volunteerPhotoPath(orgId, volunteerId2);
+async function savePhoto(bucket, orgId, path, uid, bytes) {
   const token = randomUUID();
   await bucket.file(path).save(bytes, {
     contentType: "image/jpeg",
     resumable: false,
     metadata: { metadata: { firebaseStorageDownloadTokens: token } }
   });
-  await bucket.file(portalPhotoPath(orgId, uid)).save(bytes, { contentType: "image/jpeg", resumable: false });
+  if (uid !== null) {
+    await bucket.file(portalPhotoPath(orgId, uid)).save(bytes, { contentType: "image/jpeg", resumable: false });
+  }
   const url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(path)}?alt=media&token=${token}`;
-  return { path, url, version: sha256(url).slice(0, 16) };
+  return { path, url, version: sha256(url).slice(0, 16), account: uid !== null };
+}
+function claimAddress(d) {
+  if (!boolOf(d.get("isTemporaryGuest"))) return kotlinTrim(stringOf(d.get("email"))).toLowerCase();
+  const portal = stringOf(d.get("temporaryPortalEmail"));
+  const address = kotlinTrim(portal) === "" ? stringOf(d.get("temporaryContactEmail")) : portal;
+  return kotlinTrim(address).toLowerCase();
 }
 async function handleClaim(db, orgId, requestId, request) {
-  const all = await volunteers(db, orgId).select("email", "portalEnabled", "portalUid").get();
-  if (all.docs.some((d) => isOwner(d, request.uid))) return DONE2;
-  const sameEmail = (d) => boolOf2(d.get("portalEnabled")) && kotlinTrim(stringOf2(d.get("email"))).toLowerCase() === request.email;
-  const candidates = all.docs.filter(sameEmail);
-  const free = candidates.filter((d) => isBlank3(d.get("portalUid")));
-  if (candidates.length === 0) return rejected2("NO_ACCESS");
-  if (free.length !== 1) return rejected2("LINKED_ELSEWHERE");
-  const ref = free[0].ref;
+  const uid = request.uid;
+  const [allVolunteers, allGuests, guestSpace, tempSpace] = await Promise.all([
+    volunteers(db, orgId).select("email", "portalEnabled", "portalUid").get(),
+    guests(db, orgId).select(
+      "email",
+      "portalEnabled",
+      "portalUid",
+      "isTemporaryGuest",
+      "isVolunteerBenefit",
+      "temporaryPortalEmail",
+      "temporaryContactEmail"
+    ).get(),
+    guestPortalEnabled(db, orgId),
+    temporaryGuestPortalEnabled(db, orgId)
+  ]);
+  const sameEmail = (d) => boolOf(d.get("portalEnabled")) && kotlinTrim(stringOf(d.get("email"))).toLowerCase() === request.email;
+  const owner = allVolunteers.docs.some((d) => isOwner(d, uid));
+  let volunteerToLink = null;
+  if (!owner) {
+    const candidates = allVolunteers.docs.filter(sameEmail);
+    const free = candidates.filter((d) => isBlankValue(d.get("portalUid")));
+    if (candidates.length > 0 && free.length !== 1) return rejected2("LINKED_ELSEWHERE");
+    volunteerToLink = free[0]?.ref ?? null;
+  }
+  const claimable = (d) => {
+    if (!boolOf(d.get("portalEnabled"))) return false;
+    if (boolOf(d.get("isTemporaryGuest"))) return tempSpace;
+    if (boolOf(d.get("isVolunteerBenefit"))) return false;
+    return guestSpace;
+  };
+  const open = allGuests.docs.filter(claimable);
+  const guestOwned = open.some((d) => stringOf(d.get("portalUid")) === uid);
+  const targets = open.filter((d) => stringOf(d.get("portalUid")) !== uid && claimAddress(d) === request.email);
+  const foreign = targets.filter((d) => !isBlankValue(d.get("portalUid")));
+  const hasAccess = owner || guestOwned;
+  if (foreign.length > 0 && !hasAccess) return rejected2("LINKED_ELSEWHERE");
+  const freeGuests = targets.filter((d) => isBlankValue(d.get("portalUid")));
+  if (volunteerToLink === null && freeGuests.length === 0) return hasAccess ? DONE2 : rejected2("NO_ACCESS");
+  const guestStillFree = (d) => claimable(d) && claimAddress(d) === request.email && isBlankValue(d.get("portalUid"));
   try {
     return await db.runTransaction(async (tx) => {
-      const linked = await tx.get(volunteers(db, orgId).where("portalUid", "==", request.uid));
-      if (linked.docs.some((d) => isOwner(d, request.uid))) return DONE2;
-      const snap = await tx.get(ref);
-      if (!snap.exists || !sameEmail(snap) || !isBlank3(snap.get("portalUid"))) {
+      const [linked, volunteerSnap, ...guestSnaps] = await Promise.all([
+        tx.get(volunteers(db, orgId).where("portalUid", "==", uid)),
+        volunteerToLink !== null ? tx.get(volunteerToLink) : Promise.resolve(null),
+        ...freeGuests.map((d) => tx.get(d.ref))
+      ]);
+      const linkVolunteer = volunteerSnap !== null && !linked.docs.some((d) => isOwner(d, uid));
+      if (linkVolunteer && (!volunteerSnap.exists || !sameEmail(volunteerSnap) || !isBlankValue(volunteerSnap.get("portalUid")))) {
         return rejected2("SAVE_FAILED");
       }
-      tx.update(ref, {
-        portalUid: request.uid,
-        lastModified: Math.max(Date.now(), (millisOf(snap.get("lastModified")) ?? 0) + 1)
+      if (guestSnaps.some((g) => !g.exists || !guestStillFree(g))) return rejected2("SAVE_FAILED");
+      const now = Date.now();
+      const linkFields = (snap) => ({
+        portalUid: uid,
+        lastModified: Math.max(now, (millisOf(snap.get("lastModified")) ?? 0) + 1)
       });
+      if (linkVolunteer) tx.update(volunteerSnap.ref, linkFields(volunteerSnap));
+      for (const g of guestSnaps) tx.update(g.ref, linkFields(g));
       return DONE2;
     });
   } catch (e) {
@@ -1098,8 +1437,8 @@ async function sendQr(db, mail, orgId, request) {
   const linked = await volunteers(db, orgId).where("portalUid", "==", request.uid).get();
   const owner = linked.docs.find((d) => isOwner(d, request.uid));
   if (owner === void 0) return rejected2("NO_ACCESS");
-  if (boolOf2(owner.get("isAdmin"))) return rejected2("NOT_ALLOWED");
-  const email = kotlinTrim(stringOf2(owner.get("email")));
+  if (boolOf(owner.get("isAdmin"))) return rejected2("NOT_ALLOWED");
+  const email = kotlinTrim(stringOf(owner.get("email")));
   if (email === "") return rejected2("NO_EMAIL");
   const to = safeRecipient(email);
   if (to === null) return rejected2("NO_EMAIL");
@@ -1107,7 +1446,22 @@ async function sendQr(db, mail, orgId, request) {
     db.doc(`orgs/${orgId}/portalMail/default`).get(),
     associationName(db, orgId)
   ]);
-  const message = await buildQrMail(parseMailTemplate(template.data()), stringOf2(owner.get("name")), owner.id);
+  const message = await buildQrMail(parseMailTemplate(template.data()), stringOf(owner.get("name")), owner.id);
+  const result = await sendMail({ ...message, to, fromName: association.trim().slice(0, MAX_LABEL2) }, mail);
+  return result.sent ? DONE2 : rejected2("SEND_FAILED");
+}
+async function sendGuestQr(db, mail, orgId, request) {
+  const linked = await guests(db, orgId).where("portalUid", "==", request.uid).get();
+  const owner = guestOwnerOf(linked.docs, request.uid);
+  if (owner === null) return rejected2("NO_ACCESS");
+  if (boolOf(owner.get("isAdmin"))) return rejected2("NOT_ALLOWED");
+  const email = kotlinTrim(stringOf(owner.get("email")));
+  if (email === "") return rejected2("NO_EMAIL");
+  const to = safeRecipient(email);
+  if (to === null) return rejected2("NO_EMAIL");
+  const [template, association] = await Promise.all([publishedTemplate(db, orgId), associationName(db, orgId)]);
+  if (template === null) throw new Deferred("NO_TEMPLATE");
+  const message = await buildQrMail(template, stringOf(owner.get("name")), owner.id);
   const result = await sendMail({ ...message, to, fromName: association.trim().slice(0, MAX_LABEL2) }, mail);
   return result.sent ? DONE2 : rejected2("SEND_FAILED");
 }
@@ -1115,7 +1469,7 @@ async function sendQr(db, mail, orgId, request) {
 // src/outbox.ts
 import * as logger5 from "firebase-functions/logger";
 import { randomUUID as randomUUID2 } from "node:crypto";
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue as FieldValue2 } from "firebase-admin/firestore";
 var OUTBOX_SCHEMA = 1;
 var MAX_RAW_LENGTH = 9e5;
 var MAX_LABEL3 = 80;
@@ -1181,7 +1535,7 @@ async function onOutboxDocument(db, mail, orgId, id, current) {
     answer = await sendClaimed(mail, claimed);
     const { reason, failure } = answer;
     await ref.set(
-      { status: reason === "" ? "DONE" : "REJECTED", reason, failure, processedAt: Date.now(), raw: FieldValue.delete() },
+      { status: reason === "" ? "DONE" : "REJECTED", reason, failure, processedAt: Date.now(), raw: FieldValue2.delete() },
       { merge: true }
     );
   } catch (e) {

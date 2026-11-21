@@ -83,6 +83,60 @@ async function addVolunteer(org, overrides = {}) {
   return data;
 }
 
+function newNanoId() {
+  counter += 1;
+  return `gst${String(counter).padStart(4, "0")}${Date.now().toString(36)}`.padEnd(21, "x").slice(0, 21);
+}
+
+/** A permanent guest in the format of GitLiveFirestoreGateway.guestToMap (the fields that matter here). */
+async function addGuest(org, overrides = {}) {
+  const nanoId = overrides.nanoId ?? newNanoId();
+  const data = {
+    nanoId,
+    name: "Noé",
+    lastNameAbbreviation: "BLANC",
+    email: "noe@mail.example",
+    phone: "079 999 00 00",
+    isAdmin: false,
+    isTemporaryGuest: false,
+    isVolunteerBenefit: false,
+    lastModified: 1000,
+    portalEnabled: true,
+    portalUid: newUid("portal"),
+    portalGoogleEmail: "",
+    portalGoogleUid: "",
+    portalGoogleLinkedBy: "",
+    ...overrides,
+  };
+  await db.doc(`orgs/${org}/guests/${nanoId}`).set(data);
+  return data;
+}
+
+async function guest(org, nanoId) {
+  return (await db.doc(`orgs/${org}/guests/${nanoId}`).get()).data();
+}
+
+async function guestSpace(org, value = "true") {
+  await db.doc(`orgs/${org}/institutionSettings/guest_portal_enabled`).set({ value, lastModified: Date.now() });
+}
+
+async function publishGuestPage(org, uid) {
+  const payload = JSON.stringify({
+    firstName: "Noé", lastName: "BLANC", email: "noe@mail.example", phone: "079 999 00 00",
+    hasPhoto: false, photoVersion: "", venueName: "Main", invitations: 2, barDiscountPercent: 0,
+    wallet: { balance: 0, currency: "CHF", transfers: [] }, qrEmailAllowed: true, mustSetPassword: false,
+    association: "Asso Test", googleEmail: "", googleLinkedBy: "", googleLinkAvailable: true,
+  });
+  await db.doc(`orgs/${org}/guestPortal/${uid}`).set({ schema: 1, payload, contentHash: sha256(payload), updatedAt: 1 });
+  return JSON.parse(payload);
+}
+
+async function guestPage(org, uid) {
+  const doc = (await db.doc(`orgs/${org}/guestPortal/${uid}`).get()).data();
+  assert.equal(doc.contentHash, sha256(doc.payload));
+  return JSON.parse(doc.payload);
+}
+
 async function volunteer(org, id) {
   return (await db.doc(`orgs/${org}/volunteers/${id}`).get()).data();
 }
@@ -466,5 +520,125 @@ describe("onPortalRequestWritten: Google requests", () => {
     assert.equal(doc.status, "PENDING");
     assert.equal("processingDevice" in doc, false);
     assert.equal("reason" in doc, false);
+  });
+});
+
+describe("Google links of permanent guests", () => {
+  test("ADMIN_MATCH links a guest", async () => {
+    const org = await newOrg();
+    await guestSpace(org);
+    const g = await addGuest(org, { portalGoogleEmail: ` Noe@${DOMAIN} `, portalGoogleLinkedBy: "ADMIN" });
+    // Not permanent guests: never Google holders.
+    const temp = await addGuest(org, { isTemporaryGuest: true, portalGoogleEmail: `noe@${DOMAIN}` });
+    const benefit = await addGuest(org, { isVolunteerBenefit: true, portalGoogleEmail: `noe@${DOMAIN}` });
+    const before = await publishGuestPage(org, g.portalUid);
+    const googleUid = newUid("google");
+
+    assertResult(await waitResult(await sendClaim(org, googleUid, "ADMIN_MATCH", `noe@${DOMAIN}`)), "DONE", "");
+    const a = await alias(org, googleUid);
+    assert.equal(a.volunteerUid, g.portalUid);
+    assert.equal(a.linkedBy, "ADMIN");
+    const after = await guest(org, g.nanoId);
+    assert.equal(after.portalGoogleUid, googleUid);
+    assert.equal(after.portalGoogleEmail, `Noe@${DOMAIN}`);
+    assert.equal(after.portalGoogleLinkedBy, "ADMIN");
+    assert.ok(after.lastModified > 1000);
+    assert.deepEqual(await guest(org, temp.nanoId), temp);
+    assert.deepEqual(await guest(org, benefit.nanoId), benefit);
+    const page = await guestPage(org, g.portalUid);
+    assert.deepEqual(Object.keys(page), Object.keys(before));
+    assert.deepEqual(page, { ...before, googleEmail: `Noe@${DOMAIN}`, googleLinkedBy: "ADMIN", googleLinkAvailable: false });
+  });
+
+  test("a volunteer and a guest of one account are one person and both get the link", async () => {
+    const org = await newOrg();
+    await guestSpace(org);
+    const v = await addVolunteer(org, { portalGoogleEmail: `lea@${DOMAIN}`, portalGoogleLinkedBy: "ADMIN" });
+    const g = await addGuest(org, { portalUid: v.portalUid, portalGoogleEmail: `LEA@${DOMAIN}`, portalGoogleLinkedBy: "ADMIN" });
+    await publishProjection(org, v.portalUid, { googleEmail: "", googleLinkedBy: "", googleLinkAvailable: true });
+    await publishGuestPage(org, v.portalUid);
+    const googleUid = newUid("google");
+
+    assertResult(await waitResult(await sendClaim(org, googleUid, "ADMIN_MATCH", `lea@${DOMAIN}`)), "DONE", "");
+    assert.equal((await alias(org, googleUid)).volunteerUid, v.portalUid);
+    const vAfter = await volunteer(org, v.id);
+    const gAfter = await guest(org, g.nanoId);
+    for (const h of [vAfter, gAfter]) {
+      assert.equal(h.portalGoogleUid, googleUid);
+      assert.equal(h.portalGoogleLinkedBy, "ADMIN");
+    }
+    assert.equal(vAfter.portalGoogleEmail, `lea@${DOMAIN}`);
+    assert.equal(gAfter.portalGoogleEmail, `LEA@${DOMAIN}`, "each profile keeps the address the admin typed");
+    assert.equal((await projection(org, v.portalUid)).googleEmail, `lea@${DOMAIN}`);
+    assert.equal((await guestPage(org, v.portalUid)).googleEmail, `LEA@${DOMAIN}`);
+  });
+
+  test("guests are not Google holders while the guest space is off", async () => {
+    const org = await newOrg();
+    const g = await addGuest(org, { portalGoogleEmail: `noe@${DOMAIN}`, portalGoogleLinkedBy: "ADMIN" });
+    const googleUid = newUid("google");
+    assertResult(await waitResult(await sendClaim(org, googleUid, "ADMIN_MATCH", `noe@${DOMAIN}`)), "REJECTED", "NO_MATCH");
+    assert.equal(await alias(org, googleUid), null);
+    assert.deepEqual(await guest(org, g.nanoId), g);
+  });
+
+  test("LINK_CODE links a guest-only account", async () => {
+    const org = await newOrg();
+    await guestSpace(org);
+    const g = await addGuest(org);
+    const code = newCode();
+    const request = await sendRequest(org, g.portalUid, "GOOGLE_LINK", { codeHash: sha256(code) });
+    const googleUid = newUid("google");
+    assertResult(await waitResult(await sendClaim(org, googleUid, "LINK_CODE", `noe@${DOMAIN}`, code)), "DONE", "");
+    assert.equal((await request.get()).data().status, "DONE");
+    const after = await guest(org, g.nanoId);
+    assert.equal(after.portalGoogleUid, googleUid);
+    assert.equal(after.portalGoogleEmail, `noe@${DOMAIN}`);
+    assert.equal(after.portalGoogleLinkedBy, "VOLUNTEER");
+  });
+
+  test("LINK_CODE refused TAKEN when a guest of another account holds the address", async () => {
+    const org = await newOrg();
+    await guestSpace(org);
+    const v = await addVolunteer(org);
+    const other = await addGuest(org, { portalGoogleEmail: `lea@${DOMAIN}`, portalGoogleLinkedBy: "ADMIN" });
+    const code = newCode();
+    await sendRequest(org, v.portalUid, "GOOGLE_LINK", { codeHash: sha256(code) });
+    const googleUid = newUid("google");
+    assertResult(await waitResult(await sendClaim(org, googleUid, "LINK_CODE", `lea@${DOMAIN}`, code)), "REJECTED", "TAKEN");
+    assert.deepEqual(await volunteer(org, v.id), v);
+    assert.deepEqual(await guest(org, other.nanoId), other);
+  });
+
+  test("unlink clears the guests of the account", async () => {
+    const org = await newOrg();
+    await guestSpace(org);
+    const googleUid = newUid("google");
+    const v = await addVolunteer(org, { portalGoogleEmail: `lea@${DOMAIN}`, portalGoogleUid: googleUid, portalGoogleLinkedBy: "VOLUNTEER" });
+    const g = await addGuest(org, { portalUid: v.portalUid, portalGoogleEmail: `lea@${DOMAIN}`, portalGoogleUid: googleUid, portalGoogleLinkedBy: "VOLUNTEER" });
+    await db.doc(`orgs/${org}/portalGoogleAccounts/${googleUid}`).set({ volunteerUid: v.portalUid, email: `lea@${DOMAIN}`, linkedBy: "VOLUNTEER", linkedAt: 1 });
+    await publishGuestPage(org, v.portalUid);
+
+    assertResult(await waitResult(await sendRequest(org, v.portalUid, "GOOGLE_UNLINK")), "DONE", "");
+    assert.equal(await alias(org, googleUid), null);
+    for (const h of [await volunteer(org, v.id), await guest(org, g.nanoId)]) {
+      assert.equal(h.portalGoogleEmail, "");
+      assert.equal(h.portalGoogleUid, "");
+      assert.equal(h.portalGoogleLinkedBy, "");
+    }
+    const page = await guestPage(org, v.portalUid);
+    assert.equal(page.googleEmail, "");
+    assert.equal(page.googleLinkAvailable, true);
+  });
+
+  test("unlink refused ADMIN_LINK when the guest of the account holds an admin link", async () => {
+    const org = await newOrg();
+    await guestSpace(org);
+    const googleUid = newUid("google");
+    const v = await addVolunteer(org, { portalGoogleEmail: `lea@${DOMAIN}`, portalGoogleUid: googleUid, portalGoogleLinkedBy: "VOLUNTEER" });
+    const g = await addGuest(org, { portalUid: v.portalUid, portalGoogleEmail: `lea@${DOMAIN}`, portalGoogleUid: googleUid, portalGoogleLinkedBy: "ADMIN" });
+    assertResult(await waitResult(await sendRequest(org, v.portalUid, "GOOGLE_UNLINK")), "REJECTED", "ADMIN_LINK");
+    assert.deepEqual(await volunteer(org, v.id), v);
+    assert.deepEqual(await guest(org, g.nanoId), g);
   });
 });

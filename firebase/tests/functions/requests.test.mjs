@@ -87,6 +87,48 @@ async function addVolunteer(org, overrides = {}) {
   return data;
 }
 
+async function setting(org, key, value) {
+  await db.doc(`orgs/${org}/institutionSettings/${key}`).set({ value, lastModified: Date.now() });
+}
+
+function newNanoId() {
+  counter += 1;
+  return `gst${String(counter).padStart(4, "0")}${Date.now().toString(36)}`.padEnd(21, "x").slice(0, 21);
+}
+
+/** A guest row in the format of GitLiveFirestoreGateway.guestToMap (permanent, with portal access). */
+async function addGuest(org, overrides = {}) {
+  const nanoId = overrides.nanoId ?? newNanoId();
+  const data = {
+    nanoId, name: "Noé", lastNameAbbreviation: "BLANC", email: "noe@mail.example", phone: "079 999 00 00",
+    invitations: 2, venueName: "Main", notes: "VIP", isVolunteerBenefit: false, volunteerId: null,
+    lastModified: 1000, isTemporaryGuest: false, temporaryArtistName: "", temporaryEventDate: null,
+    temporaryContactPhone: "", temporaryVenueName: "", temporaryContactEmail: "", temporaryPortalEmail: "",
+    temporaryAccessIds: "", temporaryEntryValidatedAt: 0, temporaryEntryValidatedBy: "", nfcCardUid: "04CC",
+    nfcCardUidHash: "h", isAdmin: false, barDiscountPercent: 10, portalEnabled: true, portalUid: "",
+    portalGoogleEmail: "", portalGoogleUid: "", portalGoogleLinkedBy: "",
+    ...overrides,
+  };
+  await db.doc(`orgs/${org}/guests/${nanoId}`).set(data);
+  return data;
+}
+
+async function guest(org, nanoId) {
+  return (await db.doc(`orgs/${org}/guests/${nanoId}`).get()).data();
+}
+
+/** A guest page as a device publishes it (GuestPortalProjectionBuilder key order). */
+async function publishGuestPage(org, uid) {
+  const payload = JSON.stringify({
+    firstName: "Noé", lastName: "BLANC", email: "noe@mail.example", phone: "079 999 00 00",
+    hasPhoto: false, photoVersion: "", venueName: "Main", invitations: 2, barDiscountPercent: 10,
+    wallet: { balance: 4.5, currency: "CHF", transfers: [] }, qrEmailAllowed: true, mustSetPassword: false,
+    association: "Asso Test", googleEmail: "", googleLinkedBy: "", googleLinkAvailable: false,
+  });
+  await db.doc(`orgs/${org}/guestPortal/${uid}`).set({ schema: 1, payload, contentHash: sha256(payload), updatedAt: 1 });
+  return JSON.parse(payload);
+}
+
 async function volunteer(org, id) {
   return (await db.doc(`orgs/${org}/volunteers/${id}`).get()).data();
 }
@@ -515,5 +557,216 @@ describe("onPortalRequestWritten: protocol", () => {
     assert.equal(doc.processingAt, processingAt);
     assert.equal("reason" in doc, false);
     assert.deepEqual(await volunteer(org, existing.id), existing);
+  });
+});
+
+describe("onPortalRequestWritten: guests", () => {
+  test("GUEST_PROFILE updates the guest and its page", async () => {
+    const org = await newOrg();
+    await setting(org, "guest_portal_enabled", "true");
+    const uid = newUid("gProfile");
+    const future = Date.now() + 10 * 60 * 1000;
+    const g = await addGuest(org, { portalUid: uid, lastModified: future });
+    // The account's temporary group is not the permanent guest.
+    const temp = await addGuest(org, { portalUid: uid, isTemporaryGuest: true, lastModified: future + 50 });
+    const before = await publishGuestPage(org, uid);
+
+    const ref = await sendRequest(org, uid, "GUEST_PROFILE", {
+      firstName: "  Noé   Paul ", lastName: "blanc-roux", phone: " +41 79 555 44 33 ",
+    });
+    assertResult(await waitResult(ref), "DONE", "");
+
+    const after = await guest(org, g.nanoId);
+    assert.equal(after.name, "Noé Paul");
+    assert.equal(after.lastNameAbbreviation, "BLANC-ROUX");
+    assert.equal(after.phone, "+41 79 555 44 33");
+    assert.equal(after.lastModified, future + 1);
+    assert.deepEqual({ ...after, name: g.name, lastNameAbbreviation: g.lastNameAbbreviation, phone: g.phone, lastModified: g.lastModified }, g);
+    assert.deepEqual(await guest(org, temp.nanoId), temp);
+
+    const page = (await db.doc(`orgs/${org}/guestPortal/${uid}`).get()).data();
+    assert.equal(page.contentHash, sha256(page.payload));
+    assert.equal(page.schema, 1);
+    const payload = JSON.parse(page.payload);
+    assert.deepEqual(Object.keys(payload), Object.keys(before));
+    assert.deepEqual(payload, { ...before, firstName: "Noé Paul", lastName: "BLANC-ROUX", phone: "+41 79 555 44 33" });
+    assert.equal((await db.doc(`orgs/${org}/volunteerPortal/${uid}`).get()).exists, false);
+  });
+
+  test("GUEST_PROFILE photo goes to the guest and the account photo", async () => {
+    const org = await newOrg();
+    await setting(org, "guest_portal_enabled", "true");
+    await setting(org, "profile_photos_enabled", "true");
+    const uid = newUid("gPhoto");
+    const g = await addGuest(org, { portalUid: uid });
+    await publishGuestPage(org, uid);
+    await bucket.file(`orgs/${org}/portalPhotoUploads/${uid}.jpg`).save(JPEG, { contentType: "image/jpeg", resumable: false });
+
+    const ref = await sendRequest(org, uid, "GUEST_PROFILE", { firstName: "Noé", lastName: "Blanc", phone: "079 999 00 00", photo: true });
+    assertResult(await waitResult(ref), "DONE", "");
+    const after = await guest(org, g.nanoId);
+    const path = `orgs/${org}/profilePhotos/guests/${g.nanoId}.jpg`;
+    assert.equal(after.profilePhotoPath, path);
+    assert.ok(after.profilePhotoUrl.includes(encodeURIComponent(path)) && /[?&]token=/.test(after.profilePhotoUrl));
+    assert.deepEqual((await bucket.file(path).download())[0], JPEG);
+    assert.deepEqual((await bucket.file(`orgs/${org}/portalPhotos/${uid}.jpg`).download())[0], JPEG);
+    const [uploadLeft] = await bucket.file(`orgs/${org}/portalPhotoUploads/${uid}.jpg`).exists();
+    assert.equal(uploadLeft, false);
+    const payload = JSON.parse((await db.doc(`orgs/${org}/guestPortal/${uid}`).get()).data().payload);
+    assert.equal(payload.hasPhoto, true);
+    assert.equal(payload.photoVersion, sha256(after.profilePhotoUrl).slice(0, 16));
+  });
+
+  test("GUEST_PROFILE without a permanent guest rejected NO_ACCESS", async () => {
+    const org = await newOrg();
+    await setting(org, "guest_portal_enabled", "true");
+    const uid = newUid("gNoAccess");
+    await addVolunteer(org, { portalUid: uid });
+    const benefit = await addGuest(org, { portalUid: uid, isVolunteerBenefit: true });
+    const ref = await sendRequest(org, uid, "GUEST_PROFILE", { firstName: "X", lastName: "Y", phone: "079 111 22 33" });
+    assertResult(await waitResult(ref), "REJECTED", "NO_ACCESS");
+    assert.deepEqual(await guest(org, benefit.nanoId), benefit);
+  });
+
+  test("guest requests left PENDING when guest space off", async () => {
+    const org = await newOrg();
+    await publishTemplate(org);
+    const uid = newUid("gOff");
+    const g = await addGuest(org, { portalUid: uid });
+    const profile = await sendRequest(org, uid, "GUEST_PROFILE", { firstName: "X", lastName: "Y", phone: "079 111 22 33" });
+    const qr = await sendRequest(org, uid, "GUEST_QR_EMAIL");
+    await barrier();
+    for (const ref of [profile, qr]) {
+      const doc = (await ref.get()).data();
+      assert.equal(doc.status, "PENDING");
+      assert.equal("processingDevice" in doc, false);
+    }
+    assert.deepEqual(await guest(org, g.nanoId), g);
+  });
+
+  test("GUEST_QR_EMAIL sends the QR with the guest name to the guest address", async () => {
+    const org = await newOrg({ association: "Les Amis du Bar" });
+    await setting(org, "guest_portal_enabled", "true");
+    await publishTemplate(org);
+    const uid = newUid("gQr");
+    const address = `${uid.toLowerCase()}@guest.example`;
+    const g = await addGuest(org, { portalUid: uid, email: ` ${address} `, name: "Noé" });
+    const ref = await sendRequest(org, uid, "GUEST_QR_EMAIL");
+    const result = await waitResult(ref);
+    assertResult(result, "DONE", "");
+    const mail = await waitMailTo(address);
+    assert.equal(mail.subject, "Ton QR code bénévole");
+    assert.deepEqual(mail.from, { name: "Les Amis du Bar", address: "test@example.org" });
+    assert.ok(mail.html.includes("Salut Noé,"));
+    assert.ok(mail.attachments.some((a) => a.cid === "qrcode"));
+    assert.ok(!JSON.stringify(mail).includes(g.nanoId), "the nanoId only lives inside the PNG");
+    assert.ok(!JSON.stringify(result).includes(g.nanoId));
+  });
+
+  test("GUEST_QR_EMAIL refused for admin guest", async () => {
+    const org = await newOrg();
+    await setting(org, "guest_portal_enabled", "true");
+    await publishTemplate(org);
+    const uid = newUid("gQrAdmin");
+    const address = `${uid.toLowerCase()}@guest.example`;
+    await addGuest(org, { portalUid: uid, email: address, isAdmin: true });
+    const ref = await sendRequest(org, uid, "GUEST_QR_EMAIL");
+    assertResult(await waitResult(ref), "REJECTED", "NOT_ALLOWED");
+    await sleep(500);
+    assert.equal((await capturedMailsTo(address)).length, 0);
+  });
+
+  test("GUEST_QR_EMAIL refused without e-mail or for a temporary guest", async () => {
+    const org = await newOrg();
+    await setting(org, "guest_portal_enabled", "true");
+    await publishTemplate(org);
+    const uid = newUid("gQrNoMail");
+    await addGuest(org, { portalUid: uid, email: "  " });
+    assertResult(await waitResult(await sendRequest(org, uid, "GUEST_QR_EMAIL")), "REJECTED", "NO_EMAIL");
+    const tempUid = newUid("gQrTemp");
+    await addGuest(org, { portalUid: tempUid, isTemporaryGuest: true, email: "temp@guest.example" });
+    assertResult(await waitResult(await sendRequest(org, tempUid, "GUEST_QR_EMAIL")), "REJECTED", "NO_ACCESS");
+  });
+
+  test("GUEST_QR_EMAIL left PENDING without a published template", async () => {
+    const org = await newOrg();
+    await setting(org, "guest_portal_enabled", "true");
+    const uid = newUid("gQrNoTpl");
+    const address = `${uid.toLowerCase()}@guest.example`;
+    await addGuest(org, { portalUid: uid, email: address });
+    const ref = await sendRequest(org, uid, "GUEST_QR_EMAIL");
+    await barrier();
+    const doc = (await ref.get()).data();
+    assert.equal(doc.status, "PENDING");
+    assert.equal("processingDevice" in doc, false);
+    assert.equal((await capturedMailsTo(address)).length, 0);
+  });
+
+  test("CLAIM links volunteer, guest and temporary group", async () => {
+    const org = await newOrg();
+    await setting(org, "guest_portal_enabled", "true");
+    await setting(org, "temp_guest_portal_enabled", "true");
+    const uid = newUid("claimAll");
+    const email = `${uid.toLowerCase()}@auth.example`;
+    const v = await addVolunteer(org, { email: email.toUpperCase() });
+    const g = await addGuest(org, { email: ` ${email} ` });
+    // Temporary group: the address the access was opened for wins over the contact address.
+    const t1 = await addGuest(org, { isTemporaryGuest: true, temporaryContactEmail: email, temporaryPortalEmail: "" });
+    const t2 = await addGuest(org, { isTemporaryGuest: true, temporaryContactEmail: "old@contact.example", temporaryPortalEmail: email });
+    const t3 = await addGuest(org, { isTemporaryGuest: true, temporaryContactEmail: email, temporaryPortalEmail: "other@contact.example" });
+    // Never claimable: volunteer benefits, closed access, the guest's own e-mail field of a temporary guest.
+    const benefit = await addGuest(org, { email, isVolunteerBenefit: true });
+    const closed = await addGuest(org, { email, portalEnabled: false });
+    const ref = await sendRequest(org, uid, "CLAIM", { email });
+    assertResult(await waitResult(ref), "DONE", "");
+
+    assert.equal((await volunteer(org, v.id)).portalUid, uid);
+    for (const linked of [g, t1, t2]) {
+      const after = await guest(org, linked.nanoId);
+      assert.equal(after.portalUid, uid, linked.nanoId);
+      assert.ok(after.lastModified > 1000);
+      assert.deepEqual({ ...after, portalUid: "", lastModified: 1000 }, linked);
+    }
+    for (const untouched of [t3, benefit, closed]) assert.deepEqual(await guest(org, untouched.nanoId), untouched);
+  });
+
+  test("CLAIM leaves guests alone while their space is off", async () => {
+    const org = await newOrg();
+    const uid = newUid("claimOff");
+    const email = `${uid.toLowerCase()}@auth.example`;
+    const g = await addGuest(org, { email });
+    const t = await addGuest(org, { isTemporaryGuest: true, temporaryContactEmail: email });
+    const ref = await sendRequest(org, uid, "CLAIM", { email });
+    assertResult(await waitResult(ref), "REJECTED", "NO_ACCESS");
+    assert.deepEqual(await guest(org, g.nanoId), g);
+    assert.deepEqual(await guest(org, t.nanoId), t);
+  });
+
+  test("CLAIM refused when a guest of that address is linked elsewhere", async () => {
+    const org = await newOrg();
+    await setting(org, "guest_portal_enabled", "true");
+    const uid = newUid("claimForeign");
+    const email = `${uid.toLowerCase()}@auth.example`;
+    const v = await addVolunteer(org, { email });
+    const foreign = await addGuest(org, { email, portalUid: "someoneElse01" });
+    const ref = await sendRequest(org, uid, "CLAIM", { email });
+    assertResult(await waitResult(ref), "REJECTED", "LINKED_ELSEWHERE");
+    assert.deepEqual(await volunteer(org, v.id), v);
+    assert.deepEqual(await guest(org, foreign.nanoId), foreign);
+  });
+
+  test("CLAIM of an account with access skips the guest linked elsewhere", async () => {
+    const org = await newOrg();
+    await setting(org, "guest_portal_enabled", "true");
+    const uid = newUid("claimOwnerG");
+    const email = `${uid.toLowerCase()}@auth.example`;
+    // Access through a guest only.
+    await addGuest(org, { email: "first@mail.example", portalUid: uid });
+    const foreign = await addGuest(org, { email, portalUid: "someoneElse02" });
+    const free = await addGuest(org, { email });
+    const ref = await sendRequest(org, uid, "CLAIM", { email });
+    assertResult(await waitResult(ref), "DONE", "");
+    assert.deepEqual(await guest(org, foreign.nanoId), foreign);
+    assert.equal((await guest(org, free.nanoId)).portalUid, uid);
   });
 });

@@ -1,7 +1,16 @@
 // Mirrors com.eventmanager.app.portal.PortalInputValidator (Kotlin). The Admin SDK bypasses
 // Firestore rules, so these checks must stay identical; test/validation-cases.json is run by both.
 
-export type PortalRequestType = "PROFILE" | "QR_EMAIL" | "CLAIM" | "GOOGLE_LINK" | "GOOGLE_UNLINK";
+export type PortalRequestType =
+  | "PROFILE"
+  | "QR_EMAIL"
+  | "CLAIM"
+  | "GOOGLE_LINK"
+  | "GOOGLE_UNLINK"
+  | "GUEST_PROFILE"
+  | "GUEST_QR_EMAIL";
+/** Who a registration link registers (PortalHolderKind, Kotlin). */
+export type HolderType = "VOLUNTEER" | "GUEST";
 export type PortalGoogleClaimType = "ADMIN_MATCH" | "LINK_CODE";
 
 export interface SignupSubmission {
@@ -11,10 +20,15 @@ export interface SignupSubmission {
   firstName: string;
   lastName: string;
   phone: string;
+  /** Empty for a guest. */
   dateOfBirth: string;
+  /** Not asked of a guest: PREFER_NOT_TO_DISCLOSE there, never used. */
   gender: string;
   photoPath: string;
   lang: string;
+  holderType: HolderType;
+  /** GUEST only: the venue stored on the link by the app (the public side cannot change it). */
+  venueName: string;
 }
 
 export interface PortalRequest {
@@ -26,7 +40,7 @@ export interface PortalRequest {
   firstName: string;
   lastName: string;
   phone: string;
-  /** PROFILE only: a new photo waits in `portalPhotoUploads/{uid}.jpg`. */
+  /** PROFILE and GUEST_PROFILE only: a new photo waits in `portalPhotoUploads/{uid}.jpg`. */
   photo: boolean;
   /** GOOGLE_LINK only: SHA-256 hex of the one-time link code. */
   codeHash?: string;
@@ -50,7 +64,9 @@ const UID = /^[A-Za-z0-9]{6,128}$/u;
 const CODE_HASH = /^[0-9a-f]{64}$/u;
 const LINK_CODE = /^[A-Za-z0-9_-]{32,64}$/u;
 const LANGS = new Set(["fr", "en", "es", "de", "it"]);
-const TYPES: readonly string[] = ["PROFILE", "QR_EMAIL", "CLAIM", "GOOGLE_LINK", "GOOGLE_UNLINK"];
+const TYPES: readonly string[] = [
+  "PROFILE", "QR_EMAIL", "CLAIM", "GOOGLE_LINK", "GOOGLE_UNLINK", "GUEST_PROFILE", "GUEST_QR_EMAIL",
+];
 const CLAIM_TYPES: readonly string[] = ["ADMIN_MATCH", "LINK_CODE"];
 const GENDERS = new Set(["FEMALE", "MALE", "NON_BINARY", "OTHER", "PREFER_NOT_TO_DISCLOSE"]);
 
@@ -100,9 +116,12 @@ export function parseSignup(
   if (lastName === null) return null;
   const phone = cleanPhone(data.phone);
   if (phone === null) return null;
-  const dateOfBirth = str(data.dateOfBirth);
-  if (dateOfBirth === undefined || !DATE.test(dateOfBirth)) return null;
-  const gender = String(data.gender);
+  // Same test as the rules: only "GUEST" makes a guest link, anything else is a volunteer one.
+  const holderType: HolderType = data.holderType === "GUEST" ? "GUEST" : "VOLUNTEER";
+  const guest = holderType === "GUEST";
+  const dateOfBirth = guest ? "" : str(data.dateOfBirth);
+  if (dateOfBirth === undefined || (!guest && !DATE.test(dateOfBirth))) return null;
+  const gender = guest ? "PREFER_NOT_TO_DISCLOSE" : String(data.gender);
   if (!GENDERS.has(gender)) return null;
   if (data.consent !== true) return null;
   const photoPath = str(data.photoPath) ?? "";
@@ -120,6 +139,8 @@ export function parseSignup(
     gender,
     photoPath: photoPath === ownPhoto && orgId !== "" ? ownPhoto : "",
     lang: lang !== undefined && LANGS.has(lang) ? lang : "fr",
+    holderType,
+    venueName: guest ? kotlinTrim(str(data.venueName) ?? "") : "",
   };
 }
 
@@ -133,7 +154,7 @@ export function parseRequest(requestId: string, data: Record<string, unknown>): 
   const email = cleanEmail(data.email);
   if (email === null) return null;
   const status = data.status === null || data.status === undefined ? "" : String(data.status);
-  if (type === "PROFILE") {
+  if (type === "PROFILE" || type === "GUEST_PROFILE") {
     const firstName = cleanName(data.firstName);
     const lastName = cleanName(data.lastName);
     const phone = cleanPhone(data.phone);
