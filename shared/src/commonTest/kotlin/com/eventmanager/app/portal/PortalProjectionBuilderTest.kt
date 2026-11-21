@@ -319,4 +319,16 @@ class PortalProjectionBuilderTest {
         assertFalse(linkedJson["googleLinkAvailable"]!!.jsonPrimitive.boolean)
         assertFalse(payload.contains("GoogleUidNeverPublished"), "Google uid leaked")
     }
+
+    @Test
+    fun volunteerProjectionUnchanged() {
+        // Fixed reference input; the literal was recorded before walletJson was extracted for guests.
+        val transfers = listOf(
+            transfer(-2.0, 1), transfer(50.0, 20, type = AccountTransferType.SHIFT_CREDIT),
+            transfer(-30.0, 2, holderId = "someone-else"),
+        )
+        val projection = PortalProjectionBuilder.build(input(transfers = transfers))
+        assertEquals("e8194e40583132dd627ba5bbca7aa5a61c208178bddab54910da56ddaacb46bf", projection.contentHash)
+        assertEquals(2, projection.toFirestoreMap(1L)["schema"])
+    }
 }

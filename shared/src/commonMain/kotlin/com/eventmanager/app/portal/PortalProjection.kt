@@ -49,13 +49,17 @@ data class PortalProjection(
     val payload: String,
     /** SHA-256 of [payload]; unchanged content is never re-published. */
     val contentHash: String,
+    /** Document schema; volunteers keep the default, other collections pass their own. */
+    val schema: Int = SCHEMA,
+    /** Extra top-level fields merged into the document. */
+    val extraFields: Map<String, Any?> = emptyMap(),
 ) {
     fun toFirestoreMap(updatedAt: Long): Map<String, Any?> = mapOf(
-        "schema" to SCHEMA,
+        "schema" to schema,
         "payload" to payload,
         "contentHash" to contentHash,
         "updatedAt" to updatedAt,
-    )
+    ) + extraFields
 
     companion object {
         const val SCHEMA = 2
@@ -67,7 +71,7 @@ object PortalProjectionBuilder {
     const val MAX_PAST_SHIFTS = 60
     const val MAX_UPCOMING_SHIFTS = 10
     const val MAX_TRANSFERS = 5
-    private const val MAX_LABEL = 80
+    internal const val MAX_LABEL = 80
 
     fun build(input: PortalProjectionInput): PortalProjection {
         val volunteer = input.volunteer
@@ -105,7 +109,7 @@ object PortalProjectionBuilder {
             put("timeline", buildJsonArray {
                 timeline.steps.forEachIndexed { i, step -> add(stepJson(step, if (i == 0) 0L else step.from)) }
             })
-            put("wallet", walletJson(input))
+            put("wallet", walletJson(input.transfers, AccountHolderType.VOLUNTEER, volunteer.id, input.currencyCode))
             // The wallet QR doubles as an admin key for admin volunteers: never mail it from the web.
             put("qrEmailAllowed", !volunteer.isAdmin && volunteer.email.isNotBlank())
             put("mustSetPassword", input.mustSetPassword)
@@ -153,39 +157,43 @@ object PortalProjectionBuilder {
         put("futureEntryInvites", benefit.futureEventEntryInvites?.let { JsonPrimitive(it) } ?: JsonNull)
     }
 
-    private fun walletJson(input: PortalProjectionInput): JsonElement {
-        val mine = input.transfers.filter {
-            it.holderType == AccountHolderType.VOLUNTEER &&
-                it.holderId == input.volunteer.id &&
-                it.affectsAccountLedger()
-        }
-        val balance = mine.sumOf { it.amount }
-        val recent = mine.sortedByDescending { it.createdAt }.take(MAX_TRANSFERS)
-        return buildJsonObject {
-            put("balance", roundCents(balance))
-            put("currency", input.currencyCode.ifBlank { "CHF" })
-            put("transfers", JsonArray(recent.map { transfer ->
-                buildJsonObject {
-                    put("at", transfer.createdAt)
-                    put("type", transfer.type.name)
-                    put("amount", roundCents(transfer.amount))
-                    put("label", transferLabel(transfer))
-                    put("venue", transfer.posVenueName.take(MAX_LABEL))
-                }
-            }))
-        }
-    }
-
     /** Human label only — never ids, references or another person's name. */
     internal fun transferLabel(transfer: AccountTransfer): String = when (transfer.type) {
         AccountTransferType.SHIFT_CREDIT, AccountTransferType.SHIFT_REVERSAL -> transfer.jobTypeName
         AccountTransferType.POS_SALE, AccountTransferType.MANUAL_ADJUSTMENT -> transfer.description
     }.trim().take(MAX_LABEL)
 
-    private fun roundCents(value: Double): Double = Math.round(value * 100.0) / 100.0
+    internal fun roundCents(value: Double): Double = Math.round(value * 100.0) / 100.0
 
     internal fun sha256(text: String): String =
         MessageDigest.getInstance("SHA-256")
             .digest(text.toByteArray(Charsets.UTF_8))
             .joinToString("") { "%02x".format(it) }
+}
+
+/** Wallet block of a portal page: balance and the latest ledger rows of exactly one holder. */
+internal fun PortalProjectionBuilder.walletJson(
+    transfers: List<AccountTransfer>,
+    holderType: AccountHolderType,
+    holderId: String,
+    currencyCode: String,
+): JsonElement {
+    val mine = transfers.filter {
+        it.holderType == holderType && it.holderId == holderId && it.affectsAccountLedger()
+    }
+    val balance = mine.sumOf { it.amount }
+    val recent = mine.sortedByDescending { it.createdAt }.take(MAX_TRANSFERS)
+    return buildJsonObject {
+        put("balance", roundCents(balance))
+        put("currency", currencyCode.ifBlank { "CHF" })
+        put("transfers", JsonArray(recent.map { transfer ->
+            buildJsonObject {
+                put("at", transfer.createdAt)
+                put("type", transfer.type.name)
+                put("amount", roundCents(transfer.amount))
+                put("label", transferLabel(transfer))
+                put("venue", transfer.posVenueName.take(MAX_LABEL))
+            }
+        }))
+    }
 }
