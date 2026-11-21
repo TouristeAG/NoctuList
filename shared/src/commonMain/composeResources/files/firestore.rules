@@ -1,5 +1,5 @@
 rules_version = '2';
-// NoctuList Firestore rules — NOCTULIST_RULES_VERSION = 16
+// NoctuList Firestore rules — NOCTULIST_RULES_VERSION = 17
 // Republish this exact file in Firebase Console → Firestore → Rules after every app update,
 // otherwise members that already exist cannot re-join their organization.
 service cloud.firestore {
@@ -25,14 +25,25 @@ service cloud.firestore {
     }
 
     // Server-side kill switch: the whole volunteer portal is off unless an org admin turned it on.
+    // A rule may touch 10 documents, and exists() and get() on one path count twice. These switches
+    // are only ever required to be true, so a plain get() (an error when the setting is missing)
+    // denies exactly like exists() && get() did, for one access instead of two.
     function portalOn(orgId) {
-      return exists(/databases/$(database)/documents/orgs/$(orgId)/institutionSettings/volunteer_portal_enabled)
-        && get(/databases/$(database)/documents/orgs/$(orgId)/institutionSettings/volunteer_portal_enabled)
+      return get(/databases/$(database)/documents/orgs/$(orgId)/institutionSettings/volunteer_portal_enabled)
              .data.get('value', '') in ['true', true];
     }
 
     function settingPath(orgId, key) {
       return /databases/$(database)/documents/orgs/$(orgId)/institutionSettings/$(key);
+    }
+
+    // Guest spaces, under the portal switch: permanent guests and temporary guest groups.
+    function guestPortalOn(orgId) {
+      return portalOn(orgId) && settingOn(orgId, 'guest_portal_enabled');
+    }
+
+    function tempGuestPortalOn(orgId) {
+      return portalOn(orgId) && settingOn(orgId, 'temp_guest_portal_enabled');
     }
 
     // Third switch: the volunteer's personal QR code. Absent setting means enabled.
@@ -45,13 +56,16 @@ service cloud.firestore {
       return /databases/$(database)/documents/orgs/$(orgId)/portalGoogleAccounts/$(request.auth.uid);
     }
 
+    // A setting that must be present and true (see portalOn for why there is no exists()).
+    function settingOn(orgId, key) {
+      return get(settingPath(orgId, key)).data.get('value', '') in ['true', true];
+    }
+
     // Second switch, under the portal one: volunteers may also sign in with a Google account
     // (the association's domains only, or any account; see portalGoogleAccountOk).
     function portalGoogleOn(orgId) {
-      let path = settingPath(orgId, 'volunteer_portal_google_enabled');
       return portalOn(orgId)
-        && exists(path)
-        && get(path).data.get('value', '') in ['true', true];
+        && settingOn(orgId, 'volunteer_portal_google_enabled');
     }
 
     // A Google sign-in with a verified address. This alone grants nothing: staff rights still
@@ -428,11 +442,29 @@ service cloud.firestore {
         && request.time.toMillis() < asMillis(data.expiresAtMillis);
     }
 
+    // A guest registration form (holderType GUEST, set by the app) needs the guest space on and
+    // carries no date of birth or gender. holderType itself is never in the modifiable keys.
+    function signupFormIsGuest() {
+      return resource.data.get('holderType', 'VOLUNTEER') == 'GUEST';
+    }
+
+    function signupHolderOk(orgId) {
+      return signupFormIsGuest()
+        ? (guestPortalOn(orgId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'status', 'submittedUid', 'email', 'firstName', 'lastName', 'phone',
+              'photoPath', 'consent', 'lang', 'submittedAt', 'lastModified']))
+        : (request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'status', 'submittedUid', 'email', 'firstName', 'lastName', 'phone', 'dateOfBirth',
+              'gender', 'photoPath', 'consent', 'lang', 'submittedAt', 'lastModified'])
+          && request.resource.data.dateOfBirth is string
+          && request.resource.data.dateOfBirth.matches('^(19|20)[0-9]{2}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$')
+          && request.resource.data.gender in ['FEMALE', 'MALE', 'NON_BINARY', 'OTHER', 'PREFER_NOT_TO_DISCLOSE']);
+    }
+
     function validSignupSubmission(orgId, formId) {
       let d = request.resource.data;
-      return d.diff(resource.data).affectedKeys().hasOnly([
-          'status', 'submittedUid', 'email', 'firstName', 'lastName', 'phone', 'dateOfBirth',
-          'gender', 'photoPath', 'consent', 'lang', 'submittedAt', 'lastModified'])
+      return signupHolderOk(orgId)
         && d.status == 'SUBMITTED'
         && d.submittedUid == request.auth.uid
         && d.email is string
@@ -440,9 +472,6 @@ service cloud.firestore {
         && validPersonName(d.firstName)
         && validPersonName(d.lastName)
         && validPhone(d.phone)
-        && d.dateOfBirth is string
-        && d.dateOfBirth.matches('^(19|20)[0-9]{2}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$')
-        && d.gender in ['FEMALE', 'MALE', 'NON_BINARY', 'OTHER', 'PREFER_NOT_TO_DISCLOSE']
         && (d.photoPath == ''
           || (resource.data.get('photosEnabled', false) == true
             && d.photoPath == 'orgs/' + orgId + '/portalSignupPhotos/' + formId + '.jpg'))
@@ -486,15 +515,60 @@ service cloud.firestore {
         );
     }
 
+    // The volunteer-style pages of the guest spaces: the permanent guest's page and QR code.
+    // Same owner test as volunteerPortal: a verified password session or a linked Google account.
+    match /orgs/{orgId}/guestPortal/{uid} {
+      allow get: if guestPortalOn(orgId)
+        && (
+          (isPortalUser() && request.auth.uid == uid)
+          || (isPortalGoogleUser(orgId) && portalUidOf(orgId) == uid)
+        );
+    }
+
+    match /orgs/{orgId}/guestPortalQr/{uid} {
+      allow get: if guestPortalOn(orgId)
+        && portalQrOn(orgId)
+        && (
+          (isPortalUser() && request.auth.uid == uid)
+          || (isPortalGoogleUser(orgId) && portalUidOf(orgId) == uid)
+        );
+    }
+
+    // Temporary guest groups. The page is only ever published under a uid the device just created
+    // (password known to the device and the group's mailbox) or one linked through a verified CLAIM,
+    // so these two collections accept a password session WITHOUT email_verified. Nothing else does.
+    match /orgs/{orgId}/temporaryGuestPortal/{uid} {
+      allow get: if tempGuestPortalOn(orgId)
+        && isPasswordAccount()
+        && request.auth.uid == uid
+        && request.time.toMillis() < asMillis(resource.data.get('expiresAtMillis', 0));
+    }
+
+    function temporaryGuestPageLive(orgId, uid) {
+      let page = /databases/$(database)/documents/orgs/$(orgId)/temporaryGuestPortal/$(uid);
+      return exists(page)
+        && request.time.toMillis() < asMillis(get(page).data.get('expiresAtMillis', 0));
+    }
+
+    match /orgs/{orgId}/temporaryGuestPortalQr/{uid} {
+      allow get: if tempGuestPortalOn(orgId)
+        && portalQrOn(orgId)
+        && isPasswordAccount()
+        && request.auth.uid == uid
+        && temporaryGuestPageLive(orgId, uid);
+    }
+
     function portalRequestDelayMinutes(type) {
-      return type == 'QR_EMAIL' ? 10 : 1;
+      return type in ['QR_EMAIL', 'GUEST_QR_EMAIL'] ? 10 : 1;
     }
 
     // Only call after isPortalUser() or isPortalGoogleUser(orgId) holds.
     function validPortalRequest(orgId, requestId) {
       let d = request.resource.data;
       return d.uid == portalUidOf(orgId)
-        && d.type in ['PROFILE', 'QR_EMAIL', 'CLAIM', 'GOOGLE_LINK', 'GOOGLE_UNLINK']
+        && d.type in ['PROFILE', 'QR_EMAIL', 'CLAIM', 'GOOGLE_LINK', 'GOOGLE_UNLINK',
+                      'GUEST_PROFILE', 'GUEST_QR_EMAIL']
+        && (!(d.type in ['GUEST_PROFILE', 'GUEST_QR_EMAIL']) || guestPortalOn(orgId))
         && requestId == d.uid + '_' + d.type
         // Claiming a profile and linking a Google account need the password session.
         && (!(d.type in ['CLAIM', 'GOOGLE_LINK']) || isPortalUser())
@@ -502,7 +576,7 @@ service cloud.firestore {
         && d.requestedAt == request.time
         && d.email == request.auth.token.get('email', '')
         && (
-          (d.type == 'PROFILE'
+          (d.type in ['PROFILE', 'GUEST_PROFILE']
             && d.keys().hasOnly(['uid', 'type', 'status', 'requestedAt', 'email', 'firstName', 'lastName', 'phone', 'photo'])
             // photo: a new picture waits in portalPhotoUploads/{uid}.jpg.
             && d.get('photo', true) == true
@@ -513,7 +587,7 @@ service cloud.firestore {
             && d.keys().hasOnly(['uid', 'type', 'status', 'requestedAt', 'email', 'codeHash'])
             && d.codeHash is string
             && d.codeHash.matches('^[0-9a-f]{64}$'))
-          || (d.type in ['QR_EMAIL', 'CLAIM', 'GOOGLE_UNLINK']
+          || (d.type in ['QR_EMAIL', 'GUEST_QR_EMAIL', 'CLAIM', 'GOOGLE_UNLINK']
             && d.keys().hasOnly(['uid', 'type', 'status', 'requestedAt', 'email']))
         );
     }
@@ -526,6 +600,8 @@ service cloud.firestore {
         && requestId in [
           portalUidOf(orgId) + '_PROFILE',
           portalUidOf(orgId) + '_QR_EMAIL',
+          portalUidOf(orgId) + '_GUEST_PROFILE',
+          portalUidOf(orgId) + '_GUEST_QR_EMAIL',
           portalUidOf(orgId) + '_CLAIM',
           portalUidOf(orgId) + '_GOOGLE_LINK',
           portalUidOf(orgId) + '_GOOGLE_UNLINK'

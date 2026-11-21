@@ -481,3 +481,82 @@ describe("mailOutbox", () => {
     await assertFails(getDoc(doc(anon().firestore(), path("mailOutbox/seeded"))));
   });
 });
+
+describe("guest requests and guest registration", () => {
+  const GUEST_FORM = "signupFormGGGG0004";
+  const setGuestPortal = (on) => seed((db) => setDoc(doc(db, path("institutionSettings/guest_portal_enabled")), {
+    value: on ? "true" : "false", lastModified: Date.now(),
+  }));
+  const guestProfile = (uid = "vol1", extra = {}) =>
+    request(uid, "GUEST_PROFILE", { firstName: "Léa", lastName: "Martin", phone: "+41 79 000 00 00", ...extra });
+  const guestSubmission = (uid = "vol1", overrides = {}) => {
+    const { dateOfBirth, gender, ...rest } = submission(uid);
+    return { ...rest, ...overrides };
+  };
+
+  beforeEach(async () => {
+    await seed((db) => setDoc(doc(db, path(`volunteerSignupForms/${GUEST_FORM}`)), {
+      formId: GUEST_FORM, status: "OPEN", expiresAtMillis: Date.now() + 7 * DAY,
+      photosEnabled: false, holderType: "GUEST",
+    }));
+  });
+
+  test("GUEST_PROFILE and GUEST_QR_EMAIL need the guest space on", async () => {
+    const db = portal("vol1").firestore();
+    await assertFails(setDoc(doc(db, path("portalRequests/vol1_GUEST_PROFILE")), guestProfile()));
+    await assertFails(setDoc(doc(db, path("portalRequests/vol1_GUEST_QR_EMAIL")), request("vol1", "GUEST_QR_EMAIL")));
+    await setGuestPortal(true);
+    await assertSucceeds(setDoc(doc(db, path("portalRequests/vol1_GUEST_PROFILE")), guestProfile()));
+    await assertSucceeds(setDoc(doc(db, path("portalRequests/vol1_GUEST_QR_EMAIL")), request("vol1", "GUEST_QR_EMAIL")));
+    await assertSucceeds(getDoc(doc(db, path("portalRequests/vol1_GUEST_PROFILE"))));
+    await assertSucceeds(getDoc(doc(db, path("portalRequests/vol1_GUEST_QR_EMAIL"))));
+  });
+
+  test("GUEST_PROFILE has the same fields as PROFILE", async () => {
+    await setGuestPortal(true);
+    const db = portal("vol1").firestore();
+    await assertSucceeds(setDoc(doc(db, path("portalRequests/vol1_GUEST_PROFILE")), guestProfile("vol1", { photo: true })));
+    await assertFails(setDoc(doc(db, path("portalRequests/vol1_GUEST_PROFILE")), guestProfile("vol1", { photo: false })));
+    await assertFails(setDoc(doc(db, path("portalRequests/vol1_GUEST_PROFILE")), guestProfile("vol1", { dateOfBirth: "2000-01-01" })));
+    await assertFails(setDoc(doc(db, path("portalRequests/vol1_GUEST_PROFILE")), guestProfile("vol1", { firstName: "<b>" })));
+    await assertFails(setDoc(doc(db, path("portalRequests/vol1_GUEST_QR_EMAIL")),
+      request("vol1", "GUEST_QR_EMAIL", { photo: true })));
+    await assertFails(setDoc(doc(db, path("portalRequests/vol1_GUEST_QR_EMAIL")), request("vol1", "GUEST_PROFILE")));
+  });
+
+  test("GUEST_QR_EMAIL renewals wait 10 minutes", async () => {
+    await setGuestPortal(true);
+    const db = portal("vol1").firestore();
+    const old = (minutes) => seed((sdb) => setDoc(doc(sdb, path("portalRequests/vol1_GUEST_QR_EMAIL")), {
+      uid: "vol1", type: "GUEST_QR_EMAIL", status: "DONE", email: "vol1@mail.example",
+      requestedAt: Timestamp.fromMillis(Date.now() - minutes * 60 * 1000), processedAt: Date.now(),
+    }));
+    await old(5);
+    await assertFails(setDoc(doc(db, path("portalRequests/vol1_GUEST_QR_EMAIL")), request("vol1", "GUEST_QR_EMAIL")));
+    await old(11);
+    await assertSucceeds(setDoc(doc(db, path("portalRequests/vol1_GUEST_QR_EMAIL")), request("vol1", "GUEST_QR_EMAIL")));
+  });
+
+  test("a guest registration needs no date of birth or gender", async () => {
+    await setGuestPortal(true);
+    const db = portal("vol1", false).firestore();
+    await assertSucceeds(updateDoc(doc(db, path(`volunteerSignupForms/${GUEST_FORM}`)), guestSubmission("vol1")));
+  });
+
+  test("a guest registration is refused with the guest space off, or carrying volunteer-only fields", async () => {
+    const ref = (uid) => doc(portal(uid, false).firestore(), path(`volunteerSignupForms/${GUEST_FORM}`));
+    await assertFails(updateDoc(ref("vol1"), guestSubmission("vol1")));
+    await setGuestPortal(true);
+    await assertFails(updateDoc(ref("vol1"), submission("vol1")));
+    await assertFails(updateDoc(ref("vol1"), guestSubmission("vol1", { gender: "FEMALE" })));
+    await assertFails(updateDoc(ref("vol1"), guestSubmission("vol1", { dateOfBirth: "1998-04-12" })));
+    await assertFails(updateDoc(ref("vol1"), guestSubmission("vol1", { holderType: "VOLUNTEER" })));
+  });
+
+  test("the public cannot change holderType of a volunteer form", async () => {
+    const db = portal("vol1", false).firestore();
+    await assertFails(updateDoc(doc(db, path(`volunteerSignupForms/${FORM}`)),
+      submission("vol1", { holderType: "GUEST" })));
+    await assertSucceeds(updateDoc(doc(db, path(`volunteerSignupForms/${FORM}`)), submission("vol1")));
+  });
+});
