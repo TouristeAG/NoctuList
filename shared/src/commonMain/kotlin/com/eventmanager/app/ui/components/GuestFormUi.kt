@@ -84,6 +84,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import com.eventmanager.app.data.models.Guest
 import com.eventmanager.app.data.models.GuestForm
 import com.eventmanager.app.data.models.GuestFormExpiry
 import com.eventmanager.app.data.models.GuestFormFieldLabelsCodec
@@ -1308,10 +1309,10 @@ fun GuestFormReviewDialog(
     }
     val offered = form.offeredAccesses()
     val template = remember(form) { viewModel.portalInviteTemplateOf(form) }
-    val removal = template != null && form.requestKindValue == GuestFormRequestKind.REMOVE
-    val removing = remember(form, template) {
-        if (template == null) emptyList()
-        else PortalInvites.removalTargets(form, viewModel.portalInviteBatch(template)).let { it.first + it.second }
+    val removal = form.requestKindValue == GuestFormRequestKind.REMOVE
+    val targets = remember(form, template) {
+        if (template == null) emptyList<Guest>() to emptyList()
+        else PortalInvites.removalTargets(form, viewModel.portalInviteBatch(template))
     }
     var overLimit by remember(form) { mutableStateOf(false) }
 
@@ -1326,17 +1327,31 @@ fun GuestFormReviewDialog(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    if (removing.isEmpty()) Text(stringResource(Res.string.guest_form_review_empty))
-                    removing.forEach { g ->
+                    if (template == null) {
+                        Text(stringResource(Res.string.portal_invites_list_gone), color = MaterialTheme.colorScheme.error)
+                    } else if (targets.first.isEmpty() && targets.second.isEmpty()) {
+                        Text(stringResource(Res.string.guest_form_review_empty))
+                    }
+                    targets.first.forEach { g ->
                         Text("${g.name} ${g.lastNameAbbreviation}".trim(), style = MaterialTheme.typography.bodyMedium)
+                    }
+                    targets.second.forEach { g ->
+                        Text(
+                            stringResource(Res.string.portal_invites_entry_used_stays, "${g.name} ${g.lastNameAbbreviation}".trim()),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
             },
             confirmButton = {
-                Button(onClick = {
-                    viewModel.acceptGuestFormRemoval(form)
-                    onDismiss()
-                }) { Text(stringResource(Res.string.guest_form_review_accept)) }
+                Button(
+                    onClick = {
+                        viewModel.acceptGuestFormRemoval(form)
+                        onDismiss()
+                    },
+                    enabled = template != null && targets.first.isNotEmpty(),
+                ) { Text(stringResource(Res.string.guest_form_review_accept)) }
             },
             dismissButton = {
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {

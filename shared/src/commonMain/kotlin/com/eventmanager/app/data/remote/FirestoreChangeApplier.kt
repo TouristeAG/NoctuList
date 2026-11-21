@@ -190,7 +190,7 @@ object FirestoreChangeApplier {
             temporaryVenueName = stringOf(decrypted["temporaryVenueName"]).orEmpty(),
             temporaryContactEmail = stringOf(decrypted["temporaryContactEmail"]).orEmpty(),
             temporaryPortalEmail = stringOf(decrypted["temporaryPortalEmail"]).orEmpty(),
-            temporaryPortalCreated = boolOf(decrypted["temporaryPortalCreated"]) ?: false,
+            temporaryPortalCreated = boolOf(decrypted["temporaryPortalCreated"]) ?: existing?.temporaryPortalCreated ?: false,
             temporaryAccessIds = stringOf(decrypted["temporaryAccessIds"]).orEmpty(),
             temporaryEntryValidatedAt = longOf(decrypted["temporaryEntryValidatedAt"]) ?: 0L,
             temporaryEntryValidatedBy = stringOf(decrypted["temporaryEntryValidatedBy"]).orEmpty(),
@@ -206,7 +206,7 @@ object FirestoreChangeApplier {
             portalGoogleEmail = stringOf(decrypted["portalGoogleEmail"]).orEmpty(),
             portalGoogleUid = stringOf(decrypted["portalGoogleUid"]).orEmpty(),
             portalGoogleLinkedBy = stringOf(decrypted["portalGoogleLinkedBy"]).orEmpty(),
-            portalRevoked = boolOf(decrypted["portalRevoked"]) ?: false,
+            portalRevoked = boolOf(decrypted["portalRevoked"]) ?: existing?.portalRevoked ?: false,
         )
         if (existing == null) {
             try {
@@ -287,7 +287,7 @@ object FirestoreChangeApplier {
             portalGoogleEmail = stringOf(decrypted["portalGoogleEmail"]).orEmpty(),
             portalGoogleUid = stringOf(decrypted["portalGoogleUid"]).orEmpty(),
             portalGoogleLinkedBy = stringOf(decrypted["portalGoogleLinkedBy"]).orEmpty(),
-            portalRevoked = boolOf(decrypted["portalRevoked"]) ?: false,
+            portalRevoked = boolOf(decrypted["portalRevoked"]) ?: existing?.portalRevoked ?: false,
         )
         if (existing == null) repository.insertVolunteer(remote) else repository.updateVolunteer(remote)
     }

@@ -1842,8 +1842,22 @@ class VolunteerPortalServiceTest {
         gateway.push("portalRequests")
         assertEquals("DONE", gateway.docs[key]!!["status"])
         assertEquals("Anna", host.guests[0].name)
-        assertEquals("", host.guests[0].lastNameAbbreviation)
+        assertEquals("X", host.guests[0].lastNameAbbreviation, "an empty field keeps the current value")
         assertEquals("Bob", host.guests[1].name)
+    }
+
+    @Test
+    fun renameKeepsFirstNameAndUpperCasesLastName() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(emptyList()).apply { tempSpace = true }
+        host.guests += tempGroup("T1", "c@example.org", uid = UID).copy(portalEnabled = true, name = "Ann", lastNameAbbreviation = "X")
+        startedService(gateway, host)
+        val key = "portalRequests/${UID}_TEMP_GUEST_NAME"
+        gateway.docs[key] = nameRequest(TemporaryGuestPortalQrDocument.guestKey(host.guests[0]), first = "", last = "doe")
+        gateway.push("portalRequests")
+        assertEquals("DONE", gateway.docs[key]!!["status"])
+        assertEquals("Ann", host.guests[0].name)
+        assertEquals("DOE", host.guests[0].lastNameAbbreviation)
     }
 
     @Test

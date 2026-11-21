@@ -24,6 +24,7 @@ All notable changes to NoctuList are documented here. Version numbers follow [Se
 - **Firestore rules:** version 18 (publish again). Storage rules unchanged.
 - **Hosting and functions:** export the form site again and run `firebase deploy --only hosting,functions`, at the same time as the rules. The old functions drop guest signups and name requests.
 - **Database:** Room migrations 53 to 56 (guest portal fields, `temporaryPortalEmail`, then portal invite fields and `portalRevoked`).
+- **Portal accounts after the update:** temporary guest lists opened before keep their sign-in without a confirmed e-mail. A portal access cut before the update stays cut only if the profile kept an admin Google address; otherwise it can be joined again to the account of the same address, so check those profiles once.
 
 ---
 

@@ -602,16 +602,23 @@ describe("onPortalRequestWritten: temporary guest names", () => {
 
     const after = await guest(org, a.nanoId);
     assert.equal(after.name, "Anna");
-    assert.equal(after.lastNameAbbreviation, "Doe");
+    assert.equal(after.lastNameAbbreviation, "DOE");
     assert.ok(after.lastModified > a.lastModified);
     assert.deepEqual(await guest(org, b.nanoId), b);
 
     const page = (await db.doc(`orgs/${org}/temporaryGuestPortal/${uid}`).get()).data();
     assert.equal(page.contentHash, sha256(page.payload));
     const names = JSON.parse(page.payload).groups[0].guests.map((g) => `${g.firstName} ${g.lastName}`);
-    assert.deepEqual(names, ["Anna Doe", "Bob Y"]);
+    assert.deepEqual(names, ["Anna DOE", "Bob Y"]);
     const qr = (await db.doc(`orgs/${org}/temporaryGuestPortalQr/${uid}`).get()).data();
-    assert.equal(qr.items[key(a.nanoId)].name, "Anna Doe");
+    assert.equal(qr.items[key(a.nanoId)].name, "Anna DOE");
+    // An empty first name keeps the current one.
+    await ref.delete();
+    const ref2 = await sendRequest(org, uid, "TEMP_GUEST_NAME", { guestKey: key(b.nanoId), firstName: "", lastName: "roy" });
+    assertResult(await waitResult(ref2), "DONE", "");
+    const bAfter = await guest(org, b.nanoId);
+    assert.equal(bAfter.name, "Bob");
+    assert.equal(bAfter.lastNameAbbreviation, "ROY");
     assert.equal(qr.items[key(a.nanoId)].payload, a.nanoId);
   });
 

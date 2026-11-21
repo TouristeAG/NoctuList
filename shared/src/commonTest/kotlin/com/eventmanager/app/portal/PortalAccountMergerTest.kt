@@ -7,6 +7,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class PortalAccountMergerTest {
+    private val now = 1_800_000_000_000L
+
     private fun vol(id: String, email: String, uid: String = "", enabled: Boolean = uid.isNotEmpty(), google: String = "", revoked: Boolean = false) =
         Volunteer(
             id = id, name = "V$id", lastNameAbbreviation = "X", email = email, phoneNumber = "",
@@ -19,14 +21,14 @@ class PortalAccountMergerTest {
             portalEnabled = enabled, portalUid = uid, portalGoogleEmail = google, portalRevoked = revoked,
         )
 
-    private fun temp(nano: String, contact: String, uid: String = "", enabled: Boolean = uid.isNotEmpty()) =
+    private fun temp(nano: String, contact: String, uid: String = "", enabled: Boolean = uid.isNotEmpty(), eventDate: Long = now) =
         Guest(
             nanoId = nano, name = "T$nano", invitations = 0, venueName = "Main", isTemporaryGuest = true,
-            temporaryEventDate = 1L, temporaryContactEmail = contact, portalEnabled = enabled, portalUid = uid,
+            temporaryEventDate = eventDate, temporaryContactEmail = contact, portalEnabled = enabled, portalUid = uid,
         )
 
     private fun plan(vs: List<Volunteer>, gs: List<Guest>, guestSpace: Boolean = true, tempSpace: Boolean = true) =
-        PortalAccountMerger.plan(vs, gs, guestSpace, tempSpace)
+        PortalAccountMerger.plan(vs, gs, guestSpace, tempSpace, now)
 
     @Test
     fun volunteerJoinsGuestAccount() {
@@ -89,22 +91,41 @@ class PortalAccountMergerTest {
 
     @Test
     fun changedAddressLeavesSharedAccount() {
+        // The account's other profiles still agree on ada@: only the odd one leaves.
         val p = plan(
             listOf(vol("v1", "new@example.org", uid = "U1")),
-            listOf(guest("g1", "ada@example.org", uid = "U1")),
+            listOf(guest("g1", "ada@example.org", uid = "U1"), temp("t1", "ada@example.org", uid = "U1")),
         )
         val v = p.volunteers.single()
         assertEquals("", v.portalUid)
         assertTrue(v.portalEnabled)
+        assertTrue(p.guests.isEmpty(), "the profiles that still match keep the account: ${p.guests}")
+    }
+
+    @Test
+    fun disjointPairKeepsTheirAccount() {
+        // Two profiles, two addresses, one account: nothing says which one changed, so nobody leaves.
+        val p = plan(listOf(vol("v1", "new@example.org", uid = "U1")), listOf(guest("g1", "ada@example.org", uid = "U1")))
+        assertTrue(p.volunteers.isEmpty() && p.guests.isEmpty(), "plan: $p")
     }
 
     @Test
     fun changedAddressJoinsTheNewAccount() {
         val p = plan(
             listOf(vol("v1", "bob@example.org", uid = "U1")),
-            listOf(guest("g1", "ada@example.org", uid = "U1"), guest("g2", "bob@example.org", uid = "U2")),
+            listOf(
+                guest("g1", "ada@example.org", uid = "U1"), temp("t1", "ada@example.org", uid = "U1"),
+                guest("g2", "bob@example.org", uid = "U2"),
+            ),
         )
         assertEquals("U2", p.volunteers.single().portalUid)
+    }
+
+    @Test
+    fun pastListsAreNotJoined() {
+        val past = now - 3 * 86_400_000L
+        val p = plan(listOf(vol("v1", "ada@example.org", uid = "U1")), listOf(temp("t1", "ada@example.org", eventDate = past)))
+        assertTrue(p.guests.isEmpty())
     }
 
     @Test

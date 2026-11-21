@@ -2752,4 +2752,6 @@
     <string name="portal_invites_review_remove">%1$s 的移除申請</string>
     <string name="portal_invites_from_portal">來自平台，由 %1$s</string>
     <string name="portal_invites_over_limit">超出活動上限。請移除名字或提高上限。</string>
+    <string name="portal_invites_entry_used_stays">%1$s：已入場，仍留在名單上</string>
+    <string name="portal_invites_list_gone">此申請的名單已不存在，只能拒絕。</string>
 </resources>

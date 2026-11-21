@@ -659,8 +659,8 @@ class VolunteerPortalService(
         if (target.temporaryEntryValidated) return complete(request.requestId, PortalRequest.STATUS_REJECTED, "ENTRY_USED")
         val ok = host.saveGuest(
             target.copy(
-                name = request.firstName,
-                lastNameAbbreviation = request.lastName,
+                name = request.firstName.ifEmpty { target.name },
+                lastNameAbbreviation = request.lastName.uppercase().ifEmpty { target.lastNameAbbreviation },
                 lastModified = maxOf(now, target.lastModified + 1),
             ),
         )
@@ -1330,6 +1330,7 @@ class VolunteerPortalService(
             snapshot.guests.filter { inOrg(it.firebaseOrgId) },
             host.guestPortalEnabled(),
             host.temporaryGuestPortalEnabled(),
+            clock(),
         )
         _addressConflicts.value = plan.conflicts
         if (plan.volunteers.isEmpty() && plan.guests.isEmpty()) return snapshot

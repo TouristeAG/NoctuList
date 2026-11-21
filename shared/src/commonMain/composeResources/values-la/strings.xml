@@ -2757,4 +2757,6 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="portal_invites_review_remove">Remotio pro %1$s</string>
     <string name="portal_invites_from_portal">Ex suggestu, a %1$s</string>
     <string name="portal_invites_over_limit">Hoc fines eventus excedit. Nomina remove aut finem auge.</string>
+    <string name="portal_invites_entry_used_stays">%1$s: introitus usus, in indice manet</string>
+    <string name="portal_invites_list_gone">Index huius petitionis iam non exstat. Tantum recusari potest.</string>
 </resources>

@@ -2752,4 +2752,6 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="portal_invites_review_remove">Retirada para %1$s</string>
     <string name="portal_invites_from_portal">Desde la plataforma, por %1$s</string>
     <string name="portal_invites_over_limit">Esto supera los límites del evento. Quita nombres o sube el límite.</string>
+    <string name="portal_invites_entry_used_stays">%1$s: entrada usada, sigue en la lista</string>
+    <string name="portal_invites_list_gone">La lista de esta solicitud ya no existe. Solo se puede rechazar.</string>
 </resources>

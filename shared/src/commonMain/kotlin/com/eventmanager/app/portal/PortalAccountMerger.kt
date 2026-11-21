@@ -32,21 +32,28 @@ object PortalAccountMerger {
 
     private class Holder(val addresses: Set<String>, val uid: String, val eligible: Boolean)
 
-    fun plan(volunteers: List<Volunteer>, guests: List<Guest>, guestSpaceOn: Boolean, tempSpaceOn: Boolean): PortalMergePlan {
+    fun plan(volunteers: List<Volunteer>, guests: List<Guest>, guestSpaceOn: Boolean, tempSpaceOn: Boolean, now: Long): PortalMergePlan {
         fun eligible(g: Guest) = when {
             g.isVolunteerBenefit -> false
-            g.isTemporaryGuest -> tempSpaceOn
+            // Past lists are never touched: joining them would rewrite history for nothing.
+            g.isTemporaryGuest -> tempSpaceOn && (g.temporaryEventDate ?: 0L).let {
+                it > 0L && TemporaryGuestPortalProjectionBuilder.visibleUntil(it) > now
+            }
             else -> guestSpaceOn && !g.portalRevoked
         }
         val vHolders = volunteers.map { Holder(addressesOf(it), it.portalUid.trim(), !it.portalRevoked) }
         val gHolders = guests.map { Holder(addressesOf(it), it.portalUid.trim(), eligible(it)) }
         val all = vHolders + gHolders
 
-        // A holder sharing its uid with others but no address with any of them changed its address.
+        // A holder whose address changed leaves its account, but only when the rest of the account
+        // still agrees on an address: with two disjoint profiles nothing says which one changed,
+        // so neither leaves (an account is never emptied by this rule).
+        fun shares(a: Holder, b: Holder) = a.addresses.any { it in b.addresses }
         val detached = all.filter { h ->
             if (h.uid.isEmpty()) return@filter false
             val mates = all.filter { it !== h && it.uid == h.uid }
-            mates.isNotEmpty() && mates.none { m -> m.addresses.any { it in h.addresses } }
+            mates.none { shares(it, h) } &&
+                mates.any { m -> mates.any { o -> o !== m && shares(m, o) } }
         }.toSet()
         fun uidOf(h: Holder) = if (h in detached) "" else h.uid
 

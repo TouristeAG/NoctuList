@@ -1355,7 +1355,11 @@ class EventManagerViewModel(
      * returns the names kept (entry used). The answer is closed as accepted.
      */
     fun acceptGuestFormRemoval(form: GuestForm, reviewedBy: String = ""): List<String> {
-        val template = portalInviteTemplateOf(form) ?: return emptyList()
+        // Its list is gone: nothing to remove, the answer is refused so it leaves the review.
+        val template = portalInviteTemplateOf(form) ?: run {
+            closeGuestForm(form, GuestFormStatus.REJECTED, reviewedBy)
+            return emptyList()
+        }
         val (remove, kept) = PortalInvites.removalTargets(form, portalInviteBatch(template))
         remove.forEach { deleteGuest(it) }
         closeGuestForm(form, GuestFormStatus.ACCEPTED, reviewedBy)

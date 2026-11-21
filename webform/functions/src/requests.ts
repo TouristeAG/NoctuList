@@ -228,16 +228,20 @@ async function renameTemporaryGuest(
       const page = await tx.get(pageRef);
       const qr = await tx.get(qrRef);
       const now = Date.now();
+      // An empty field keeps the current value; last names are upper-cased like everywhere else.
+      const firstName = request.firstName || stringOf(target.get("name"));
+      const lastName = request.lastName ? request.lastName.toUpperCase() : stringOf(target.get("lastNameAbbreviation"));
+      const renamed = { ...request, firstName, lastName };
       tx.update(target.ref, {
-        name: request.firstName,
-        lastNameAbbreviation: request.lastName,
+        name: firstName,
+        lastNameAbbreviation: lastName,
         lastModified: Math.max(now, (millisOf(target.get("lastModified")) ?? 0) + 1),
       });
-      const patch = renamedPage(page.data(), request, now);
+      const patch = renamedPage(page.data(), renamed, now);
       if (patch !== null) tx.update(pageRef, patch);
       const item = (qr.data()?.items as Data | undefined)?.[request.guestKey ?? ""];
       if (item !== undefined && item !== null && typeof item === "object") {
-        tx.update(qrRef, { [`items.${request.guestKey}.name`]: `${request.firstName} ${request.lastName}`.trim() });
+        tx.update(qrRef, { [`items.${request.guestKey}.name`]: `${firstName} ${lastName}`.trim() });
       }
       return DONE;
     });

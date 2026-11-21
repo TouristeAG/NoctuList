@@ -2747,4 +2747,6 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="portal_invites_review_remove">Removal for %1$s</string>
     <string name="portal_invites_from_portal">From the platform, by %1$s</string>
     <string name="portal_invites_over_limit">This goes past the limits of the event. Remove names or raise the limit.</string>
+    <string name="portal_invites_entry_used_stays">%1$s: entry used, stays on the list</string>
+    <string name="portal_invites_list_gone">The list of this request no longer exists. It can only be refused.</string>
 </resources>

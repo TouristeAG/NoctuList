@@ -43,8 +43,8 @@ class GuestPortalPublisherTest {
         nanoId = nanoId,
         name = "Max",
         lastNameAbbreviation = "DUPONT",
-        // Same address as the volunteer: profiles sharing a uid share an address (spec 2026-11-21 §5).
-        email = "lea@example.org",
+        // Another address than the volunteer on the same account: the merge must never split it.
+        email = "max@example.org",
         invitations = 2,
         venueName = "Club",
         firebaseOrgId = ORG,

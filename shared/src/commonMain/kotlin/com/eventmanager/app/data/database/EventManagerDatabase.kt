@@ -1741,6 +1741,23 @@ abstract class EventManagerDatabase : RoomDatabase() {
                     connection.execSQL("ALTER TABLE guests ADD COLUMN temporaryPortalCreated INTEGER NOT NULL DEFAULT 0")
                     connection.execSQL("ALTER TABLE guests ADD COLUMN portalRevoked INTEGER NOT NULL DEFAULT 0")
                     connection.execSQL("ALTER TABLE volunteers ADD COLUMN portalRevoked INTEGER NOT NULL DEFAULT 0")
+                    // Lists opened before 56 got their account from a device sign-up or a verified
+                    // CLAIM: keep their unverified read (rules 18), unless a volunteer or permanent
+                    // guest shares the account.
+                    connection.execSQL(
+                        "UPDATE guests SET temporaryPortalCreated = 1 WHERE isTemporaryGuest = 1 AND portalUid != '' " +
+                            "AND portalUid NOT IN (SELECT portalUid FROM volunteers WHERE portalUid != '') " +
+                            "AND portalUid NOT IN (SELECT portalUid FROM guests WHERE isTemporaryGuest = 0 AND portalUid != '')",
+                    )
+                    // An access cut before 56 left its admin-typed Google address: keep it cut.
+                    connection.execSQL(
+                        "UPDATE volunteers SET portalRevoked = 1 WHERE portalEnabled = 0 " +
+                            "AND (portalGoogleEmail != '' OR portalGoogleLinkedBy != '')",
+                    )
+                    connection.execSQL(
+                        "UPDATE guests SET portalRevoked = 1 WHERE isTemporaryGuest = 0 AND portalEnabled = 0 " +
+                            "AND (portalGoogleEmail != '' OR portalGoogleLinkedBy != '')",
+                    )
                     connection.execSQL("ALTER TABLE guest_forms ADD COLUMN portalUid TEXT NOT NULL DEFAULT ''")
                     connection.execSQL("ALTER TABLE guest_forms ADD COLUMN requestKind TEXT NOT NULL DEFAULT 'ADD'")
                     connection.execSQL("ALTER TABLE guest_forms ADD COLUMN removeGuestKeys TEXT NOT NULL DEFAULT ''")

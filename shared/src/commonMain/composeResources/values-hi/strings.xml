@@ -2757,4 +2757,6 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="portal_invites_review_remove">%1$s के लिए हटाना</string>
     <string name="portal_invites_from_portal">प्लेटफ़ॉर्म से, %1$s द्वारा</string>
     <string name="portal_invites_over_limit">यह कार्यक्रम की सीमा से अधिक है। नाम हटाएँ या सीमा बढ़ाएँ।</string>
+    <string name="portal_invites_entry_used_stays">%1$s: प्रवेश हो चुका, सूची में रहेंगे</string>
+    <string name="portal_invites_list_gone">इस अनुरोध की सूची अब मौजूद नहीं है। इसे केवल अस्वीकार किया जा सकता है।</string>
 </resources>
