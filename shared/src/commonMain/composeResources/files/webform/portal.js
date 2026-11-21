@@ -1464,7 +1464,7 @@ function guestCard(g, group, ctx) {
       type: "button",
       class: "primary qr-open",
       onclick: () => showQr("temporary", { payload: item.payload, name: item.name || name, association: ctx.association }),
-    }, icon("qr", 18), el("span", { text: t("myQr") })));
+    }, icon("qr", 18), el("span", { text: t("qrShort") })));
   }
   const modules = el("div", { class: "guest-modules" },
     guestModule(t("access"),

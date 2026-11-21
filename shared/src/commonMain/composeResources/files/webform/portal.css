@@ -643,8 +643,9 @@ dialog.qr-dialog .primary { margin-top: 14px; min-width: 160px; }
 .invite-block {
   padding: 12px 14px;
   border-radius: 16px;
-  background: var(--primary-container);
-  color: var(--on-primary-container);
+  border: 1px solid var(--line);
+  background: var(--container);
+  color: var(--on);
   margin-bottom: 14px;
 }
 .invite-count { font-weight: 800; }
