@@ -138,4 +138,22 @@ class PortalAccountMergerTest {
         val second = plan(vs2, gs2)
         assertTrue(second.volunteers.isEmpty() && second.guests.isEmpty(), "second plan: $second")
     }
+
+    @Test
+    fun addedListRowJoinsTheListSpaceAsDeviceCreated() {
+        // A guest added to a device-created list joins its account without making the page need a verified e-mail.
+        val opened = temp("t1", "band@example.org", uid = "U1").copy(temporaryPortalCreated = true, temporaryPortalEmail = "band@example.org")
+        val added = temp("t2", "band@example.org")
+        val g = plan(emptyList(), listOf(opened, added)).guests.single()
+        assertEquals("U1", g.portalUid)
+        assertTrue(g.portalEnabled)
+        assertTrue(g.temporaryPortalCreated)
+        assertEquals("band@example.org", g.temporaryPortalEmail)
+    }
+
+    @Test
+    fun listRowJoiningAVolunteerAccountIsNotDeviceCreated() {
+        val p = plan(listOf(vol("v1", "band@example.org", uid = "U1")), listOf(temp("t2", "band@example.org").copy(temporaryPortalCreated = true)))
+        assertEquals(false, p.guests.single().temporaryPortalCreated)
+    }
 }

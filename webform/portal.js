@@ -48,6 +48,7 @@ import {
   chooseProfile,
   guestListCounts,
   guestListGroups,
+  guestListOnly,
   inviteRemaining,
   profilesLayout,
   qrDialogClosesFor,
@@ -934,6 +935,13 @@ function showProfiles() {
 function showNoProfile() {
   if (!user) return;
   closeQrDialog();
+  // No profile page, but a guest list granted for a date still to come: show that alone.
+  if (guestListOnly([], guestListPage?.grants, Date.now())) {
+    activeKind = "guestList";
+    render();
+    showView("view-dash");
+    return;
+  }
   if (!pages.volunteer) return showVerify();
   const refused = pages.volunteer.state === "denied";
   if (isGoogleUser(user) && refused) {
@@ -1010,6 +1018,7 @@ function selectProfile(kind) {
 
 /** Points projection and qrDoc at the profile on screen, then draws it. */
 function render() {
+  if (activeKind === "guestList") return renderDashboard();
   if (!activeKind || !pages[activeKind]) return;
   const page = pages[activeKind];
   projection = activeKind === "temporary" ? null : page.data;
@@ -1765,11 +1774,32 @@ function watchGuestList(uidAtStart) {
     } catch {
       guestListPage = null;
     }
-    render();
+    guestListChanged();
   }, () => {
     guestListPage = null;
-    render();
+    guestListChanged();
   }));
+}
+
+/** The list may be all this account has: enter or leave the lists-only view, else just redraw. */
+function guestListChanged() {
+  const listsOnly = guestListOnly([], guestListPage?.grants, Date.now());
+  if (activeKind === "guestList" && !listsOnly) {
+    activeKind = null;
+    return showProfiles();
+  }
+  if (!activeKind && listsOnly && profilesSettled(pageStates()).done) return showNoProfile();
+  render();
+}
+
+/** The space of an account whose only view is a granted guest list. */
+function renderGuestListOnly() {
+  $("dash-hello").textContent = t("guestListsHeading");
+  $("dash-sub").textContent = String(guestListPage?.association || "");
+  const dash = $("dash");
+  clear(dash);
+  dash.className = "dash cols-1";
+  appendGuestLists(dash);
 }
 
 const GUEST_LIST_REASONS = { NO_GRANT: "guestListNoGrant", NOT_FOUND: "guestListNotFound", ENTRY_USED: "guestListEntryUsed" };
@@ -2229,7 +2259,7 @@ function openAccountDialog() {
   clear(body);
   googleMsg = null;
   googleBox = null;
-  if (activeKind === "temporary") {
+  if (activeKind === "temporary" || activeKind === "guestList") {
     // Read-only page: the password of the account and signing out, nothing else.
     body.append(
       el("section", { class: "dialog-section" },
@@ -2286,7 +2316,8 @@ function renderDashboard() {
   if (!user || !activeKind) return;
   renderSwitch();
   // "My account" has its own button only on the groups page: elsewhere "Edit" opens it.
-  $("account-btn").classList.toggle("hidden", activeKind !== "temporary");
+  $("account-btn").classList.toggle("hidden", activeKind !== "temporary" && activeKind !== "guestList");
+  if (activeKind === "guestList") return renderGuestListOnly();
   if (activeKind === "temporary") return renderGroups();
   if (!projection) return;
   $("dash-hello").textContent = t("hello", { name: projection.firstName || "" });

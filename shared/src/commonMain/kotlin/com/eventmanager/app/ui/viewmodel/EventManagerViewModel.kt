@@ -1441,11 +1441,21 @@ class EventManagerViewModel(
 
     // region Guest list access (spec guest list access §6.1)
 
+    /**
+     * Rows that carry a holder's grants: the profile itself, or for a list contact every row of
+     * its list account, so a grant survives the deletion of any one guest and shows from each.
+     */
+    private fun guestListRows(holder: PortalHolder, guests: List<Guest>): List<Guest> {
+        val self = guests.firstOrNull { it.nanoId == holder.id } ?: return emptyList()
+        if (!self.isTemporaryGuest || self.portalUid.isBlank()) return listOf(self)
+        return guests.filter { it.isTemporaryGuest && it.portalUid == self.portalUid }
+    }
+
     /** The grants a profile carries, as stored (current and history). */
     fun guestListGrantsOf(holder: PortalHolder): String = when (holder.kind) {
-        PortalHolderKind.VOLUNTEER -> volunteers.value.firstOrNull { it.id == holder.id }?.guestListGrantsJson
-        PortalHolderKind.GUEST -> _guests.value.firstOrNull { it.nanoId == holder.id }?.guestListGrantsJson
-    }.orEmpty()
+        PortalHolderKind.VOLUNTEER -> volunteers.value.firstOrNull { it.id == holder.id }?.guestListGrantsJson.orEmpty()
+        PortalHolderKind.GUEST -> com.eventmanager.app.portal.GuestListGrants.merge(guestListRows(holder, _guests.value).map { it.guestListGrantsJson })
+    }
 
     private fun guestListActor(): String =
         com.eventmanager.app.data.remote.FirebaseAuthBridge.currentUserEmail().orEmpty().trim()
@@ -1479,10 +1489,16 @@ class EventManagerViewModel(
                     syncCoordinator?.afterVolunteerSaved(saved)
                 }
                 PortalHolderKind.GUEST -> {
-                    val g = repository.getGuestByNanoId(holder.id) ?: return false
-                    val saved = tagGuestWithActiveOrg(g.copy(guestListGrantsJson = change(g.guestListGrantsJson), lastModified = maxOf(now, g.lastModified + 1)))
-                    repository.updateGuest(saved)
-                    syncCoordinator?.afterGuestSaved(saved)
+                    val rows = guestListRows(holder, repository.getAllGuestsOnce())
+                    if (rows.isEmpty()) return false
+                    // Every row starts from the merged list, so all rows of the account agree.
+                    val merged = com.eventmanager.app.portal.GuestListGrants.merge(rows.map { it.guestListGrantsJson })
+                    val next = change(merged)
+                    for (g in rows) {
+                        val saved = tagGuestWithActiveOrg(g.copy(guestListGrantsJson = next, lastModified = maxOf(now, g.lastModified + 1)))
+                        repository.updateGuest(saved)
+                        syncCoordinator?.afterGuestSaved(saved)
+                    }
                 }
             }
             true

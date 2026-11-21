@@ -46,7 +46,7 @@ class GuestListEditProcessorTest {
 
     @Test
     fun addToExistingListCopiesContact() {
-        host.guests += temp("A1", "Ann")
+        host.guests += temp("A1", "Ann").copy(barDiscountPercent = 15)
         assertEquals("DONE" to "", run(edit("ADD", first = "Cy", last = "Doe", list = "Band", venue = "Groove", access = listOf("bs", "vip"))))
         val added = host.addedBatches.single()
         assertEquals("Band", added.artistName)
@@ -55,6 +55,7 @@ class GuestListEditProcessorTest {
         assertEquals("+41 79 1", added.emergencyContactPhone)
         assertEquals("Cy DOE", added.guests.single().name)
         assertEquals(setOf("bs"), added.guests.single().accessIds, "accessIdsFilteredToVenue")
+        assertEquals(15, added.barDiscountPercent, "the list's bar discount follows")
     }
 
     @Test

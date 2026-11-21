@@ -39,7 +39,16 @@ object GuestListGrants {
 
     fun encode(list: List<GuestListGrant>): String = if (list.isEmpty()) "" else json.encodeToString(serializer, list)
 
-    fun add(raw: String, grant: GuestListGrant): String = encode(decode(raw) + grant)
+    fun add(raw: String, grant: GuestListGrant): String =
+        encode(decode(raw).filterNot { it.id == grant.id } + grant)
+
+    /** One list from several rows of one account; a revocation on any row wins. */
+    fun merge(raws: List<String>): String =
+        encode(
+            raws.flatMap { decode(it) }.groupBy { it.id }.values.map { same ->
+                same.firstOrNull { it.revokedAt != 0L } ?: same.first()
+            },
+        )
 
     /** Marks [id] revoked; a grant already revoked keeps its first revocation. */
     fun revoke(raw: String, id: String, by: String, now: Long): String =

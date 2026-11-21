@@ -81,10 +81,24 @@ object PortalAccountMerger {
                 else -> null
             }
         }
+        /**
+         * A list row joining account [uid] takes its list mates' state: device-created only when
+         * every list row of the account is and no volunteer or permanent guest shares it, so the
+         * page keeps (or loses) its unverified read exactly as before; same opened address.
+         */
+        fun joinedListRow(g: Guest, uid: String): Guest {
+            val mates = guests.filter { it.isTemporaryGuest && it.portalUid == uid }
+            val holder = volunteers.any { it.portalUid == uid } || guests.any { !it.isTemporaryGuest && it.portalUid == uid }
+            val created = mates.isNotEmpty() && mates.all { it.temporaryPortalCreated } && !holder
+            val opened = mates.map { it.temporaryPortalEmail.trim() }.firstOrNull { it.isNotEmpty() } ?: g.temporaryPortalEmail
+            return g.copy(portalUid = uid, portalEnabled = true, temporaryPortalCreated = created, temporaryPortalEmail = opened)
+        }
+
         val gOut = guests.zip(gHolders).mapNotNull { (g, h) ->
             val t = target(h)
             when {
                 // A list the admin closed keeps its uid and stays closed: it never reaches here.
+                t != null && g.isTemporaryGuest -> joinedListRow(g, t)
                 t != null -> g.copy(portalUid = t, portalEnabled = true)
                 h in detached -> g.copy(portalUid = "")
                 else -> null

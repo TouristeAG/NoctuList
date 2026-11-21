@@ -19,3 +19,12 @@ test("guestListCounts: entered over total", () => {
   assert.deepEqual(guestListCounts([g("A", "", "L", { entryUsed: true }), g("B", "", "L")]), { entered: 1, total: 2 });
   assert.deepEqual(guestListCounts(undefined), { entered: 0, total: 0 });
 });
+
+test("guestListOnly: the guest list shows even without another profile", async () => {
+  const { guestListOnly } = await import("../site/portal-common.js");
+  const now = 1000;
+  assert.equal(guestListOnly([], [{ eventDate: 1, visibleUntil: 2000 }], now), true);
+  assert.equal(guestListOnly([], [{ eventDate: 1, visibleUntil: 500 }], now), false);
+  assert.equal(guestListOnly(["volunteer"], [{ eventDate: 1, visibleUntil: 2000 }], now), false);
+  assert.equal(guestListOnly([], undefined, now), false);
+});

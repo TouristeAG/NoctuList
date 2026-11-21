@@ -101,6 +101,7 @@ class GuestListEditProcessor(
                 guests = listOf(ManualTemporaryGuestEntry(name, accessesFor(activeVenue, edit.accessIds))),
                 venueName = activeVenue,
                 contactEmail = sameList?.temporaryContactEmail.orEmpty(),
+                barDiscountPercent = sameList?.barDiscountPercent ?: 0,
             ),
         )
         return if (ok) DONE to "" else REJECTED to "SAVE_FAILED"

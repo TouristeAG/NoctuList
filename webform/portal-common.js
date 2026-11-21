@@ -365,3 +365,8 @@ export function guestListCounts(guests) {
   const list = Array.isArray(guests) ? guests : [];
   return { entered: list.filter((g) => g.entryUsed === true).length, total: list.length };
 }
+
+/** No profile page but a granted guest list still to come: the space shows that list alone. */
+export function guestListOnly(available, grants, now = Date.now()) {
+  return !(Array.isArray(available) ? available : []).length && visibleLists(grants, now).length > 0;
+}

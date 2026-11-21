@@ -44,6 +44,16 @@ class GuestListGrantsTest {
     }
 
     @Test
+    fun mergeAcrossRowsOfOneAccount() {
+        val a = GuestListGrants.add("", grant("A"))
+        val ab = GuestListGrants.add(a, grant("B"))
+        val revokedA = GuestListGrants.revoke(a, "A", "Admin", 3L)
+        val merged = GuestListGrants.decode(GuestListGrants.merge(listOf(ab, revokedA, "")))
+        assertEquals(listOf("A", "B"), merged.map { it.id }.sorted())
+        assertEquals(3L, merged.first { it.id == "A" }.revokedAt, "a revocation on any row wins")
+    }
+
+    @Test
     fun decodeIgnoresGarbage() {
         assertEquals(emptyList(), GuestListGrants.decode(""))
         assertEquals(emptyList(), GuestListGrants.decode("not json"))
