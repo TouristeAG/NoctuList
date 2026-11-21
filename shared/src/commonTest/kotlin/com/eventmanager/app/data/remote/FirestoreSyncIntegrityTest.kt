@@ -395,9 +395,11 @@ class FirestoreSyncIntegrityTest {
             portalGoogleEmail = "bea@assoc.org",
             portalGoogleUid = "google-uid-1",
             portalGoogleLinkedBy = com.eventmanager.app.data.models.Volunteer.GOOGLE_LINKED_BY_ADMIN,
+            guestListGrantsJson = "[]",
         )
         val decrypted = com.eventmanager.app.data.security.crypto.SensitiveFieldCodec
             .decryptVolunteerMap(gateway.volunteerToMap(volunteer), "org-a")
+        assertEquals("[]", decrypted["guestListGrantsJson"])
         assertEquals("bea@assoc.org", decrypted["portalGoogleEmail"])
         assertEquals("google-uid-1", decrypted["portalGoogleUid"])
         assertEquals("ADMIN", decrypted["portalGoogleLinkedBy"])
@@ -507,11 +509,14 @@ class FirestoreSyncIntegrityTest {
             portalGoogleLinkedBy = "ADMIN",
             temporaryPortalEmail = "artist@example.org",
             temporaryPortalCreated = true,
+            guestListGrantsJson = "[{\"id\":\"g1\",\"eventDateMillis\":5}]",
         )
         val decrypted = com.eventmanager.app.data.security.crypto.SensitiveFieldCodec
             .decryptGuestMap(gateway.guestToMap(guest), "org-a")
         assertEquals("artist@example.org", decrypted["temporaryPortalEmail"])
         assertEquals(true, decrypted["temporaryPortalCreated"])
+        assertEquals("[{\"id\":\"g1\",\"eventDateMillis\":5}]", decrypted["guestListGrantsJson"])
+        assertEquals("", Guest(name = "B", invitations = 1, venueName = "Main").guestListGrantsJson)
         assertEquals(false, Guest(name = "B", invitations = 1, venueName = "Main").temporaryPortalCreated)
         assertEquals("", Guest(name = "B", invitations = 1, venueName = "Main").temporaryPortalEmail)
         assertEquals(true, decrypted["portalEnabled"])

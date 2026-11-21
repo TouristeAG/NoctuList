@@ -207,6 +207,7 @@ object FirestoreChangeApplier {
             portalGoogleUid = stringOf(decrypted["portalGoogleUid"]).orEmpty(),
             portalGoogleLinkedBy = stringOf(decrypted["portalGoogleLinkedBy"]).orEmpty(),
             portalRevoked = boolOf(decrypted["portalRevoked"]) ?: existing?.portalRevoked ?: false,
+            guestListGrantsJson = stringOf(decrypted["guestListGrantsJson"]) ?: existing?.guestListGrantsJson.orEmpty(),
         )
         if (existing == null) {
             try {
@@ -288,6 +289,7 @@ object FirestoreChangeApplier {
             portalGoogleUid = stringOf(decrypted["portalGoogleUid"]).orEmpty(),
             portalGoogleLinkedBy = stringOf(decrypted["portalGoogleLinkedBy"]).orEmpty(),
             portalRevoked = boolOf(decrypted["portalRevoked"]) ?: existing?.portalRevoked ?: false,
+            guestListGrantsJson = stringOf(decrypted["guestListGrantsJson"]) ?: existing?.guestListGrantsJson.orEmpty(),
         )
         if (existing == null) repository.insertVolunteer(remote) else repository.updateVolunteer(remote)
     }

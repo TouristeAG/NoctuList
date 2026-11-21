@@ -73,6 +73,8 @@ data class Guest(
     val portalGoogleLinkedBy: String = "",
     /** The admin cut this profile's portal access: it is not joined to its address's account again. Firebase only. */
     val portalRevoked: Boolean = false,
+    /** Guest list access grants ([com.eventmanager.app.portal.GuestListGrants]). Firebase only. */
+    val guestListGrantsJson: String = "",
 )
 
 /**
@@ -178,6 +180,8 @@ data class Volunteer(
     val portalGoogleLinkedBy: String = "",
     /** The admin cut this profile's portal access: it is not joined to its address's account again. Firebase only. */
     val portalRevoked: Boolean = false,
+    /** Guest list access grants ([com.eventmanager.app.portal.GuestListGrants]). Firebase only. */
+    val guestListGrantsJson: String = "",
 ) {
     companion object {
         const val GOOGLE_LINKED_BY_ADMIN = "ADMIN"

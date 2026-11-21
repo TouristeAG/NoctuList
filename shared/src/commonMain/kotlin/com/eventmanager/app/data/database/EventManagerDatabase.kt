@@ -53,7 +53,7 @@ private fun SQLiteConnection.query(sql: String): MigrationCursor =
         PendingRemoteWrite::class,
         GuestForm::class,
     ],
-    version = 56,
+    version = 57,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -1734,6 +1734,21 @@ abstract class EventManagerDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_56_57 = object : Migration(56, 57) {
+            override fun migrate(connection: SQLiteConnection) {
+                try {
+                    println("Starting migration 56→57: guest list access grants")
+                    connection.execSQL("ALTER TABLE volunteers ADD COLUMN guestListGrantsJson TEXT NOT NULL DEFAULT ''")
+                    connection.execSQL("ALTER TABLE guests ADD COLUMN guestListGrantsJson TEXT NOT NULL DEFAULT ''")
+                    println("Migration 56→57 completed successfully")
+                } catch (e: Exception) {
+                    println("Migration 56→57 failed: ${e.message}")
+                    e.printStackTrace()
+                    throw e
+                }
+            }
+        }
+
         private val MIGRATION_55_56 = object : Migration(55, 56) {
             override fun migrate(connection: SQLiteConnection) {
                 try {
@@ -1857,7 +1872,8 @@ abstract class EventManagerDatabase : RoomDatabase() {
             MIGRATION_52_53,
             MIGRATION_53_54,
             MIGRATION_54_55,
-            MIGRATION_55_56
+            MIGRATION_55_56,
+            MIGRATION_56_57
         )
     }
 }
