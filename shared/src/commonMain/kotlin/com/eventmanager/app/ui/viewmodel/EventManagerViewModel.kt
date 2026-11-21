@@ -3046,8 +3046,7 @@ class EventManagerViewModel(
 
     /** Address the group's account was opened for, or null when the space is closed. */
     fun temporaryGroupPortalEmail(guest: Guest): String? =
-        temporaryGuestBatch(guest).filter { it.portalEnabled }
-            .map { it.temporaryPortalEmail.trim() }.firstOrNull { it.isNotEmpty() }
+        TemporaryGuestPortalAccess.openedForAddress(temporaryGuestBatch(guest))
 
     /** Sends the Firebase "set your password" mail to the group's account address, on the admin's request only. */
     suspend fun sendTemporaryGroupPasswordReset(guest: Guest, languageCode: String): Boolean {

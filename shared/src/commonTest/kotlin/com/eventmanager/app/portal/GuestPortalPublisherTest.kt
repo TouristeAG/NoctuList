@@ -188,6 +188,20 @@ class GuestPortalPublisherTest {
     }
 
     @Test
+    fun closedTempGroupKeepingItsUidPublishesNoPage() = runBlocking {
+        val gateway = FakeGateway()
+        val ana = temp("Ana", "TempNano00000000000001")
+        val host = FakeHost(emptyList()).apply { tempSpace = true; guests += ana }
+        val running = run(gateway, host)
+        until("temp page") { gateway.docs["temporaryGuestPortal/$TEMP_UID"] != null }
+        running.guests.value = listOf(ana.copy(portalEnabled = false))
+        until("temp page gone") { gateway.docs["temporaryGuestPortal/$TEMP_UID"] == null }
+        running.service.republish()
+        assertNull(gateway.docs["temporaryGuestPortal/$TEMP_UID"])
+        assertNull(gateway.docs["temporaryGuestPortalQr/$TEMP_UID"])
+    }
+
+    @Test
     fun tempGroupEndedDeletesPage() = runBlocking {
         val gateway = FakeGateway()
         val host = FakeHost(emptyList()).apply { tempSpace = true; guests += temp("Ana", "TempNano00000000000001") }

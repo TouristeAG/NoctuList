@@ -583,7 +583,7 @@ class VolunteerPortalService(
     /**
      * Links to the request's uid every open profile with a blank portal uid and the verified
      * address: volunteers (`email`), permanent guests (`email`, guest space on) and temporary
-     * groups (`temporaryContactEmail`, their space on). Volunteers keep their own answers (an
+     * groups (`temporaryPortalEmail`, else `temporaryContactEmail`; their space on). Volunteers keep their own answers (an
      * already linked volunteer is done, two free ones are ambiguous); a guest profile of that
      * address linked to another uid refuses the whole claim.
      */
@@ -611,7 +611,7 @@ class VolunteerPortalService(
         }
         val guestOwned = claimable.any { it.portalUid == uid }
         val guestTargets = claimable.filter {
-            it.portalUid != uid && (if (it.isTemporaryGuest) it.temporaryContactEmail else it.email).trim()
+            it.portalUid != uid && (if (it.isTemporaryGuest) it.temporaryPortalEmail.ifBlank { it.temporaryContactEmail } else it.email).trim()
                 .equals(request.email, ignoreCase = true)
         }
         val foreign = guestTargets.filter { it.portalUid.isNotBlank() }

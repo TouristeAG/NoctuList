@@ -39,7 +39,7 @@ class TemporaryGuestPortalAccessTest {
         portalEnabled = enabled,
     )
 
-    private fun access(auth: FakeAuth) = TemporaryGuestPortalAccess(
+    private fun access(auth: PortalAuthApi) = TemporaryGuestPortalAccess(
         orgId = ORG,
         host = host,
         authClientFactory = { auth },
@@ -109,7 +109,7 @@ class TemporaryGuestPortalAccessTest {
     }
 
     @Test
-    fun closeClearsBatchOnly() = runBlocking {
+    fun closeDisablesBatchOnlyAndKeepsItsUid() = runBlocking {
         val auth = FakeAuth(PortalAuthResult.Created("uid-1"))
         val a = batch("G1", "G2")
         val other = temp("G3", artist = "Other", email = "other@example.org", uid = "uid-2", enabled = true)
@@ -118,16 +118,99 @@ class TemporaryGuestPortalAccessTest {
         val acc = access(auth)
         acc.open(a)
         republished = 0
-        assertTrue(acc.close(host.guests.filter { it.nanoId in setOf("G1", "G2") }))
-        host.guests.filter { it.nanoId in setOf("G1", "G2") }.forEach {
+        val before = host.guests.filter { it.nanoId in setOf("G1", "G2") }
+        assertTrue(acc.close(before))
+        val after = host.guests.filter { it.nanoId in setOf("G1", "G2") }
+        after.forEach {
             assertFalse(it.portalEnabled)
-            assertEquals("", it.portalUid)
-            assertEquals("", it.temporaryPortalEmail)
+            assertEquals("uid-1", it.portalUid)
+            assertEquals(CONTACT, it.temporaryPortalEmail)
         }
+        after.forEach { g -> assertTrue(g.lastModified > before.first { it.nanoId == g.nanoId }.lastModified) }
+        assertNull(acc.openedFor(after))
         val untouched = host.guests.first { it.nanoId == "G3" }
         assertTrue(untouched.portalEnabled)
         assertEquals("uid-2", untouched.portalUid)
         assertEquals(1, republished)
+    }
+
+    @Test
+    fun closeThenReopenReusesTheSameUidWithoutCreatingAnAccount() = runBlocking {
+        val auth = FakeAuth(PortalAuthResult.Created("uid-1"))
+        val acc = access(auth)
+        acc.open(batch("G1", "G2"))
+        acc.close(host.guests.toList())
+        val result = acc.open(host.guests.toList())
+        assertEquals(TemporaryGroupAccessResult.Reused("uid-1"), result)
+        assertEquals(1, auth.creates.size)
+        host.guests.forEach { assertTrue(it.portalEnabled); assertEquals("uid-1", it.portalUid) }
+    }
+
+    @Test
+    fun openAndCloseBumpLastModified() = runBlocking {
+        val acc = access(FakeAuth(PortalAuthResult.Created("uid-1")))
+        val b = batch("G1").map { it.copy(lastModified = 500L) }
+        host.guests.clear(); host.guests += b
+        acc.open(b)
+        val opened = host.guests.single()
+        assertEquals(501L, opened.lastModified)
+        acc.close(listOf(opened))
+        assertEquals(502L, host.guests.single().lastModified)
+    }
+
+    @Test
+    fun anotherGroupIsNeverReusedThroughAnEditedContactAddress() = runBlocking {
+        val auth = FakeAuth(PortalAuthResult.Created("uid-new"))
+        val acc = access(auth)
+        val a = listOf(temp("A1", artist = "A", email = "old@example.org")).also { host.guests += it }
+        assertEquals("uid-new", (acc.open(a) as TemporaryGroupAccessResult.Created).uid)
+        host.guests[0] = host.guests[0].copy(temporaryContactEmail = "new@example.org")
+        val authB = FakeAuth(PortalAuthResult.Created("uid-b"))
+        val b = listOf(temp("B1", artist = "B", email = "new@example.org")).also { host.guests += it }
+        val result = access(authB).open(b)
+        assertEquals(TemporaryGroupAccessResult.Created("uid-b", (result as TemporaryGroupAccessResult.Created).password), result)
+        assertEquals(listOf("new@example.org"), authB.creates)
+    }
+
+    @Test
+    fun saveFailureKeepsTheNewPasswordVisible() = runBlocking {
+        val auth = FakeAuth(PortalAuthResult.Created("uid-1"))
+        val g = temp("GHOST")
+        // Not in the host list: saveGuest returns false.
+        val result = access(auth).open(listOf(g))
+        val failed = assertIs<TemporaryGroupAccessResult.Failed>(result)
+        assertEquals("SAVE_FAILED", failed.code)
+        assertTrue(failed.password!!.length >= 12)
+    }
+
+    @Test
+    fun existingAccountOpenedMeanwhileByAnotherDeviceIsReused() = runBlocking {
+        // The other device linked the group between our read and the EMAIL_EXISTS answer.
+        val b = batch("G1", "G2")
+        val auth = object : PortalAuthApi {
+            override suspend fun createAccount(email: String, password: String): PortalAuthResult {
+                host.guests.replaceAll {
+                    it.copy(portalEnabled = true, portalUid = "uid-other", temporaryPortalEmail = CONTACT)
+                }
+                return PortalAuthResult.EmailExists
+            }
+            override suspend fun sendPasswordReset(email: String, languageCode: String) = PortalAuthResult.Sent
+        }
+        val result = access(auth).open(b)
+        assertEquals(TemporaryGroupAccessResult.Reused("uid-other"), result)
+        host.guests.forEach { assertEquals("uid-other", it.portalUid) }
+    }
+
+    @Test
+    fun openReusesTheUidOfAnAlreadyLinkedGuest() = runBlocking {
+        val auth = FakeAuth(PortalAuthResult.Created("never"))
+        host.guests += Guest(
+            nanoId = "P1", name = "P", invitations = 1, venueName = "Club", email = "Manager@Example.org",
+            firebaseOrgId = ORG, portalEnabled = true, portalUid = "uid-guest",
+        )
+        val result = access(auth).open(batch("G1"))
+        assertEquals(TemporaryGroupAccessResult.Reused("uid-guest"), result)
+        assertTrue(auth.creates.isEmpty())
     }
 
     @Test

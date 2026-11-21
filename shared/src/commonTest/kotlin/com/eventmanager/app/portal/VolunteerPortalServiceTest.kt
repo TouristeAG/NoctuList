@@ -1129,6 +1129,25 @@ class VolunteerPortalServiceTest {
     }
 
     @Test
+    fun claimMatchesTemporaryGroupsOnTheAddressTheAccountWasOpenedFor() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(emptyList())
+        host.tempSpace = true
+        // Opened for lea@, contact later edited to another address: the claim follows the opened address.
+        host.guests += tempGroup("T1", "edited@example.org").copy(temporaryPortalEmail = "lea@example.org")
+        host.guests += tempGroup("T2", "lea@example.org").copy(temporaryPortalEmail = "other@example.org")
+        host.guests += tempGroup("T3", "lea@example.org")
+        startedService(gateway, host)
+        val key = "portalRequests/${UID}_CLAIM"
+        gateway.docs[key] = mapOf("uid" to UID, "type" to "CLAIM", "status" to "PENDING", "email" to "lea@example.org")
+        gateway.push("portalRequests")
+        val byId = host.guests.associateBy { it.nanoId }
+        assertEquals(UID, byId["T1"]!!.portalUid)
+        assertEquals("", byId["T2"]!!.portalUid)
+        assertEquals(UID, byId["T3"]!!.portalUid, "no recorded address: the contact address is used")
+    }
+
+    @Test
     fun claimSkipsGuestKindsWhoseSpaceIsOff() = runBlocking {
         val gateway = FakeGateway()
         val host = FakeHost(emptyList())

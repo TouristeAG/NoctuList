@@ -535,7 +535,6 @@ class FirestoreSyncIntegrityTest {
             headers.forEach { header ->
                 assertFalse(header.contains("portal", ignoreCase = true), header)
                 assertFalse(header.contains("google", ignoreCase = true), header)
-                assertFalse(header.contains("portalemail", ignoreCase = true), header)
             }
         }
     }
