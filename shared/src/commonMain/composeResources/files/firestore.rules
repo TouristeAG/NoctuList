@@ -1,5 +1,5 @@
 rules_version = '2';
-// NoctuList Firestore rules — NOCTULIST_RULES_VERSION = 17
+// NoctuList Firestore rules — NOCTULIST_RULES_VERSION = 18
 // Republish this exact file in Firebase Console → Firestore → Rules after every app update,
 // otherwise members that already exist cannot re-join their organization.
 service cloud.firestore {
@@ -187,11 +187,14 @@ service cloud.firestore {
     // Multi-response answers spawn a new PENDING_REVIEW doc; the open template must still
     // accept answers (OPEN, flagged, unexpired) and the child must copy venue/event fields.
     function isPublicMultiGuestFormCreate(orgId, formId) {
-      return request.resource.data.parentFormId is string
+      return request.resource.data.get('portalUid', '') == ''
+        && request.resource.data.parentFormId is string
         && request.resource.data.parentFormId.size() > 0
         && exists(guestFormParentPath(orgId, request.resource.data.parentFormId))
         && guestFormIsOpen(get(guestFormParentPath(orgId, request.resource.data.parentFormId)).data)
         && get(guestFormParentPath(orgId, request.resource.data.parentFormId)).data.allowMultipleResponses == true
+        // A template bound to a portal account has no public link (spec 2026-11-21 §4).
+        && get(guestFormParentPath(orgId, request.resource.data.parentFormId)).data.get('portalUid', '') == ''
         && request.resource.data.status == 'PENDING_REVIEW'
         && request.resource.data.formId == formId
         && request.resource.data.submissionJson is string
@@ -226,6 +229,38 @@ service cloud.firestore {
              !('allowMultipleResponses' in request.resource.data)
              || request.resource.data.allowMultipleResponses == false
            );
+    }
+
+    // Same copied fields as a public answer, plus the account binding and the request kind.
+    function isPortalInviteCreate(orgId, formId) {
+      let d = request.resource.data;
+      let parent = get(guestFormParentPath(orgId, d.parentFormId)).data;
+      return d.parentFormId is string
+        && d.parentFormId.size() > 0
+        && parent.get('portalUid', '') != ''
+        && d.get('portalUid', '') == parent.portalUid
+        && tempGuestPortalOn(orgId)
+        && tempSessionOk(orgId, parent.portalUid)
+        && guestFormIsOpen(parent)
+        && parent.allowMultipleResponses == true
+        && d.status == 'PENDING_REVIEW'
+        && d.formId == formId
+        && d.requestKind in ['ADD', 'REMOVE']
+        && d.get('removeGuestKeys', '') is string
+        && d.get('removeGuestKeys', '').size() <= 1700
+        && d.submissionJson is string
+        && d.submissionJson.size() < 20000
+        && d.venueName == parent.venueName
+        && d.eventName == parent.eventName
+        && d.eventDateMillis == parent.eventDateMillis
+        && d.artistName == parent.artistName
+        && d.offeredAccessIds == parent.offeredAccessIds
+        && d.maxGuests == parent.maxGuests
+        && d.expiresAtMillis == parent.expiresAtMillis
+        && d.get('institutionLogoDataUri', '') == ''
+        && d.get('guestLogoDataUri', '') == ''
+        && d.get('sourceDeviceId', '') == ''
+        && d.get('allowMultipleResponses', false) == false;
     }
 
     function isValidMemberRole(role) {
@@ -388,11 +423,17 @@ service cloud.firestore {
       allow read, write: if isMember(orgId);
 
       // Public read is a targeted get only — never list — so a form is unreachable without its
-      // exact ID, and only while it is still open and unexpired.
-      allow get: if guestFormIsOpen(resource.data);
+      // exact ID, and only while it is still open and unexpired. A portal invite template has
+      // no public link: only its own account reads it.
+      allow get: if guestFormIsOpen(resource.data) && resource.data.get('portalUid', '') == '';
+      allow get: if resource.data.get('portalUid', '') != ''
+        && tempGuestPortalOn(orgId)
+        && tempSessionOk(orgId, resource.data.portalUid);
 
       // Multi-response: each answer creates a new PENDING_REVIEW doc; the template stays OPEN.
       allow create: if isPublicMultiGuestFormCreate(orgId, formId);
+      // Portal invite: an answer to a template bound to the session's account (spec 2026-11-21 §8).
+      allow create: if isPortalInviteCreate(orgId, formId);
 
       // Single-response: answer in place and move to PENDING_REVIEW (closes public get).
       // Multi-response templates must not be closed this way — use create above instead.
@@ -535,28 +576,40 @@ service cloud.firestore {
         );
     }
 
-    // Temporary guest groups. The page is only ever published under a uid the device just created
-    // (password known to the device and the group's mailbox) or one linked through a verified CLAIM,
-    // so these two collections accept a password session WITHOUT email_verified. Nothing else does.
-    match /orgs/{orgId}/temporaryGuestPortal/{uid} {
-      allow get: if tempGuestPortalOn(orgId)
-        && isPasswordAccount()
-        && request.auth.uid == uid
-        && request.time.toMillis() < asMillis(resource.data.get('expiresAtMillis', 0));
+    function temporaryGuestPagePath(orgId, uid) {
+      return /databases/$(database)/documents/orgs/$(orgId)/temporaryGuestPortal/$(uid);
     }
 
-    function temporaryGuestPageLive(orgId, uid) {
-      let page = /databases/$(database)/documents/orgs/$(orgId)/temporaryGuestPortal/$(uid);
-      return exists(page)
-        && request.time.toMillis() < asMillis(get(page).data.get('expiresAtMillis', 0));
+    // A session acting for the portal account [uid] on its temporary guest lists: a verified
+    // password session or the linked Google account of that uid, or an unverified password session
+    // of that very uid when its page says the device created the account itself (password known
+    // only to that device and the list's mailbox). [page] is that page's data. Nothing else accepts
+    // an unverified session (spec 2026-11-21 §4).
+    function tempSessionOkWith(orgId, uid, page) {
+      return (isPortalUser() && request.auth.uid == uid)
+        || (isPasswordAccount() && request.auth.uid == uid && page.get('deviceCreated', false) == true)
+        || (isPortalGoogleUser(orgId) && portalUidOf(orgId) == uid);
+    }
+
+    function tempSessionOk(orgId, uid) {
+      return tempSessionOkWith(orgId, uid, get(temporaryGuestPagePath(orgId, uid)).data);
+    }
+
+    match /orgs/{orgId}/temporaryGuestPortal/{uid} {
+      allow get: if tempGuestPortalOn(orgId)
+        && tempSessionOkWith(orgId, uid, resource.data)
+        && request.time.toMillis() < asMillis(resource.data.get('expiresAtMillis', 0));
     }
 
     match /orgs/{orgId}/temporaryGuestPortalQr/{uid} {
       allow get: if tempGuestPortalOn(orgId)
         && portalQrOn(orgId)
-        && isPasswordAccount()
-        && request.auth.uid == uid
-        && temporaryGuestPageLive(orgId, uid);
+        && temporaryGuestPageLiveFor(orgId, uid, get(temporaryGuestPagePath(orgId, uid)).data);
+    }
+
+    function temporaryGuestPageLiveFor(orgId, uid, page) {
+      return tempSessionOkWith(orgId, uid, page)
+        && request.time.toMillis() < asMillis(page.get('expiresAtMillis', 0));
     }
 
     function portalRequestDelayMinutes(type) {
@@ -568,8 +621,9 @@ service cloud.firestore {
       let d = request.resource.data;
       return d.uid == portalUidOf(orgId)
         && d.type in ['PROFILE', 'QR_EMAIL', 'CLAIM', 'GOOGLE_LINK', 'GOOGLE_UNLINK',
-                      'GUEST_PROFILE', 'GUEST_QR_EMAIL']
+                      'GUEST_PROFILE', 'GUEST_QR_EMAIL', 'TEMP_GUEST_NAME']
         && (!(d.type in ['GUEST_PROFILE', 'GUEST_QR_EMAIL']) || guestPortalOn(orgId))
+        && (d.type != 'TEMP_GUEST_NAME' || tempGuestPortalOn(orgId))
         && requestId == d.uid + '_' + d.type
         // Claiming a profile and linking a Google account need the password session.
         && (!(d.type in ['CLAIM', 'GOOGLE_LINK']) || isPortalUser())
@@ -590,7 +644,37 @@ service cloud.firestore {
             && d.codeHash.matches('^[0-9a-f]{64}$'))
           || (d.type in ['QR_EMAIL', 'GUEST_QR_EMAIL', 'CLAIM', 'GOOGLE_UNLINK']
             && d.keys().hasOnly(['uid', 'type', 'status', 'requestedAt', 'email']))
+          || (d.type == 'TEMP_GUEST_NAME' && validTempGuestName(d))
         );
+    }
+
+    function optionalPersonName(value) {
+      return value is string && (value == '' || validPersonName(value));
+    }
+
+    // TEMP_GUEST_NAME: the first and last name of one temporary guest on the account's own page.
+    function validTempGuestName(d) {
+      return d.keys().hasOnly(['uid', 'type', 'status', 'requestedAt', 'email', 'guestKey', 'firstName', 'lastName'])
+        && d.guestKey is string
+        && d.guestKey.matches('^[0-9a-f]{16}$')
+        && optionalPersonName(d.firstName)
+        && optionalPersonName(d.lastName)
+        && (d.firstName != '' || d.lastName != '');
+    }
+
+    // An unverified password session of a device-created list account may only rename its guests.
+    function validUnverifiedTempNameRequest(orgId, requestId) {
+      let d = request.resource.data;
+      return isPasswordAccount()
+        && d.uid == request.auth.uid
+        && d.type == 'TEMP_GUEST_NAME'
+        && requestId == d.uid + '_TEMP_GUEST_NAME'
+        && tempGuestPortalOn(orgId)
+        && get(temporaryGuestPagePath(orgId, d.uid)).data.get('deviceCreated', false) == true
+        && d.status == 'PENDING'
+        && d.requestedAt == request.time
+        && d.email == request.auth.token.get('email', '')
+        && validTempGuestName(d);
     }
 
     // Requests from a portal account: one document per account and type, so a single request can
@@ -605,11 +689,14 @@ service cloud.firestore {
           portalUidOf(orgId) + '_GUEST_QR_EMAIL',
           portalUidOf(orgId) + '_CLAIM',
           portalUidOf(orgId) + '_GOOGLE_LINK',
-          portalUidOf(orgId) + '_GOOGLE_UNLINK'
+          portalUidOf(orgId) + '_GOOGLE_UNLINK',
+          portalUidOf(orgId) + '_TEMP_GUEST_NAME'
         ];
+      allow get: if isPasswordAccount() && requestId == request.auth.uid + '_TEMP_GUEST_NAME';
       allow create: if portalOn(orgId)
         && (isPortalUser() || isPortalGoogleUser(orgId))
         && validPortalRequest(orgId, requestId);
+      allow create: if validUnverifiedTempNameRequest(orgId, requestId);
       allow update: if portalOn(orgId)
         && (isPortalUser() || isPortalGoogleUser(orgId))
         && resource.data.uid == portalUidOf(orgId)
@@ -619,6 +706,11 @@ service cloud.firestore {
         && validPortalRequest(orgId, requestId)
         && request.time > resource.data.requestedAt
              + duration.value(portalRequestDelayMinutes(request.resource.data.type), 'm');
+      allow update: if resource.data.uid == request.auth.uid
+        && (resource.data.status != 'PROCESSING'
+             || request.time.toMillis() > resource.data.processingAt + 300000)
+        && validUnverifiedTempNameRequest(orgId, requestId)
+        && request.time > resource.data.requestedAt + duration.value(1, 'm');
     }
 
     function canSendGoogleClaim(orgId, googleUid) {

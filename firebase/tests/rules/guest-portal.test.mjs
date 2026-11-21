@@ -74,9 +74,12 @@ beforeEach(async () => {
     await setDoc(doc(db, path("guestPortal/g2")), { name: "Bob" });
     await setDoc(doc(db, path("guestPortalQr/g1")), { schema: 1, payload: "n1", name: "Ana" });
     await setDoc(doc(db, path("guestPortalQr/g2")), { schema: 1, payload: "n2", name: "Bob" });
-    await setDoc(doc(db, path("temporaryGuestPortal/t1")), { groupName: "Band", expiresAtMillis: Date.now() + HOUR });
-    await setDoc(doc(db, path("temporaryGuestPortal/t2")), { groupName: "Crew", expiresAtMillis: Date.now() + HOUR });
-    await setDoc(doc(db, path("temporaryGuestPortal/tOld")), { groupName: "Old", expiresAtMillis: Date.now() - HOUR });
+    await setDoc(doc(db, path("temporaryGuestPortal/t1")), { groupName: "Band", deviceCreated: true, expiresAtMillis: Date.now() + HOUR });
+    await setDoc(doc(db, path("temporaryGuestPortal/t2")), { groupName: "Crew", deviceCreated: true, expiresAtMillis: Date.now() + HOUR });
+    await setDoc(doc(db, path("temporaryGuestPortal/tOld")), { groupName: "Old", deviceCreated: true, expiresAtMillis: Date.now() - HOUR });
+    // A list joined to the account of a volunteer or permanent guest (spec 2026-11-21 §5.3).
+    await setDoc(doc(db, path("temporaryGuestPortal/g1")), { groupName: "Joined", deviceCreated: false, expiresAtMillis: Date.now() + HOUR });
+    await setDoc(doc(db, path("temporaryGuestPortalQr/g1")), { schema: 1, items: { k1: { payload: "p", name: "X" } } });
     await setDoc(doc(db, path("temporaryGuestPortalQr/t1")), { schema: 1, items: { k1: { payload: "p", name: "X" } } });
     await setDoc(doc(db, path("temporaryGuestPortalQr/t2")), { schema: 1, items: {} });
     await setDoc(doc(db, path("temporaryGuestPortalQr/tOld")), { schema: 1, items: {} });
@@ -168,10 +171,24 @@ describe("guest spaces: unverified password sessions", () => {
     await assertFails(getDoc(doc(db, path("guestPortalQr/g1"))));
   });
 
-  test("Google sessions never read the temporary collections", async () => {
+  test("a Google session without an alias reads no temporary page", async () => {
     const db = google("t1").firestore();
     await assertFails(getDoc(doc(db, path("temporaryGuestPortal/t1"))));
     await assertFails(getDoc(doc(db, path("temporaryGuestPortalQr/t1"))));
+  });
+
+  test("reusedAccountNeedsVerifiedSession: a joined list needs a verified session", async () => {
+    const unverified = portal("g1", false).firestore();
+    await assertFails(getDoc(doc(unverified, path("temporaryGuestPortal/g1"))));
+    await assertFails(getDoc(doc(unverified, path("temporaryGuestPortalQr/g1"))));
+    const verified = portal("g1", true).firestore();
+    await assertSucceeds(getDoc(doc(verified, path("temporaryGuestPortal/g1"))));
+    await assertSucceeds(getDoc(doc(verified, path("temporaryGuestPortalQr/g1"))));
+  });
+
+  test("a page without deviceCreated needs a verified session", async () => {
+    await seed((db) => setDoc(doc(db, path("temporaryGuestPortal/t2")), { groupName: "Crew", expiresAtMillis: Date.now() + HOUR }));
+    await assertFails(getDoc(doc(portal("t2", false).firestore(), path("temporaryGuestPortal/t2"))));
   });
 });
 
@@ -195,6 +212,13 @@ describe("guest spaces through a linked Google account", () => {
     await assertSucceeds(getDoc(doc(db, path("guestPortalQr/g1"))));
     await assertFails(getDoc(doc(db, path("guestPortal/g2"))));
     await assertFails(getDocs(collection(db, path("guestPortal"))));
+  });
+
+  test("googleSessionReadsTemporaryPage: alias reads the temporary page and QR of its portal uid", async () => {
+    const db = google("gg1").firestore();
+    await assertSucceeds(getDoc(doc(db, path("temporaryGuestPortal/g1"))));
+    await assertSucceeds(getDoc(doc(db, path("temporaryGuestPortalQr/g1"))));
+    await assertFails(getDoc(doc(db, path("temporaryGuestPortal/t1"))));
   });
 
   test("unlinked Google account reads nothing", async () => {
