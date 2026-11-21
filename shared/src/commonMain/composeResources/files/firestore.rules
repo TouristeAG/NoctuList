@@ -1,5 +1,5 @@
 rules_version = '2';
-// NoctuList Firestore rules — NOCTULIST_RULES_VERSION = 18
+// NoctuList Firestore rules — NOCTULIST_RULES_VERSION = 19
 // Republish this exact file in Firebase Console → Firestore → Rules after every app update,
 // otherwise members that already exist cannot re-join their organization.
 service cloud.firestore {
@@ -599,6 +599,45 @@ service cloud.firestore {
       allow get: if tempGuestPortalOn(orgId)
         && tempSessionOkWith(orgId, uid, resource.data)
         && request.time.toMillis() < asMillis(resource.data.get('expiresAtMillis', 0));
+    }
+
+    // Full guest list of a date, given by an admin (spec guest list access §7). Verified or
+    // linked Google sessions only, never an unverified one.
+    function guestListSessionOk(orgId, uid) {
+      return (isPortalUser() && request.auth.uid == uid)
+        || (isPortalGoogleUser(orgId) && portalUidOf(orgId) == uid);
+    }
+
+    match /orgs/{orgId}/guestListPortal/{uid} {
+      allow get: if tempGuestPortalOn(orgId)
+        && guestListSessionOk(orgId, uid)
+        && request.time.toMillis() < asMillis(resource.data.get('expiresAtMillis', 0));
+    }
+
+    function validGuestListEdit(orgId) {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['uid', 'email', 'grantId', 'eventDateMillis', 'action', 'guestKey', 'firstName',
+                               'lastName', 'listName', 'venueName', 'accessIds', 'status', 'createdAt'])
+        && d.uid is string
+        && guestListSessionOk(orgId, d.uid)
+        && d.email == request.auth.token.get('email', '')
+        && d.status == 'PENDING'
+        && d.createdAt == request.time
+        && d.action in ['ADD', 'UPDATE', 'DELETE']
+        && d.grantId is string && d.grantId.size() <= 64
+        && d.eventDateMillis is number
+        && d.eventDateMillis in get(/databases/$(database)/documents/orgs/$(orgId)/guestListPortal/$(d.uid)).data.grantDates
+        && (d.action == 'ADD' || (d.guestKey is string && d.guestKey.matches('^[0-9a-f]{16}$')))
+        && optionalPersonName(d.get('firstName', ''))
+        && optionalPersonName(d.get('lastName', ''))
+        && d.get('listName', '') is string && d.get('listName', '').size() <= 80
+        && d.get('venueName', '') is string && d.get('venueName', '').size() <= 80
+        && d.get('accessIds', []) is list && d.get('accessIds', []).size() <= 20;
+    }
+
+    match /orgs/{orgId}/guestListEdits/{editId} {
+      allow create: if tempGuestPortalOn(orgId) && validGuestListEdit(orgId);
+      allow get: if tempGuestPortalOn(orgId) && guestListSessionOk(orgId, resource.data.uid);
     }
 
     match /orgs/{orgId}/temporaryGuestPortalQr/{uid} {
