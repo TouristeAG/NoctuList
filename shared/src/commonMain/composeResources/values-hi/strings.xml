@@ -2345,7 +2345,7 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="portal_access_reset_sent">%1$s पर पासवर्ड रीसेट लिंक भेजा गया।</string>
     <string name="portal_access_reset_failed">रीसेट ईमेल नहीं भेजा जा सका।</string>
     <string name="portal_access_failed">पोर्टल पहुँच नहीं बनाई जा सकी (%1$s)।</string>
-    <string name="portal_access_existing">%1$s के लिए खाता पहले से मौजूद है। नया पासवर्ड चुनने का लिंक भेजा गया; अगले साइन-इन पर पोर्टल खुलेगा।</string>
+    <string name="portal_access_existing">%1$s के लिए खाता पहले से मौजूद है। अगले साइन-इन पर पोर्टल खुलेगा। नया पासवर्ड चुनने का लिंक भेजने के लिए नीचे दिया बटन दबाएँ।</string>
     <string name="portal_access_admin_note">एडमिन स्वयंसेवक पोर्टल से अपना QR कोड नहीं माँग सकते।</string>
     <string name="portal_access_email_note">यहाँ ईमेल बदलने से साइन-इन का पता नहीं बदलता।</string>
     <string name="portal_password_title">पोर्टल पहुँच बनाई गई</string>

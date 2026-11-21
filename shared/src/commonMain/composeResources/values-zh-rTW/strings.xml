@@ -2340,7 +2340,7 @@
     <string name="portal_access_reset_sent">重設密碼連結已寄至 %1$s。</string>
     <string name="portal_access_reset_failed">無法寄出重設郵件。</string>
     <string name="portal_access_failed">無法開通入口網站存取（%1$s）。</string>
-    <string name="portal_access_existing">%1$s 已有帳號。已寄出設定新密碼的連結，其下次登入時入口網站將開通。</string>
+    <string name="portal_access_existing">%1$s 已有帳號。其下次登入時入口網站將開通。如需寄出設定新密碼的連結，請按下方按鈕。</string>
     <string name="portal_access_admin_note">管理員志工無法透過入口網站索取 QR 碼。</string>
     <string name="portal_access_email_note">在此修改電子郵件不會變更登入地址。</string>
     <string name="portal_password_title">入口網站存取已開通</string>

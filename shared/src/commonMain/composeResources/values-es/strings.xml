@@ -2340,7 +2340,7 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="portal_access_reset_sent">Se ha enviado un enlace de restablecimiento a %1$s.</string>
     <string name="portal_access_reset_failed">No se pudo enviar el correo de restablecimiento.</string>
     <string name="portal_access_failed">No se pudo crear el acceso (%1$s).</string>
-    <string name="portal_access_existing">Ya existe una cuenta para %1$s. Se ha enviado un enlace para elegir una nueva contraseña; su portal se abrirá en su próximo inicio de sesión.</string>
+    <string name="portal_access_existing">Ya existe una cuenta para %1$s. El portal se abrirá en su próximo inicio de sesión. Usa el botón de abajo para enviar un enlace y elegir una nueva contraseña.</string>
     <string name="portal_access_admin_note">Los voluntarios administradores no pueden pedir su código QR desde el portal.</string>
     <string name="portal_access_email_note">Cambiar el correo aquí no cambia la dirección usada para iniciar sesión.</string>
     <string name="portal_password_title">Acceso creado</string>

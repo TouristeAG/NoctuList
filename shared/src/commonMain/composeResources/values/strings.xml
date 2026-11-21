@@ -2353,7 +2353,7 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="portal_access_reset_sent">A password reset link was sent to %1$s.</string>
     <string name="portal_access_reset_failed">The reset e-mail could not be sent.</string>
     <string name="portal_access_failed">Portal access could not be created (%1$s).</string>
-    <string name="portal_access_existing">An account already exists for %1$s. A link to choose a new password was sent; their portal opens at their next sign-in.</string>
+    <string name="portal_access_existing">An account already exists for %1$s. The portal opens at their next sign-in. Use the button below to send a link to choose a new password.</string>
     <string name="portal_access_admin_note">Admin volunteers cannot request their QR code from the portal.</string>
     <string name="portal_access_email_note">Changing the e-mail here does not change the address used to sign in.</string>
     <string name="portal_password_title">Portal access created</string>

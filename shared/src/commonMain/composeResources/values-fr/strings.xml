@@ -2350,7 +2350,7 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="portal_access_reset_sent">Un lien de réinitialisation a été envoyé à %1$s.</string>
     <string name="portal_access_reset_failed">L'e-mail de réinitialisation n'a pas pu être envoyé.</string>
     <string name="portal_access_failed">L'accès n'a pas pu être créé (%1$s).</string>
-    <string name="portal_access_existing">Un compte existe déjà pour %1$s. Un lien pour choisir un nouveau mot de passe a été envoyé ; la plateforme s'ouvrira à sa prochaine connexion.</string>
+    <string name="portal_access_existing">Un compte existe déjà pour %1$s. Le portail s'ouvrira à sa prochaine connexion. Utilisez le bouton ci-dessous pour envoyer un lien de choix d'un nouveau mot de passe.</string>
     <string name="portal_access_admin_note">Les bénévoles admin ne peuvent pas demander leur QR code depuis la plateforme.</string>
     <string name="portal_access_email_note">Modifier l'e-mail ici ne change pas l'adresse utilisée pour se connecter.</string>
     <string name="portal_password_title">Accès créé</string>

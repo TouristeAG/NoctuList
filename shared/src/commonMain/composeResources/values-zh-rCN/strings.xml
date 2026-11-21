@@ -2340,7 +2340,7 @@
     <string name="portal_access_reset_sent">重置密码链接已发送至 %1$s。</string>
     <string name="portal_access_reset_failed">无法发送重置邮件。</string>
     <string name="portal_access_failed">无法开通门户访问（%1$s）。</string>
-    <string name="portal_access_existing">%1$s 已有账号。已发送设置新密码的链接，其下次登录时门户将开通。</string>
+    <string name="portal_access_existing">%1$s 已有账号。其下次登录时门户将开通。如需发送设置新密码的链接，请点击下方按钮。</string>
     <string name="portal_access_admin_note">管理员志愿者无法通过门户索取二维码。</string>
     <string name="portal_access_email_note">在此修改邮箱不会更改登录地址。</string>
     <string name="portal_password_title">门户访问已开通</string>

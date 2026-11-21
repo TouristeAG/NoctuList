@@ -2345,7 +2345,7 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="portal_access_reset_sent">Nexus tesserae renovandae ad %1$s missus est.</string>
     <string name="portal_access_reset_failed">Epistula renovationis mitti non potuit.</string>
     <string name="portal_access_failed">Aditus creari non potuit (%1$s).</string>
-    <string name="portal_access_existing">Ratio pro %1$s iam exstat. Nexus novae tesserae eligendae missus est; porta proximo ingressu aperietur.</string>
+    <string name="portal_access_existing">Ratio pro %1$s iam exstat. Porta proximo ingressu aperietur. Bullam infra preme ut nexus novae tesserae eligendae mittatur.</string>
     <string name="portal_access_admin_note">Voluntarii administratores codicem QR per portam petere non possunt.</string>
     <string name="portal_access_email_note">Mutatio inscriptionis hic inscriptionem ingressus non mutat.</string>
     <string name="portal_password_title">Aditus creatus</string>
