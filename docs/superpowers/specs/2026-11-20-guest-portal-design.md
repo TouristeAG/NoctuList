@@ -395,5 +395,12 @@ d'autres changements en cours. Il doit être commité et fusionné dans `main` (
 - Les titres sont neutres : « Mon espace ».
 - Espace invités coupé : les demandes d'invités restent en attente (`PENDING`).
 - Interrupteur « créer l'accès » dans « Ajouter un invité » pour les invités permanents.
+- Ouvrir l'espace d'un groupe ne réutilise que l'uid d'un autre groupe temporaire ouvert pour la
+  même adresse (`temporaryPortalEmail`), créé par un appareil ou lié par un CLAIM vérifié. L'uid
+  d'un bénévole ou d'un invité permanent n'est jamais repris (il peut venir d'une inscription non
+  vérifiée) : on passe par `signUp`, `EMAIL_EXISTS` laisse `portalUid` vide et le CLAIM vérifié lie
+  le groupe. Cela remplace le point 1 du §7.2.
+- Les appareils publient aussi `portalMail/guest` (réglages e-mail des invités, thème invité). Le
+  serveur s'en sert pour `GUEST_QR_EMAIL` et laisse la demande en attente tant qu'il manque.
 - Le prérequis du §14 a été réalisé sur cette branche (réimplémenté, pas fusionné depuis le
   dossier principal).

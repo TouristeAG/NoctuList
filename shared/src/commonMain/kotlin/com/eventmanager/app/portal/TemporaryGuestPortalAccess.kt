@@ -6,7 +6,7 @@ import com.eventmanager.app.email.PortalAccountBlock
 sealed class TemporaryGroupAccessResult {
     /** A new account was created; [password] is shown once to the admin. */
     data class Created(val uid: String, val password: String) : TemporaryGroupAccessResult()
-    /** The address already belongs to a known portal account, which the group now shares. */
+    /** Another temporary group already has an account for this address, which the group now shares. */
     data class Reused(val uid: String) : TemporaryGroupAccessResult()
     /** The address has an account we do not know yet; the group is linked when its owner signs in. */
     data object ExistingAccount : TemporaryGroupAccessResult()
@@ -93,17 +93,20 @@ class TemporaryGuestPortalAccess(
 
     private fun bumped(g: Guest) = maxOf(clock(), g.lastModified + 1)
 
+    /**
+     * The uid of another temporary group opened for [email] (dormant or opened by another device
+     * meanwhile), matched on the address its account was opened for, not the editable contact.
+     * Such a uid was created by a device or linked by a verified CLAIM. A volunteer's or permanent
+     * guest's uid is never reused here: it can come from an unverified registration, and the
+     * unverified temporary read would then expose the group's QR codes. Those cases go through
+     * createAccount (EMAIL_EXISTS) and are linked by the owner's verified CLAIM.
+     */
     private suspend fun knownUid(email: String): String? {
         fun inOrg(firebaseOrgId: String) = firebaseOrgId.isBlank() || firebaseOrgId == orgId
-        host.volunteers()
-            .firstOrNull { inOrg(it.firebaseOrgId) && it.portalUid.isNotBlank() && it.email.trim().equals(email, true) }
-            ?.let { return it.portalUid }
-        // A temporary group matches on the address its account was opened for, not the editable contact.
         return host.guests()
-            .filter { inOrg(it.firebaseOrgId) && it.portalUid.isNotBlank() }
             .firstOrNull {
-                val address = if (it.isTemporaryGuest) it.temporaryPortalEmail else it.email
-                address.trim().equals(email, true)
+                it.isTemporaryGuest && inOrg(it.firebaseOrgId) && it.portalUid.isNotBlank() &&
+                    it.temporaryPortalEmail.trim().equals(email, true)
             }?.portalUid
     }
 

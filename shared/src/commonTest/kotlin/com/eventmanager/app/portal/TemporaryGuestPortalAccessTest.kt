@@ -67,16 +67,29 @@ class TemporaryGuestPortalAccessTest {
     }
 
     @Test
-    fun openReusesKnownUid() = runBlocking {
-        val auth = FakeAuth(PortalAuthResult.Created("never"))
+    fun aVolunteerWithTheSameAddressIsNeverReusedAndGoesThroughCreateAccount() = runBlocking {
+        // The volunteer's uid may come from an unverified registration: the group waits for a verified CLAIM.
+        val auth = FakeAuth(PortalAuthResult.EmailExists)
         host.volunteers += Volunteer(
             id = "V1", name = "Lea", lastNameAbbreviation = "M", email = "MANAGER@example.org",
             phoneNumber = "", portalEnabled = true, portalUid = "uid-vol", firebaseOrgId = ORG,
         )
         val result = access(auth).open(batch("G1"))
-        assertEquals(TemporaryGroupAccessResult.Reused("uid-vol"), result)
+        assertEquals(TemporaryGroupAccessResult.ExistingAccount, result)
+        assertEquals(listOf(CONTACT), auth.creates)
+        assertEquals("", host.guests.single().portalUid)
+        assertTrue(host.guests.single().portalEnabled)
+    }
+
+    @Test
+    fun anotherOpenGroupForTheSameAddressIsReused() = runBlocking {
+        val auth = FakeAuth(PortalAuthResult.Created("never"))
+        host.guests += temp("OTHER", artist = "Other", uid = "uid-group", enabled = true)
+            .copy(temporaryPortalEmail = "Manager@Example.org")
+        val result = access(auth).open(batch("G1"))
+        assertEquals(TemporaryGroupAccessResult.Reused("uid-group"), result)
         assertTrue(auth.creates.isEmpty())
-        assertEquals("uid-vol", host.guests.single().portalUid)
+        assertEquals("uid-group", host.guests.single { it.nanoId == "G1" }.portalUid)
     }
 
     @Test
@@ -202,15 +215,33 @@ class TemporaryGuestPortalAccessTest {
     }
 
     @Test
-    fun openReusesTheUidOfAnAlreadyLinkedGuest() = runBlocking {
-        val auth = FakeAuth(PortalAuthResult.Created("never"))
+    fun aPermanentGuestWithTheSameAddressIsNeverReused() = runBlocking {
+        val auth = FakeAuth(PortalAuthResult.EmailExists)
         host.guests += Guest(
             nanoId = "P1", name = "P", invitations = 1, venueName = "Club", email = "Manager@Example.org",
             firebaseOrgId = ORG, portalEnabled = true, portalUid = "uid-guest",
         )
         val result = access(auth).open(batch("G1"))
-        assertEquals(TemporaryGroupAccessResult.Reused("uid-guest"), result)
-        assertTrue(auth.creates.isEmpty())
+        assertEquals(TemporaryGroupAccessResult.ExistingAccount, result)
+        assertEquals(listOf(CONTACT), auth.creates)
+        assertEquals("", host.guests.single { it.nanoId == "G1" }.portalUid)
+    }
+
+    @Test
+    fun aVolunteerLinkedMeanwhileIsNotReusedAfterEmailExists() = runBlocking {
+        val b = batch("G1")
+        val auth = object : PortalAuthApi {
+            override suspend fun createAccount(email: String, password: String): PortalAuthResult {
+                host.volunteers += Volunteer(
+                    id = "V1", name = "Lea", lastNameAbbreviation = "M", email = CONTACT,
+                    phoneNumber = "", portalEnabled = true, portalUid = "uid-vol", firebaseOrgId = ORG,
+                )
+                return PortalAuthResult.EmailExists
+            }
+            override suspend fun sendPasswordReset(email: String, languageCode: String) = PortalAuthResult.Sent
+        }
+        assertEquals(TemporaryGroupAccessResult.ExistingAccount, access(auth).open(b))
+        assertEquals("", host.guests.single().portalUid)
     }
 
     @Test
