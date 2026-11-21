@@ -94,6 +94,16 @@ internal class FakeHost(initial: List<Volunteer>) : VolunteerPortalHost {
     override fun currencyCode() = "CHF"
     override fun associationName() = "Asso"
     var dateOffset = 0
+    var venues: Set<String> = emptySet()
+    var catalog: List<com.eventmanager.app.data.models.VenueAccess> = emptyList()
+    val addedBatches = mutableListOf<com.eventmanager.app.data.models.ManualTemporaryGuestBatch>()
+    override fun activeVenueNames(): Set<String> = venues
+    override fun venueAccessCatalog(): List<com.eventmanager.app.data.models.VenueAccess> = catalog
+    override suspend fun addTemporaryGuests(batch: com.eventmanager.app.data.models.ManualTemporaryGuestBatch): Boolean {
+        addedBatches += batch
+        return true
+    }
+    override suspend fun deleteTemporaryGuest(guest: Guest): Boolean = guests.removeAll { it.nanoId == guest.nanoId }
     override fun dateOffsetHours() = dateOffset
     override fun institutionLogoPng() = ""
     override fun profilePhotosEnabled() = true

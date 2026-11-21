@@ -64,6 +64,18 @@ interface VolunteerPortalHost {
     /** Venue access id to name, for the temporary guest page (ids never reach it). */
     fun venueAccessNames(): Map<String, String> = emptyMap()
 
+    /** The venue access catalogue, for the guest list page and its edits. */
+    fun venueAccessCatalog(): List<com.eventmanager.app.data.models.VenueAccess> = emptyList()
+
+    /** Names of the active venues, where a guest list edit may add people. */
+    fun activeVenueNames(): Set<String> = emptySet()
+
+    /** Adds temporary guests like the manual "Add guests" dialog. */
+    suspend fun addTemporaryGuests(batch: com.eventmanager.app.data.models.ManualTemporaryGuestBatch): Boolean = false
+
+    /** Deletes one temporary guest. */
+    suspend fun deleteTemporaryGuest(guest: Guest): Boolean = false
+
     suspend fun volunteers(): List<Volunteer>
     /** Inserts a new volunteer through the normal save + sync pipeline (with its optional photo). */
     suspend fun createVolunteer(volunteer: Volunteer, photo: ByteArray?): Volunteer?
@@ -141,6 +153,8 @@ class VolunteerPortalService(
     private var publisherJob: CoroutineJob? = null
     private var latestSignupDocs: List<Pair<String, Map<String, Any?>>> = emptyList()
     private var latestRequestDocs: List<Pair<String, Map<String, Any?>>> = emptyList()
+    @Volatile private var latestListEditDocs: List<Pair<String, Map<String, Any?>>> = emptyList()
+    private val listEditProcessor by lazy { GuestListEditProcessor(host, clock) }
     private var latestClaimDocs: List<Pair<String, Map<String, Any?>>> = emptyList()
     @Volatile private var latestSnapshot: Snapshot? = null
     private var started = false
@@ -162,6 +176,10 @@ class VolunteerPortalService(
         gateway.listenCollection(orgId, VolunteerSignupForm.COLLECTION) { docs ->
             latestSignupDocs = docs
             processSignups(docs)
+        }?.let { listeners += it }
+        gateway.listenCollection(orgId, GuestListEdit.COLLECTION) { docs ->
+            latestListEditDocs = docs
+            processListEdits(docs)
         }?.let { listeners += it }
         gateway.listenCollection(orgId, PortalRequest.COLLECTION) { docs ->
             latestRequestDocs = docs
@@ -192,6 +210,7 @@ class VolunteerPortalService(
                 runCatchingLogged("retry") {
                     processSignups(latestSignupDocs)
                     processRequests(latestRequestDocs)
+                    processListEdits(latestListEditDocs)
                     processClaims(latestClaimDocs)
                     cleanupExpiredForms()
                 }
@@ -666,6 +685,55 @@ class VolunteerPortalService(
         )
         complete(request.requestId, if (ok) PortalRequest.STATUS_DONE else PortalRequest.STATUS_REJECTED, if (ok) "" else "SAVE_FAILED")
     }
+
+    // region Guest list edits (spec guest list access §6.3)
+
+    /** Edits older than this are deleted once answered. */
+    private val listEditRetentionMs = 7 * 86_400_000L
+
+    private suspend fun processListEdits(docs: List<Pair<String, Map<String, Any?>>>) {
+        val now = clock()
+        for ((editId, data) in docs) {
+            val status = data["status"]?.toString().orEmpty()
+            if (status == "DONE" || status == "REJECTED") {
+                val at = firestoreMillisOf(data["processedAt"]) ?: continue
+                if (now - at > listEditRetentionMs) runCatching { gateway.deleteDocument(orgId, GuestListEdit.COLLECTION, editId) }
+                continue
+            }
+            if (status != PortalRequest.STATUS_PENDING && !isStaleProcessing(data)) continue
+            if (!host.temporaryGuestPortalEnabled()) continue
+            mutex.withLock { runCatchingLogged("guest list edit $editId") { processListEdit(editId) } }
+        }
+    }
+
+    private suspend fun processListEdit(editId: String) {
+        val claimed = gateway.claimDocument(
+            orgId,
+            GuestListEdit.COLLECTION,
+            editId,
+            claimable = { it["status"] == PortalRequest.STATUS_PENDING || isStaleProcessing(it) },
+            claimFields = processingFields(clock()),
+        ) ?: return
+        val edit = GuestListEdit.parse(editId, claimed)
+        val (status, reason) = if (edit == null) {
+            GuestListEditProcessor.REJECTED to "INVALID"
+        } else {
+            listEditProcessor.apply(
+                edit,
+                host.volunteers().filter { it.firebaseOrgId.isBlank() || it.firebaseOrgId == orgId },
+                orgGuests(),
+            )
+        }
+        gateway.setPlainDocument(
+            orgId,
+            GuestListEdit.COLLECTION,
+            editId,
+            mapOf("status" to status, "reason" to reason, "processedAt" to clock()),
+            merge = true,
+        )
+    }
+
+    // endregion
 
     private suspend fun complete(requestId: String, status: String, reason: String) {
         gateway.setPlainDocument(

@@ -3227,6 +3227,37 @@ class EventManagerViewModel(
         override fun temporaryGuestCreditsEnabled(): Boolean = settingsManagerCached?.isTemporaryGuestCreditsEnabled() == true
         override fun venueAccessNames(): Map<String, String> =
             settingsManagerCached?.getTemporaryGuestVenueAccesses().orEmpty().associate { it.id to it.name }
+        override fun venueAccessCatalog(): List<VenueAccess> =
+            settingsManagerCached?.getTemporaryGuestVenueAccesses().orEmpty()
+        override fun activeVenueNames(): Set<String> =
+            _venues.value.filter { it.isActive }.map { it.name.trim() }.filter { it.isNotEmpty() }.toSet()
+        override suspend fun addTemporaryGuests(batch: ManualTemporaryGuestBatch): Boolean {
+            if (rejectIfCrudSoftLocked("adding temporary guests from the portal")) return false
+            val coordinator = syncCoordinator ?: return false
+            return try {
+                coordinator.afterTemporaryGuestBatch(batch)
+                true
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                println("Portal: guest list add failed: ${e.message}")
+                false
+            }
+        }
+        override suspend fun deleteTemporaryGuest(guest: Guest): Boolean {
+            if (rejectIfCrudSoftLocked("deleting temporary guests from the portal")) return false
+            val coordinator = syncCoordinator ?: return false
+            return try {
+                repository.deleteGuest(guest)
+                coordinator.afterGuestDeleted(guest)
+                true
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                println("Portal: guest list delete failed: ${e.message}")
+                false
+            }
+        }
         override fun portalGoogleEnabled(): Boolean = settingsManagerCached?.isVolunteerPortalGoogleEnabled() == true
         override fun portalGoogleDomains(): List<String> = settingsManagerCached?.volunteerPortalGoogleDomains().orEmpty()
         override fun portalGoogleAnyAccount(): Boolean = settingsManagerCached?.isVolunteerPortalGoogleAnyAccount() == true
