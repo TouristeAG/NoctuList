@@ -3,17 +3,22 @@ package com.eventmanager.app.portal
 import com.eventmanager.app.data.models.Guest
 import com.eventmanager.app.data.models.Volunteer
 import com.eventmanager.app.data.remote.NoOpFirestoreGateway
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 
-/** In-memory Firestore: documents per "collection/id", listeners fed by the test. */
+/**
+ * In-memory Firestore: documents per "collection/id", listeners fed by the test. Background
+ * publish coroutines write while the test reads, so every collection here is thread-safe.
+ */
 internal class FakeGateway : NoOpFirestoreGateway() {
-    val docs = mutableMapOf<String, Map<String, Any?>>()
-    val deleted = mutableListOf<String>()
-    val listeners = mutableMapOf<String, suspend (List<Pair<String, Map<String, Any?>>>) -> Unit>()
+    val docs: MutableMap<String, Map<String, Any?>> = ConcurrentHashMap()
+    val deleted: MutableList<String> = CopyOnWriteArrayList()
+    val listeners: MutableMap<String, suspend (List<Pair<String, Map<String, Any?>>>) -> Unit> = ConcurrentHashMap()
     var claimsRefused = false
     var qrWrites = 0
     var qrDeleteFailures = 0
     /** Every write, as "collection/id", in order. */
-    val writes = mutableListOf<String>()
+    val writes: MutableList<String> = CopyOnWriteArrayList()
 
     override fun isAvailable() = true
 
@@ -21,7 +26,7 @@ internal class FakeGateway : NoOpFirestoreGateway() {
         val key = "$collection/$docId"
         if (collection == "volunteerPortalQr") qrWrites++
         writes += key
-        docs[key] = if (merge) (docs[key].orEmpty() + data) else data
+        synchronized(docs) { docs[key] = if (merge) (docs[key].orEmpty() + data) else data }
     }
 
     override suspend fun deleteDocument(orgId: String, collection: String, docId: String) {
@@ -53,10 +58,12 @@ internal class FakeGateway : NoOpFirestoreGateway() {
     ): Map<String, Any?>? {
         if (claimsRefused) return null
         val key = "$collection/$docId"
-        val current = docs[key] ?: return null
-        if (!claimable(current)) return null
-        docs[key] = current + claimFields
-        return current
+        synchronized(docs) {
+            val current = docs[key] ?: return null
+            if (!claimable(current)) return null
+            docs[key] = current + claimFields
+            return current
+        }
     }
 
     suspend fun push(collection: String) {
