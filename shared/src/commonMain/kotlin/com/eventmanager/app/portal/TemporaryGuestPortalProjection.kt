@@ -24,30 +24,31 @@ data class TemporaryGuestPortalInput(
     val currencyCode: String,
     val associationName: String,
     val now: Long,
-    val offsetHours: Int,
 )
 
 object TemporaryGuestPortalProjectionBuilder {
     const val COLLECTION = "temporaryGuestPortal"
     const val SCHEMA = 1
-    private const val GROUP_LIFETIME_MILLIS = 3 * 86_400_000L
+    /** Midnight of the event day (Geneva) to 8:00 the next morning: a night event still shows at 1:00. */
+    private const val VISIBLE_MILLIS = 32 * 3_600_000L
 
-    fun endsAt(eventDate: Long, offsetHours: Int): Long =
-        DateTimeUtils.getStartOfDayWithOffset(eventDate, offsetHours) + GROUP_LIFETIME_MILLIS
+    /** Fixed 8 h past the event day, whatever the app's own day-change setting says. */
+    fun visibleUntil(eventDate: Long): Long =
+        DateTimeUtils.getStartOfDayWithOffset(eventDate, 0) + VISIBLE_MILLIS
 
-    /** The one definition of what the page shows: dated temporary guests of groups not yet ended, by event date. */
-    internal fun runningBatches(guests: List<Guest>, now: Long, offsetHours: Int): List<Pair<List<Guest>, Long>> =
+    /** The one definition of what the page shows: dated temporary guests of lists still visible, by event date. */
+    internal fun runningBatches(guests: List<Guest>, now: Long): List<Pair<List<Guest>, Long>> =
         guests
             .filter { it.isTemporaryGuest && it.temporaryEventDate != null }
             .groupBy { it.temporaryBatchKey() }
             .values
-            .map { members -> members to endsAt(members.first().temporaryEventDate!!, offsetHours) }
-            .filter { (_, endsAt) -> endsAt > now }
+            .map { members -> members to visibleUntil(members.first().temporaryEventDate!!) }
+            .filter { (_, until) -> until > now }
             .sortedWith(compareBy({ it.first.first().temporaryEventDate }, { it.first.first().temporaryArtistName.lowercase() }))
 
     /** Null when no group is still running. */
     fun build(input: TemporaryGuestPortalInput): PortalProjection? {
-        val batches = runningBatches(input.guests, input.now, input.offsetHours)
+        val batches = runningBatches(input.guests, input.now)
         if (batches.isEmpty()) return null
 
         val label = PortalProjectionBuilder.MAX_LABEL
@@ -60,13 +61,13 @@ object TemporaryGuestPortalProjectionBuilder {
         val payload = buildJsonObject {
             put("association", input.associationName.trim().take(label))
             put("contactEmail", contactEmail)
-            put("groups", JsonArray(batches.map { (members, endsAt) ->
+            put("groups", JsonArray(batches.map { (members, until) ->
                 val first = members.first()
                 buildJsonObject {
                     put("eventDate", first.temporaryEventDate!!)
                     put("venueName", first.temporaryVenueName.ifBlank { first.venueName }.trim().take(label))
                     put("artistName", first.temporaryArtistName.trim().take(label))
-                    put("endsAt", endsAt)
+                    put("visibleUntil", until)
                     put("guests", JsonArray(
                         members.sortedWith(compareBy({ it.name.trim().lowercase() }, { it.lastNameAbbreviation.trim().lowercase() }))
                             .map { guestJson(it, input) }
@@ -119,9 +120,9 @@ object TemporaryGuestPortalQrDocument {
     internal fun hasQr(guest: Guest): Boolean =
         !guest.isAdmin && !guest.temporaryEntryValidated && guest.nanoId.isNotBlank()
 
-    fun build(guests: List<Guest>, enabled: Boolean, now: Long, offsetHours: Int): Map<String, Any>? {
+    fun build(guests: List<Guest>, enabled: Boolean, now: Long): Map<String, Any>? {
         if (!enabled) return null
-        val items = TemporaryGuestPortalProjectionBuilder.runningBatches(guests, now, offsetHours)
+        val items = TemporaryGuestPortalProjectionBuilder.runningBatches(guests, now)
             .flatMap { it.first }
             .filter { hasQr(it) }
             .associate { guest ->

@@ -143,7 +143,7 @@ class GuestPortalPublisherTest {
         val running = run(gateway, host)
         until("temp page") { gateway.docs["temporaryGuestPortal/$TEMP_UID"] != null && gateway.docs["temporaryGuestPortalQr/$TEMP_UID"] != null }
         val page = gateway.docs["temporaryGuestPortal/$TEMP_UID"]!!
-        assertEquals(TemporaryGuestPortalProjectionBuilder.endsAt(start, 0), page["expiresAtMillis"])
+        assertEquals(TemporaryGuestPortalProjectionBuilder.visibleUntil(start), page["expiresAtMillis"])
         @Suppress("UNCHECKED_CAST")
         val items = gateway.docs["temporaryGuestPortalQr/$TEMP_UID"]!!["items"] as Map<String, Any?>
         assertEquals(2, items.size)
@@ -202,12 +202,28 @@ class GuestPortalPublisherTest {
     }
 
     @Test
+    fun republishesWhenAListEnds() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(emptyList()).apply {
+            tempSpace = true
+            // The app's day changes at 10:00, so reaching 8:00 the next day is not a new day.
+            dateOffset = 10
+            guests += temp("Ana", "TempNano00000000000001")
+        }
+        run(gateway, host, retryMs = 50L)
+        until("temp page") { gateway.docs["temporaryGuestPortal/$TEMP_UID"] != null }
+        now = TemporaryGuestPortalProjectionBuilder.visibleUntil(start)
+        until("page removed at 8:00") { gateway.docs["temporaryGuestPortal/$TEMP_UID"] == null }
+        assertNull(gateway.docs["temporaryGuestPortalQr/$TEMP_UID"])
+    }
+
+    @Test
     fun tempGroupEndedDeletesPage() = runBlocking {
         val gateway = FakeGateway()
         val host = FakeHost(emptyList()).apply { tempSpace = true; guests += temp("Ana", "TempNano00000000000001") }
         val running = run(gateway, host)
         until("temp page") { gateway.docs["temporaryGuestPortalQr/$TEMP_UID"] != null }
-        now = TemporaryGuestPortalProjectionBuilder.endsAt(start, 0) + 1
+        now = TemporaryGuestPortalProjectionBuilder.visibleUntil(start) + 1
         running.service.republish()
         assertNull(gateway.docs["temporaryGuestPortal/$TEMP_UID"])
         assertNull(gateway.docs["temporaryGuestPortalQr/$TEMP_UID"])

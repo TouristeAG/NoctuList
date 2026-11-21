@@ -93,7 +93,8 @@ internal class FakeHost(initial: List<Volunteer>) : VolunteerPortalHost {
     override fun apiKey() = "key"
     override fun currencyCode() = "CHF"
     override fun associationName() = "Asso"
-    override fun dateOffsetHours() = 0
+    var dateOffset = 0
+    override fun dateOffsetHours() = dateOffset
     override fun institutionLogoPng() = ""
     override fun profilePhotosEnabled() = true
     override fun portalGoogleEnabled() = googleEnabled

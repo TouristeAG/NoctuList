@@ -188,7 +188,8 @@ class VolunteerPortalService(
                     cleanupExpiredForms()
                 }
                 val publishedDay = lastPublishDay
-                if (publishedDay != null && publishedDay != today()) republish()
+                val listEnded = guestPublisher.nextTemporaryExpiry?.let { clock() >= it } == true
+                if (publishedDay != null && publishedDay != today() || listEnded) republish()
             }
         }
     }

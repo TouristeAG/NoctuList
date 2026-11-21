@@ -22,6 +22,7 @@ import kotlin.test.assertNull
 class TemporaryGuestPortalProjectionBuilderTest {
     private val day = 86_400_000L
     private val offset = 0
+    private val hour = 3_600_000L
     private val event1 = 1_800_000_000_000L - 1_800_000_000_000L % day + 10 * 3_600_000L
     private val event2 = event1 + 5 * day
 
@@ -50,14 +51,14 @@ class TemporaryGuestPortalProjectionBuilderTest {
         temporaryEntryValidatedAt = used,
     )
 
-    private fun endsAt(event: Long) = DateTimeUtils.getStartOfDayWithOffset(event, offset) + 3 * day
+    private fun endsAt(event: Long) = DateTimeUtils.getStartOfDayWithOffset(event, 0) + 32 * 3_600_000L
 
     private fun input(
         guests: List<Guest>,
         now: Long,
         transfers: List<AccountTransfer> = emptyList(),
         credits: Boolean = true,
-    ) = TemporaryGuestPortalInput(guests, transfers, credits, "CHF", "Asso", now, offset)
+    ) = TemporaryGuestPortalInput(guests, transfers, credits, "CHF", "Asso", now)
 
     private fun transfer(amount: Double, id: String) = AccountTransfer(
         holderType = AccountHolderType.GUEST,
@@ -74,6 +75,19 @@ class TemporaryGuestPortalProjectionBuilderTest {
         Json.parseToJsonElement(p.payload).jsonObject.getValue("groups").jsonArray.map { it.jsonObject }
 
     @Test
+    fun visibleUntilBoundaries() {
+        val start = DateTimeUtils.getStartOfDayWithOffset(event1, 0)
+        assertEquals(start + 32 * hour, TemporaryGuestPortalProjectionBuilder.visibleUntil(event1))
+        val gs = listOf(guest("A1"))
+        for (now in listOf(start - 1, start + 25 * hour, start + 32 * hour - 60_000)) {
+            assertNotNull(TemporaryGuestPortalProjectionBuilder.build(input(gs, now)), "visible at ${now - start}")
+            assertNotNull(TemporaryGuestPortalQrDocument.build(gs, true, now))
+        }
+        assertNull(TemporaryGuestPortalProjectionBuilder.build(input(gs, start + 32 * hour)))
+        assertNull(TemporaryGuestPortalQrDocument.build(gs, true, start + 32 * hour))
+    }
+
+    @Test
     fun groupsSortedAndEndedOnesDropped() {
         val old = guest("A1", event = event1, artist = "Old")
         val late = guest("B1", event = event2, artist = "Late")
@@ -82,7 +96,7 @@ class TemporaryGuestPortalProjectionBuilderTest {
         val p = TemporaryGuestPortalProjectionBuilder.build(input(listOf(late, old, mid), now))!!
         assertEquals(listOf("Mid", "Late"), groups(p).map { it.getValue("artistName").jsonPrimitive.content })
         assertEquals(endsAt(event2), p.extraFields["expiresAtMillis"])
-        assertEquals(endsAt(event2), groups(p).last().getValue("endsAt").jsonPrimitive.content.toLong())
+        assertEquals(endsAt(event2), groups(p).last().getValue("visibleUntil").jsonPrimitive.content.toLong())
     }
 
     @Test
@@ -133,13 +147,13 @@ class TemporaryGuestPortalProjectionBuilderTest {
         val admin = guest("AD1", name = "Admin", admin = true)
         val used = guest("US1", name = "Used", used = 5L)
         val blank = guest("", name = "Blank")
-        val doc = TemporaryGuestPortalQrDocument.build(listOf(ok, admin, used, blank), true, event1, offset)!!
+        val doc = TemporaryGuestPortalQrDocument.build(listOf(ok, admin, used, blank), true, event1)!!
         @Suppress("UNCHECKED_CAST")
         val items = doc["items"] as Map<String, Map<String, String>>
         assertEquals(setOf(TemporaryGuestPortalQrDocument.guestKey(ok)), items.keys)
         assertEquals("OK1", items.values.single()["payload"])
-        assertNull(TemporaryGuestPortalQrDocument.build(listOf(ok), false, event1, offset))
-        assertNull(TemporaryGuestPortalQrDocument.build(listOf(admin, used), true, event1, offset))
+        assertNull(TemporaryGuestPortalQrDocument.build(listOf(ok), false, event1))
+        assertNull(TemporaryGuestPortalQrDocument.build(listOf(admin, used), true, event1))
 
         val p = TemporaryGuestPortalProjectionBuilder.build(input(listOf(ok, admin, used), event1))!!
         val qr = groups(p).single().getValue("guests").jsonArray.associate {
@@ -165,11 +179,11 @@ class TemporaryGuestPortalProjectionBuilderTest {
         val ended = guest("END1", event = event1, artist = "End")
         val noDate = guest("ND1", event = null)
         val now = endsAt(event1) + 1
-        val doc = TemporaryGuestPortalQrDocument.build(listOf(running, ended, noDate), true, now, offset)!!
+        val doc = TemporaryGuestPortalQrDocument.build(listOf(running, ended, noDate), true, now)!!
         @Suppress("UNCHECKED_CAST")
         val items = doc["items"] as Map<String, Map<String, String>>
         assertEquals(setOf(TemporaryGuestPortalQrDocument.guestKey(running)), items.keys)
-        assertNull(TemporaryGuestPortalQrDocument.build(listOf(ended, noDate), true, now, offset))
+        assertNull(TemporaryGuestPortalQrDocument.build(listOf(ended, noDate), true, now))
     }
 
     @Test

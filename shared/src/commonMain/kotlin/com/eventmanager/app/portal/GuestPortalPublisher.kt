@@ -21,6 +21,11 @@ internal class GuestPortalPublisher(
     private val gateway: FirestoreGateway,
     private val host: VolunteerPortalHost,
 ) {
+    /** Earliest end of a temporary list published by the last pass, so the list leaves on time. */
+    @Volatile
+    var nextTemporaryExpiry: Long? = null
+        private set
+
     /**
      * Copies the account photo for every uid the guest space owns and returns those uids: the space
      * is on, a permanent guest is published for the uid and no linked volunteer of the uid has a
@@ -71,15 +76,19 @@ internal class GuestPortalPublisher(
         }
 
         val keptTemps = mutableSetOf<String>()
+        var nextExpiry: Long? = null
         if (host.temporaryGuestPortalEnabled()) {
             val groups = inOrg
                 .filter { it.isTemporaryGuest && it.portalEnabled && it.portalUid.isNotBlank() }
                 .groupBy { it.portalUid }
             for ((uid, members) in groups) {
+                TemporaryGuestPortalProjectionBuilder.runningBatches(members, now).minOfOrNull { it.second }
+                    ?.let { until -> nextExpiry = minOf(nextExpiry ?: until, until) }
                 keptTemps += uid
                 publishTemporary(uid, members, guestTransfers, hashes, now)
             }
         }
+        nextTemporaryExpiry = nextExpiry
         for (uid in uidsWith(hashes, TEMP_SUFFIX) - keptTemps) {
             removePage(TemporaryGuestPortalProjectionBuilder.COLLECTION, uid, TEMP_SUFFIX, hashes)
         }
@@ -160,7 +169,6 @@ internal class GuestPortalPublisher(
         hashes: MutableMap<String, String>,
         now: Long,
     ) {
-        val offset = host.dateOffsetHours()
         val projection = TemporaryGuestPortalProjectionBuilder.build(
             TemporaryGuestPortalInput(
                 guests = members,
@@ -169,7 +177,6 @@ internal class GuestPortalPublisher(
                 currencyCode = host.currencyCode(),
                 associationName = host.associationName(),
                 now = now,
-                offsetHours = offset,
             ),
         )
         if (projection == null) {
@@ -189,7 +196,7 @@ internal class GuestPortalPublisher(
         }
         publishQr(
             TemporaryGuestPortalQrDocument.COLLECTION, uid, TEMP_QR_SUFFIX,
-            TemporaryGuestPortalQrDocument.build(members, host.portalQrEnabled(), now, offset), hashes,
+            TemporaryGuestPortalQrDocument.build(members, host.portalQrEnabled(), now), hashes,
         )
     }
 
