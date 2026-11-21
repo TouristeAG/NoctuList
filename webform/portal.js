@@ -1496,19 +1496,16 @@ function pendingCard(entry) {
 function inviteBlock(group) {
   const invite = group.invite;
   if (!invite) return null;
-  const accesses = Array.isArray(invite.accesses) ? invite.accesses : [];
+  // No counts on screen: the button greys out with a short note once the list is full.
+  const full = Number(invite.remaining || 0) <= 0;
   return el("div", { class: "invite-block" },
-    el("div", { class: "invite-count", text: t("placesLeft", { n: Number(invite.remaining || 0), max: Number(invite.maxGuests || 0) }) }),
-    accesses.length ? el("div", { class: "chips" }, ...accesses.map((a) => el("span", {
-      class: "perk",
-      text: Number(a.max) > 0 ? t("accessLeft", { name: a.name, n: Number(a.remaining || 0), max: Number(a.max) }) : String(a.name || ""),
-    }))) : null,
     el("button", {
       type: "button",
       class: "tonal",
-      disabled: Number(invite.remaining || 0) <= 0,
+      disabled: full,
       onclick: () => openInviteDialog(group),
-    }, icon("plus", 16), el("span", { text: t("addGuests") })));
+    }, icon("plus", 16), el("span", { text: t("addGuests") })),
+    full ? el("p", { class: "invite-note", text: t("inviteMaxReached") }) : null);
 }
 
 function listCard(group, association, items) {
@@ -1653,14 +1650,29 @@ function openInviteDialog(group) {
   const accesses = Array.isArray(invite?.accesses) ? invite.accesses : [];
   const rows = el("div", { class: "invite-rows" });
   const { msg, say } = formMessage();
-  const left = el("p", { class: "hint" });
+  const note = el("p", { class: "invite-note hidden" });
   const draft = () => Array.from(rows.querySelectorAll(".invite-row")).map((row) => ({
     name: row.querySelector("input[type=text]").value.trim(),
     access: Array.from(row.querySelectorAll("input[type=checkbox]:checked")).map((c) => c.value),
   })).filter((p) => p.name);
+  /** Greys out what would go past a limit (another person, a full access) and says why. */
   const refresh = () => {
     const r = inviteRemaining(invite, draft());
-    left.textContent = t("placesLeft", { n: Math.max(r.remaining, 0), max: Number(invite?.maxGuests || 0) });
+    const fullAccesses = [];
+    rows.querySelectorAll("input[type=checkbox]").forEach((box) => {
+      const a = accesses.find((x) => x.id === box.value);
+      const limited = Number(a?.max || 0) > 0;
+      const off = limited && !box.checked && Number(r.accesses[box.value]) <= 0;
+      box.disabled = off;
+      box.closest(".check-chip")?.classList.toggle("off", off);
+      if (off && a && !fullAccesses.includes(a.name)) fullAccesses.push(a.name);
+    });
+    const listFull = r.remaining <= 0;
+    more.disabled = listFull;
+    const text = listFull ? t("inviteMaxReached") : fullAccesses.length ? t("accessMaxReached", { names: fullAccesses.join(", ") }) : "";
+    note.textContent = text;
+    note.classList.toggle("hidden", !text);
+    send.disabled = !r.ok;
     return r;
   };
   const addRow = () => {
@@ -1673,9 +1685,9 @@ function openInviteDialog(group) {
     rows.append(row);
     row.querySelector("input").focus();
   };
-  const more = el("button", { type: "button", class: "ghost", onclick: addRow, text: t("addRow") });
+  const more = el("button", { type: "button", class: "ghost", onclick: () => { addRow(); refresh(); }, text: t("addRow") });
   const send = el("button", { type: "submit", class: "primary", text: t("sendForReview") });
-  const form = el("form", { novalidate: true }, rows, more, left, msg, send);
+  const form = el("form", { novalidate: true }, rows, more, note, msg, send);
   const close = openSheet(t("addGuests"), form);
   addRow();
   refresh();
