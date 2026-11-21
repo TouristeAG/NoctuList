@@ -1,6 +1,7 @@
-// Volunteer space: /v/{orgId}
-// Reads only the signed-in volunteer's own projection (orgs/{org}/volunteerPortal/{uid}); every
-// change goes through a request document that a NoctuList device validates and applies.
+// Portal: /v/{orgId}
+// Reads only the signed-in account's own pages (orgs/{org}/volunteerPortal, guestPortal and
+// temporaryGuestPortal under its uid); every change goes through a request document that a
+// NoctuList device validates and applies. The temporary group page is read-only.
 import { deleteApp, initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import {
   EmailAuthProvider,
@@ -38,11 +39,12 @@ import {
   uploadBytes,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 import { EMULATOR_PORTS, isLocalDev, loadConfig, parseOrgPath } from "./firebase-env.js?v=portal-2";
-import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=qr-4";
-import { clearQr, closeQrDialog, isStaleFor, missingIsFinal, openQrDialog, readCachedQr, storeQr } from "./portal-qr.js?v=qr-2";
+import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=guest-1";
+import { cachedQrEntries, clearQr, closeQrDialog, isStaleFor, missingIsFinal, openQrDialog, readCachedQr, storeQr } from "./portal-qr.js?v=guest-1";
 import {
   EMAIL_RE,
   authErrorKey,
+  chooseProfile,
   cleanName,
   cleanPhone,
   clear,
@@ -52,16 +54,26 @@ import {
   isWaiting,
   millisOf,
   passwordProblem,
+  profileKinds,
+  profileStoreKey,
+  profilesSettled,
   toJpeg,
-} from "./portal-common.js?v=portal-3";
+} from "./portal-common.js?v=guest-1";
 
 const $ = (id) => document.getElementById(id);
 const VIEWS = ["view-loading", "view-disabled", "view-signin", "view-reset", "view-verify", "view-pending", "view-google", "view-dash", "view-offline"];
 const REMEMBER_KEY = "nl-portal-remember";
 const LAST_ORG_KEY = "nl-portal-org";
 const IDLE_LIMIT_MS = 30 * 60 * 1000;
-const DELAYS_MIN = { PROFILE: 1, QR_EMAIL: 10, CLAIM: 1, GOOGLE_LINK: 1, GOOGLE_UNLINK: 1 };
-const REQUEST_TYPES = ["PROFILE", "QR_EMAIL", "CLAIM", "GOOGLE_LINK", "GOOGLE_UNLINK"];
+const DELAYS_MIN = { PROFILE: 1, QR_EMAIL: 10, GUEST_PROFILE: 1, GUEST_QR_EMAIL: 10, CLAIM: 1, GOOGLE_LINK: 1, GOOGLE_UNLINK: 1 };
+const REQUEST_TYPES = ["PROFILE", "QR_EMAIL", "GUEST_PROFILE", "GUEST_QR_EMAIL", "CLAIM", "GOOGLE_LINK", "GOOGLE_UNLINK"];
+/** The published page and QR document of each profile an account may have. */
+const PAGES = {
+  volunteer: { page: "volunteerPortal", qr: "volunteerPortalQr" },
+  guest: { page: "guestPortal", qr: "guestPortalQr" },
+  temporary: { page: "temporaryGuestPortal", qr: "temporaryGuestPortalQr" },
+};
+const PROFILE_LABELS = { volunteer: "profileVolunteer", guest: "profileGuest", temporary: "profileTemporary" };
 /** A device takes over a claim the Functions left alone after 2 minutes; past this the page stops waiting. */
 const LINK_WAIT_MS = 3 * 60_000;
 /** Messages for the answers to a Google claim (portalGoogleClaims). */
@@ -79,6 +91,13 @@ let branding = null;
 let user = null;
 /** Portal account the page reads and writes for: the signed-in uid, or the volunteer a Google account is linked to. */
 let portalUid = "";
+/** Each profile read for this session: `{ state: "loading" | "present" | "absent" | "denied", data, updatedAt }`. */
+let pages = {};
+/** QR documents by profile: `{ payload, name }`, or `{ items }` for the temporary groups. */
+let qrDocs = {};
+/** Profile on screen ("volunteer", "guest" or "temporary"), null until one is shown. */
+let activeKind = null;
+/** Payload of the volunteer or guest page on screen, null for the groups page. */
 let projection = null;
 let qrDoc = null;
 let projectionUpdatedAt = 0;
@@ -102,20 +121,33 @@ function showView(id) {
   document.body.classList.toggle("dash-open", id === "view-dash");
 }
 
-/** Reduced screen with only "My QR", from the copy stored on this device. */
+/** Reduced screen with only the QR codes stored on this device, one button each. */
 function showOffline() {
+  renderOffline();
   showView("view-offline");
+}
+
+function renderOffline() {
+  const box = $("offline-list");
+  clear(box);
+  const entries = path ? cachedQrEntries(readCachedQr(path.orgId)) : [];
+  const own = entries.filter((e) => e.kind !== "temporary");
+  entries.forEach((entry) => {
+    // Your own code alone is "My QR"; otherwise each button says whose it is.
+    const label = entry.kind === "temporary" ? entry.name || t("qrShort")
+      : own.length === 1 ? t("myQr") : t(PROFILE_LABELS[entry.kind]);
+    box.append(el("button", {
+      type: "button",
+      class: "primary full qr-open",
+      onclick: () => openQrDialog({ payload: entry.payload, name: entry.name, association: entry.association }),
+    }, icon("qr", 18), el("span", { text: label })));
+  });
 }
 
 /** Offline screen shown at boot: the page never started Firebase, so it reloads once the network is back. */
 function showOfflineUntilOnline() {
   showOffline();
   window.addEventListener("online", () => location.reload(), { once: true });
-}
-
-function openOfflineQr() {
-  const cached = readCachedQr(path.orgId);
-  if (cached) openQrDialog({ payload: cached.payload, name: cached.name, association: cached.association });
 }
 
 /** The worker serves the page without network. Off on the emulator unless ?sw=1 is in the URL. */
@@ -349,7 +381,7 @@ async function openGoogleSession(current) {
   if (user !== current) return;
   if (target) {
     portalUid = target;
-    return watchProjection();
+    return watchProfiles(profileKinds({ google: true }));
   }
   await requestAdminMatch(current);
 }
@@ -402,7 +434,7 @@ async function requestAdminMatch(current) {
       if (!target) return doSignOut("googleFailed");
       stopListeners();
       portalUid = target;
-      watchProjection();
+      watchProfiles(profileKinds({ google: true }));
     }
   }, (error) => {
     console.warn("google claim unavailable", error?.code);
@@ -641,8 +673,7 @@ async function doSignOut(reasonKey) {
   clearQr(path.orgId);
   portalUid = "";
   unlinkSent = false;
-  projection = null;
-  qrDoc = null;
+  resetProfiles();
   photoUrl = "";
   photoVersionLoaded = "";
   await signOut(auth).catch(() => {});
@@ -682,7 +713,7 @@ async function onUser(next) {
   googleSession = false;
   armIdleTimer();
   portalUid = "";
-  qrDoc = null; // watchProjection fills it again
+  resetProfiles(); // watchProfiles fills them again
   if (!user) {
     // Session ended (signed out elsewhere, expired, tab session gone): no QR without a session.
     if (path) clearQr(path.orgId);
@@ -694,95 +725,214 @@ async function onUser(next) {
   if (user !== next) return;
   googleSession = google;
   // Another account's QR must not stay on this device. Google sessions are keyed by the linked
-  // volunteer uid, not by the auth uid, so watchProjection replaces their copy instead.
+  // portal uid, not by the auth uid, so watchProfiles replaces their copy instead.
   if (isStaleFor(readCachedQr(path.orgId), next.uid, google)) clearQr(path.orgId);
   // Google accounts are verified by Google; their access goes through the link to a volunteer.
   if (isGoogleUser(user)) return openGoogleSession(user);
-  if (!user.emailVerified) {
-    $("verify-body").textContent = t("verifyBody", { email: user.email });
-    return showView("view-verify");
-  }
+  portalUid = user.uid;
+  // An unverified address may still own a temporary group page; without one it must verify first.
+  if (!user.emailVerified) return watchProfiles(profileKinds({ google: false, verified: false }));
   // Make sure the ID token carries email_verified = true (verified in another tab).
   await user.getIdToken(true).catch(() => {});
   if (user !== next) return;
-  portalUid = user.uid;
-  watchProjection();
+  watchProfiles(profileKinds({ google: false, verified: true }));
 }
 
-function watchProjection() {
+function showVerify() {
+  $("verify-body").textContent = t("verifyBody", { email: user?.email || "" });
+  showView("view-verify");
+}
+
+function resetProfiles() {
+  pages = {};
+  qrDocs = {};
+  activeKind = null;
+  projection = null;
+  qrDoc = null;
+  projectionUpdatedAt = 0;
+}
+
+/** Reads every page of `kinds` for portalUid at once; refused or missing means the profile is absent. */
+function watchProfiles(kinds) {
   showView("view-loading");
   const uidAtStart = portalUid;
+  resetProfiles();
+  kinds.forEach((kind) => { pages[kind] = { state: "loading", data: null, updatedAt: 0 }; });
   clearTimeout(offlineTimer);
   offlineTimer = setTimeout(() => {
     offlineTimer = null;
-    if (portalUid === uidAtStart && readCachedQr(path.orgId, uidAtStart)) showOffline();
+    if (portalUid === uidAtStart && !activeKind && readCachedQr(path.orgId, uidAtStart)) showOffline();
   }, OFFLINE_FALLBACK_MS);
-  const ref = doc(db, "orgs", path.orgId, "volunteerPortal", portalUid);
-  unsubscribers.push(onSnapshot(ref, (snap) => {
-    // An empty answer from the local cache (no network) says nothing about the page: with a QR
-    // stored here, the offline screen stays or the timer above shows it.
-    if (!snap.exists() && snap.metadata.fromCache && readCachedQr(path.orgId, uidAtStart)) return;
-    clearTimeout(offlineTimer);
-    offlineTimer = null;
-    if (!snap.exists()) {
-      projection = null;
-      showPending();
-      return;
-    }
-    try {
-      projection = JSON.parse(snap.data().payload || "{}");
-    } catch {
-      projection = null;
-      return showPending();
-    }
-    projectionUpdatedAt = Number(snap.data().updatedAt || 0);
-    renderDashboard();
-    renderGoogleBox();
-    showView("view-dash");
-  }, (error) => {
-    console.warn("projection unavailable", error?.code);
-    if (String(error?.code).includes("permission-denied") && isGoogleUser(user)) {
-      // The Google option, the domain or the link itself was removed.
-      doSignOut(unlinkSent ? "googleUnlinked" : "googleDisabled");
-    } else if (String(error?.code).includes("permission-denied")) {
-      $("disabled-error").classList.add("hidden");
-      showView("view-disabled");
-    }
-  }));
-  const qrRef = doc(db, "orgs", path.orgId, "volunteerPortalQr", portalUid);
-  unsubscribers.push(onSnapshot(qrRef, (snap) => {
-    if (snap.exists() && snap.data().payload) {
-      const data = snap.data();
-      qrDoc = { payload: data.payload, name: data.name || "" };
-      // Kept on the device only for a remembered session: a tab session ends without a sign-out.
-      if (rememberDefault()) {
-        storeQr(path.orgId, { uid: uidAtStart, payload: data.payload, name: qrDoc.name, association: projection?.association || "" });
-      } else {
-        clearQr(path.orgId);
-      }
-    } else if (missingIsFinal(snap)) {
-      qrDoc = null;
-      clearQr(path.orgId);
-      closeQrDialog();
-    }
-    if (projection) renderDashboard();
-  }, (error) => {
-    if (String(error?.code).includes("permission-denied")) {
-      qrDoc = null;
-      clearQr(path.orgId);
-      closeQrDialog();
-      if (projection) renderDashboard();
-    }
-  }));
+  kinds.forEach((kind) => {
+    watchPage(kind, uidAtStart);
+    watchQr(kind, uidAtStart);
+  });
+  // Requests need a verified address or a Google link; a temporary group page sends none.
+  if (!kinds.includes("volunteer")) return;
   REQUEST_TYPES.forEach((type) => {
     const ref = doc(db, "orgs", path.orgId, "portalRequests", `${portalUid}_${type}`);
     unsubscribers.push(onSnapshot(ref, (snap) => {
       requests[type] = snap.exists() ? snap.data() : null;
       if (type === "CLAIM") renderPending();
       else if (type.startsWith("GOOGLE_")) renderGoogleBox();
-      else if (projection) renderDashboard();
+      else render();
     }, () => {}));
   });
+}
+
+function watchPage(kind, uidAtStart) {
+  const ref = doc(db, "orgs", path.orgId, PAGES[kind].page, uidAtStart);
+  unsubscribers.push(onSnapshot(ref, (snap) => {
+    // An empty answer from the local cache (no network) says nothing about the page: with a QR
+    // stored here, the offline screen stays or the timer in watchProfiles shows it.
+    if (!snap.exists() && snap.metadata.fromCache && readCachedQr(path.orgId, uidAtStart)) return;
+    let data = null;
+    try {
+      data = snap.exists() ? JSON.parse(snap.data().payload || "{}") : null;
+    } catch {
+      data = null;
+    }
+    if (!data || typeof data !== "object") return setPage(kind, "absent");
+    setPage(kind, "present", data, Number(snap.data().updatedAt || 0));
+    storeKindQr(kind, uidAtStart);
+  }, (error) => {
+    console.warn(`${kind} page unavailable`, error?.code);
+    // The temporary page is refused, not missing, once it is gone or past its end.
+    setPage(kind, String(error?.code).includes("permission-denied") ? "denied" : "absent");
+  }));
+}
+
+function watchQr(kind, uidAtStart) {
+  const ref = doc(db, "orgs", path.orgId, PAGES[kind].qr, uidAtStart);
+  const drop = () => {
+    qrDocs[kind] = null;
+    clearQr(path.orgId, kind);
+    closeQrDialog();
+    render();
+  };
+  unsubscribers.push(onSnapshot(ref, (snap) => {
+    const data = snap.exists() ? snap.data() : null;
+    const value = data ? qrValue(kind, data) : null;
+    if (value) {
+      qrDocs[kind] = value;
+      storeKindQr(kind, uidAtStart);
+      render();
+    } else if (missingIsFinal(snap) || data) {
+      drop();
+    }
+  }, (error) => {
+    if (String(error?.code).includes("permission-denied")) drop();
+  }));
+}
+
+/** The QR document as the page uses it, or null when it holds no code. */
+function qrValue(kind, data) {
+  if (kind !== "temporary") return data.payload ? { payload: String(data.payload), name: String(data.name || "") } : null;
+  const items = {};
+  Object.entries(data.items && typeof data.items === "object" ? data.items : {}).forEach(([key, item]) => {
+    if (/^[A-Za-z0-9_-]{1,64}$/.test(key) && typeof item?.payload === "string" && item.payload) {
+      items[key] = { payload: item.payload, name: String(item.name || "") };
+    }
+  });
+  return Object.keys(items).length ? { items } : null;
+}
+
+/** Kept on the device only for a remembered session: a tab session ends without a sign-out. */
+function storeKindQr(kind, uid) {
+  if (!rememberDefault()) return clearQr(path.orgId);
+  const q = qrDocs[kind];
+  if (!q || uid !== portalUid) return;
+  const page = pages[kind]?.data || {};
+  const association = String(page.association || "");
+  if (kind === "temporary") {
+    storeQr(path.orgId, uid, kind, Object.entries(q.items).map(([key, item]) => ({ key, ...item, association })));
+  } else {
+    storeQr(path.orgId, uid, kind, { payload: q.payload, name: q.name || String(page.firstName || ""), association });
+  }
+}
+
+function setPage(kind, state, data = null, updatedAt = 0) {
+  if (!pages[kind]) return;
+  pages[kind] = { state, data, updatedAt };
+  showProfiles();
+}
+
+function pageStates() {
+  return Object.fromEntries(Object.entries(pages).map(([kind, page]) => [kind, page.state]));
+}
+
+/** Shows the chosen profile once every page answered, or what to do when there is none. */
+function showProfiles() {
+  const { done, available } = profilesSettled(pageStates());
+  if (!available.length) {
+    if (!done) return;
+    clearTimeout(offlineTimer);
+    offlineTimer = null;
+    activeKind = null;
+    projection = null;
+    qrDoc = null;
+    return showNoProfile();
+  }
+  // Wait for every answer, so the page does not jump from one profile to another.
+  if (!done) return;
+  clearTimeout(offlineTimer);
+  offlineTimer = null;
+  activeKind = chooseProfile(available, storedProfile());
+  render();
+  renderGoogleBox();
+  showView("view-dash");
+}
+
+function showNoProfile() {
+  if (!user) return;
+  closeQrDialog();
+  if (!pages.volunteer) return showVerify();
+  const refused = pages.volunteer.state === "denied";
+  if (isGoogleUser(user) && refused) {
+    // The Google option, the domain or the link itself was removed.
+    return doSignOut(unlinkSent ? "googleUnlinked" : "googleDisabled");
+  }
+  if (refused) {
+    $("disabled-error").classList.add("hidden");
+    return showView("view-disabled");
+  }
+  showPending();
+}
+
+function storedProfile() {
+  try {
+    return localStorage.getItem(profileStoreKey(path.orgId));
+  } catch {
+    return null;
+  }
+}
+
+function selectProfile(kind) {
+  if (kind === activeKind) return;
+  try {
+    localStorage.setItem(profileStoreKey(path.orgId), kind);
+  } catch {
+    /* the choice is only remembered for this visit */
+  }
+  activeKind = kind;
+  render();
+  renderGoogleBox();
+  window.scrollTo({ top: 0 });
+}
+
+/** Points projection and qrDoc at the profile on screen, then draws it. */
+function render() {
+  if (!activeKind || !pages[activeKind]) return;
+  const page = pages[activeKind];
+  projection = activeKind === "temporary" ? null : page.data;
+  qrDoc = activeKind === "temporary" ? null : qrDocs[activeKind] || null;
+  projectionUpdatedAt = page.updatedAt;
+  renderDashboard();
+}
+
+/** Guests send GUEST_PROFILE and GUEST_QR_EMAIL, volunteers PROFILE and QR_EMAIL. */
+function requestType(base) {
+  return activeKind === "guest" ? `GUEST_${base}` : base;
 }
 
 let claimSentAt = 0;
@@ -890,12 +1040,13 @@ function profileTile() {
   card.append(el("div", { class: "profile-top" },
     avatar(),
     el("div", {}, el("p", { class: "profile-name", text: fullName }), el("p", { class: "profile-sub", text: p.email }))));
-  card.append(kv([
+  // Guests have no date of birth or gender.
+  card.append(kv(activeKind === "guest" ? [[t("phone"), p.phone]] : [
     [t("phone"), p.phone],
     [t("dateOfBirth"), fmtIsoDate(p.dateOfBirth)],
     [t("gender"), p.gender ? t(`gender${p.gender}`) : "-"],
   ]));
-  const status = requests.PROFILE;
+  const status = requests[requestType("PROFILE")];
   if (isWaiting(status)) {
     card.append(el("p", { class: "notice", text: t("profilePending") }));
   } else if (isStalePending(status)) {
@@ -919,8 +1070,8 @@ function profileTile() {
     if (!qrDoc) qr.append(el("p", { class: "small-note", text: t("qrNotAllowed") }));
   } else {
     if (!qrDoc) qr.append(el("p", { class: "muted left", text: t("qrBody", { email: p.email }) }));
-    const r = requests.QR_EMAIL;
-    const cooldown = requestCooldownMinutes("QR_EMAIL");
+    const r = requests[requestType("QR_EMAIL")];
+    const cooldown = requestCooldownMinutes(requestType("QR_EMAIL"));
     const btn = el("button", { type: "button", class: qrDoc ? "link-small" : "tonal", onclick: onQrClick }, icon("mail", qrDoc ? 14 : 16), t("qrButton"));
     const waiting = isWaiting(r);
     if (waiting) {
@@ -945,7 +1096,7 @@ async function onQrClick(event) {
   const btn = event.currentTarget;
   btn.disabled = true;
   try {
-    await sendRequest("QR_EMAIL");
+    await sendRequest(requestType("QR_EMAIL"));
   } catch (error) {
     console.warn("qr request failed", error?.code);
     btn.disabled = false;
@@ -1114,6 +1265,114 @@ function walletTile() {
   return card;
 }
 
+// ---------- Guest page ----------
+
+/** A permanent guest's benefits: bar discount, invitations and venue, as the door and bar apply them. */
+function guestBenefitsTile() {
+  const p = projection;
+  const card = tile("benefits", t("benefits"), "gift");
+  const perks = [];
+  const discount = Number(p.barDiscountPercent) || 0;
+  const invites = Number(p.invitations) || 0;
+  const venue = String(p.venueName || "").trim();
+  if (discount > 0) perks.push(perkRow(t("perkBarDiscount"), `${discount} %`));
+  if (invites > 0) perks.push(perkRow(t("perkInvites"), String(invites)));
+  if (venue) perks.push(perkRow(t("venue"), venue));
+  if (perks.length) card.append(el("ul", { class: "perk-list" }, perks));
+  else card.append(el("p", { class: "empty", text: t("noBenefits") }));
+  return card;
+}
+
+// ---------- Temporary groups page (read-only) ----------
+
+function groupTile(group, association, items) {
+  const date = Number(group.eventDate) || 0;
+  const artist = String(group.artistName || "").trim();
+  const venue = String(group.venueName || "").trim();
+  const card = tile("group", artist || venue || fmtDate(date), "calendar");
+  const when = date ? fmtDate(date, { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : "";
+  card.querySelector(".tile-head").after(el("p", {
+    class: "group-meta",
+    text: [when, artist ? venue : ""].filter(Boolean).join(" · "),
+  }));
+  const guests = Array.isArray(group.guests) ? group.guests : [];
+  const ul = el("ul", { class: "list guest-list" });
+  guests.forEach((g) => {
+    const name = `${g.firstName || ""} ${g.lastName || ""}`.trim();
+    const phone = String(g.emergencyPhone || "").trim();
+    const meta = [
+      phone ? t("emergencyContact", { phone }) : "",
+      g.wallet ? `${t("balance")} ${fmtMoney(g.wallet.balance, g.wallet.currency)}` : "",
+    ].filter(Boolean).join(" · ");
+    const item = g.qr === true ? items[String(g.guestKey || "")] : null;
+    let action = null;
+    if (g.entryUsed === true) {
+      action = el("span", { class: "entry-used", text: t("entryUsed") });
+    } else if (item) {
+      action = el("button", {
+        type: "button",
+        class: "mini-btn qr-mini",
+        onclick: () => openQrDialog({ payload: item.payload, name: item.name || name, association }),
+      }, icon("qr", 14), el("span", { text: t("qrShort") }));
+    }
+    ul.append(el("li", {},
+      el("div", { class: "grow" },
+        el("div", { class: "title", text: name || "-" }),
+        meta ? el("div", { class: "meta-line", text: meta }) : null),
+      action));
+  });
+  card.append(ul);
+  return card;
+}
+
+function renderGroups() {
+  const p = pages.temporary?.data;
+  if (!p) return;
+  const association = String(p.association || "");
+  $("dash-hello").textContent = t("profileTemporary");
+  $("dash-sub").textContent = [association, String(p.contactEmail || ""), projectionUpdatedAt ? t("updatedAgo", { ago: ago(projectionUpdatedAt) }) : ""]
+    .filter(Boolean).join(" · ");
+  const now = Date.now();
+  const groups = (Array.isArray(p.groups) ? p.groups : [])
+    .filter((g) => !g.endsAt || Number(g.endsAt) > now)
+    .sort((a, b) => Number(a.eventDate) - Number(b.eventDate));
+  const items = qrDocs.temporary?.items || {};
+  const dash = $("dash");
+  clear(dash);
+  if (!groups.length) {
+    dash.className = "dash cols-1";
+    dash.append(el("section", { class: "card tile" }, el("p", { class: "empty", text: t("noGroups") })));
+    return;
+  }
+  const columns = Math.min(layoutColumns(), groups.length);
+  dash.className = `dash cols-${columns}`;
+  const cols = Array.from({ length: columns }, () => el("div", { class: "col" }));
+  groups.forEach((g, i) => cols[i % columns].append(groupTile(g, association, items)));
+  dash.append(...cols);
+}
+
+/** Buttons to move between the profiles of one account, shown only when there are several. */
+function renderSwitch() {
+  const box = $("profile-switch");
+  clear(box);
+  const { available } = profilesSettled(pageStates());
+  if (available.length < 2) {
+    box.classList.add("hidden");
+    return;
+  }
+  box.setAttribute("aria-label", t("profileSwitch"));
+  available.forEach((kind) => {
+    box.append(el("button", {
+      type: "button",
+      class: `switch-btn${kind === activeKind ? " on" : ""}`,
+      "aria-pressed": kind === activeKind ? "true" : "false",
+      onclick: () => selectProfile(kind),
+      text: t(PROFILE_LABELS[kind]),
+    }));
+  });
+  box.classList.remove("hidden");
+}
+
 function dateBadge(millis, soon = false) {
   const d = new Date(Number(millis));
   return el("div", { class: `date-badge${soon ? " soon" : ""}` },
@@ -1262,8 +1521,9 @@ function profileForm(onDone) {
     if (!firstName) return fail("errName", first);
     if (!lastName) return fail("errName", last);
     if (!phoneValue) return fail("errPhone", phone);
-    if (isWaiting(requests.PROFILE)) return fail("profilePending", first);
-    if (requestCooldownMinutes("PROFILE") > 0) return fail("profileWait", first);
+    const type = requestType("PROFILE");
+    if (isWaiting(requests[type])) return fail("profilePending", first);
+    if (requestCooldownMinutes(type) > 0) return fail("profileWait", first);
     save.disabled = true;
     const blob = photo?.picked() ?? null;
     if (blob) {
@@ -1278,7 +1538,7 @@ function profileForm(onDone) {
       }
     }
     try {
-      await sendRequest("PROFILE", { firstName, lastName, phone: phoneValue, ...(blob ? { photo: true } : {}) });
+      await sendRequest(type, { firstName, lastName, phone: phoneValue, ...(blob ? { photo: true } : {}) });
       say("success", "profileSent");
       onDone?.();
     } catch (error) {
@@ -1335,6 +1595,21 @@ function openAccountDialog() {
   const body = $("account-body");
   clear(body);
   googleMsg = null;
+  googleBox = null;
+  if (activeKind === "temporary") {
+    // Read-only page: the password of the account and signing out, nothing else.
+    body.append(
+      el("section", { class: "dialog-section" },
+        el("h3", { text: t("changePassword") }),
+        passwordForm()),
+      el("section", { class: "dialog-section quiet" },
+        el("p", { class: "small-note", text: t("signedInAs", { email: user.email }) }),
+        el("button", { type: "button", class: "ghost", onclick: () => doSignOut(), text: t("signOut") })));
+    $("account-title").textContent = t("account");
+    if (typeof dialog.showModal === "function") dialog.showModal();
+    else dialog.setAttribute("open", "");
+    return;
+  }
   googleBox = el("section", { class: "dialog-section hidden" });
   body.append(...[
     el("section", { class: "dialog-section" },
@@ -1358,15 +1633,16 @@ function openAccountDialog() {
 }
 
 function exportData() {
+  const guest = activeKind === "guest";
   const data = {
     exportedAt: new Date().toISOString(),
     organization: path.orgId,
     account: { email: user.email },
-    volunteer: projection,
+    [guest ? "guest" : "volunteer"]: projection,
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
-  const a = el("a", { href: url, download: "my-volunteer-data.json" });
+  const a = el("a", { href: url, download: guest ? "my-guest-data.json" : "my-volunteer-data.json" });
   document.body.append(a);
   a.click();
   a.remove();
@@ -1374,14 +1650,24 @@ function exportData() {
 }
 
 function renderDashboard() {
-  if (!projection || !user) return;
-  const view = portalView(projection, Date.now());
+  if (!user || !activeKind) return;
+  renderSwitch();
+  // "My account" has its own button only on the groups page: elsewhere "Edit" opens it.
+  $("account-btn").classList.toggle("hidden", activeKind !== "temporary");
+  if (activeKind === "temporary") return renderGroups();
+  if (!projection) return;
   $("dash-hello").textContent = t("hello", { name: projection.firstName || "" });
   const sub = [projection.association, projectionUpdatedAt ? t("updatedAgo", { ago: ago(projectionUpdatedAt) }) : ""]
     .filter(Boolean).join(" · ");
   $("dash-sub").textContent = sub;
   const dash = $("dash");
   clear(dash);
+  if (activeKind === "guest") {
+    renderGuest(dash);
+    ensurePhoto();
+    return;
+  }
+  const view = portalView(projection, Date.now());
   const tiles = {
     profile: profileTile(),
     benefits: benefitsTile(view),
@@ -1402,6 +1688,22 @@ function renderDashboard() {
     dash.append(col("profile", "upcoming"), col("benefits", "wallet"), col("history"));
   }
   ensurePhoto();
+}
+
+function renderGuest(dash) {
+  const tiles = {
+    profile: profileTile(),
+    benefits: guestBenefitsTile(),
+    wallet: projection.wallet ? walletTile() : null,
+  };
+  const col = (...names) => el("div", { class: "col" }, names.map((n) => tiles[n]).filter(Boolean));
+  if (layoutColumns() === 1) {
+    dash.className = "dash cols-1";
+    dash.append(col("profile", "benefits", "wallet"));
+  } else {
+    dash.className = "dash cols-2";
+    dash.append(col("profile"), col("benefits", "wallet"));
+  }
 }
 
 const MEDIA_2 = window.matchMedia("(min-width: 760px)");
@@ -1478,7 +1780,9 @@ function bindStatic() {
   });
   ["pointerdown", "keydown", "scroll", "touchstart"].forEach((type) =>
     window.addEventListener(type, armIdleTimer, { passive: true }));
-  [MEDIA_2, MEDIA_3].forEach((m) => m.addEventListener("change", () => renderDashboard()));
+  [MEDIA_2, MEDIA_3].forEach((m) => m.addEventListener("change", () => render()));
+  $("account-btn").prepend(icon("user", 16));
+  $("account-btn").addEventListener("click", openAccountDialog);
   $("account-close").addEventListener("click", () => $("account-dialog").close());
   // Closing "My account" stops a link in progress and drops the second Auth instance.
   $("account-dialog").addEventListener("close", () => {
@@ -1491,7 +1795,7 @@ function bindStatic() {
     if (event.target === $("account-dialog")) $("account-dialog").close();
   });
   // Keep "updated … ago" fresh.
-  setInterval(() => { if (projection) renderDashboard(); }, 60_000);
+  setInterval(() => render(), 60_000);
 }
 
 async function main() {
@@ -1502,8 +1806,9 @@ async function main() {
     renderBranding();
     renderPending();
     renderGoogleWait();
-    renderDashboard();
+    render();
     renderGoogleBox();
+    if (!$("view-offline").classList.contains("hidden")) renderOffline();
   });
   registerWorker();
   path = parseOrgPath("v", false);
@@ -1514,8 +1819,6 @@ async function main() {
     return showView("view-disabled");
   }
   localStorage.setItem(LAST_ORG_KEY, path.orgId);
-  $("offline-qr").prepend(icon("qr", 18));
-  $("offline-qr").addEventListener("click", openOfflineQr);
   if (!navigator.onLine && readCachedQr(path.orgId)) return showOfflineUntilOnline();
   let app;
   try {

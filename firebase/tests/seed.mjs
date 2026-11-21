@@ -57,6 +57,10 @@ export async function seed() {
   await env.clearFirestore();
   const portalUid = await createAuthUser("lea.demo@example.org", "Demo-Passw0rd!", true);
   const jeanUid = await createAuthUser("jean.demo@example.org", "Demo-Passw0rd!", true);
+  // Guest spaces: Nina is a permanent guest only; the manager account is the address of two
+  // artist groups and, like an account the app creates, has never verified it.
+  const ninaUid = await createAuthUser("nina.demo@example.org", "Demo-Passw0rd!", true);
+  const managerUid = await createAuthUser("manager.demo@example.org", "Demo-Passw0rd!", false);
 
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
@@ -66,6 +70,8 @@ export async function seed() {
     await setDoc(org("institutionSettings/profile_photos_enabled"), { value: "true", lastModified: now });
     await setDoc(org("institutionSettings/volunteer_portal_google_enabled"), { value: "true", lastModified: now });
     await setDoc(org("institutionSettings/volunteer_portal_google_domains"), { value: GOOGLE_DOMAIN, lastModified: now });
+    await setDoc(org("institutionSettings/guest_portal_enabled"), { value: "true", lastModified: now });
+    await setDoc(org("institutionSettings/temp_guest_portal_enabled"), { value: "true", lastModified: now });
 
     // Roster entries the Google link is decided on: Léa links her own account from the portal,
     // Jean has an address an admin entered (signing in with it links him).
@@ -108,6 +114,18 @@ export async function seed() {
     await setDoc(org("volunteerSignupForms/demoSignupForm0001"), {
       formId: "demoSignupForm0001",
       status: "OPEN",
+      expiresAtMillis: now + 7 * DAY,
+      photosEnabled: true,
+      associationName: "Association Démo",
+      createdAt: now,
+      lastModified: now,
+    });
+
+    await setDoc(org("volunteerSignupForms/demoGuestSignup0001"), {
+      formId: "demoGuestSignup0001",
+      status: "OPEN",
+      holderType: "GUEST",
+      venueName: "Le Terreau",
       expiresAtMillis: now + 7 * DAY,
       photosEnabled: true,
       associationName: "Association Démo",
@@ -235,9 +253,59 @@ export async function seed() {
       contentHash: "demo",
       updatedAt: now - 3 * 60 * 1000,
     });
+    await setDoc(org(`volunteerPortalQr/${portalUid}`), { schema: 1, payload: "demoLeaVolunteerNano01", name: "Léa MARTIN" });
+
+    // Permanent guest pages: Nina alone, and Léa, who is also a guest (three profiles in all).
+    const guestPage = (firstName, lastName, email, extra = {}) => ({
+      firstName, lastName, email, phone: "+41 78 555 12 34", hasPhoto: false, photoVersion: "",
+      venueName: "Le Terreau", invitations: 2, barDiscountPercent: 15,
+      wallet: { balance: 12, currency: "CHF", transfers: [
+        { at: now - 2 * DAY, type: "POS_SALE", amount: -8, label: "2x Mate", venue: "Le Terreau" },
+        { at: now - 6 * DAY, type: "MANUAL_ADJUSTMENT", amount: 20, label: "Crédit invité", venue: "" },
+      ] },
+      qrEmailAllowed: true, mustSetPassword: false, association: "Association Démo",
+      googleEmail: "", googleLinkedBy: "", googleLinkAvailable: true, ...extra,
+    });
+    const publish = (collection, uid, payload, extra = {}) => setDoc(org(`${collection}/${uid}`), {
+      schema: 1, payload: JSON.stringify(payload), contentHash: "demo", updatedAt: now - 5 * 60 * 1000, ...extra,
+    });
+    await publish("guestPortal", ninaUid, guestPage("Nina", "ROSSI", "nina.demo@example.org"));
+    await setDoc(org(`guestPortalQr/${ninaUid}`), { schema: 1, payload: "demoNinaGuestNano0001", name: "Nina ROSSI" });
+    await publish("guestPortal", portalUid, guestPage("Léa", "MARTIN", "lea.demo@example.org", { invitations: 0, wallet: null }));
+    await setDoc(org(`guestPortalQr/${portalUid}`), { schema: 1, payload: "demoLeaGuestNano00001", name: "Léa MARTIN" });
+
+    // Temporary groups: yesterday's group (one entry already used) and one in two days.
+    const startOfDay = (millis) => { const d = new Date(millis); d.setHours(0, 0, 0, 0); return d.getTime(); };
+    const group = (eventDate, venueName, artistName, guests) => ({
+      eventDate, venueName, artistName, endsAt: startOfDay(eventDate) + 3 * DAY, guests,
+    });
+    const tempGuest = (guestKey, firstName, lastName, extra = {}) => ({
+      guestKey, firstName, lastName, emergencyPhone: "+41 79 222 33 44", entryUsed: false, qr: true, wallet: null, ...extra,
+    });
+    const groups = [
+      group(now - 1 * DAY, "Groove", "Les Hiboux", [
+        tempGuest("a1b2c3d4e5f60001", "Ada", "LEROY", { entryUsed: true, qr: false }),
+        tempGuest("a1b2c3d4e5f60002", "Bruno", "MEIER", { wallet: { balance: 15, currency: "CHF" } }),
+      ]),
+      group(now + 2 * DAY, "Le Terreau", "Nuit Mist", [
+        tempGuest("a1b2c3d4e5f60003", "Chloé", "FAVRE"),
+        tempGuest("a1b2c3d4e5f60004", "David", "KELLER", { emergencyPhone: "" }),
+      ]),
+    ];
+    const tempPage = (contactEmail, list) => ({ association: "Association Démo", contactEmail, groups: list });
+    const expiresAtMillis = Math.max(...groups.map((g) => g.endsAt));
+    const tempQr = { schema: 1, items: {
+      a1b2c3d4e5f60002: { payload: "demoTempNanoBruno0002", name: "Bruno MEIER" },
+      a1b2c3d4e5f60003: { payload: "demoTempNanoChloe0003", name: "Chloé FAVRE" },
+      a1b2c3d4e5f60004: { payload: "demoTempNanoDavid0004", name: "David KELLER" },
+    } };
+    await publish("temporaryGuestPortal", managerUid, tempPage("manager.demo@example.org", groups), { expiresAtMillis });
+    await setDoc(org(`temporaryGuestPortalQr/${managerUid}`), tempQr);
+    await publish("temporaryGuestPortal", portalUid, tempPage("lea.demo@example.org", [groups[1]]), { expiresAtMillis });
+    await setDoc(org(`temporaryGuestPortalQr/${portalUid}`), { schema: 1, items: { a1b2c3d4e5f60003: tempQr.items.a1b2c3d4e5f60003, a1b2c3d4e5f60004: tempQr.items.a1b2c3d4e5f60004 } });
   });
   await env.cleanup();
-  return { portalUid, jeanUid };
+  return { portalUid, jeanUid, ninaUid, managerUid };
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -249,6 +317,9 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
       console.log("Guest form   http://127.0.0.1:5002/g/demo-org/demoGuestForm0001");
       console.log("Photo        http://127.0.0.1:5002/p/demo-org/demoPhotoReq0001");
       console.log("Signup       http://127.0.0.1:5002/s/demo-org/demoSignupForm0001");
+      console.log("Guest signup http://127.0.0.1:5002/s/demo-org/demoGuestSignup0001");
+      console.log("Guest spaces: nina.demo@example.org (permanent guest), manager.demo@example.org (two groups,");
+      console.log("unverified address); Léa has three profiles. Same password.");
       console.log("Portal       http://127.0.0.1:5002/v/demo-org");
     })
     .catch((error) => {

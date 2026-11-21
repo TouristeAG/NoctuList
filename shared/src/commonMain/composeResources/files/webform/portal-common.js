@@ -1,4 +1,4 @@
-// Shared helpers for the registration page and the volunteer space.
+// Shared helpers for the registration page and the portal (volunteers, guests, guest groups).
 // Every piece of data reaches the page through textContent — never innerHTML — so nothing a
 // volunteer types (or a document contains) can run as script.
 
@@ -28,7 +28,7 @@ export function millisOf(value) {
 
 function pendingStaleMs(type) {
   if (ALWAYS_WAIT.has(type)) return Infinity;
-  return type === "QR_EMAIL" ? QR_PENDING_STALE_MS : PENDING_STALE_MS;
+  return type === "QR_EMAIL" || type === "GUEST_QR_EMAIL" ? QR_PENDING_STALE_MS : PENDING_STALE_MS;
 }
 
 /** The request waits for an answer: pending and recent, or claimed less than 5 minutes ago. */
@@ -46,6 +46,40 @@ export function isWaiting(r, now = Date.now()) {
 /** Still pending, but for so long that nobody is going to take it: it can be sent again. */
 export function isStalePending(r, now = Date.now()) {
   return r?.status === "PENDING" && !isWaiting(r, now);
+}
+
+// ---------- Profiles of one portal account ----------
+
+/** The pages one account may have, in the order the selector shows them. */
+export const PROFILE_ORDER = ["volunteer", "guest", "temporary"];
+
+/**
+ * Pages a session reads: a Google session never reads the temporary group pages, and a session
+ * whose address is not verified only reads them (the rules refuse it everything else).
+ */
+export function profileKinds({ google, verified }) {
+  if (google) return ["volunteer", "guest"];
+  return verified ? [...PROFILE_ORDER] : ["temporary"];
+}
+
+/** `states`: kind to "loading", "present", "absent" or "denied". */
+export function profilesSettled(states) {
+  const kinds = PROFILE_ORDER.filter((k) => k in states);
+  return {
+    done: kinds.every((k) => states[k] !== "loading"),
+    available: kinds.filter((k) => states[k] === "present"),
+  };
+}
+
+/** The profile to show: the last one chosen on this device if it is still there, else the first. */
+export function chooseProfile(available, stored) {
+  const list = PROFILE_ORDER.filter((k) => available.includes(k));
+  if (!list.length) return null;
+  return list.includes(stored) ? stored : list[0];
+}
+
+export function profileStoreKey(orgId) {
+  return `noctulist.portalProfile.${orgId}`;
 }
 
 /** `el("p", { class: "muted", text: "…" }, child1, child2)` */

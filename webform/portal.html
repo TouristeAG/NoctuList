@@ -16,7 +16,7 @@
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
   <script src="/theme.js?v=portal-2"></script>
   <link rel="stylesheet" href="/theme.css?v=perf-1" />
-  <link rel="stylesheet" href="/portal.css?v=qr-2" />
+  <link rel="stylesheet" href="/portal.css?v=guest-1" />
 </head>
 <body class="portal">
   <canvas id="topo" aria-hidden="true"></canvas>
@@ -124,12 +124,16 @@
     </section>
 
     <section class="hidden" id="view-dash" aria-live="polite">
+      <div class="profile-switch hidden" id="profile-switch" role="group"></div>
       <div class="dash-head">
         <div>
           <h1 id="dash-hello"></h1>
           <p class="sub" id="dash-sub"></p>
         </div>
         <div class="dash-actions">
+          <button type="button" class="pill-btn hidden" id="account-btn">
+            <span class="txt" data-i18n="account">My account</span>
+          </button>
           <button type="button" class="pill-btn" data-signout>
             <span class="ico" aria-hidden="true">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3"/></svg>
@@ -142,7 +146,7 @@
     </section>
 
     <section class="card center auth-page hidden" id="view-offline">
-      <button type="button" class="primary full qr-open" id="offline-qr"><span data-i18n="myQr">My QR</span></button>
+      <div class="offline-list" id="offline-list"></div>
     </section>
   </main>
 
@@ -160,6 +164,6 @@
     <button type="button" class="primary" id="qr-close" data-i18n="close">Close</button>
   </dialog>
   <script type="module" src="/topo.js?v=topo-perf-1"></script>
-  <script type="module" src="/portal.js?v=qr-5"></script>
+  <script type="module" src="/portal.js?v=guest-1"></script>
 </body>
 </html>

@@ -546,3 +546,49 @@ dialog.qr-dialog .primary { margin-top: 14px; min-width: 160px; }
 .qr-block .link-small:hover:not(:disabled) { color: var(--text, inherit); }
 .qr-block .link-small:disabled { opacity: 0.5; cursor: default; text-decoration: none; }
 .qr-block .small-note, .qr-block .notice, .qr-block .success, .qr-block .error { font-size: 0.8rem; }
+
+/* ---------- Several profiles on one account ---------- */
+.profile-switch {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  margin: 0 0 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line);
+  background: var(--card);
+}
+.switch-btn {
+  height: 34px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.switch-btn:hover { color: var(--on); }
+.switch-btn.on { background: var(--primary-container); color: var(--on-primary-container); }
+.pill-btn .ico { display: inline-flex; }
+
+/* Temporary groups */
+.group-meta { margin: -6px 0 10px; color: var(--muted); font-weight: 700; font-size: 0.85rem; }
+.guest-list .title { white-space: normal; }
+.qr-mini { flex: 0 0 auto; color: var(--primary); border-color: var(--primary); }
+.entry-used {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--container);
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+/* Offline screen: one button per stored code */
+.offline-list { display: flex; flex-direction: column; gap: 10px; }
+.offline-list .qr-open { margin: 0; }

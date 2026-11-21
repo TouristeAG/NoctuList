@@ -1,4 +1,4 @@
-// Volunteer registration page: /s/{orgId}/{formId}
+// Registration page: /s/{orgId}/{formId}, for a volunteer or (holderType "GUEST") a permanent guest
 // 1. account (e-mail + password)  2. profile  3. optional photo
 // The account is created with Firebase Auth; the answer is written once onto the single-use form
 // document (Firestore rules check every field); NoctuList turns it into a volunteer profile.
@@ -27,7 +27,7 @@ import {
   uploadBytes,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 import { EMULATOR_PORTS, isLocalDev, loadConfig, parseOrgPath } from "./firebase-env.js?v=portal-1";
-import { bindLanguageSelect, currentLang, t } from "./portal-i18n.js?v=qr-3";
+import { applyStaticI18n, bindLanguageSelect, currentLang, t } from "./portal-i18n.js?v=guest-1";
 import {
   DATE_RE,
   EMAIL_RE,
@@ -40,7 +40,7 @@ import {
   passwordProblem,
   passwordStrength,
   toJpeg,
-} from "./portal-common.js?v=portal-1";
+} from "./portal-common.js?v=guest-1";
 
 const $ = (id) => document.getElementById(id);
 const states = ["state-loading", "state-closed", "state-done", "form"].map($);
@@ -60,6 +60,13 @@ let totalSteps = 2;
 let photoBlob = null;
 let previewUrl = null;
 let busy = false;
+/** Guest form: no date of birth or gender (the rules refuse both keys). */
+let isGuest = false;
+
+/** The guest wording of a text when the form is for a guest. */
+function variant(key) {
+  return isGuest ? `${key}Guest` : key;
+}
 
 function show(node) {
   states.forEach((s) => s.classList.add("hidden"));
@@ -91,9 +98,9 @@ function association() {
 
 function renderTexts() {
   const name = association();
-  $("lead").textContent = name ? t("signupLead", { association: name }) : t("signupLeadPlain");
-  $("consent-text").textContent = name ? t("consent", { association: name }) : t("consentPlain");
-  document.title = t("signupTitle");
+  $("lead").textContent = name ? t(variant("signupLead"), { association: name }) : t(variant("signupLead") + "Plain");
+  $("consent-text").textContent = name ? t(variant("consent"), { association: name }) : t(variant("consent") + "Plain");
+  document.title = t(variant("signupTitle"));
   // Gender options keep the selected value across language changes.
   const gender = $("gender");
   const selected = gender.value;
@@ -104,7 +111,7 @@ function renderTexts() {
   renderStepper();
   updateMeter();
   $("choose").textContent = photoBlob ? t("changePhoto") : t("choosePhoto");
-  if (formData) $("done-body").textContent = t("doneBody", { email: auth?.currentUser?.email || $("email").value.trim() });
+  if (formData) $("done-body").textContent = t(variant("doneBody"), { email: auth?.currentUser?.email || $("email").value.trim() });
 }
 
 function renderStepper() {
@@ -186,6 +193,7 @@ function readProfile() {
   if (!lastName) return invalid("lastName", "errName");
   const phone = cleanPhone($("phone").value);
   if (!phone) return invalid("phone", "errPhone");
+  if (isGuest) return { firstName, lastName, phone };
   const dob = $("dob").value;
   const year = Number(dob.slice(0, 4));
   if (!DATE_RE.test(dob) || year > new Date().getFullYear()) return invalid("dob", "errDob");
@@ -231,7 +239,7 @@ async function submitAll() {
       // Already verified (existing account) or a transient problem: they can resend from the portal.
       console.warn("verification e-mail not sent", error?.code);
     }
-    $("done-body").textContent = t("doneBody", { email: user.email });
+    $("done-body").textContent = t(variant("doneBody"), { email: user.email });
     $("open-portal").href = `/v/${encodeURIComponent(path.orgId)}`;
     await signOut(auth).catch(() => {});
     show($("state-done"));
@@ -349,6 +357,14 @@ async function main() {
     const brand = $("brand");
     brand.append(el("span", { text: name }));
     brand.classList.remove("hidden");
+  }
+  isGuest = formData.holderType === "GUEST";
+  if (isGuest) {
+    $("dob-gender").classList.add("hidden");
+    // Static texts follow the language select through their data-i18n key.
+    document.querySelector("#form h1").dataset.i18n = "signupTitleGuest";
+    $("open-portal").dataset.i18n = "openPortalGuest";
+    applyStaticI18n();
   }
   totalSteps = formData.photosEnabled === true ? 3 : 2;
   $("open-portal").href = `/v/${encodeURIComponent(path.orgId)}`;

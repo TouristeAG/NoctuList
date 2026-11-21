@@ -1,4 +1,4 @@
-// Full-screen volunteer QR: SVG rendering, on-device copy and the dialog.
+// Full-screen portal QR: SVG rendering, on-device copy (one per profile) and the dialog.
 // No Firebase here, so the storage functions can be unit tested in Node.
 import qrcode from "./vendor/qrcode.js";
 
@@ -14,33 +14,106 @@ export function qrSvg(payload) {
   return document.importNode(doc.documentElement, true);
 }
 
-export function storeQr(orgId, { uid, payload, name, association }) {
-  try {
-    localStorage.setItem(keyFor(orgId), JSON.stringify({ uid, payload, name, association }));
-  } catch {
-    /* storage full or blocked: the QR still shows from the live document */
-  }
+const KINDS = ["volunteer", "guest", "temporary"];
+
+function validEntry(e) {
+  return Boolean(e) && typeof e === "object" && typeof e.payload === "string" && e.payload.length > 0;
 }
 
-export function readCachedQr(orgId, uid) {
+function entryOf(e) {
+  return { payload: e.payload, name: String(e.name || ""), association: String(e.association || "") };
+}
+
+/**
+ * The stored value, one entry per profile: `{ uid, profiles: { volunteer, guest, temporary } }`,
+ * temporary being a list of `{ key, payload, name, association }`. The value written before guest
+ * profiles existed (`{ uid, payload, name, association }`) is read as the volunteer entry.
+ */
+function normalize(value) {
+  if (!value || typeof value !== "object") return null;
+  const uid = typeof value.uid === "string" ? value.uid : "";
+  const source = value.profiles && typeof value.profiles === "object"
+    ? value.profiles
+    : { volunteer: value };
+  const profiles = {};
+  for (const kind of KINDS) {
+    const item = source[kind];
+    if (kind === "temporary") {
+      const list = Array.isArray(item)
+        ? item.filter((e) => validEntry(e) && typeof e.key === "string").map((e) => ({ key: e.key, ...entryOf(e) }))
+        : [];
+      if (list.length) profiles.temporary = list;
+    } else if (validEntry(item)) {
+      profiles[kind] = entryOf(item);
+    }
+  }
+  return Object.keys(profiles).length ? { uid, profiles } : null;
+}
+
+function readRaw(orgId) {
   try {
     const raw = localStorage.getItem(keyFor(orgId));
-    if (!raw) return null;
-    const value = JSON.parse(raw);
-    if (!value || typeof value !== "object" || typeof value.payload !== "string") return null;
-    if (uid && value.uid !== uid) return null;
-    return value;
+    return raw ? normalize(JSON.parse(raw)) : null;
   } catch {
     return null;
   }
 }
 
-export function clearQr(orgId) {
+function write(orgId, value) {
   try {
-    localStorage.removeItem(keyFor(orgId));
+    if (value && Object.keys(value.profiles).length) localStorage.setItem(keyFor(orgId), JSON.stringify(value));
+    else localStorage.removeItem(keyFor(orgId));
   } catch {
-    /* ignore */
+    /* storage full or blocked: the QR still shows from the live document */
   }
+}
+
+/** Keeps one profile's QR (an entry, or a list of entries for "temporary"); another account's copy is replaced. */
+export function storeQr(orgId, uid, kind, value) {
+  if (!KINDS.includes(kind)) return;
+  const current = readRaw(orgId);
+  const next = { uid, profiles: current && current.uid === uid ? { ...current.profiles } : {} };
+  delete next.profiles[kind];
+  const stored = normalize({ uid, profiles: { [kind]: value } });
+  if (stored) next.profiles[kind] = stored.profiles[kind];
+  write(orgId, next);
+}
+
+export function readCachedQr(orgId, uid) {
+  const value = readRaw(orgId);
+  if (!value) return null;
+  if (uid && value.uid !== uid) return null;
+  return value;
+}
+
+/** Every stored code, in profile order: `{ kind, key, payload, name, association }`. */
+export function cachedQrEntries(cached) {
+  const profiles = cached?.profiles || {};
+  const out = [];
+  for (const kind of KINDS) {
+    const item = profiles[kind];
+    if (!item) continue;
+    if (kind === "temporary") item.forEach((e) => out.push({ kind, ...e }));
+    else out.push({ kind, key: kind, ...item });
+  }
+  return out;
+}
+
+/** Without `kind`, forgets every stored code of this organisation. */
+export function clearQr(orgId, kind) {
+  if (!kind) {
+    try {
+      localStorage.removeItem(keyFor(orgId));
+    } catch {
+      /* ignore */
+    }
+    return;
+  }
+  const current = readRaw(orgId);
+  if (!current?.profiles[kind]) return;
+  const profiles = { ...current.profiles };
+  delete profiles[kind];
+  write(orgId, { uid: current.uid, profiles });
 }
 
 /** True when the stored copy belongs to another account than the one signing in (Google sessions are keyed by the linked uid, so never judged here). */
