@@ -62,23 +62,26 @@ class TemporaryGuestPortalAccessTest {
             assertTrue(it.portalEnabled)
             assertEquals("uid-1", it.portalUid)
             assertEquals(CONTACT, it.temporaryPortalEmail)
+            assertTrue(it.temporaryPortalCreated)
         }
         assertEquals(1, republished)
     }
 
     @Test
-    fun aVolunteerWithTheSameAddressIsNeverReusedAndGoesThroughCreateAccount() = runBlocking {
-        // The volunteer's uid may come from an unverified registration: the group waits for a verified CLAIM.
-        val auth = FakeAuth(PortalAuthResult.EmailExists)
+    fun openJoinsExistingVolunteerAccount() = runBlocking {
+        // One address, one account: the list joins the volunteer's account, never marked device-created.
+        val auth = FakeAuth(PortalAuthResult.Created("never"))
         host.volunteers += Volunteer(
             id = "V1", name = "Lea", lastNameAbbreviation = "M", email = "MANAGER@example.org",
             phoneNumber = "", portalEnabled = true, portalUid = "uid-vol", firebaseOrgId = ORG,
         )
         val result = access(auth).open(batch("G1"))
-        assertEquals(TemporaryGroupAccessResult.ExistingAccount, result)
-        assertEquals(listOf(CONTACT), auth.creates)
-        assertEquals("", host.guests.single().portalUid)
-        assertTrue(host.guests.single().portalEnabled)
+        assertEquals(TemporaryGroupAccessResult.JoinedAccount("uid-vol"), result)
+        assertTrue(auth.creates.isEmpty())
+        val g = host.guests.single()
+        assertEquals("uid-vol", g.portalUid)
+        assertTrue(g.portalEnabled)
+        assertFalse(g.temporaryPortalCreated)
     }
 
     @Test
@@ -86,10 +89,12 @@ class TemporaryGuestPortalAccessTest {
         val auth = FakeAuth(PortalAuthResult.Created("never"))
         host.guests += temp("OTHER", artist = "Other", uid = "uid-group", enabled = true)
             .copy(temporaryPortalEmail = "Manager@Example.org")
+        host.guests[0] = host.guests[0].copy(temporaryPortalCreated = true)
         val result = access(auth).open(batch("G1"))
         assertEquals(TemporaryGroupAccessResult.Reused("uid-group"), result)
         assertTrue(auth.creates.isEmpty())
         assertEquals("uid-group", host.guests.single { it.nanoId == "G1" }.portalUid)
+        assertTrue(host.guests.single { it.nanoId == "G1" }.temporaryPortalCreated)
     }
 
     @Test
@@ -215,20 +220,20 @@ class TemporaryGuestPortalAccessTest {
     }
 
     @Test
-    fun aPermanentGuestWithTheSameAddressIsNeverReused() = runBlocking {
-        val auth = FakeAuth(PortalAuthResult.EmailExists)
+    fun openJoinsExistingPermanentGuestAccount() = runBlocking {
+        val auth = FakeAuth(PortalAuthResult.Created("never"))
         host.guests += Guest(
             nanoId = "P1", name = "P", invitations = 1, venueName = "Club", email = "Manager@Example.org",
             firebaseOrgId = ORG, portalEnabled = true, portalUid = "uid-guest",
         )
         val result = access(auth).open(batch("G1"))
-        assertEquals(TemporaryGroupAccessResult.ExistingAccount, result)
-        assertEquals(listOf(CONTACT), auth.creates)
-        assertEquals("", host.guests.single { it.nanoId == "G1" }.portalUid)
+        assertEquals(TemporaryGroupAccessResult.JoinedAccount("uid-guest"), result)
+        assertTrue(auth.creates.isEmpty())
+        assertEquals("uid-guest", host.guests.single { it.nanoId == "G1" }.portalUid)
     }
 
     @Test
-    fun aVolunteerLinkedMeanwhileIsNotReusedAfterEmailExists() = runBlocking {
+    fun aVolunteerLinkedMeanwhileIsJoinedAfterEmailExists() = runBlocking {
         val b = batch("G1")
         val auth = object : PortalAuthApi {
             override suspend fun createAccount(email: String, password: String): PortalAuthResult {
@@ -240,8 +245,9 @@ class TemporaryGuestPortalAccessTest {
             }
             override suspend fun sendPasswordReset(email: String, languageCode: String) = PortalAuthResult.Sent
         }
-        assertEquals(TemporaryGroupAccessResult.ExistingAccount, access(auth).open(b))
-        assertEquals("", host.guests.single().portalUid)
+        assertEquals(TemporaryGroupAccessResult.JoinedAccount("uid-vol"), access(auth).open(b))
+        assertEquals("uid-vol", host.guests.single().portalUid)
+        assertFalse(host.guests.single().temporaryPortalCreated)
     }
 
     @Test

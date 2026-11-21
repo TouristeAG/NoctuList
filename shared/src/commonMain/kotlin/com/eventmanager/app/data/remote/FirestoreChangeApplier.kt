@@ -206,6 +206,7 @@ object FirestoreChangeApplier {
             portalGoogleEmail = stringOf(decrypted["portalGoogleEmail"]).orEmpty(),
             portalGoogleUid = stringOf(decrypted["portalGoogleUid"]).orEmpty(),
             portalGoogleLinkedBy = stringOf(decrypted["portalGoogleLinkedBy"]).orEmpty(),
+            portalRevoked = boolOf(decrypted["portalRevoked"]) ?: false,
         )
         if (existing == null) {
             try {
@@ -286,6 +287,7 @@ object FirestoreChangeApplier {
             portalGoogleEmail = stringOf(decrypted["portalGoogleEmail"]).orEmpty(),
             portalGoogleUid = stringOf(decrypted["portalGoogleUid"]).orEmpty(),
             portalGoogleLinkedBy = stringOf(decrypted["portalGoogleLinkedBy"]).orEmpty(),
+            portalRevoked = boolOf(decrypted["portalRevoked"]) ?: false,
         )
         if (existing == null) repository.insertVolunteer(remote) else repository.updateVolunteer(remote)
     }

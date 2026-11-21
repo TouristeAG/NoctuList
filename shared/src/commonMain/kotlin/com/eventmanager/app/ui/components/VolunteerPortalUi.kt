@@ -69,6 +69,7 @@ import com.eventmanager.app.data.models.Volunteer
 import com.eventmanager.app.data.sync.DateFormatUtils
 import com.eventmanager.app.platform.LocalPlatformContext
 import com.eventmanager.app.portal.DomainCheck
+import com.eventmanager.app.portal.PortalAccountMerger
 import com.eventmanager.app.portal.PortalGrantResult
 import com.eventmanager.app.portal.PortalHolder
 import com.eventmanager.app.portal.PortalHolderKind
@@ -78,6 +79,7 @@ import com.eventmanager.app.portal.PortalServerStatus
 import com.eventmanager.app.portal.SignupFormState
 import com.eventmanager.app.portal.VolunteerSignupForm
 import com.eventmanager.app.resources.Res
+import com.eventmanager.app.resources.portal_access_address_conflict
 import com.eventmanager.app.resources.cancel
 import com.eventmanager.app.resources.close
 import com.eventmanager.app.resources.edit
@@ -740,6 +742,10 @@ private fun PortalAccessCard(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(Modifier.size(8.dp).clip(CircleShape).background(statusColor))
                 Text(statusText, style = MaterialTheme.typography.bodyMedium, color = statusColor, fontWeight = FontWeight.Medium)
+            }
+            val conflicts by viewModel.portalAddressConflicts.collectAsState()
+            if (PortalAccountMerger.addressesOf(holder).any { it in conflicts }) {
+                Text(stringResource(Res.string.portal_access_address_conflict), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
             if (holder.isAdmin && holder.portalEnabled) {
                 Text(texts.adminNote, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

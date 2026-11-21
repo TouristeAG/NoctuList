@@ -10,6 +10,9 @@ sealed class TemporaryGroupAccessResult {
     data class Reused(val uid: String) : TemporaryGroupAccessResult()
     /** The address has an account we do not know yet; the group is linked when its owner signs in. */
     data object ExistingAccount : TemporaryGroupAccessResult()
+
+    /** A volunteer or permanent guest of the address already has an account: the list joins it. */
+    data class JoinedAccount(val uid: String) : TemporaryGroupAccessResult()
     /**
      * [password] is set when the account was created but the group could not be saved: the admin
      * still needs it, as it is shown only once.
@@ -33,23 +36,30 @@ class TemporaryGuestPortalAccess(
             ?: return TemporaryGroupAccessResult.Failed("NO_CONTACT_EMAIL")
 
         var result: TemporaryGroupAccessResult
-        val known = knownUid(email)
-        if (known != null) {
-            result = TemporaryGroupAccessResult.Reused(known)
+        var created = false
+        val holderUid = holderAccount(email)
+        val known = knownList(email)
+        if (holderUid != null) {
+            result = TemporaryGroupAccessResult.JoinedAccount(holderUid)
+        } else if (known != null) {
+            result = TemporaryGroupAccessResult.Reused(known.portalUid)
+            created = known.temporaryPortalCreated
         } else {
             val password = PortalPasswordGenerator.generate()
-            result = when (val created = authClientFactory(host.apiKey()).createAccount(email, password)) {
-                is PortalAuthResult.Created -> TemporaryGroupAccessResult.Created(created.uid, password)
-                // Another device may have opened this very group meanwhile: look again before settling.
-                PortalAuthResult.EmailExists -> knownUid(email)?.let { TemporaryGroupAccessResult.Reused(it) }
+            result = when (val r = authClientFactory(host.apiKey()).createAccount(email, password)) {
+                is PortalAuthResult.Created -> TemporaryGroupAccessResult.Created(r.uid, password).also { created = true }
+                // Another device may have opened this list or linked a profile meanwhile: look again before settling.
+                PortalAuthResult.EmailExists -> holderAccount(email)?.let { TemporaryGroupAccessResult.JoinedAccount(it) }
+                    ?: knownList(email)?.let { created = it.temporaryPortalCreated; TemporaryGroupAccessResult.Reused(it.portalUid) }
                     ?: TemporaryGroupAccessResult.ExistingAccount
-                is PortalAuthResult.Failed -> return TemporaryGroupAccessResult.Failed(created.code)
+                is PortalAuthResult.Failed -> return TemporaryGroupAccessResult.Failed(r.code)
                 else -> return TemporaryGroupAccessResult.Failed("UNEXPECTED")
             }
         }
         val uid = when (val r = result) {
             is TemporaryGroupAccessResult.Created -> r.uid
             is TemporaryGroupAccessResult.Reused -> r.uid
+            is TemporaryGroupAccessResult.JoinedAccount -> r.uid
             else -> ""
         }
         val current = host.guests().associateBy { it.nanoId }
@@ -63,6 +73,7 @@ class TemporaryGuestPortalAccess(
                     portalEnabled = true,
                     portalUid = if (keep) g.portalUid else uid,
                     temporaryPortalEmail = email,
+                    temporaryPortalCreated = if (uid.isBlank()) g.temporaryPortalCreated else created,
                     lastModified = bumped(g),
                 ),
             ) && ok
@@ -93,21 +104,32 @@ class TemporaryGuestPortalAccess(
 
     private fun bumped(g: Guest) = maxOf(clock(), g.lastModified + 1)
 
+    private fun inOrg(firebaseOrgId: String) = firebaseOrgId.isBlank() || firebaseOrgId == orgId
+
     /**
-     * The uid of another temporary group opened for [email] (dormant or opened by another device
-     * meanwhile), matched on the address its account was opened for, not the editable contact.
-     * Such a uid was created by a device or linked by a verified CLAIM. A volunteer's or permanent
-     * guest's uid is never reused here: it can come from an unverified registration, and the
-     * unverified temporary read would then expose the group's QR codes. Those cases go through
-     * createAccount (EMAIL_EXISTS) and are linked by the owner's verified CLAIM.
+     * Another temporary list opened for [email] (dormant or opened by another device meanwhile),
+     * matched on the address its account was opened for, not the editable contact.
      */
-    private suspend fun knownUid(email: String): String? {
-        fun inOrg(firebaseOrgId: String) = firebaseOrgId.isBlank() || firebaseOrgId == orgId
-        return host.guests()
-            .firstOrNull {
-                it.isTemporaryGuest && inOrg(it.firebaseOrgId) && it.portalUid.isNotBlank() &&
-                    it.temporaryPortalEmail.trim().equals(email, true)
-            }?.portalUid
+    private suspend fun knownList(email: String): Guest? =
+        host.guests().firstOrNull {
+            it.isTemporaryGuest && inOrg(it.firebaseOrgId) && it.portalUid.isNotBlank() &&
+                it.temporaryPortalEmail.trim().equals(email, true)
+        }
+
+    /**
+     * The account of a volunteer or permanent guest of [email] (profile address or linked Google
+     * address). One address, one account: the list joins it. Its page is then published with
+     * deviceCreated false, so only a verified or Google session reads it (spec 2026-11-21 §5.3).
+     */
+    private suspend fun holderAccount(email: String): String? {
+        fun same(a: String) = a.trim().equals(email, true)
+        host.volunteers().firstOrNull {
+            inOrg(it.firebaseOrgId) && it.portalEnabled && it.portalUid.isNotBlank() && (same(it.email) || same(it.portalGoogleEmail))
+        }?.let { return it.portalUid }
+        return host.guests().firstOrNull {
+            !it.isTemporaryGuest && !it.isVolunteerBenefit && inOrg(it.firebaseOrgId) && it.portalEnabled &&
+                it.portalUid.isNotBlank() && (same(it.email) || same(it.portalGoogleEmail))
+        }?.portalUid
     }
 
     companion object {

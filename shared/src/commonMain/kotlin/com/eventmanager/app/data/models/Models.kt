@@ -71,6 +71,8 @@ data class Guest(
     val portalGoogleUid: String = "",
     /** Who linked the Google account (ADMIN or GUEST); empty until linked. Firebase only. */
     val portalGoogleLinkedBy: String = "",
+    /** The admin cut this profile's portal access: it is not joined to its address's account again. Firebase only. */
+    val portalRevoked: Boolean = false,
 )
 
 /**
@@ -174,6 +176,8 @@ data class Volunteer(
     val portalGoogleUid: String = "",
     /** Who linked the Google account: [GOOGLE_LINKED_BY_ADMIN], [GOOGLE_LINKED_BY_VOLUNTEER] or empty. Firebase only. */
     val portalGoogleLinkedBy: String = "",
+    /** The admin cut this profile's portal access: it is not joined to its address's account again. Firebase only. */
+    val portalRevoked: Boolean = false,
 ) {
     companion object {
         const val GOOGLE_LINKED_BY_ADMIN = "ADMIN"

@@ -2732,4 +2732,6 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="portal_mail_account_usual_password">your usual password</string>
     <string name="portal_guest_create_access_toggle">Create portal access</string>
     <string name="portal_guest_create_access_toggle_desc">A password is generated and shown once.</string>
+    <string name="temp_group_portal_joined">This address already has an account. The list appears in its space.</string>
+    <string name="portal_access_address_conflict">This address is already linked to another account</string>
 </resources>

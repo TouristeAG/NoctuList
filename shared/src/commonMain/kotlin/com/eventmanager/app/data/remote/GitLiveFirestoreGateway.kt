@@ -656,6 +656,7 @@ class GitLiveFirestoreGateway(
             put("portalGoogleEmail", guest.portalGoogleEmail)
             put("portalGoogleUid", guest.portalGoogleUid)
             put("portalGoogleLinkedBy", guest.portalGoogleLinkedBy)
+            put("portalRevoked", guest.portalRevoked)
             putProfilePhotoFields(guest.profilePhotoPath, guest.profilePhotoUrl)
         },
         guest.firebaseOrgId,
@@ -688,6 +689,7 @@ class GitLiveFirestoreGateway(
             put("portalGoogleEmail", volunteer.portalGoogleEmail)
             put("portalGoogleUid", volunteer.portalGoogleUid)
             put("portalGoogleLinkedBy", volunteer.portalGoogleLinkedBy)
+            put("portalRevoked", volunteer.portalRevoked)
         },
         volunteer.firebaseOrgId,
     )

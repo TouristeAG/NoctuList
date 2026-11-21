@@ -1067,7 +1067,7 @@ class VolunteerPortalService(
     /** Opens the access without e-mailing the volunteer: the admin sends the reset link from the dialog if wanted. */
     suspend fun grantAccess(volunteer: Volunteer): PortalGrantResult =
         openAccess(volunteer.asPortalHolder()) { uid ->
-            host.saveVolunteer(volunteer.copy(portalEnabled = true, portalUid = uid, lastModified = clock()))
+            host.saveVolunteer(volunteer.copy(portalEnabled = true, portalUid = uid, portalRevoked = false, lastModified = clock()))
         }
 
     /**
@@ -1084,14 +1084,14 @@ class VolunteerPortalService(
             val linkedUid = linkedUidOf(email, guest)
             if (linkedUid != null) {
                 val current = orgGuests().firstOrNull { it.nanoId == guest.nanoId } ?: guest
-                val opened = current.copy(portalEnabled = true, portalUid = linkedUid, lastModified = maxOf(clock(), current.lastModified + 1))
+                val opened = current.copy(portalEnabled = true, portalUid = linkedUid, portalRevoked = false, lastModified = maxOf(clock(), current.lastModified + 1))
                 if (opened != current && !host.saveGuest(opened)) return PortalGrantResult.Failed("SAVE_FAILED")
                 applyGoogleAddressRule(PortalHolderKind.GUEST, guest.nanoId)
                 return PortalGrantResult.ExistingAccount
             }
         }
         return openAccess(guest.asPortalHolder()) { uid ->
-            host.saveGuest(guest.copy(portalEnabled = true, portalUid = uid, lastModified = maxOf(clock(), guest.lastModified + 1)))
+            host.saveGuest(guest.copy(portalEnabled = true, portalUid = uid, portalRevoked = false, lastModified = maxOf(clock(), guest.lastModified + 1)))
         }
     }
 
@@ -1159,6 +1159,7 @@ class VolunteerPortalService(
             current.copy(
                 portalEnabled = false,
                 portalUid = "",
+                portalRevoked = true,
                 portalGoogleUid = "",
                 portalGoogleEmail = if (selfLink) "" else current.portalGoogleEmail,
                 portalGoogleLinkedBy = if (selfLink) "" else current.portalGoogleLinkedBy,
@@ -1236,6 +1237,7 @@ class VolunteerPortalService(
             volunteer.copy(
                 portalEnabled = false,
                 portalUid = "",
+                portalRevoked = true,
                 portalGoogleUid = "",
                 portalGoogleEmail = if (volunteerLink) "" else volunteer.portalGoogleEmail,
                 portalGoogleLinkedBy = if (volunteerLink) "" else volunteer.portalGoogleLinkedBy,
@@ -1280,7 +1282,38 @@ class VolunteerPortalService(
         val configs: List<JobTypeConfig>,
     )
 
-    private suspend fun publishAll(snapshot: Snapshot) = mutex.withLock {
+    private val _addressConflicts = MutableStateFlow<Set<String>>(emptySet())
+
+    /** Addresses linked to two portal accounts (spec 2026-11-21 §5.2), shown on the access cards. */
+    val addressConflicts: StateFlow<Set<String>> = _addressConflicts.asStateFlow()
+
+    /**
+     * One address, one account: joins every profile of an address to the account it already has,
+     * and lets a profile whose address changed leave a shared account. Returns the snapshot with the
+     * saved profiles, so this pass already publishes them.
+     */
+    private suspend fun mergeAccounts(snapshot: Snapshot): Snapshot {
+        fun inOrg(id: String) = id.isBlank() || id == orgId
+        val plan = PortalAccountMerger.plan(
+            snapshot.volunteers.filter { inOrg(it.firebaseOrgId) },
+            snapshot.guests.filter { inOrg(it.firebaseOrgId) },
+            host.guestPortalEnabled(),
+            host.temporaryGuestPortalEnabled(),
+        )
+        _addressConflicts.value = plan.conflicts
+        if (plan.volunteers.isEmpty() && plan.guests.isEmpty()) return snapshot
+        val savedV = plan.volunteers.map { it.copy(lastModified = maxOf(clock(), it.lastModified + 1)) }
+            .filter { host.saveVolunteer(it) }.associateBy { it.id }
+        val savedG = plan.guests.map { it.copy(lastModified = maxOf(clock(), it.lastModified + 1)) }
+            .filter { host.saveGuest(it) }.associateBy { it.nanoId }
+        return snapshot.copy(
+            volunteers = snapshot.volunteers.map { savedV[it.id] ?: it },
+            guests = snapshot.guests.map { savedG[it.nanoId] ?: it },
+        )
+    }
+
+    private suspend fun publishAll(given: Snapshot) = mutex.withLock {
+        val snapshot = mergeAccounts(given)
         val now = clock()
         val hashes = host.loadPublishedHashes().toMutableMap()
         publishBranding(hashes)

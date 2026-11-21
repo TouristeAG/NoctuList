@@ -43,7 +43,8 @@ class GuestPortalPublisherTest {
         nanoId = nanoId,
         name = "Max",
         lastNameAbbreviation = "DUPONT",
-        email = "max@example.org",
+        // Same address as the volunteer: profiles sharing a uid share an address (spec 2026-11-21 §5).
+        email = "lea@example.org",
         invitations = 2,
         venueName = "Club",
         firebaseOrgId = ORG,
@@ -166,7 +167,8 @@ class GuestPortalPublisherTest {
         val photoPath = "orgs/$ORG/portalPhotos/$UID.jpg"
         until("both pages") { gateway.docs["volunteerPortal/$UID"] != null && gateway.docs["guestPortal/$UID"] != null }
         assertContentEquals(volunteerPhoto, host.storage[photoPath], "the volunteer photo wins")
-        running.guests.value = listOf(guest(photo = true).copy(portalEnabled = false, portalUid = ""))
+        // As revokeGuestAccess leaves it: off, unlinked and marked revoked, so the merge leaves it alone.
+        running.guests.value = listOf(guest(photo = true).copy(portalEnabled = false, portalUid = "", portalRevoked = true))
         until("guest page gone") { gateway.docs["guestPortal/$UID"] == null }
         running.service.republish()
         assertNotNull(gateway.docs["volunteerPortal/$UID"])

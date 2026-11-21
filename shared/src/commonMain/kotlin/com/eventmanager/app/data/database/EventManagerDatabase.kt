@@ -1739,6 +1739,8 @@ abstract class EventManagerDatabase : RoomDatabase() {
                 try {
                     println("Starting migration 55→56: portal invites")
                     connection.execSQL("ALTER TABLE guests ADD COLUMN temporaryPortalCreated INTEGER NOT NULL DEFAULT 0")
+                    connection.execSQL("ALTER TABLE guests ADD COLUMN portalRevoked INTEGER NOT NULL DEFAULT 0")
+                    connection.execSQL("ALTER TABLE volunteers ADD COLUMN portalRevoked INTEGER NOT NULL DEFAULT 0")
                     connection.execSQL("ALTER TABLE guest_forms ADD COLUMN portalUid TEXT NOT NULL DEFAULT ''")
                     connection.execSQL("ALTER TABLE guest_forms ADD COLUMN requestKind TEXT NOT NULL DEFAULT 'ADD'")
                     connection.execSQL("ALTER TABLE guest_forms ADD COLUMN removeGuestKeys TEXT NOT NULL DEFAULT ''")

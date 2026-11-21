@@ -2737,4 +2737,6 @@
     <string name="portal_mail_account_usual_password">你平常使用的密码</string>
     <string name="portal_guest_create_access_toggle">创建门户账号</string>
     <string name="portal_guest_create_access_toggle_desc">系统会生成一个仅显示一次的密码。</string>
+    <string name="temp_group_portal_joined">此地址已有账户。名单会显示在其空间中。</string>
+    <string name="portal_access_address_conflict">此地址已关联到另一个账户</string>
 </resources>

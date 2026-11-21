@@ -2737,4 +2737,6 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="portal_mail_account_usual_password">tu contraseña habitual</string>
     <string name="portal_guest_create_access_toggle">Crear el acceso al portal</string>
     <string name="portal_guest_create_access_toggle_desc">Se genera una contraseña que se muestra una sola vez.</string>
+    <string name="temp_group_portal_joined">Esta dirección ya tiene una cuenta. La lista aparece en su espacio.</string>
+    <string name="portal_access_address_conflict">Esta dirección ya está vinculada a otra cuenta</string>
 </resources>

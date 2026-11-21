@@ -43,6 +43,7 @@ import com.eventmanager.app.email.PortalAccountLabels
 import com.eventmanager.app.portal.TemporaryGroupAccessResult
 import com.eventmanager.app.portal.temporaryGroupMailAccount
 import com.eventmanager.app.resources.Res
+import com.eventmanager.app.resources.temp_group_portal_joined
 import com.eventmanager.app.resources.cancel
 import com.eventmanager.app.resources.close
 import com.eventmanager.app.resources.portal_mail_account_address
@@ -300,6 +301,7 @@ private fun GroupAccessOutcome(
         }
         is TemporaryGroupAccessResult.Reused -> Text(stringResource(Res.string.temp_group_portal_reused, contact))
         TemporaryGroupAccessResult.ExistingAccount -> Text(stringResource(Res.string.temp_group_portal_existing, contact))
+        is TemporaryGroupAccessResult.JoinedAccount -> Text(stringResource(Res.string.temp_group_portal_joined))
         is TemporaryGroupAccessResult.Failed -> {
             Text(stringResource(Res.string.temp_group_portal_failed, result.code), color = MaterialTheme.colorScheme.error)
             // The account was created even though the group could not be saved: its password is needed once.

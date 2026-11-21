@@ -2689,6 +2689,11 @@ class EventManagerViewModel(
     /** Last run of the portal Cloud Functions, null when they never ran or the portal is off. */
     val portalServerStatus: StateFlow<PortalServerStatus?> = _portalServerStatus.asStateFlow()
     private var portalServerStatusJob: kotlinx.coroutines.Job? = null
+    private val _portalAddressConflicts = MutableStateFlow<Set<String>>(emptySet())
+
+    /** Addresses linked to two portal accounts; the access card of their profiles says so. */
+    val portalAddressConflicts: StateFlow<Set<String>> = _portalAddressConflicts.asStateFlow()
+    private var portalAddressConflictsJob: kotlinx.coroutines.Job? = null
 
     private var volunteerPortalService: VolunteerPortalService? = null
     private var volunteerPortalServiceOrg: String = ""
@@ -2879,6 +2884,8 @@ class EventManagerViewModel(
         service.start(volunteers, guests, jobs, accountTransfers, jobTypeConfigs)
         portalServerStatusJob?.cancel()
         portalServerStatusJob = viewModelScope.launch { service.serverStatus.collect { _portalServerStatus.value = it } }
+        portalAddressConflictsJob?.cancel()
+        portalAddressConflictsJob = viewModelScope.launch { service.addressConflicts.collect { _portalAddressConflicts.value = it } }
     }
 
     /**

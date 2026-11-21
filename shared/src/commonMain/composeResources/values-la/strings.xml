@@ -2742,4 +2742,6 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="portal_mail_account_usual_password">tessera tua solita</string>
     <string name="portal_guest_create_access_toggle">Aditum portae crea</string>
     <string name="portal_guest_create_access_toggle_desc">Tessera generatur et semel tantum ostenditur.</string>
+    <string name="temp_group_portal_joined">Haec inscriptio iam rationem habet. Index in spatio eius apparet.</string>
+    <string name="portal_access_address_conflict">Haec inscriptio iam alii rationi coniuncta est</string>
 </resources>
