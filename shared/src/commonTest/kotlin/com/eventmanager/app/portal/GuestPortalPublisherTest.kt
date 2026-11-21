@@ -220,6 +220,25 @@ class GuestPortalPublisherTest {
     }
 
     @Test
+    fun guestListPageFollowsGrants() = runBlocking {
+        val gateway = FakeGateway()
+        val grant = GuestListGrant(id = "G1", eventDateMillis = start)
+        val host = FakeHost(listOf(volunteer().copy(guestListGrantsJson = GuestListGrants.encode(listOf(grant))))).apply {
+            tempSpace = true
+            guests += temp("Ana", "TempNano00000000000001").copy(portalUid = "", portalEnabled = false)
+        }
+        val running = run(gateway, host)
+        until("guest list page") { gateway.docs["guestListPortal/$UID"] != null }
+        val page = gateway.docs["guestListPortal/$UID"]!!
+        assertTrue(page["payload"].toString().contains("\"firstName\":\"Ana\""))
+        assertFalse(page["payload"].toString().contains("TempNano00000000000001"))
+        @Suppress("UNCHECKED_CAST")
+        assertEquals(listOf(start), page["grantDates"] as List<Long>)
+        running.volunteers.value = listOf(volunteer().copy(guestListGrantsJson = GuestListGrants.revoke(GuestListGrants.encode(listOf(grant)), "G1", "Admin", now)))
+        until("guest list page removed") { gateway.docs["guestListPortal/$UID"] == null }
+    }
+
+    @Test
     fun tempGroupEndedDeletesPage() = runBlocking {
         val gateway = FakeGateway()
         val host = FakeHost(emptyList()).apply { tempSpace = true; guests += temp("Ana", "TempNano00000000000001") }

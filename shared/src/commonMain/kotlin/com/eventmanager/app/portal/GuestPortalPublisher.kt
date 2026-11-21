@@ -100,6 +100,30 @@ internal class GuestPortalPublisher(
                 publishTemporary(uid, members, guestTransfers, hashes, now, forms, deviceCreated)
             }
         }
+        // Guest list access (spec guest list access §5.2): one page per account holding a grant.
+        val keptLists = mutableSetOf<String>()
+        if (host.temporaryGuestPortalEnabled()) {
+            val grantsByUid = (
+                volunteers.filter { (it.firebaseOrgId.isBlank() || it.firebaseOrgId == orgId) && it.portalEnabled && it.portalUid.isNotBlank() }
+                    .map { it.portalUid to it.guestListGrantsJson } +
+                    inOrg.filter { it.portalEnabled && it.portalUid.isNotBlank() }.map { it.portalUid to it.guestListGrantsJson }
+                )
+                .filter { it.second.isNotBlank() }
+                .groupBy({ it.first }, { it.second })
+            for ((uid, raws) in grantsByUid) {
+                val grants = raws.flatMap { GuestListGrants.decode(it) }
+                val projection = GuestListPortalProjectionBuilder.build(grants, inOrg, host.venueAccessCatalog(), host.associationName(), now)
+                    ?: continue
+                keptLists += uid
+                writePage(GuestListPortalProjectionBuilder.COLLECTION, uid, LIST_SUFFIX, projection, hashes, now)
+                GuestListPortalProjectionBuilder.effective(grants, now)
+                    .minOfOrNull { TemporaryGuestPortalProjectionBuilder.visibleUntil(it.eventDateMillis) }
+                    ?.let { until -> nextExpiry = minOf(nextExpiry ?: until, until) }
+            }
+        }
+        for (uid in uidsWith(hashes, LIST_SUFFIX) - keptLists) {
+            removePage(GuestListPortalProjectionBuilder.COLLECTION, uid, LIST_SUFFIX, hashes)
+        }
         nextTemporaryExpiry = nextExpiry
         for (uid in uidsWith(hashes, TEMP_SUFFIX) - keptTemps) {
             removePage(TemporaryGuestPortalProjectionBuilder.COLLECTION, uid, TEMP_SUFFIX, hashes)
@@ -119,6 +143,10 @@ internal class GuestPortalPublisher(
         for (uid in uidsWith(hashes, TEMP_SUFFIX)) {
             runCatching { gateway.deleteDocument(orgId, TemporaryGuestPortalProjectionBuilder.COLLECTION, uid) }
             hashes.remove(key(uid, TEMP_SUFFIX))
+        }
+        for (uid in uidsWith(hashes, LIST_SUFFIX)) {
+            runCatching { gateway.deleteDocument(orgId, GuestListPortalProjectionBuilder.COLLECTION, uid) }
+            hashes.remove(key(uid, LIST_SUFFIX))
         }
         for (uid in uidsWith(hashes, GUEST_QR_SUFFIX)) deleteQr(GuestPortalQrDocument.COLLECTION, uid, GUEST_QR_SUFFIX, hashes)
         for (uid in uidsWith(hashes, TEMP_QR_SUFFIX)) deleteQr(TemporaryGuestPortalQrDocument.COLLECTION, uid, TEMP_QR_SUFFIX, hashes)
@@ -347,6 +375,7 @@ internal class GuestPortalPublisher(
         const val GUEST_QR_SUFFIX = "#guestQr"
         const val TEMP_SUFFIX = "#temp"
         const val TEMP_QR_SUFFIX = "#tempQr"
+        const val LIST_SUFFIX = "#guestList"
         private const val PHOTO_SUFFIX = "#photo"
     }
 }
