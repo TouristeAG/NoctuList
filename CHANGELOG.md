@@ -4,6 +4,26 @@ All notable changes to NoctuList are documented here. Version numbers follow [Se
 
 ---
 
+## Unreleased
+
+### Features
+
+- **Guest portal.** Permanent guests get their own web space, and temporary guest groups get a shared space opened and closed from the app. Both are controlled by two Firebase settings. The "Add guest" dialog has a "create access" switch for permanent guests, guests can sign up and send requests from the site, and an account can link several profiles. Closing a group space keeps its account so reopening reuses it.
+- **Volunteer portal access without an e-mail.** Opening access no longer sends a mail; the first password is shown once.
+
+### Fixes
+
+- The volunteer QR code read through a Google account in domain mode exceeded the Firestore document-access limit (12 of 10); the rules helpers now use get-only reads.
+- The portal re-reads its pages for about 3 minutes after a link request is accepted.
+
+### Upgrade notes
+
+- **Firestore rules:** version 17 (publish again). Storage rules unchanged.
+- **Hosting and functions:** export the form site again and run `firebase deploy --only hosting,functions`. The old functions drop guest signups.
+- **Database:** Room migration 54 to 55 (`temporaryPortalEmail` on guests).
+
+---
+
 ## 3.1.0 — 2026-11-19
 
 Mandatory update: devices on 3.0.0 or older must update before they can be used.

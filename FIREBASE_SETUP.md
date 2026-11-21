@@ -143,6 +143,23 @@ Admins never see passwords. For a volunteer created in the app, NoctuList genera
 (shown once) and sends a "choose your password" e-mail; later, use **Send a password reset link** on
 the volunteer profile.
 
+### Optional: guest space
+
+**Skip this unless the association wants permanent guests and temporary guest groups to have their
+own space on the portal.** It builds on the volunteer portal above.
+
+1. **Firestore, Rules:** publish the new [`firebase/firestore.rules`](firebase/firestore.rules)
+   (version 17). Storage rules are unchanged.
+2. **Hosting and functions:** export the form site again and redeploy both
+   (`firebase deploy --only hosting,functions` from the exported folder). Redeploy the functions
+   with this version: the old ones drop guest signups.
+3. In NoctuList **Settings, Firebase**, turn on the two settings: `guest_portal_enabled` (permanent
+   guests) and `temp_guest_portal_enabled` (temporary guest groups). Both need the volunteer portal
+   to be on.
+4. No new Authentication provider is needed.
+
+With the guest space off, guest requests wait (`PENDING`) until it is turned on again.
+
 ### Optional: sign in with an association Google account
 
 **Skip this unless the association has Google Workspace and wants volunteers to open their space

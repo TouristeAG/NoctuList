@@ -377,3 +377,23 @@ d'autres changements en cours. Il doit être commité et fusionné dans `main` (
 - Ordre de livraison (proposé : socle et règles, permanents, temporaires, Functions, web, i18n).
 - Noms exacts des fichiers et des chaînes.
 - Vérification de la règle Storage d'upload pour les invités.
+
+## 16. Ajustements pendant la réalisation
+
+- Room passe à 55 (et non 54) : `temporaryPortalEmail` s'ajoute aux invités pour retenir l'adresse
+  pour laquelle un espace de groupe a été ouvert.
+- Fermer un espace de groupe garde `portalUid` et `temporaryPortalEmail` avec `portalEnabled=false`
+  (le §7.2 prévoyait `portalUid` vide) : la réouverture réutilise le compte au lieu de tomber sur
+  `EMAIL_EXISTS`.
+- Les fonctions Firestore `portalOn`, `portalGoogleOn`, `settingOn` et `portalGoogleDomainOk`
+  n'utilisent que `get` pour rester sous la limite de 10 accès à des documents. Cela corrige aussi
+  la lecture du QR bénévole via Google en mode domaine, qui était à 12 sur `main`.
+- Le bloc « compte du groupe » du mail ne part qu'à l'adresse pour laquelle l'espace a été ouvert.
+- La photo du bénévole passe en premier seulement quand le bénévole en a une (§6.3 tel qu'écrit).
+- `grantGuestAccess` réutilise un compte déjà lié à la même adresse.
+- Après un CLAIM, le portail relit les pages pendant environ 3 minutes.
+- Les titres sont neutres : « Mon espace ».
+- Espace invités coupé : les demandes d'invités restent en attente (`PENDING`).
+- Interrupteur « créer l'accès » dans « Ajouter un invité » pour les invités permanents.
+- Le prérequis du §14 a été réalisé sur cette branche (réimplémenté, pas fusionné depuis le
+  dossier principal).
