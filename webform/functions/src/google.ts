@@ -6,6 +6,7 @@
 import * as logger from "firebase-functions/logger";
 import type { DocumentReference, DocumentSnapshot, Firestore, Transaction } from "firebase-admin/firestore";
 import {
+  SERVER_SOURCE,
   boolOf,
   claim,
   guestPortalEnabled,
@@ -60,6 +61,8 @@ export type HolderKind = "VOLUNTEER" | "GUEST";
 export interface PortalHolderDoc {
   kind: HolderKind;
   id: string;
+  /** The roster address, the one the holder's e-mail account uses. */
+  email: string;
   portalEnabled: boolean;
   portalUid: string;
   portalGoogleEmail: string;
@@ -68,7 +71,8 @@ export interface PortalHolderDoc {
 }
 
 export type GoogleDecision =
-  | { kind: "LINK"; holder: PortalHolderDoc; linkedBy: string }
+  /** [openedUid]: the e-mail account the server found for an access with no portalUid yet. */
+  | { kind: "LINK"; holder: PortalHolderDoc; linkedBy: string; openedUid?: string }
   | { kind: "ALREADY_LINKED" }
   | { kind: "REJECT"; reason: Exclude<GoogleReason, "" | "INVALID" | "SAVE_FAILED"> };
 
@@ -78,6 +82,7 @@ export function holderOf(kind: HolderKind, id: string, d: Fields): PortalHolderD
   return {
     kind,
     id,
+    email: stringOf(d.get("email")),
     portalEnabled: boolOf(d.get("portalEnabled")),
     portalUid: stringOf(d.get("portalUid")),
     portalGoogleEmail: stringOf(d.get("portalGoogleEmail")),
@@ -174,6 +179,47 @@ export function adminMatch(
   return { kind: "LINK", holder: match, linkedBy };
 }
 
+/** The holder's e-mail account in Firebase Auth, or null when the address has none. */
+export interface EmailAccount {
+  uid: string;
+  /** The account signs in with a password, as a portal account does. */
+  password: boolean;
+}
+
+export type AccountLookup = (email: string) => Promise<EmailAccount | null>;
+
+/**
+ * Server only (devices cannot look up an account): an admin match on a volunteer access that is
+ * open but not tied to an account yet. Reopening an access, or opening one for an address that
+ * already has an account, leaves portalUid empty until the volunteer signs in with that e-mail
+ * (CLAIM). The admin typed this Google address on this volunteer, so the server ties the access to
+ * the account of the roster address itself, with the same uniqueness checks as CLAIM.
+ */
+export async function adminMatchUnopened(
+  c: PortalGoogleClaim,
+  holders: readonly PortalHolderDoc[],
+  findAccount: AccountLookup,
+): Promise<GoogleDecision> {
+  const volunteers = holders.filter((h) => h.kind === "VOLUNTEER");
+  const candidates = volunteers.filter(
+    (v) => v.portalEnabled && isBlank(v.portalUid) && sameAddress(v.portalGoogleEmail, c.email),
+  );
+  if (candidates.length === 0) return { kind: "REJECT", reason: "NO_MATCH" };
+  if (candidates.length > 1) return { kind: "REJECT", reason: "AMBIGUOUS" };
+  const match = candidates[0];
+  const email = kotlinTrim(match.email).toLowerCase();
+  if (email === "") return { kind: "REJECT", reason: "NO_MATCH" };
+  // handleClaim: exactly one volunteer with portal access may use this address.
+  if (volunteers.some((v) => v.id !== match.id && v.portalEnabled && sameAddress(v.email, email))) {
+    return { kind: "REJECT", reason: "NO_MATCH" };
+  }
+  const account = await findAccount(email);
+  if (account === null || !account.password || isBlank(account.uid)) return { kind: "REJECT", reason: "NO_MATCH" };
+  if (holders.some((h) => h.portalUid === account.uid)) return { kind: "REJECT", reason: "NO_MATCH" };
+  const linkedBy = match.portalGoogleLinkedBy === LINKED_BY_VOLUNTEER ? LINKED_BY_VOLUNTEER : LINKED_BY_ADMIN;
+  return { kind: "LINK", holder: match, linkedBy, openedUid: account.uid };
+}
+
 /** PortalGoogleLinkProcessor.linkCode; [requestedAtMillis] is the request's `requestedAt`. */
 export function linkCode(
   c: PortalGoogleClaim,
@@ -230,7 +276,7 @@ const aliasRef = (db: Firestore, orgId: string, googleUid: string) =>
 const pageRef = (db: Firestore, orgId: string, kind: HolderKind, portalUid: string) =>
   db.doc(`orgs/${orgId}/${PAGE[kind]}/${portalUid}`);
 
-const GOOGLE_FIELDS = ["portalEnabled", "portalUid", "portalGoogleEmail", "portalGoogleUid", "portalGoogleLinkedBy"];
+const GOOGLE_FIELDS = ["email", "portalEnabled", "portalUid", "portalGoogleEmail", "portalGoogleUid", "portalGoogleLinkedBy"];
 const GUEST_FIELDS = [...GOOGLE_FIELDS, "isTemporaryGuest", "isVolunteerBenefit", "lastModified"];
 
 /**
@@ -297,6 +343,7 @@ export async function onGoogleClaimDocument(
   orgId: string,
   googleUid: string,
   data: Data | undefined,
+  findAccount: AccountLookup = async () => null,
 ): Promise<void> {
   if (data === undefined || !isClaimable(data)) return;
   let result: GoogleResult;
@@ -308,7 +355,7 @@ export async function onGoogleClaimDocument(
     const ref = db.doc(`orgs/${orgId}/portalGoogleClaims/${googleUid}`);
     const claimed = await claim(ref, isClaimable);
     if (claimed === null) return;
-    result = await processClaim(db, orgId, googleUid, claimed);
+    result = await processClaim(db, orgId, googleUid, claimed, findAccount);
     await completeClaim(ref, result);
   } catch (e) {
     // Left in PROCESSING: a device takes it over once the claim is 5 minutes old.
@@ -328,7 +375,13 @@ async function completeClaim(ref: DocumentReference, result: GoogleResult): Prom
   await ref.set({ status: result.status, reason: result.reason, processedAt: Date.now(), code: "" }, { merge: true });
 }
 
-async function processClaim(db: Firestore, orgId: string, googleUid: string, claimed: Data): Promise<GoogleResult> {
+async function processClaim(
+  db: Firestore,
+  orgId: string,
+  googleUid: string,
+  claimed: Data,
+  findAccount: AccountLookup,
+): Promise<GoogleResult> {
   const c = parseGoogleClaim(googleUid, claimed);
   if (c === null) return rejected("INVALID");
   const now = Date.now();
@@ -350,6 +403,9 @@ async function processClaim(db: Firestore, orgId: string, googleUid: string, cla
   let decision: GoogleDecision;
   if (c.type === "ADMIN_MATCH") {
     decision = adminMatch(c, holders, domains, aliasTarget, anyAccount);
+    if (decision.kind === "REJECT" && decision.reason === "NO_MATCH") {
+      decision = await adminMatchUnopened(c, holders, findAccount);
+    }
   } else {
     const found = await db
       .collection(`orgs/${orgId}/portalRequests`)
@@ -371,7 +427,10 @@ async function processClaim(db: Firestore, orgId: string, googleUid: string, cla
       result = DONE;
       break;
     case "LINK":
-      result = await writeLink(db, orgId, c, accountOf(decision.holder.portalUid, holders), decision.linkedBy, aliasTarget);
+      // An access with no account yet is the matched volunteer alone (adminMatchUnopened).
+      result = decision.openedUid !== undefined
+        ? await writeLink(db, orgId, c, [decision.holder], decision.linkedBy, aliasTarget, decision.openedUid)
+        : await writeLink(db, orgId, c, accountOf(decision.holder.portalUid, holders), decision.linkedBy, aliasTarget);
       break;
   }
   if (result.status === "DONE" && linkRequest !== null) {
@@ -404,10 +463,12 @@ async function writeLink(
   account: readonly PortalHolderDoc[],
   linkedBy: string,
   aliasTarget: string | null,
+  openedUid?: string,
 ): Promise<GoogleResult> {
   try {
     const allowed = await googleLinkAllowed(db, orgId);
-    const portalUid = account[0].portalUid;
+    // The access was open without an account: it gets the one the server found (adminMatchUnopened).
+    const portalUid = openedUid ?? account[0].portalUid;
     const previousUids = [...new Set(account.map((h) => h.portalGoogleUid))].filter(
       (u) => !isBlank(u) && u !== c.googleUid,
     );
@@ -422,6 +483,14 @@ async function writeLink(
       ]);
       const changed = snaps.some((snap, i) => !snap.exists || !sameGoogleFields(holderOf(account[i].kind, snap.id, snap), account[i]));
       if (changed) return rejected("SAVE_FAILED");
+      if (openedUid !== undefined) {
+        // Tied to another profile since the scan (handleClaim does the same check).
+        const [v, g] = await Promise.all([
+          tx.get(db.collection(`orgs/${orgId}/volunteers`).where("portalUid", "==", openedUid)),
+          tx.get(db.collection(`orgs/${orgId}/guests`).where("portalUid", "==", openedUid)),
+        ]);
+        if (!v.empty || !g.empty) return rejected("SAVE_FAILED");
+      }
       const target = aliasSnap.exists ? aliasSnap.get("volunteerUid") : undefined;
       if ((typeof target === "string" ? target : null) !== aliasTarget) return rejected("SAVE_FAILED");
       const now = Date.now();
@@ -433,7 +502,9 @@ async function writeLink(
           portalGoogleEmail: linkedAddress(account[i], c.email),
           portalGoogleUid: c.googleUid,
           portalGoogleLinkedBy: linkedBy,
+          ...(openedUid !== undefined ? { portalUid: openedUid } : {}),
           lastModified: Math.max(now, (millisOf(snap.get("lastModified")) ?? 0) + 1),
+          sourceDeviceId: SERVER_SOURCE,
         });
       });
       // Each page shows the address of the profile it is built from (account order: volunteer
@@ -500,6 +571,7 @@ export async function unlinkGoogle(
           portalGoogleUid: "",
           portalGoogleLinkedBy: "",
           lastModified: Math.max(now, (millisOf(doc.get("lastModified")) ?? 0) + 1),
+          sourceDeviceId: SERVER_SOURCE,
         });
       }
       pages.forEach((page) => {

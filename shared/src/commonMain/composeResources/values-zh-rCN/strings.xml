@@ -99,6 +99,11 @@
     <string name="billeterie_background_animation_description">仅为票务界面选择背景动画</string>
     <string name="page_animations_title">页面动画</string>
     <string name="page_animations_description">切换页面和标签时启用滑动动画</string>
+    <string name="keep_screen_on_title">保持屏幕常亮</string>
+    <string name="keep_screen_on_pos_description">POS 打开期间防止屏幕休眠或锁定</string>
+    <string name="keep_screen_on_billeterie_description">在售票、宾客名单和扫描器中防止屏幕休眠或锁定</string>
+    <string name="keep_screen_on_on_tooltip">屏幕保持常亮</string>
+    <string name="keep_screen_on_off_tooltip">保持屏幕常亮</string>
     <string name="clear_app_cache">清除应用缓存</string>
     <string name="app_cache_cleared">应用数据缓存已清除。设置和密钥已保留。</string>
     <string name="factory_reset_title">恢复出厂设置</string>

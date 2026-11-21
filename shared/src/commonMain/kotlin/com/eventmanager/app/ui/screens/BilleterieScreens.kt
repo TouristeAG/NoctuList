@@ -1,5 +1,7 @@
 package com.eventmanager.app.ui.screens
 
+import com.eventmanager.app.ui.components.KeepScreenAwakeToggle
+import com.eventmanager.app.ui.components.KeepAwakeSpace
 import com.eventmanager.app.platform.LocalPlatformContext
 import com.eventmanager.app.resources.Res
 import com.eventmanager.app.resources.*
@@ -117,6 +119,7 @@ fun BilleterieHomeScreen(
                             placement = FirebaseOrgSwitcherPlacement.TopBarBeforeSync,
                         )
                     }
+                    KeepScreenAwakeToggle(KeepAwakeSpace.Billeterie)
                     SyncStatusPill(viewModel = viewModel)
                     IconButton(onClick = onOpenSettings) {
                         Icon(Icons.Default.Settings, contentDescription = stringResource(Res.string.settings_title))

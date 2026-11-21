@@ -1,5 +1,7 @@
 package com.eventmanager.app.ui.screens
 
+import com.eventmanager.app.ui.components.KeepScreenAwakeToggle
+import com.eventmanager.app.ui.components.KeepAwakeSpace
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -1521,6 +1523,7 @@ private fun PosTopBar(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
+                KeepScreenAwakeToggle(KeepAwakeSpace.Pos)
                 SyncStatusPill(viewModel = viewModel)
                 if (onOpenSettings != null) {
                     IconButton(onClick = onOpenSettings) {
@@ -1564,6 +1567,7 @@ private fun PosTopBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
+            KeepScreenAwakeToggle(KeepAwakeSpace.Pos)
             SyncStatusPill(viewModel = viewModel)
             if (onOpenSettings != null) {
                 IconButton(onClick = onOpenSettings) {

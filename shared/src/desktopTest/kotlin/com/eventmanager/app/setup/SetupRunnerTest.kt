@@ -1158,6 +1158,24 @@ class SetupRunnerTest {
     }
 
     @Test
+    fun serverGrantsRuntimeRolesBeforeDeploy(): Unit = runBlocking {
+        val order = mutableListOf<String>()
+        ops.order = order
+        cli.order = order
+        ops.roleChanged = true
+        ready()
+        runner.run(SetupStepId.SERVER, serverInput())
+        awaitServerDeployed()
+        val deploy = order.indexOf("deploy hosting,functions")
+        // The functions run as this account too: without these roles every request fails with PERMISSION_DENIED.
+        // The Auth viewer role lets the first Google sign-in find the volunteer's e-mail account.
+        for (role in listOf("roles/datastore.user", "roles/storage.objectAdmin", "roles/firebaseauth.viewer")) {
+            val at = order.indexOf("ensureRole serviceAccount:123-compute@developer.gserviceaccount.com $role")
+            assertTrue(at in 0 until deploy, "$role: $order")
+        }
+    }
+
+    @Test
     fun serverDeletesFailedFunctionsBeforeDeploy(): Unit = runBlocking {
         ops.functions = listOf(
             FunctionState("onSignupWritten", "europe-west6", "FAILED", emptyList()),

@@ -1,5 +1,7 @@
 package com.eventmanager.app.ui.screens
 
+import com.eventmanager.app.ui.components.KeepScreenAwakeForSpace
+import com.eventmanager.app.ui.components.KeepAwakeSpace
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -58,6 +60,8 @@ fun PosFlow(
     }
 
     val venues by viewModel.venues.collectAsState()
+
+    KeepScreenAwakeForSpace(KeepAwakeSpace.Pos)
 
     Box(
         modifier = Modifier

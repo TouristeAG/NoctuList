@@ -7,6 +7,7 @@
 import * as logger from "firebase-functions/logger";
 import { FieldValue, type DocumentReference, type Firestore } from "firebase-admin/firestore";
 import {
+  SERVER_SOURCE,
   associationName,
   boolOf,
   claim,
@@ -236,6 +237,7 @@ async function renameTemporaryGuest(
         name: firstName,
         lastNameAbbreviation: lastName,
         lastModified: Math.max(now, (millisOf(target.get("lastModified")) ?? 0) + 1),
+        sourceDeviceId: SERVER_SOURCE,
       });
       const patch = renamedPage(page.data(), renamed, now);
       if (patch !== null) tx.update(pageRef, patch);
@@ -399,6 +401,7 @@ async function saveProfile(
         phone: request.phone,
         ...(photo !== null ? { profilePhotoPath: photo.path, profilePhotoUrl: photo.url } : {}),
         lastModified: Math.max(now, (millisOf(owner.get("lastModified")) ?? 0) + 1),
+        sourceDeviceId: SERVER_SOURCE,
       });
       const fields: Data = { firstName: request.firstName, lastName, phone: request.phone };
       if (photo !== null && photo.account) Object.assign(fields, { hasPhoto: true, photoVersion: photo.version });
@@ -515,6 +518,7 @@ async function handleClaim(
       const linkFields = (snap: Fields): Data => ({
         portalUid: uid,
         lastModified: Math.max(now, (millisOf(snap.get("lastModified")) ?? 0) + 1),
+        sourceDeviceId: SERVER_SOURCE,
       });
       if (linkVolunteer) tx.update(volunteerSnap.ref, linkFields(volunteerSnap));
       for (const g of guestSnaps) tx.update(g.ref, linkFields(g));

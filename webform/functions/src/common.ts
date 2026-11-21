@@ -8,6 +8,12 @@ export const STATUS_PROCESSING = "PROCESSING";
 export const PROJECTION_SCHEMA = 2;
 /** GuestPortalProjectionBuilder.SCHEMA. */
 export const GUEST_PROJECTION_SCHEMA = 1;
+/**
+ * `sourceDeviceId` of every roster entry the server changes. A device skips a change carrying its
+ * own id as an echo of its own write, so keeping the id of the device that last saved the entry
+ * would hide the change from that device until its next full pull (5 minutes by default).
+ */
+export const SERVER_SOURCE = "server";
 const MAX_LABEL = 80;
 
 type Data = Record<string, unknown>;

@@ -195,6 +195,11 @@
     <string name="billeterie_background_animation_description">Choisissez un arrière-plan animé pour les écrans de billetterie uniquement</string>
     <string name="page_animations_title">Animations de pages</string>
     <string name="page_animations_description">Activer les animations de glissement lors du changement de page et d'onglet</string>
+    <string name="keep_screen_on_title">Garder l'écran allumé</string>
+    <string name="keep_screen_on_pos_description">Empêche la mise en veille et le verrouillage de l'écran tant que le POS est ouvert</string>
+    <string name="keep_screen_on_billeterie_description">Empêche la mise en veille et le verrouillage de l'écran dans la billetterie, la guestlist et le scanner</string>
+    <string name="keep_screen_on_on_tooltip">Écran toujours allumé</string>
+    <string name="keep_screen_on_off_tooltip">Garder l'écran allumé</string>
     <string name="clear_app_cache">Vider le cache de l'application</string>
     
     <!-- Language Settings -->

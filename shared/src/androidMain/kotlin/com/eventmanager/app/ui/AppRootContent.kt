@@ -1,5 +1,8 @@
 package com.eventmanager.app.ui
 
+import com.eventmanager.app.ui.components.KeepScreenAwakeForSpace
+import com.eventmanager.app.ui.components.KeepScreenAwakeToggle
+import com.eventmanager.app.ui.components.KeepAwakeSpace
 import com.eventmanager.app.platform.PlatformContext
 import com.eventmanager.app.ui.components.DialogWindowFollowsScreenSize
 import com.eventmanager.app.platform.createAppStorage
@@ -705,6 +708,9 @@ actual fun AppRootContent(
                 }
             }
 
+            // POS opened from Billeterie follows the POS switch (PosFlow holds its own lock).
+            KeepScreenAwakeForSpace(KeepAwakeSpace.Billeterie, active = billeterieSection != "pos")
+
             BackHandler {
                 when {
                     showBilleterieSettings -> showBilleterieSettings = false
@@ -852,6 +858,7 @@ actual fun AppRootContent(
                                         }
                                     },
                                     actions = {
+                                        KeepScreenAwakeToggle(KeepAwakeSpace.Billeterie)
                                         if (!dockSyncPillToCorner) {
                                             SyncStatusPill(viewModel = viewModel)
                                         }

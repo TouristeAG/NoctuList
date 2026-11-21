@@ -25,7 +25,7 @@ moins un domaine vérifié comme géré par Google Workspace.
 | Domaines | Liste dédiée au portail, plusieurs domaines possibles, séparée de `allowedEmailDomains` (équipe). Pré-remplie une fois avec les domaines de l'équipe, puis indépendante. |
 | Détection Workspace | Chaque domaine est vérifié par une requête DNS MX (DNS-over-HTTPS) depuis l'appareil admin. MX chez Google = vérifié. Seuls les domaines vérifiés comptent. |
 | Filtre | Deux modes (ajout du 2026-11-12, règles v16) : « Comptes Google de l'association uniquement » (défaut) n'accepte que les domaines vérifiés, gmail.com refusé ; « Tous les comptes Google » accepte tout compte Google à l'adresse vérifiée et ignore la liste. Réglage `volunteer_portal_google_any_account` (`"true"`/`"false"`), lu par les règles, les Functions et les appareils. Sans domaine, le mode association reste fermé mais la coche principale n'est plus éteinte. |
-| Inscription | Reste en e-mail/mot de passe (l'e-mail personnel est nécessaire). La connexion Google suppose un accès portail déjà ouvert (`portalUid` rempli). |
+| Inscription | Reste en e-mail/mot de passe (l'e-mail personnel est nécessaire). La connexion Google suppose un accès portail ouvert. Si `portalUid` est encore vide (accès rouvert, ou ouvert pour une adresse qui avait déjà un compte), le serveur retrouve le compte e-mail de la fiche (ajout du 2026-11-20, voir section 6). |
 | Backend | Firebase uniquement, sous-option de la plateforme bénévole. |
 
 ## 3. Réglages (app)
@@ -121,6 +121,13 @@ Functions (`webform/functions/src/google.ts`).
    (comparaison minuscules, sans normalisation Gmail). Exactement un : écrire le lien
    (`linkedBy = ADMIN`), `portalGoogleUid` sur la fiche, republier la projection, DONE.
    Aucun : REJECTED `no_match`. Plusieurs : REJECTED `ambiguous`.
+4. Serveur uniquement (ajout du 2026-11-20), si l'étape 3 ne trouve rien : bénévoles avec `portalEnabled`,
+   `portalUid` vide et `portalGoogleEmail` égal à `email`. Plusieurs : REJECTED `ambiguous`. Exactement un :
+   son adresse de fiche doit être la seule parmi les fiches avec accès (comme CLAIM), avoir un compte Firebase Auth
+   avec mot de passe (`getUserByEmail`), et ce compte ne doit être le `portalUid` d'aucune fiche. Alors le lien est
+   écrit avec `portalUid` = ce compte, dans la même transaction. Sinon REJECTED `no_match`. Les appareils ne
+   peuvent pas faire cette recherche : sans les Functions, il faut toujours une première connexion e-mail.
+   Le compte des Functions a besoin de `roles/firebaseauth.viewer` (lecture seule), donné par l'assistant.
 
 **LINK_CODE** (`portalGoogleClaims/{googleUid}` + `portalRequests/{uid}_GOOGLE_LINK`) :
 1. Trouver la requête `GOOGLE_LINK` PENDING non expirée dont `codeHash == sha256(code)`.

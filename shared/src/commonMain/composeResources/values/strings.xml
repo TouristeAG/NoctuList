@@ -100,6 +100,11 @@
     <string name="billeterie_background_animation_description">Choose a background animation for the ticket check screens only</string>
     <string name="page_animations_title">Page Animations</string>
     <string name="page_animations_description">Enable slide animations when switching pages and tabs</string>
+    <string name="keep_screen_on_title">Keep screen on</string>
+    <string name="keep_screen_on_pos_description">Prevents the screen from sleeping or locking while the POS is open</string>
+    <string name="keep_screen_on_billeterie_description">Prevents the screen from sleeping or locking in Ticketing, the guest list and the scanner</string>
+    <string name="keep_screen_on_on_tooltip">Screen stays on</string>
+    <string name="keep_screen_on_off_tooltip">Keep screen on</string>
     <string name="clear_app_cache">Clear App Cache</string>
     <string name="app_cache_cleared">App data cache cleared. Settings and keys were kept.</string>
     <string name="factory_reset_title">Factory reset</string>

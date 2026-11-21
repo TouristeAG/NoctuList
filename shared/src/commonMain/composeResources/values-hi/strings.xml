@@ -100,6 +100,11 @@
     <string name="billeterie_background_animation_description">केवल टिकट जांच स्क्रीन के लिए पृष्ठभूमि एनीमेशन चुनें</string>
     <string name="page_animations_title">पेज एनिमेशन</string>
     <string name="page_animations_description">पेज और टैब स्विच करते समय स्लाइड एनिमेशन सक्षम करें</string>
+    <string name="keep_screen_on_title">स्क्रीन चालू रखें</string>
+    <string name="keep_screen_on_pos_description">POS खुला रहने तक स्क्रीन को स्लीप या लॉक होने से रोकता है</string>
+    <string name="keep_screen_on_billeterie_description">टिकटिंग, अतिथि सूची और स्कैनर में स्क्रीन को स्लीप या लॉक होने से रोकता है</string>
+    <string name="keep_screen_on_on_tooltip">स्क्रीन चालू रहेगी</string>
+    <string name="keep_screen_on_off_tooltip">स्क्रीन चालू रखें</string>
     <string name="clear_app_cache">ऐप कैश साफ़ करें</string>
     <string name="app_cache_cleared">ऐप डेटा कैश साफ़ किया गया. सेटिंग्स और चाबियाँ रखी गईं।</string>
     <string name="factory_reset_title">फ़ैक्टरी रीसेट</string>

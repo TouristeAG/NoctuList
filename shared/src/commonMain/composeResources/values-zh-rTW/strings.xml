@@ -99,6 +99,11 @@
     <string name="billeterie_background_animation_description">僅為票務介面選擇背景動畫</string>
     <string name="page_animations_title">頁面動畫</string>
     <string name="page_animations_description">切換頁面和分頁時啟用滑動動畫</string>
+    <string name="keep_screen_on_title">保持螢幕常亮</string>
+    <string name="keep_screen_on_pos_description">POS 開啟期間防止螢幕休眠或鎖定</string>
+    <string name="keep_screen_on_billeterie_description">在售票、賓客名單和掃描器中防止螢幕休眠或鎖定</string>
+    <string name="keep_screen_on_on_tooltip">螢幕保持常亮</string>
+    <string name="keep_screen_on_off_tooltip">保持螢幕常亮</string>
     <string name="clear_app_cache">清除應用程式快取</string>
     <string name="app_cache_cleared">應用程式資料快取已清除。設定和金鑰已保留。</string>
     <string name="factory_reset_title">恢復原廠設定</string>

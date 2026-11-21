@@ -100,6 +100,11 @@
     <string name="billeterie_background_animation_description">Elige animatum background ad ticketing tegumenta tantum</string>
     <string name="page_animations_title">Animations paginas</string>
     <string name="page_animations_description">Admitte ungunt animationes cum commutatione paginas et tabs</string>
+    <string name="keep_screen_on_title">Scrinium accensum tene</string>
+    <string name="keep_screen_on_pos_description">Scrinium dormire aut claudi vetat dum POS apertum est</string>
+    <string name="keep_screen_on_billeterie_description">Scrinium dormire aut claudi vetat in tesseraria, indice hospitum et lectore</string>
+    <string name="keep_screen_on_on_tooltip">Scrinium semper accensum</string>
+    <string name="keep_screen_on_off_tooltip">Scrinium accensum tene</string>
     <string name="clear_app_cache">Vider cache applicationis</string>
     <string name="app_cache_cleared">Cache applicationem data purgare. Obitus et claves conservatae sunt.</string>
     <string name="factory_reset_title">Restitutio ad officinam</string>

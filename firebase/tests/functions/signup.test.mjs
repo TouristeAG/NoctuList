@@ -294,7 +294,7 @@ describe("onSignupWritten", () => {
       id: "existingVolunteer0001", name: "Léa", lastNameAbbreviation: "M", email: " LEA@Mail.example ",
       phone: "079", dateOfBirth: "", gender: null, currentRank: "NOVA", isActive: true, lastShiftDate: 123,
       lastModified: 1000, nfcCardUid: "04AABB", nfcCardUidHash: "", isAdmin: false,
-      portalEnabled: false, portalUid: "",
+      portalEnabled: false, portalUid: "", sourceDeviceId: "admin-device-1",
     };
     await db.doc(`orgs/${org}/volunteers/${existing.id}`).set(existing);
     const ref = await submit(org, newFormId(), submission(uid, { email: "lea@mail.example", firstName: "Other" }));
@@ -307,8 +307,9 @@ describe("onSignupWritten", () => {
     assert.equal(linked.portalUid, uid);
     assert.equal(linked.portalEnabled, true);
     assert.ok(linked.lastModified > existing.lastModified);
+    assert.equal(linked.sourceDeviceId, "server");
     assert.deepEqual(
-      { ...linked, portalUid: "", portalEnabled: false, lastModified: existing.lastModified },
+      { ...linked, portalUid: "", portalEnabled: false, lastModified: existing.lastModified, sourceDeviceId: "admin-device-1" },
       existing,
       "nothing else changes on the roster entry",
     );
@@ -553,7 +554,9 @@ describe("onSignupWritten: guests", () => {
     assert.equal(linked.portalUid, uid);
     assert.equal(linked.portalEnabled, true);
     assert.ok(linked.lastModified > existing.lastModified);
-    assert.deepEqual({ ...linked, portalUid: "", portalEnabled: false, lastModified: existing.lastModified }, existing);
+    assert.equal(linked.sourceDeviceId, "server");
+    const { sourceDeviceId: _c, ...linkedRest } = linked;
+    assert.deepEqual({ ...linkedRest, portalUid: "", portalEnabled: false, lastModified: existing.lastModified }, existing);
     assert.deepEqual(byId[temporary.nanoId], temporary);
     assert.deepEqual(byId[benefit.nanoId], benefit);
     // Reading the portal still requires verifying the address: nothing is published.

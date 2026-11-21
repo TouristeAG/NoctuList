@@ -1,5 +1,7 @@
 package com.eventmanager.app.ui.screens
 
+import com.eventmanager.app.ui.components.KeepScreenAwakeToggle
+import com.eventmanager.app.ui.components.KeepAwakeSpace
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -386,6 +388,7 @@ private fun WideBilleterieTopBar(
                     viewModel = viewModel,
                     placement = FirebaseOrgSwitcherPlacement.TopBarBeforeSync,
                 )
+                KeepScreenAwakeToggle(KeepAwakeSpace.Billeterie)
                 SyncStatusPill(viewModel = viewModel)
                 IconButton(onClick = onOpenSettings) {
                     Icon(

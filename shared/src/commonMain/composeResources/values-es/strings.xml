@@ -99,6 +99,11 @@
     <string name="billeterie_background_animation_description">Elige un fondo animado solo para las pantallas de billetterie</string>
     <string name="page_animations_title">Animaciones de página</string>
     <string name="page_animations_description">Habilitar animaciones de deslizamiento al cambiar páginas y pestañas</string>
+    <string name="keep_screen_on_title">Mantener la pantalla encendida</string>
+    <string name="keep_screen_on_pos_description">Evita que la pantalla se suspenda o se bloquee mientras el POS está abierto</string>
+    <string name="keep_screen_on_billeterie_description">Evita que la pantalla se suspenda o se bloquee en la taquilla, la lista de invitados y el escáner</string>
+    <string name="keep_screen_on_on_tooltip">Pantalla siempre encendida</string>
+    <string name="keep_screen_on_off_tooltip">Mantener la pantalla encendida</string>
     <string name="clear_app_cache">Borrar caché de la aplicación</string>
     <string name="app_cache_cleared">Caché de datos de la aplicación borrado. La configuración y las claves se conservaron.</string>
     <string name="factory_reset_title">Restablecimiento de fábrica</string>

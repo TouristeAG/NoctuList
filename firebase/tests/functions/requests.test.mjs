@@ -81,6 +81,8 @@ async function addVolunteer(org, overrides = {}) {
     profilePhotoPath: `orgs/${org}/profilePhotos/volunteers/${id}.jpg`,
     portalEnabled: true,
     portalUid: "",
+    // The admin device that last saved the entry, as GitLiveFirestoreGateway writes it.
+    sourceDeviceId: "admin-device-1",
     ...overrides,
   };
   await db.doc(`orgs/${org}/volunteers/${id}`).set(data);
@@ -250,8 +252,9 @@ describe("onPortalRequestWritten: PROFILE", () => {
     assert.equal(v.lastNameAbbreviation, "DUPONT-DURAND");
     assert.equal(v.phone, "+41 79 123 45 67");
     assert.equal(v.lastModified, future + 1);
+    assert.equal(v.sourceDeviceId, "server");
     assert.deepEqual(
-      { ...v, name: existing.name, lastNameAbbreviation: existing.lastNameAbbreviation, phone: existing.phone, lastModified: existing.lastModified },
+      { ...v, name: existing.name, lastNameAbbreviation: existing.lastNameAbbreviation, phone: existing.phone, lastModified: existing.lastModified, sourceDeviceId: existing.sourceDeviceId },
       existing,
       "admin, NFC, photo and every other field stay untouched",
     );
@@ -359,7 +362,9 @@ describe("onPortalRequestWritten: CLAIM", () => {
     const v = await volunteer(org, existing.id);
     assert.equal(v.portalUid, uid);
     assert.ok(v.lastModified > 1000);
-    assert.deepEqual({ ...v, portalUid: "", lastModified: 1000 }, existing);
+    // Not the admin device's id: that device would drop the change as its own echo.
+    assert.equal(v.sourceDeviceId, "server");
+    assert.deepEqual({ ...v, portalUid: "", lastModified: 1000, sourceDeviceId: "admin-device-1" }, existing);
     assert.deepEqual(await volunteer(org, disabled.id), disabled);
   });
 
@@ -659,7 +664,9 @@ describe("onPortalRequestWritten: guests", () => {
     assert.equal(after.lastNameAbbreviation, "BLANC-ROUX");
     assert.equal(after.phone, "+41 79 555 44 33");
     assert.equal(after.lastModified, future + 1);
-    assert.deepEqual({ ...after, name: g.name, lastNameAbbreviation: g.lastNameAbbreviation, phone: g.phone, lastModified: g.lastModified }, g);
+    assert.equal(after.sourceDeviceId, "server");
+    const { sourceDeviceId: _a, ...afterRest } = after;
+    assert.deepEqual({ ...afterRest, name: g.name, lastNameAbbreviation: g.lastNameAbbreviation, phone: g.phone, lastModified: g.lastModified }, g);
     assert.deepEqual(await guest(org, temp.nanoId), temp);
 
     const page = (await db.doc(`orgs/${org}/guestPortal/${uid}`).get()).data();
@@ -807,7 +814,9 @@ describe("onPortalRequestWritten: guests", () => {
       const after = await guest(org, linked.nanoId);
       assert.equal(after.portalUid, uid, linked.nanoId);
       assert.ok(after.lastModified > 1000);
-      assert.deepEqual({ ...after, portalUid: "", lastModified: 1000 }, linked);
+      assert.equal(after.sourceDeviceId, "server");
+      const { sourceDeviceId: _b, ...afterRest } = after;
+      assert.deepEqual({ ...afterRest, portalUid: "", lastModified: 1000 }, linked);
     }
     for (const untouched of [t3, benefit, closed]) assert.deepEqual(await guest(org, untouched.nanoId), untouched);
   });
