@@ -2,6 +2,7 @@ package com.eventmanager.app.portal
 
 import com.eventmanager.app.data.models.AccountTransfer
 import com.eventmanager.app.data.models.Gender
+import com.eventmanager.app.data.models.Guest
 import com.eventmanager.app.data.models.Job
 import com.eventmanager.app.data.models.JobTypeConfig
 import com.eventmanager.app.data.models.Volunteer
@@ -27,145 +28,6 @@ private const val UID = "PortalUid000000000000001"
 private const val GOOGLE_UID = "GoogleUid000000000000001"
 private const val LINK_CODE = "abcdefghijklmnopqrstuvwxyz0123456789_-AB"
 
-/** In-memory Firestore: documents per "collection/id", listeners fed by the test. */
-private class FakeGateway : NoOpFirestoreGateway() {
-    val docs = mutableMapOf<String, Map<String, Any?>>()
-    val deleted = mutableListOf<String>()
-    val listeners = mutableMapOf<String, suspend (List<Pair<String, Map<String, Any?>>>) -> Unit>()
-    var claimsRefused = false
-    var qrWrites = 0
-    var qrDeleteFailures = 0
-
-    override fun isAvailable() = true
-
-    override suspend fun setPlainDocument(orgId: String, collection: String, docId: String, data: Map<String, Any?>, merge: Boolean) {
-        val key = "$collection/$docId"
-        if (collection == "volunteerPortalQr") qrWrites++
-        docs[key] = if (merge) (docs[key].orEmpty() + data) else data
-    }
-
-    override suspend fun deleteDocument(orgId: String, collection: String, docId: String) {
-        if (collection == "volunteerPortalQr" && qrDeleteFailures > 0) {
-            qrDeleteFailures--
-            throw IllegalStateException("offline")
-        }
-        docs.remove("$collection/$docId")
-        deleted += "$collection/$docId"
-    }
-
-    override suspend fun getDocumentFromServer(orgId: String, collection: String, docId: String) = docs["$collection/$docId"]
-
-    override fun listenCollection(
-        orgId: String,
-        collection: String,
-        onSnapshot: suspend (List<Pair<String, Map<String, Any?>>>) -> Unit,
-    ): AutoCloseable {
-        listeners[collection] = onSnapshot
-        return AutoCloseable { listeners.remove(collection) }
-    }
-
-    override suspend fun claimDocument(
-        orgId: String,
-        collection: String,
-        docId: String,
-        claimable: (Map<String, Any?>) -> Boolean,
-        claimFields: Map<String, Any?>,
-    ): Map<String, Any?>? {
-        if (claimsRefused) return null
-        val key = "$collection/$docId"
-        val current = docs[key] ?: return null
-        if (!claimable(current)) return null
-        docs[key] = current + claimFields
-        return current
-    }
-
-    suspend fun push(collection: String) {
-        val prefix = "$collection/"
-        val snapshot = docs.filterKeys { it.startsWith(prefix) }.map { (k, v) -> k.removePrefix(prefix) to v }
-        listeners[collection]!!.invoke(snapshot)
-    }
-}
-
-private class FakeHost(initial: List<Volunteer>) : VolunteerPortalHost {
-    val volunteers = initial.toMutableList()
-    val created = mutableListOf<Volunteer>()
-    val mailed = mutableListOf<Volunteer>()
-    val storage = mutableMapOf<String, ByteArray>()
-    var canMail = true
-    var mailSubject = "Your QR code"
-    var mailTemplateEnabled = true
-    var googleEnabled = true
-    var qrEnabled = true
-    var googleDomains = listOf("asso.ch")
-    private var pending = emptyList<VolunteerSignupForm>()
-    private var hashes = emptyMap<String, String>()
-
-    override val deviceId = "device-1"
-    override fun apiKey() = "key"
-    override fun currencyCode() = "CHF"
-    override fun associationName() = "Asso"
-    override fun dateOffsetHours() = 0
-    override fun institutionLogoPng() = ""
-    override fun profilePhotosEnabled() = true
-    override fun portalGoogleEnabled() = googleEnabled
-    override fun portalGoogleDomains() = googleDomains
-    var googleTemplate = ""
-    var googleAny = false
-    override fun portalGoogleAnyAccount() = googleAny
-    override fun portalGoogleAddressTemplate() = googleTemplate
-    override fun portalQrEnabled() = qrEnabled
-    override suspend fun volunteers() = volunteers.toList()
-    override suspend fun createVolunteer(volunteer: Volunteer, photo: ByteArray?): Volunteer {
-        created += volunteer
-        volunteers += volunteer
-        return volunteer
-    }
-    override suspend fun saveVolunteer(volunteer: Volunteer): Boolean {
-        val i = volunteers.indexOfFirst { it.id == volunteer.id }
-        if (i < 0) return false
-        volunteers[i] = volunteer
-        return true
-    }
-    val attached = mutableListOf<Pair<String, ByteArray>>()
-    override suspend fun attachVolunteerPhoto(volunteer: Volunteer, bytes: ByteArray): Boolean {
-        attached += volunteer.id to bytes
-        return true
-    }
-    override suspend fun downloadStorage(path: String) = storage[path]
-    override suspend fun uploadStorageJpeg(path: String, bytes: ByteArray): Boolean {
-        storage[path] = bytes
-        return true
-    }
-    override suspend fun deleteStorage(path: String) {
-        storage.remove(path)
-    }
-    override suspend fun volunteerPhotoBytes(volunteer: Volunteer): ByteArray? = null
-    override suspend fun portalMailTemplate(): PortalMailTemplate? =
-        if (mailTemplateEnabled) PortalMailTemplate(mailSubject, "<p>Hello $PORTAL_FIRST_NAME_TOKEN</p>", "Hello $PORTAL_FIRST_NAME_TOKEN", "") else null
-    override fun canSendQrEmail() = canMail
-    override suspend fun sendQrEmail(volunteer: Volunteer): Boolean {
-        mailed += volunteer
-        return true
-    }
-    override fun loadPendingSignupForms() = pending
-    override fun savePendingSignupForms(forms: List<VolunteerSignupForm>) {
-        pending = forms
-    }
-    override fun loadPublishedHashes() = hashes
-    override fun savePublishedHashes(hashes: Map<String, String>) {
-        this.hashes = hashes
-    }
-}
-
-private class FakeAuth(private val create: PortalAuthResult) : PortalAuthApi {
-    val resets = mutableListOf<String>()
-    override suspend fun createAccount(email: String, password: String) = create
-    override suspend fun sendPasswordReset(email: String, languageCode: String): PortalAuthResult {
-        resets += email
-        return PortalAuthResult.Sent
-    }
-}
-
 class VolunteerPortalServiceTest {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -190,7 +52,7 @@ class VolunteerPortalServiceTest {
 
     private fun startedService(gateway: FakeGateway, host: FakeHost, auth: PortalAuthApi = FakeAuth(PortalAuthResult.Sent)) =
         service(gateway, host, auth).also {
-            it.start(MutableStateFlow(host.volunteers.toList()), MutableStateFlow(emptyList<Job>()),
+            it.start(MutableStateFlow(host.volunteers.toList()), MutableStateFlow(emptyList<Guest>()), MutableStateFlow(emptyList<Job>()),
                 MutableStateFlow(emptyList<AccountTransfer>()), MutableStateFlow(emptyList<JobTypeConfig>()))
         }
 
@@ -320,7 +182,7 @@ class VolunteerPortalServiceTest {
         val gateway = FakeGateway()
         val host = FakeHost(emptyList())
         val volunteers = MutableStateFlow(host.volunteers.toList())
-        service(gateway, host).start(volunteers, MutableStateFlow(emptyList()), MutableStateFlow(emptyList()), MutableStateFlow(emptyList()))
+        service(gateway, host).start(volunteers, MutableStateFlow(emptyList<Guest>()), MutableStateFlow(emptyList()), MutableStateFlow(emptyList()), MutableStateFlow(emptyList()))
         withTimeout(5_000) { while (gateway.docs["portalMail/default"] == null) delay(20) }
         val first = gateway.docs["portalMail/default"]!!
         assertEquals("Your QR code", first["subject"])
@@ -341,7 +203,7 @@ class VolunteerPortalServiceTest {
     fun mailTemplateNeverContainsVolunteerId() = runBlocking {
         val gateway = FakeGateway()
         val host = FakeHost(listOf(volunteer("SECRETID123", "lea@example.org", enabled = true, uid = UID)))
-        service(gateway, host).start(MutableStateFlow(host.volunteers.toList()), MutableStateFlow(emptyList()),
+        service(gateway, host).start(MutableStateFlow(host.volunteers.toList()), MutableStateFlow(emptyList<Guest>()), MutableStateFlow(emptyList()),
             MutableStateFlow(emptyList()), MutableStateFlow(emptyList()))
         withTimeout(5_000) { while (gateway.docs["portalMail/default"] == null) delay(20) }
         assertFalse(gateway.docs["portalMail/default"]!!.values.joinToString().contains("SECRETID123"))
@@ -472,7 +334,7 @@ class VolunteerPortalServiceTest {
         val host = FakeHost(listOf(linked, volunteer("V2", "x@example.org")))
         val volunteers = MutableStateFlow(host.volunteers.toList())
         val service = service(gateway, host)
-        service.start(volunteers, MutableStateFlow(emptyList()), MutableStateFlow(emptyList()), MutableStateFlow(emptyList()))
+        service.start(volunteers, MutableStateFlow(emptyList<Guest>()), MutableStateFlow(emptyList()), MutableStateFlow(emptyList()), MutableStateFlow(emptyList()))
 
         withTimeout(5_000) { while (gateway.docs["volunteerPortal/$UID"] == null) delay(20) }
         val doc = gateway.docs["volunteerPortal/$UID"]!!
@@ -493,7 +355,7 @@ class VolunteerPortalServiceTest {
     fun qrDocPublishedWithPage() = runBlocking {
         val gateway = FakeGateway()
         val host = FakeHost(listOf(volunteer("SECRETID123", "lea@example.org", enabled = true, uid = UID)))
-        service(gateway, host).start(MutableStateFlow(host.volunteers.toList()), MutableStateFlow(emptyList<Job>()),
+        service(gateway, host).start(MutableStateFlow(host.volunteers.toList()), MutableStateFlow(emptyList<Guest>()), MutableStateFlow(emptyList<Job>()),
             MutableStateFlow(emptyList<AccountTransfer>()), MutableStateFlow(emptyList<JobTypeConfig>()))
         awaitDoc(gateway, "volunteerPortalQr/$UID")
         assertEquals("SECRETID123", gateway.docs["volunteerPortalQr/$UID"]!!["payload"])
@@ -504,7 +366,7 @@ class VolunteerPortalServiceTest {
     fun qrDocNotPublishedForAdmin() = runBlocking {
         val gateway = FakeGateway()
         val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true, uid = UID, admin = true)))
-        service(gateway, host).start(MutableStateFlow(host.volunteers.toList()), MutableStateFlow(emptyList<Job>()),
+        service(gateway, host).start(MutableStateFlow(host.volunteers.toList()), MutableStateFlow(emptyList<Guest>()), MutableStateFlow(emptyList<Job>()),
             MutableStateFlow(emptyList<AccountTransfer>()), MutableStateFlow(emptyList<JobTypeConfig>()))
         awaitDoc(gateway, "volunteerPortal/$UID")
         assertNull(gateway.docs["volunteerPortalQr/$UID"])
@@ -516,7 +378,7 @@ class VolunteerPortalServiceTest {
         val linked = volunteer("V1", "lea@example.org", enabled = true, uid = UID)
         val host = FakeHost(listOf(linked))
         val volunteers = MutableStateFlow(host.volunteers.toList())
-        service(gateway, host).start(volunteers, MutableStateFlow(emptyList<Job>()),
+        service(gateway, host).start(volunteers, MutableStateFlow(emptyList<Guest>()), MutableStateFlow(emptyList<Job>()),
             MutableStateFlow(emptyList<AccountTransfer>()), MutableStateFlow(emptyList<JobTypeConfig>()))
         awaitDoc(gateway, "volunteerPortalQr/$UID")
         volunteers.value = listOf(linked.copy(isAdmin = true))
@@ -529,7 +391,7 @@ class VolunteerPortalServiceTest {
         val gateway = FakeGateway()
         val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true, uid = UID)))
         val service = service(gateway, host)
-        service.start(MutableStateFlow(host.volunteers.toList()), MutableStateFlow(emptyList<Job>()),
+        service.start(MutableStateFlow(host.volunteers.toList()), MutableStateFlow(emptyList<Guest>()), MutableStateFlow(emptyList<Job>()),
             MutableStateFlow(emptyList<AccountTransfer>()), MutableStateFlow(emptyList<JobTypeConfig>()))
         awaitDoc(gateway, "volunteerPortalQr/$UID")
         host.qrEnabled = false
@@ -543,7 +405,7 @@ class VolunteerPortalServiceTest {
         val linked = volunteer("V1", "lea@example.org", enabled = true, uid = UID)
         val host = FakeHost(listOf(linked))
         val volunteers = MutableStateFlow(host.volunteers.toList())
-        service(gateway, host).start(volunteers, MutableStateFlow(emptyList<Job>()),
+        service(gateway, host).start(volunteers, MutableStateFlow(emptyList<Guest>()), MutableStateFlow(emptyList<Job>()),
             MutableStateFlow(emptyList<AccountTransfer>()), MutableStateFlow(emptyList<JobTypeConfig>()))
         awaitDoc(gateway, "volunteerPortalQr/$UID")
         volunteers.value = listOf(linked.copy(portalEnabled = false))
@@ -558,7 +420,7 @@ class VolunteerPortalServiceTest {
         gateway.docs["volunteerPortalQr/$UID"] = mapOf("payload" to "V1")
         val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true, uid = UID, admin = true)))
         val service = service(gateway, host)
-        service.start(MutableStateFlow(host.volunteers.toList()), MutableStateFlow(emptyList<Job>()),
+        service.start(MutableStateFlow(host.volunteers.toList()), MutableStateFlow(emptyList<Guest>()), MutableStateFlow(emptyList<Job>()),
             MutableStateFlow(emptyList<AccountTransfer>()), MutableStateFlow(emptyList<JobTypeConfig>()))
         awaitDoc(gateway, "volunteerPortal/$UID")
         service.republish()
@@ -575,7 +437,7 @@ class VolunteerPortalServiceTest {
         val host = FakeHost(listOf(linked))
         val volunteers = MutableStateFlow(host.volunteers.toList())
         val service = service(gateway, host)
-        service.start(volunteers, MutableStateFlow(emptyList<Job>()),
+        service.start(volunteers, MutableStateFlow(emptyList<Guest>()), MutableStateFlow(emptyList<Job>()),
             MutableStateFlow(emptyList<AccountTransfer>()), MutableStateFlow(emptyList<JobTypeConfig>()))
         awaitDoc(gateway, "volunteerPortalQr/$UID")
         gateway.qrDeleteFailures = 1
@@ -593,7 +455,7 @@ class VolunteerPortalServiceTest {
         val gateway = FakeGateway()
         val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true, uid = UID)))
         val service = service(gateway, host)
-        service.start(MutableStateFlow(host.volunteers.toList()), MutableStateFlow(emptyList<Job>()),
+        service.start(MutableStateFlow(host.volunteers.toList()), MutableStateFlow(emptyList<Guest>()), MutableStateFlow(emptyList<Job>()),
             MutableStateFlow(emptyList<AccountTransfer>()), MutableStateFlow(emptyList<JobTypeConfig>()))
         awaitDoc(gateway, "volunteerPortalQr/$UID")
         service.republish()
@@ -1006,7 +868,7 @@ class VolunteerPortalServiceTest {
         val service = service(gateway, host)
         service.forgetVolunteer(volunteer("V1", "lea@example.org", enabled = true, uid = UID))
         assertEquals("retry", host.loadPublishedHashes()["$ORG/$UID#qr"])
-        service.start(MutableStateFlow(emptyList()), MutableStateFlow(emptyList<Job>()),
+        service.start(MutableStateFlow(emptyList()), MutableStateFlow(emptyList<Guest>()), MutableStateFlow(emptyList<Job>()),
             MutableStateFlow(emptyList<AccountTransfer>()), MutableStateFlow(emptyList<JobTypeConfig>()))
         withTimeout(5_000) { while (gateway.docs["volunteerPortalQr/$UID"] != null) delay(20) }
     }
@@ -1059,7 +921,7 @@ class VolunteerPortalServiceTest {
     fun projectionAndBrandingCarryTheGoogleState() = runBlocking {
         val gateway = FakeGateway()
         val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true, uid = UID)))
-        service(gateway, host).start(MutableStateFlow(host.volunteers.toList()), MutableStateFlow(emptyList()),
+        service(gateway, host).start(MutableStateFlow(host.volunteers.toList()), MutableStateFlow(emptyList<Guest>()), MutableStateFlow(emptyList()),
             MutableStateFlow(emptyList()), MutableStateFlow(emptyList()))
         withTimeout(5_000) { while (gateway.docs["volunteerPortal/$UID"] == null) delay(20) }
         val payload = gateway.docs["volunteerPortal/$UID"]!!["payload"] as String
@@ -1074,7 +936,7 @@ class VolunteerPortalServiceTest {
         val gateway = FakeGateway()
         val host = FakeHost(emptyList())
         host.googleDomains = emptyList()
-        service(gateway, host).start(MutableStateFlow(emptyList()), MutableStateFlow(emptyList()),
+        service(gateway, host).start(MutableStateFlow(emptyList()), MutableStateFlow(emptyList<Guest>()), MutableStateFlow(emptyList()),
             MutableStateFlow(emptyList()), MutableStateFlow(emptyList()))
         withTimeout(5_000) { while (gateway.docs["portalBranding/default"] == null) delay(20) }
         assertEquals(false, gateway.docs["portalBranding/default"]!!["googleLogin"])
@@ -1085,7 +947,7 @@ class VolunteerPortalServiceTest {
         val gateway = FakeGateway()
         val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true, uid = UID)))
         val svc = service(gateway, host)
-        svc.start(MutableStateFlow(host.volunteers.toList()), MutableStateFlow(emptyList()),
+        svc.start(MutableStateFlow(host.volunteers.toList()), MutableStateFlow(emptyList<Guest>()), MutableStateFlow(emptyList()),
             MutableStateFlow(emptyList()), MutableStateFlow(emptyList()))
         withTimeout(5_000) { while (gateway.docs["volunteerPortal/$UID"] == null) delay(20) }
         assertEquals(true, gateway.docs["portalBranding/default"]!!["googleLogin"])
@@ -1100,7 +962,7 @@ class VolunteerPortalServiceTest {
         val gateway = FakeGateway()
         val host = FakeHost(emptyList())
         val svc = service(gateway, host)
-        svc.start(MutableStateFlow(emptyList()), MutableStateFlow(emptyList()),
+        svc.start(MutableStateFlow(emptyList()), MutableStateFlow(emptyList<Guest>()), MutableStateFlow(emptyList()),
             MutableStateFlow(emptyList()), MutableStateFlow(emptyList()))
         withTimeout(5_000) { while (gateway.docs["portalBranding/default"] == null) delay(20) }
         assertEquals(true, gateway.docs["portalBranding/default"]!!["googleLogin"])

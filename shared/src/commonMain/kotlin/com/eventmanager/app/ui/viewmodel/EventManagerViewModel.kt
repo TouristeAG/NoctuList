@@ -2864,7 +2864,7 @@ class EventManagerViewModel(
         )
         volunteerPortalService = service
         volunteerPortalServiceOrg = org
-        service.start(volunteers, jobs, accountTransfers, jobTypeConfigs)
+        service.start(volunteers, guests, jobs, accountTransfers, jobTypeConfigs)
         portalServerStatusJob?.cancel()
         portalServerStatusJob = viewModelScope.launch { service.serverStatus.collect { _portalServerStatus.value = it } }
     }
@@ -3031,6 +3031,40 @@ class EventManagerViewModel(
 
         override suspend fun volunteerPhotoBytes(volunteer: Volunteer): ByteArray? =
             downloadProfilePhotoBytes(platformContext, volunteer.profilePhotoUrl, volunteer.resolvedProfilePhotoPath())
+
+        override suspend fun guests(): List<Guest> = repository.getAllGuestsOnce()
+
+        override suspend fun saveGuest(guest: Guest): Boolean {
+            if (rejectIfCrudSoftLocked("updating guests")) return false
+            val existing = repository.getGuestByNanoId(guest.nanoId) ?: return false
+            // The portal never changes admin rights, NFC cards or photos.
+            val safe = guest.copy(
+                id = existing.id,
+                isAdmin = existing.isAdmin,
+                nfcCardUid = existing.nfcCardUid,
+                nfcCardUidHash = existing.nfcCardUidHash,
+                profilePhotoPath = existing.profilePhotoPath,
+                profilePhotoUrl = existing.profilePhotoUrl,
+            )
+            val tagged = tagGuestWithActiveOrg(safe)
+            repository.updateGuest(tagged)
+            syncCoordinator?.afterGuestSaved(tagged)
+            return true
+        }
+
+        override suspend fun createGuest(guest: Guest, photo: ByteArray?): Guest? {
+            if (rejectIfCrudSoftLocked("adding guests")) return null
+            val saved = repository.insertGuest(tagGuestWithActiveOrg(guest))
+            val withPhoto = persistGuestPhotoAfterSave(saved, photo)
+            syncCoordinator?.afterGuestSaved(withPhoto)
+            return withPhoto
+        }
+
+        override suspend fun guestPhotoBytes(guest: Guest): ByteArray? =
+            downloadProfilePhotoBytes(platformContext, guest.profilePhotoUrl, guest.resolvedProfilePhotoPath())
+
+        // No guest QR mail exists on devices yet; the guest QR requests are wired with the guest requests.
+        override suspend fun sendGuestQrEmail(guest: Guest): Boolean = false
 
         override fun canSendQrEmail(): Boolean =
             platformContext?.let { PortalQrMailer.canSend(it) } ?: false

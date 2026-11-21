@@ -1,11 +1,13 @@
 package com.eventmanager.app.portal
 
 import com.eventmanager.app.data.models.AccountTransfer
+import com.eventmanager.app.data.models.Guest
 import com.eventmanager.app.data.models.GuestFormLogoCodec
 import com.eventmanager.app.data.models.Job
 import com.eventmanager.app.data.models.JobTypeConfig
 import com.eventmanager.app.data.models.Volunteer
 import com.eventmanager.app.data.remote.FirestoreGateway
+import com.eventmanager.app.data.utils.DateTimeUtils
 import com.eventmanager.app.data.utils.NanoIdGenerator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
@@ -75,6 +77,16 @@ interface VolunteerPortalHost {
     fun canSendQrEmail(): Boolean
     suspend fun sendQrEmail(volunteer: Volunteer): Boolean
 
+    /** Every guest on this device (all organizations; the service keeps its own). */
+    suspend fun guests(): List<Guest> = emptyList()
+    /** Saves an existing guest through the normal save + sync pipeline. */
+    suspend fun saveGuest(guest: Guest): Boolean = false
+    /** Inserts a new guest through the normal save + sync pipeline (with its optional photo). */
+    suspend fun createGuest(guest: Guest, photo: ByteArray?): Guest? = null
+    /** JPEG bytes of the guest's current profile photo, or null. */
+    suspend fun guestPhotoBytes(guest: Guest): ByteArray? = null
+    suspend fun sendGuestQrEmail(guest: Guest): Boolean = false
+
     fun loadPendingSignupForms(): List<VolunteerSignupForm>
     fun savePendingSignupForms(forms: List<VolunteerSignupForm>)
     fun loadPublishedHashes(): Map<String, String>
@@ -109,8 +121,12 @@ class VolunteerPortalService(
     private val authClientFactory: (apiKey: String) -> PortalAuthApi = { PortalAuthClient(it) },
     private val clock: () -> Long = System::currentTimeMillis,
     private val publishDebounceMs: Long = PUBLISH_DEBOUNCE_MS,
+    private val retryIntervalMs: Long = RETRY_INTERVAL_MS,
 ) {
     private val mutex = Mutex()
+    private val guestPublisher = GuestPortalPublisher(orgId, gateway, host, clock)
+    /** Local day of the last publish: a new day republishes, so ended temporary groups go away. */
+    @Volatile private var lastPublishDay: Long? = null
     private val listeners = mutableListOf<AutoCloseable>()
     private var publisherJob: CoroutineJob? = null
     private var latestSignupDocs: List<Pair<String, Map<String, Any?>>> = emptyList()
@@ -125,6 +141,7 @@ class VolunteerPortalService(
 
     fun start(
         volunteers: Flow<List<Volunteer>>,
+        guests: Flow<List<Guest>>,
         jobs: Flow<List<Job>>,
         transfers: Flow<List<AccountTransfer>>,
         jobTypeConfigs: Flow<List<JobTypeConfig>>,
@@ -148,7 +165,9 @@ class VolunteerPortalService(
                 ?.let { PortalServerStatus.fromMap(it.second) }
         }?.let { listeners += it }
         publisherJob = scope.launch {
-            combine(volunteers, jobs, transfers, jobTypeConfigs) { v, j, t, c -> Snapshot(v, j, t, c).also { latestSnapshot = it } }
+            combine(volunteers, guests, jobs, transfers, jobTypeConfigs) { v, g, j, t, c ->
+                Snapshot(v, g, j, t, c).also { latestSnapshot = it }
+            }
                 .debounce(publishDebounceMs)
                 .collect { snapshot ->
                     runCatchingLogged("publish") { publishAll(snapshot) }
@@ -157,13 +176,15 @@ class VolunteerPortalService(
         // Stale PROCESSING claims (a device that vanished mid-way) are retried periodically.
         scope.launch {
             while (started) {
-                delay(RETRY_INTERVAL_MS)
+                delay(retryIntervalMs)
                 runCatchingLogged("retry") {
                     processSignups(latestSignupDocs)
                     processRequests(latestRequestDocs)
                     processClaims(latestClaimDocs)
                     cleanupExpiredForms()
                 }
+                val publishedDay = lastPublishDay
+                if (publishedDay != null && publishedDay != today()) republish()
             }
         }
     }
@@ -767,12 +788,16 @@ class VolunteerPortalService(
         hashes.keys.filter { it.startsWith("$orgId/") && !it.contains("#") }
             .map { it.removePrefix("$orgId/") }
             .forEach { uid -> runCatching { unpublish(uid) } }
+        val guestHashes = host.loadPublishedHashes().toMutableMap()
+        guestPublisher.unpublishAll(guestHashes)
+        host.savePublishedHashes(guestHashes)
         runCatching { gateway.deleteDocument(orgId, BRANDING_COLLECTION, BRANDING_DOC) }
         runCatching { gateway.deleteDocument(orgId, MAIL_COLLECTION, MAIL_DOC) }
         // Failed QR deletes stay so the next publish retries them.
         host.savePublishedHashes(
             host.loadPublishedHashes().filterKeys {
-                (!it.startsWith("$orgId/") || it.endsWith(QR_SUFFIX)) && it != brandingKey && it != mailKey
+                (!it.startsWith("$orgId/") || it.endsWith(QR_SUFFIX) || it.endsWith(GuestPortalPublisher.GUEST_QR_SUFFIX) ||
+                    it.endsWith(GuestPortalPublisher.TEMP_QR_SUFFIX)) && it != brandingKey && it != mailKey
             },
         )
     }
@@ -783,6 +808,7 @@ class VolunteerPortalService(
 
     private data class Snapshot(
         val volunteers: List<Volunteer>,
+        val guests: List<Guest>,
         val jobs: List<Job>,
         val transfers: List<AccountTransfer>,
         val configs: List<JobTypeConfig>,
@@ -862,8 +888,13 @@ class VolunteerPortalService(
         for (qrKey in staleQr) {
             deleteQrDocument(qrKey.removePrefix("$orgId/").removeSuffix(QR_SUFFIX), hashes)
         }
+        // After the volunteers: a page they just took down may hand the shared photo to a guest.
+        guestPublisher.publish(snapshot.guests, snapshot.volunteers, snapshot.transfers, hashes, googleLinkAllowed, now)
         host.savePublishedHashes(hashes)
+        lastPublishDay = DateTimeUtils.getStartOfDayWithOffset(now, host.dateOffsetHours())
     }
+
+    private fun today(): Long = DateTimeUtils.getStartOfDayWithOffset(clock(), host.dateOffsetHours())
 
     /** Deletes the QR document; the hash entry is dropped only on success so a later publish retries. */
     private suspend fun deleteQrDocument(uid: String, hashes: MutableMap<String, String>) {
@@ -976,12 +1007,8 @@ class VolunteerPortalService(
         }
     }
 
-    private fun photoVersionOf(volunteer: Volunteer): String {
-        if (!host.profilePhotosEnabled()) return ""
-        val ref = volunteer.profilePhotoUrl.ifBlank { volunteer.profilePhotoPath }.trim()
-        if (ref.isBlank() || ref.startsWith("cleared", ignoreCase = true)) return ""
-        return PortalProjectionBuilder.sha256(ref).take(16)
-    }
+    private fun photoVersionOf(volunteer: Volunteer): String =
+        photoVersion(host.profilePhotosEnabled(), volunteer.profilePhotoUrl, volunteer.profilePhotoPath)
 
     /** Copies (or removes) the portal photo. True when the published state now matches [version]. */
     private suspend fun publishPhoto(volunteer: Volunteer, version: String): Boolean {
@@ -1044,9 +1071,17 @@ class VolunteerPortalService(
         const val MAIL_DOC = "default"
         private const val QR_SUFFIX = "#qr"
         /** QR hash value meaning "this device deleted the QR doc". */
-        private const val QR_TOMBSTONE = "-"
+        internal const val QR_TOMBSTONE = "-"
         /** QR hash value meaning "a delete failed, retry it". */
-        private const val QR_RETRY = "retry"
+        internal const val QR_RETRY = "retry"
+
+        /** Version of a profile photo reference, empty when there is none to publish. */
+        internal fun photoVersion(photosEnabled: Boolean, url: String, path: String): String {
+            if (!photosEnabled) return ""
+            val ref = url.ifBlank { path }.trim()
+            if (ref.isBlank() || ref.startsWith("cleared", ignoreCase = true)) return ""
+            return PortalProjectionBuilder.sha256(ref).take(16)
+        }
         /** Age under which a signup or request is left to the Cloud Functions. */
         const val DEVICE_GRACE_MS = 120_000L
         /** The branding document is public and read on every page load: keep the logo small. */
