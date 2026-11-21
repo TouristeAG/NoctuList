@@ -402,5 +402,8 @@ d'autres changements en cours. Il doit être commité et fusionné dans `main` (
   le groupe. Cela remplace le point 1 du §7.2.
 - Les appareils publient aussi `portalMail/guest` (réglages e-mail des invités, thème invité). Le
   serveur s'en sert pour `GUEST_QR_EMAIL` et laisse la demande en attente tant qu'il manque.
+- Une session mot de passe vérifiée envoie un CLAIM par session même quand des pages s'affichent
+  (sans écran d'attente), pour lier un profil ouvert après la création du compte. Les pages
+  refusées sont relues après la réponse `DONE`, même si un profil est déjà affiché.
 - Le prérequis du §14 a été réalisé sur cette branche (réimplémenté, pas fusionné depuis le
   dossier principal).

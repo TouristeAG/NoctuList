@@ -101,6 +101,30 @@ export function claimReloadKey(claim, handledKey) {
   return key === handledKey ? null : key;
 }
 
+/** Rules: a request is renewed at most once a minute. */
+const CLAIM_RENEW_MS = 60_000;
+
+/**
+ * A CLAIM may be sent now: none is waiting, the last one is over a minute old (the rules refuse a
+ * faster renewal) and this page sent none in the last minute ([lastSentAt]).
+ */
+export function claimCanAsk(claim, lastSentAt, now = Date.now()) {
+  const renewable = !claim || (!isWaiting(claim, now) && now - millisOf(claim.requestedAt) > CLAIM_RENEW_MS);
+  return renewable && now - lastSentAt > CLAIM_RENEW_MS;
+}
+
+/**
+ * A verified e-mail + password session that already shows pages still sends one CLAIM per
+ * session: a profile opened later for the same address (an existing account on the device side)
+ * is only linked by it. CLAIM is idempotent: an owner gets DONE and its free profiles are linked.
+ * Never for Google or unverified sessions, and only once the CLAIM listener answered
+ * ([claim] undefined means not read yet).
+ */
+export function claimWithPages({ google, verified, claim, sentThisSession, lastSentAt }, now = Date.now()) {
+  if (google || !verified || sentThisSession || claim === undefined) return false;
+  return claimCanAsk(claim, lastSentAt, now);
+}
+
 /** `el("p", { class: "muted", text: "…" }, child1, child2)` */
 export function el(tag, props = {}, ...children) {
   const node = document.createElement(tag);

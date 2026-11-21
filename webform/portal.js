@@ -45,9 +45,11 @@ import {
   EMAIL_RE,
   authErrorKey,
   chooseProfile,
+  claimCanAsk,
   claimReloadKey,
   claimRetryDelays,
   cleanName,
+  claimWithPages,
   cleanPhone,
   clear,
   el,
@@ -712,6 +714,11 @@ function armIdleTimer() {
 
 async function onUser(next) {
   stopListeners();
+  // A new account (or none) starts a new session for the one CLAIM sent while pages are shown.
+  if ((next?.uid || "") !== claimSessionUid) {
+    claimSessionUid = next?.uid || "";
+    sessionClaimSent = false;
+  }
   user = next;
   googleSession = false;
   armIdleTimer();
@@ -779,6 +786,7 @@ function watchProfiles(kinds) {
       if (type === "CLAIM") {
         renderPending();
         reloadAfterClaim(uidAtStart);
+        claimIfPagesShown();
       }
       else if (type.startsWith("GOOGLE_")) renderGoogleBox();
       else render();
@@ -888,6 +896,7 @@ function showProfiles() {
   render();
   renderGoogleBox();
   showView("view-dash");
+  claimIfPagesShown();
 }
 
 function showNoProfile() {
@@ -912,17 +921,18 @@ let claimHandled = "";
 /**
  * A DONE claim linked this account to a profile whose page was missing, and so refused (the
  * temporary page, whose listener then stops): read the refused pages again on a short backoff,
- * since the page can be published minutes after the answer.
+ * since the page can be published minutes after the answer. Also while a profile is shown: the
+ * claim sent with pages on screen can link another kind, which then joins the selector.
  */
 function reloadAfterClaim(uid) {
   const key = claimReloadKey(requests.CLAIM, claimHandled);
-  if (!key || activeKind) return;
+  if (!key) return;
   claimHandled = key;
   const delays = claimRetryDelays();
   let timer = null;
   unsubscribers.push(() => clearTimeout(timer));
   const tick = (step) => {
-    if (activeKind || portalUid !== uid) return;
+    if (portalUid !== uid) return;
     Object.entries(pages).forEach(([kind, page]) => {
       if (page.state !== "denied") return;
       page.state = "loading";
@@ -935,7 +945,7 @@ function reloadAfterClaim(uid) {
   const arm = (step) => {
     if (step >= delays.length) return;
     timer = setTimeout(() => {
-      if (activeKind || portalUid !== uid) return;
+      if (portalUid !== uid) return;
       const states = Object.values(pages).map((p) => p.state);
       // Still waiting for the last answers: look again later, as one more step of the schedule.
       if (states.includes("loading")) return arm(step + 1);
@@ -982,6 +992,9 @@ function requestType(base) {
 }
 
 let claimSentAt = 0;
+/** Uid of the session [sessionClaimSent] is about, and whether that session sent a CLAIM. */
+let claimSessionUid = "";
+let sessionClaimSent = false;
 
 async function showPending() {
   showView("view-pending");
@@ -989,12 +1002,31 @@ async function showPending() {
   // Only an e-mail + password session may claim a profile.
   if (isGoogleUser(user)) return;
   // Ask the team's devices to link this verified address to a volunteer profile.
-  const claim = requests.CLAIM;
-  const canAsk = !claim || (!isWaiting(claim) && Date.now() - millisOf(claim.requestedAt) > 60_000);
-  if (canAsk && Date.now() - claimSentAt > 60_000) {
+  if (claimCanAsk(requests.CLAIM, claimSentAt)) {
     claimSentAt = Date.now();
+    sessionClaimSent = true;
     await sendRequest("CLAIM").catch((error) => console.warn("claim failed", error?.code));
   }
+}
+
+/**
+ * Pages are on screen: a verified password session still sends one CLAIM, so a profile opened
+ * for this address after the account existed gets linked. No pending screen is shown for it; a
+ * kind it links appears through its listener or reloadAfterClaim.
+ */
+function claimIfPagesShown() {
+  if (!user || !activeKind || !pages.volunteer) return;
+  const ask = claimWithPages({
+    google: isGoogleUser(user),
+    verified: user.emailVerified === true,
+    claim: requests.CLAIM,
+    sentThisSession: sessionClaimSent,
+    lastSentAt: claimSentAt,
+  });
+  if (!ask) return;
+  claimSentAt = Date.now();
+  sessionClaimSent = true;
+  sendRequest("CLAIM").catch((error) => console.warn("claim failed", error?.code));
 }
 
 function renderPending() {
