@@ -322,6 +322,26 @@ export async function seed() {
     const leaList = { ...groups[1], invite: { ...groups[1].invite, formId: "demoInviteTpl0002" } };
     await publish2(portalUid, tempPage("lea.demo@example.org", [leaList], false));
     await setDoc(org(`temporaryGuestPortalQr/${portalUid}`), { schema: 1, items: { a1b2c3d4e5f60002: tempQr.items.a1b2c3d4e5f60002, a1b2c3d4e5f60006: tempQr.items.a1b2c3d4e5f60006 } });
+    // Léa (volunteer) runs tonight: full guest list of the date, every venue.
+    const glGuest = (key, firstName, lastName, listName, extra = {}) => ({
+      guestKey: key, firstName, lastName, listName, venueName: "Groove", accessIds: [], accessNames: [],
+      entryUsed: false, emergencyPhone: "+41 79 222 33 44", ...extra,
+    });
+    const glPayload = { association: "Association Démo", grants: [{
+      grantId: "demoGrant0001", eventDate: now, venueName: "", visibleUntil: visibleUntil(now),
+      lists: [{ name: "Collège Rousseau", venueName: "Groove" }, { name: "Les Amis", venueName: "Groove" }],
+      accesses: [{ id: "acc-bs", name: "Backstage", venueName: "Groove" }, { id: "acc-vip", name: "VIP", venueName: "Groove" }],
+      guests: [
+        glGuest("a1b2c3d4e5f60005", "Ada", "LEROY", "Collège Rousseau", { entryUsed: true, accessIds: ["acc-bs"], accessNames: ["Backstage"] }),
+        glGuest("a1b2c3d4e5f60002", "Bruno", "MEIER", "Collège Rousseau", { accessIds: ["acc-bs"], accessNames: ["Backstage"] }),
+        glGuest("a1b2c3d4e5f60006", "Eva", "BLANC", "Collège Rousseau"),
+        glGuest("a1b2c3d4e5f60007", "Hugo", "LEMAIRE", "Les Amis", { accessIds: ["acc-vip"], accessNames: ["VIP"] }),
+      ],
+    }] };
+    await setDoc(org(`guestListPortal/${portalUid}`), {
+      schema: 1, payload: JSON.stringify(glPayload), contentHash: "demo", updatedAt: now - 60 * 1000,
+      expiresAtMillis: visibleUntil(now), grantDates: [now],
+    });
     // The invite template of tonight's list, bound to both demo accounts' lists for the add dialog.
     for (const [id, uid] of [["demoInviteTpl0001", managerUid], ["demoInviteTpl0002", portalUid]]) {
       await setDoc(org(`guestForms/${id}`), {

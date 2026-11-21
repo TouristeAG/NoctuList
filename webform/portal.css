@@ -659,3 +659,16 @@ dialog.qr-dialog .primary { margin-top: 14px; min-width: 160px; }
 /* Offline screen: one button per stored code */
 .offline-list { display: flex; flex-direction: column; gap: 10px; }
 .offline-list .qr-open { margin: 0; }
+
+/* Full guest list of a date */
+.gl-tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.gl-tools .gl-search { flex: 1; min-width: 180px; margin: 0; }
+.gl-tools .tonal { margin-top: 0; }
+.gl-list { margin: 16px 0 6px; font-size: 0.9rem; font-weight: 800; color: var(--muted); }
+.gl-rows { list-style: none; margin: 0; padding: 0; }
+.gl-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 0; border-top: 1px solid var(--line); }
+.gl-row:first-child { border-top: 0; }
+.gl-name { font-weight: 800; }
+.row-actions { display: flex; gap: 6px; }
+.gl-access { margin-top: 12px; }
+.gl-new { display: flex; flex-direction: column; gap: 4px; }

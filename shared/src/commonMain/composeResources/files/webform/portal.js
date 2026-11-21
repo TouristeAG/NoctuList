@@ -40,12 +40,14 @@ import {
   uploadBytes,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 import { EMULATOR_PORTS, isLocalDev, loadConfig, parseOrgPath } from "./firebase-env.js?v=portal-2";
-import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=guest-2";
-import { cachedQrEntries, clearQr, closeQrDialog, isStaleFor, missingIsFinal, openQrDialog, readCachedQr, storeQr } from "./portal-qr.js?v=guest-2";
+import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=guest-3";
+import { cachedQrEntries, clearQr, closeQrDialog, isStaleFor, missingIsFinal, openQrDialog, readCachedQr, storeQr } from "./portal-qr.js?v=guest-3";
 import {
   EMAIL_RE,
   authErrorKey,
   chooseProfile,
+  guestListCounts,
+  guestListGroups,
   inviteRemaining,
   profilesLayout,
   qrDialogClosesFor,
@@ -67,7 +69,7 @@ import {
   profileStoreKey,
   profilesSettled,
   toJpeg,
-} from "./portal-common.js?v=guest-2";
+} from "./portal-common.js?v=guest-3";
 
 const $ = (id) => document.getElementById(id);
 const VIEWS = ["view-loading", "view-disabled", "view-signin", "view-reset", "view-verify", "view-pending", "view-google", "view-dash", "view-offline"];
@@ -796,6 +798,8 @@ function watchProfiles(kinds) {
     qrWatched[kind] = true;
     watchQr(kind, uidAtStart);
   });
+  // The full guest list of a date is for verified or Google sessions only (rules v19).
+  if (kinds.includes("volunteer")) watchGuestList(uidAtStart);
   // Requests need a verified address or a Google link, except a name change on a list account.
   const types = kinds.includes("volunteer") ? REQUEST_TYPES : UNVERIFIED_REQUEST_TYPES;
   types.forEach((type) => {
@@ -1561,6 +1565,7 @@ function renderGroups() {
   if (!cards.length) {
     dash.className = "dash cols-1";
     dash.append(el("section", { class: "card tile" }, el("p", { class: "empty", text: t("noGroups") })));
+    appendGuestLists(dash);
     return;
   }
   const columns = Math.min(layoutColumns(), 2, cards.length);
@@ -1568,6 +1573,7 @@ function renderGroups() {
   const cols = Array.from({ length: columns }, () => el("div", { class: "col" }));
   cards.forEach((c, i) => cols[i % columns].append(c));
   dash.append(...cols);
+  appendGuestLists(dash);
 }
 
 /** Message line of a window form. */
@@ -1731,6 +1737,241 @@ function confirmRemove(g, group) {
       setTimeout(close, 1200);
     } catch (error) {
       console.warn("removal failed", error?.code);
+      say("error", "errGeneric");
+      yes.disabled = false;
+    }
+  });
+}
+
+// ---------- Full guest list of a date (spec 2026-11-21 guest list access §6.2) ----------
+
+/** Page of the dates this account manages, or null. */
+let guestListPage = null;
+/** Edits sent from this page and not answered yet, by edit id: { guestKey, grantId }. */
+let guestListPending = {};
+/** Last refusal per grant, shown under its section. */
+let guestListErrors = {};
+/** Search text per grant, kept across renders. */
+let guestListQuery = {};
+
+function watchGuestList(uidAtStart) {
+  guestListPage = null;
+  guestListPending = {};
+  guestListErrors = {};
+  const ref = doc(db, "orgs", path.orgId, "guestListPortal", uidAtStart);
+  unsubscribers.push(onSnapshot(ref, (snap) => {
+    try {
+      guestListPage = snap.exists() ? JSON.parse(snap.data().payload || "{}") : null;
+    } catch {
+      guestListPage = null;
+    }
+    render();
+  }, () => {
+    guestListPage = null;
+    render();
+  }));
+}
+
+const GUEST_LIST_REASONS = { NO_GRANT: "guestListNoGrant", NOT_FOUND: "guestListNotFound", ENTRY_USED: "guestListEntryUsed" };
+
+/** Sends one edit and follows its answer until a device applied or refused it. */
+async function sendGuestListEdit(grant, fields) {
+  const ref = doc(collection(db, "orgs", path.orgId, "guestListEdits"));
+  await setDoc(ref, {
+    uid: portalUid,
+    email: user.email,
+    grantId: String(grant.grantId || ""),
+    eventDateMillis: Number(grant.eventDate),
+    guestKey: "",
+    firstName: "",
+    lastName: "",
+    listName: "",
+    venueName: "",
+    accessIds: [],
+    status: "PENDING",
+    createdAt: serverTimestamp(),
+    ...fields,
+  });
+  guestListPending[ref.id] = { guestKey: String(fields.guestKey || ""), grantId: String(grant.grantId || "") };
+  render();
+  const stop = onSnapshot(ref, (snap) => {
+    const d = snap.data();
+    if (!d || (d.status !== "DONE" && d.status !== "REJECTED")) return;
+    stop();
+    delete guestListPending[ref.id];
+    if (d.status === "REJECTED") guestListErrors[String(grant.grantId || "")] = GUEST_LIST_REASONS[d.reason] || "guestListFailed";
+    render();
+  }, () => {});
+  unsubscribers.push(stop);
+}
+
+function grantTitle(grant) {
+  const date = fmtDate(Number(grant.eventDate), { weekday: "long", day: "numeric", month: "long" });
+  return t("guestListTitle", { date }) + (grant.venueName ? ` · ${grant.venueName}` : "");
+}
+
+function guestListRow(g, grant) {
+  const name = guestName(g);
+  const busy = Object.values(guestListPending).some((p) => p.guestKey && p.guestKey === g.guestKey);
+  const accessNames = Array.isArray(g.accessNames) ? g.accessNames : [];
+  const phone = String(g.emergencyPhone || "").trim();
+  const actions = !g.entryUsed && !busy ? el("div", { class: "row-actions" },
+    el("button", { type: "button", class: "mini-btn", onclick: () => openGuestListEdit(g, grant) }, icon("edit", 14), el("span", { text: t("edit") })),
+    el("button", { type: "button", class: "mini-btn danger-text", onclick: () => confirmGuestListDelete(g, grant), text: t("deleteGuest") })) : null;
+  return el("li", { class: "gl-row" },
+    el("div", { class: "grow" },
+      el("div", { class: "gl-name", text: name || "-" }),
+      el("div", { class: "meta-line", text: [accessNames.join(", "), phone].filter(Boolean).join(" · ") })),
+    busy ? badge(t("inProgress"), "wait") : badge(g.entryUsed ? t("entered") : t("notEntered"), g.entryUsed ? "used" : ""),
+    actions);
+}
+
+function guestListSection(grant) {
+  const id = String(grant.grantId || "");
+  const guests = Array.isArray(grant.guests) ? grant.guests : [];
+  const counts = guestListCounts(guests);
+  const card = tile("guest-list", grantTitle(grant), "list");
+  const search = el("input", { type: "search", class: "gl-search", value: guestListQuery[id] || "", placeholder: t("searchGuests"), "aria-label": t("searchGuests") });
+  const body = el("div", { class: "gl-body" });
+  const fill = () => {
+    clear(body);
+    const groups = guestListGroups(guests, search.value);
+    if (!groups.length) body.append(el("p", { class: "empty", text: t("noGuestsYet") }));
+    groups.forEach((grp) => body.append(
+      el("h3", { class: "gl-list", text: [grp.listName || "-", grant.venueName ? "" : grp.venueName].filter(Boolean).join(" · ") }),
+      el("ul", { class: "gl-rows" }, ...grp.guests.map((g) => guestListRow(g, grant)))));
+  };
+  search.addEventListener("input", () => {
+    guestListQuery[id] = search.value;
+    fill();
+  });
+  card.append(...[
+    el("p", { class: "group-meta", text: t("guestListCount", { entered: counts.entered, total: counts.total }) }),
+    el("div", { class: "gl-tools" }, search,
+      el("button", { type: "button", class: "tonal", onclick: () => openGuestListAdd(grant) }, icon("plus", 16), el("span", { text: t("addGuests") }))),
+    guestListErrors[id] ? el("p", { class: "error", text: t(guestListErrors[id]) }) : null,
+    body,
+  ].filter(Boolean));
+  fill();
+  return card;
+}
+
+/** One section per granted date, under everything else. */
+function appendGuestLists(dash) {
+  const grants = visibleLists(guestListPage?.grants, Date.now());
+  if (!grants.length) return;
+  dash.append(el("section", { class: "managed full" }, ...grants.map((g) => guestListSection(g))));
+}
+
+/** Access boxes of [venue], ticked for [selected]. */
+function accessBoxes(grant, venue, selected = []) {
+  const list = (Array.isArray(grant.accesses) ? grant.accesses : [])
+    .filter((a) => !venue || String(a.venueName || "").toLowerCase() === String(venue).toLowerCase());
+  return el("div", { class: "chips gl-access" }, ...list.map((a) => el("label", { class: "check-chip" },
+    el("input", { type: "checkbox", value: a.id, checked: selected.includes(a.id) }), el("span", { text: a.name }))));
+}
+
+function tickedAccess(node) {
+  return Array.from(node.querySelectorAll("input[type=checkbox]:checked")).map((c) => c.value);
+}
+
+function openGuestListAdd(grant) {
+  const lists = Array.isArray(grant.lists) ? grant.lists : [];
+  const venues = [...new Set([...lists.map((l) => l.venueName), ...(grant.accesses || []).map((a) => a.venueName)].filter(Boolean))];
+  const NEW = "__new__";
+  const listSelect = el("select", {},
+    ...lists.map((l, i) => el("option", { value: String(i), text: grant.venueName ? l.name : `${l.name} · ${l.venueName}` })),
+    el("option", { value: NEW, text: t("newList") }));
+  const newName = el("input", { maxlength: "80", placeholder: t("listNameLabel") });
+  const venueSelect = el("select", {}, ...venues.map((v) => el("option", { value: v, text: v })));
+  const newBox = el("div", { class: "gl-new" },
+    el("label", {}, el("span", { text: t("listNameLabel") }), newName),
+    grant.venueName ? null : el("label", {}, el("span", { text: t("venueLabel") }), venueSelect));
+  const names = el("textarea", { rows: "4", placeholder: t("guestNamesHint") });
+  const accessHolder = el("div", {});
+  const { msg, say } = formMessage();
+  const send = el("button", { type: "submit", class: "primary", text: t("save") });
+  const current = () => {
+    if (listSelect.value === NEW) return { name: newName.value.trim(), venue: grant.venueName || venueSelect.value };
+    const l = lists[Number(listSelect.value)];
+    return { name: l?.name || "", venue: l?.venueName || grant.venueName || "" };
+  };
+  const refresh = () => {
+    newBox.classList.toggle("hidden", listSelect.value !== NEW);
+    clear(accessHolder);
+    accessHolder.append(accessBoxes(grant, current().venue));
+  };
+  listSelect.addEventListener("change", refresh);
+  venueSelect.addEventListener("change", refresh);
+  if (!lists.length) listSelect.value = NEW;
+  const form = el("form", { novalidate: true },
+    el("label", {}, el("span", { text: t("listLabel") }), listSelect), newBox,
+    el("label", {}, el("span", { text: t("guestNamesLabel") }), names),
+    accessHolder, msg, send);
+  refresh();
+  const close = openSheet(t("addGuests"), form);
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const people = names.value.split("\n").map((s) => s.trim()).filter(Boolean);
+    const target = current();
+    if (!people.length || people.some((p) => cleanName(p) === null)) return say("error", "errName");
+    if (!target.name || !target.venue) return say("error", "guestListNeedsList");
+    send.disabled = true;
+    try {
+      for (const person of people) {
+        await sendGuestListEdit(grant, {
+          action: "ADD", firstName: cleanName(person), listName: target.name, venueName: target.venue, accessIds: tickedAccess(accessHolder),
+        });
+      }
+      close();
+    } catch (error) {
+      console.warn("guest list add failed", error?.code);
+      say("error", "errGeneric");
+      send.disabled = false;
+    }
+  });
+}
+
+function openGuestListEdit(g, grant) {
+  const first = el("input", { value: g.firstName || "", maxlength: "60" });
+  const last = el("input", { value: g.lastName || "", maxlength: "60" });
+  const boxes = accessBoxes(grant, g.venueName, Array.isArray(g.accessIds) ? g.accessIds : []);
+  const { msg, say } = formMessage();
+  const save = el("button", { type: "submit", class: "primary", text: t("save") });
+  const form = el("form", { novalidate: true },
+    el("div", { class: "row-2" },
+      el("label", {}, el("span", { text: t("firstName") }), first),
+      el("label", {}, el("span", { text: t("lastName") }), last)),
+    boxes, msg, save);
+  const close = openSheet(t("editGuest"), form);
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const firstName = first.value.trim() ? cleanName(first.value) : "";
+    const lastName = last.value.trim() ? cleanName(last.value) : "";
+    if (firstName === null || lastName === null) return say("error", "errName");
+    save.disabled = true;
+    try {
+      await sendGuestListEdit(grant, { action: "UPDATE", guestKey: String(g.guestKey || ""), firstName, lastName, accessIds: tickedAccess(boxes) });
+      close();
+    } catch (error) {
+      console.warn("guest list edit failed", error?.code);
+      say("error", "errGeneric");
+      save.disabled = false;
+    }
+  });
+}
+
+function confirmGuestListDelete(g, grant) {
+  const { msg, say } = formMessage();
+  const yes = el("button", { type: "button", class: "danger", text: t("deleteGuest") });
+  const close = openSheet(t("deleteGuest"), el("div", {}, el("p", { text: t("deleteConfirm", { name: guestName(g) }) }), msg, yes));
+  yes.addEventListener("click", async () => {
+    yes.disabled = true;
+    try {
+      await sendGuestListEdit(grant, { action: "DELETE", guestKey: String(g.guestKey || "") });
+      close();
+    } catch (error) {
+      console.warn("guest list delete failed", error?.code);
       say("error", "errGeneric");
       yes.disabled = false;
     }
@@ -2057,6 +2298,7 @@ function renderDashboard() {
   if (activeKind === "guest") {
     renderGuest(dash);
     appendManagedLists(dash);
+    appendGuestLists(dash);
     ensurePhoto();
     return;
   }
@@ -2081,6 +2323,7 @@ function renderDashboard() {
     dash.append(col("profile", "upcoming"), col("benefits", "wallet"), col("history"));
   }
   appendManagedLists(dash);
+  appendGuestLists(dash);
   ensurePhoto();
 }
 

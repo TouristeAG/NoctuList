@@ -341,3 +341,27 @@ export function icon(name, size = 18) {
   span.innerHTML = `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS[name] || ""}</svg>`;
   return span;
 }
+
+const fold = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+/** The full guest list of a grant, by list then by name; [query] matches names, accents ignored. */
+export function guestListGroups(guests, query = "") {
+  const q = fold(query).trim();
+  const byList = new Map();
+  (Array.isArray(guests) ? guests : [])
+    .filter((g) => !q || fold(`${g.firstName} ${g.lastName}`).includes(q))
+    .forEach((g) => {
+      const key = `${g.listName || ""}\u0000${g.venueName || ""}`;
+      if (!byList.has(key)) byList.set(key, { listName: String(g.listName || ""), venueName: String(g.venueName || ""), guests: [] });
+      byList.get(key).guests.push(g);
+    });
+  const groups = [...byList.values()].sort((a, b) => fold(a.listName).localeCompare(fold(b.listName)));
+  groups.forEach((x) => x.guests.sort((a, b) => fold(`${a.firstName} ${a.lastName}`).localeCompare(fold(`${b.firstName} ${b.lastName}`))));
+  return groups;
+}
+
+/** "{entered} entered of {total}". */
+export function guestListCounts(guests) {
+  const list = Array.isArray(guests) ? guests : [];
+  return { entered: list.filter((g) => g.entryUsed === true).length, total: list.length };
+}
