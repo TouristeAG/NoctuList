@@ -2345,7 +2345,6 @@
     <string name="portal_access_email_note">在此修改電子郵件不會變更登入地址。</string>
     <string name="portal_password_title">入口網站存取已開通</string>
     <string name="portal_password_body">請將此密碼交給 %1$s。密碼只會顯示一次，對方可在入口網站中修改。</string>
-    <string name="portal_password_reset_sent">同時已寄送設定個人密碼的郵件至 %1$s。</string>
     <string name="portal_password_copy">複製</string>
     <string name="portal_password_copied">已複製</string>
     <string name="portal_password_sign_in_at">登入網址：%1$s</string>

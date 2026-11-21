@@ -2876,10 +2876,10 @@ class EventManagerViewModel(
     suspend fun checkVolunteerSignupForm(form: VolunteerSignupForm): SignupFormState =
         volunteerPortalService?.signupFormState(form) ?: SignupFormState.Waiting
 
-    suspend fun grantVolunteerPortalAccess(volunteer: Volunteer, languageCode: String): PortalGrantResult {
+    suspend fun grantVolunteerPortalAccess(volunteer: Volunteer): PortalGrantResult {
         if (rejectIfCrudSoftLocked("updating volunteers")) return PortalGrantResult.Failed("LOCKED")
         val service = requirePortalService() ?: return PortalGrantResult.Failed("UNAVAILABLE")
-        return service.grantAccess(tagVolunteerWithActiveOrg(volunteer), languageCode)
+        return service.grantAccess(tagVolunteerWithActiveOrg(volunteer))
     }
 
     /** App language, used for the Firebase e-mails sent to volunteers. */
@@ -2887,17 +2887,16 @@ class EventManagerViewModel(
 
     /**
      * "Add volunteer" with the portal switch on: saves the profile first, then opens the portal
-     * access (account + password shown once + "choose your password" e-mail).
+     * access (account + password shown once, no e-mail).
      */
     suspend fun addVolunteerWithPortalAccess(
         volunteer: Volunteer,
         profilePhotoJpeg: ByteArray?,
-        languageCode: String,
     ): PortalGrantResult {
         if (rejectIfCrudSoftLocked("adding volunteers")) return PortalGrantResult.Failed("LOCKED")
         val created = volunteerPortalHost.createVolunteer(volunteer, profilePhotoJpeg)
             ?: return PortalGrantResult.Failed("SAVE_FAILED")
-        return grantVolunteerPortalAccess(created, languageCode)
+        return grantVolunteerPortalAccess(created)
     }
 
     suspend fun sendVolunteerPortalPasswordReset(volunteer: Volunteer, languageCode: String): Boolean =

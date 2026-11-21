@@ -2350,7 +2350,6 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="portal_access_email_note">यहाँ ईमेल बदलने से साइन-इन का पता नहीं बदलता।</string>
     <string name="portal_password_title">पोर्टल पहुँच बनाई गई</string>
     <string name="portal_password_body">यह पासवर्ड %1$s को दें। यह केवल एक बार दिखेगा। वे इसे पोर्टल पर बदल सकते हैं।</string>
-    <string name="portal_password_reset_sent">अपना पासवर्ड चुनने के लिए एक ईमेल %1$s पर भी भेजा गया।</string>
     <string name="portal_password_copy">कॉपी करें</string>
     <string name="portal_password_copied">कॉपी हुआ</string>
     <string name="portal_password_sign_in_at">यहाँ साइन इन करें: %1$s</string>

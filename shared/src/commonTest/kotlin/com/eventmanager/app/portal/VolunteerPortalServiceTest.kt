@@ -602,24 +602,25 @@ class VolunteerPortalServiceTest {
     }
 
     @Test
-    fun grantingAccessStoresTheUidAndSendsTheSetPasswordMail() = runBlocking {
+    fun grantAccessSendsNoMail() = runBlocking {
         val gateway = FakeGateway()
         val host = FakeHost(listOf(volunteer("V1", "lea@example.org")))
         val auth = FakeAuth(PortalAuthResult.Created("NewUid00000000000000003"))
-        val result = service(gateway, host, auth).grantAccess(host.volunteers.single(), "fr")
+        val result = service(gateway, host, auth).grantAccess(host.volunteers.single())
         val created = assertIs<PortalGrantResult.Created>(result)
         assertTrue(created.password.length >= 12)
-        assertTrue(created.resetSent)
         assertEquals("NewUid00000000000000003", host.volunteers.single().portalUid)
-        assertEquals(listOf("lea@example.org"), auth.resets)
+        assertEquals(0, auth.resets.size)
     }
 
     @Test
     fun grantingAccessToAnExistingAccountWaitsForTheClaim() = runBlocking {
         val gateway = FakeGateway()
         val host = FakeHost(listOf(volunteer("V1", "lea@example.org")))
-        val result = service(gateway, host, FakeAuth(PortalAuthResult.EmailExists)).grantAccess(host.volunteers.single(), "fr")
+        val auth = FakeAuth(PortalAuthResult.EmailExists)
+        val result = service(gateway, host, auth).grantAccess(host.volunteers.single())
         assertIs<PortalGrantResult.ExistingAccount>(result)
+        assertEquals(0, auth.resets.size)
         assertTrue(host.volunteers.single().portalEnabled)
         assertEquals("", host.volunteers.single().portalUid)
     }
@@ -635,7 +636,7 @@ class VolunteerPortalServiceTest {
     fun grantLinksTheGeneratedGoogleAddress() = runBlocking {
         val host = ruleHost(volunteer("V1", "lea@example.org"))
         val result = service(FakeGateway(), host, FakeAuth(PortalAuthResult.Created("NewUid00000000000000003")))
-            .grantAccess(host.volunteers.single(), "fr")
+            .grantAccess(host.volunteers.single())
         assertIs<PortalGrantResult.Created>(result)
         val v = host.volunteers.single()
         assertEquals("NewUid00000000000000003", v.portalUid)
@@ -646,7 +647,7 @@ class VolunteerPortalServiceTest {
     @Test
     fun grantToExistingAccountAlsoLinks() = runBlocking {
         val host = ruleHost(volunteer("V1", "lea@example.org"))
-        val result = service(FakeGateway(), host, FakeAuth(PortalAuthResult.EmailExists)).grantAccess(host.volunteers.single(), "fr")
+        val result = service(FakeGateway(), host, FakeAuth(PortalAuthResult.EmailExists)).grantAccess(host.volunteers.single())
         assertIs<PortalGrantResult.ExistingAccount>(result)
         assertEquals("lea.martin@asso.ch", host.volunteers.single().portalGoogleEmail)
     }
@@ -654,17 +655,17 @@ class VolunteerPortalServiceTest {
     @Test
     fun grantKeepsAnExistingGoogleAddress() = runBlocking {
         val host = ruleHost(volunteer("V1", "lea@example.org").copy(portalGoogleEmail = "lea@asso.ch"))
-        service(FakeGateway(), host, FakeAuth(PortalAuthResult.Created("NewUid00000000000000003"))).grantAccess(host.volunteers.single(), "fr")
+        service(FakeGateway(), host, FakeAuth(PortalAuthResult.Created("NewUid00000000000000003"))).grantAccess(host.volunteers.single())
         assertEquals("lea@asso.ch", host.volunteers.single().portalGoogleEmail)
     }
 
     @Test
     fun noRuleWhenTemplateEmptyOrGoogleOff() = runBlocking {
         val noTemplate = ruleHost(volunteer("V1", "lea@example.org")).apply { googleTemplate = "" }
-        service(FakeGateway(), noTemplate, FakeAuth(PortalAuthResult.Created("NewUid00000000000000003"))).grantAccess(noTemplate.volunteers.single(), "fr")
+        service(FakeGateway(), noTemplate, FakeAuth(PortalAuthResult.Created("NewUid00000000000000003"))).grantAccess(noTemplate.volunteers.single())
         assertEquals("", noTemplate.volunteers.single().portalGoogleEmail)
         val googleOff = ruleHost(volunteer("V1", "lea@example.org")).apply { googleEnabled = false }
-        service(FakeGateway(), googleOff, FakeAuth(PortalAuthResult.Created("NewUid00000000000000003"))).grantAccess(googleOff.volunteers.single(), "fr")
+        service(FakeGateway(), googleOff, FakeAuth(PortalAuthResult.Created("NewUid00000000000000003"))).grantAccess(googleOff.volunteers.single())
         assertEquals("", googleOff.volunteers.single().portalGoogleEmail)
     }
 
@@ -672,12 +673,12 @@ class VolunteerPortalServiceTest {
     fun takenOrUnusableAddressLeavesTheFieldEmpty() = runBlocking {
         val other = volunteer("V2", "other@example.org").copy(portalGoogleEmail = "lea.martin@asso.ch")
         val host = ruleHost(volunteer("V1", "lea@example.org"), other)
-        val result = service(FakeGateway(), host, FakeAuth(PortalAuthResult.Created("NewUid00000000000000003"))).grantAccess(host.volunteers.first(), "fr")
+        val result = service(FakeGateway(), host, FakeAuth(PortalAuthResult.Created("NewUid00000000000000003"))).grantAccess(host.volunteers.first())
         assertIs<PortalGrantResult.Created>(result)
         assertEquals("", host.volunteers.first().portalGoogleEmail)
 
         val noLastName = ruleHost(volunteer("V1", "lea@example.org").copy(lastNameAbbreviation = ""))
-        val second = service(FakeGateway(), noLastName, FakeAuth(PortalAuthResult.Created("NewUid00000000000000003"))).grantAccess(noLastName.volunteers.single(), "fr")
+        val second = service(FakeGateway(), noLastName, FakeAuth(PortalAuthResult.Created("NewUid00000000000000003"))).grantAccess(noLastName.volunteers.single())
         assertIs<PortalGrantResult.Created>(second)
         assertEquals("", noLastName.volunteers.single().portalGoogleEmail)
     }
@@ -689,7 +690,7 @@ class VolunteerPortalServiceTest {
             googleDomains = emptyList()
             googleTemplate = "{prénom}.{nom}@gmail.com"
         }
-        service(FakeGateway(), host, FakeAuth(PortalAuthResult.Created("NewUid00000000000000003"))).grantAccess(host.volunteers.single(), "fr")
+        service(FakeGateway(), host, FakeAuth(PortalAuthResult.Created("NewUid00000000000000003"))).grantAccess(host.volunteers.single())
         assertEquals("", host.volunteers.single().portalGoogleEmail)
     }
 

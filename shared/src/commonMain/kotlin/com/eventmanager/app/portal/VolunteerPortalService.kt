@@ -74,10 +74,10 @@ interface VolunteerPortalHost {
 
 /** Outcome of "open the portal for this volunteer" in the admin UI. */
 sealed class PortalGrantResult {
-    /** New account; [password] is shown once. A "set your password" mail was also sent if [resetSent]. */
-    data class Created(val password: String, val resetSent: Boolean) : PortalGrantResult()
-    /** An account already existed for the address: a reset link was sent, linking happens at sign-in. */
-    data class ExistingAccount(val resetSent: Boolean) : PortalGrantResult()
+    /** New account; [password] is shown once. No e-mail is sent. */
+    data class Created(val password: String) : PortalGrantResult()
+    /** An account already existed for the address: linking happens at sign-in. No e-mail is sent. */
+    data object ExistingAccount : PortalGrantResult()
     data class Failed(val code: String) : PortalGrantResult()
 }
 
@@ -701,7 +701,8 @@ class VolunteerPortalService(
 
     // region Admin actions
 
-    suspend fun grantAccess(volunteer: Volunteer, languageCode: String): PortalGrantResult {
+    /** Opens the access without e-mailing the volunteer: the admin sends the reset link from the dialog if wanted. */
+    suspend fun grantAccess(volunteer: Volunteer): PortalGrantResult {
         val email = volunteer.email.trim()
         if (PortalInputValidator.cleanEmail(email) == null) return PortalGrantResult.Failed("INVALID_EMAIL")
         val client = authClientFactory(host.apiKey())
@@ -713,8 +714,7 @@ class VolunteerPortalService(
                 )
                 if (!saved) return PortalGrantResult.Failed("SAVE_FAILED")
                 applyGoogleAddressRule(volunteer.id)
-                val reset = client.sendPasswordReset(email, languageCode) is PortalAuthResult.Sent
-                PortalGrantResult.Created(password, reset)
+                PortalGrantResult.Created(password)
             }
             PortalAuthResult.EmailExists -> {
                 val saved = host.saveVolunteer(
@@ -722,8 +722,7 @@ class VolunteerPortalService(
                 )
                 if (!saved) return PortalGrantResult.Failed("SAVE_FAILED")
                 applyGoogleAddressRule(volunteer.id)
-                val reset = client.sendPasswordReset(email, languageCode) is PortalAuthResult.Sent
-                PortalGrantResult.ExistingAccount(reset)
+                PortalGrantResult.ExistingAccount
             }
             is PortalAuthResult.Failed -> PortalGrantResult.Failed(created.code)
             PortalAuthResult.Sent -> PortalGrantResult.Failed("UNEXPECTED")

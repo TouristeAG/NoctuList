@@ -2358,7 +2358,6 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="portal_access_email_note">Changing the e-mail here does not change the address used to sign in.</string>
     <string name="portal_password_title">Portal access created</string>
     <string name="portal_password_body">Give this password to %1$s. It is shown only once. They can change it on the portal.</string>
-    <string name="portal_password_reset_sent">An e-mail to choose their own password was also sent to %1$s.</string>
     <string name="portal_password_copy">Copy</string>
     <string name="portal_password_copied">Copied</string>
     <string name="portal_password_sign_in_at">Sign in at: %1$s</string>

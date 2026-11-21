@@ -2350,7 +2350,6 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="portal_access_email_note">Mutatio inscriptionis hic inscriptionem ingressus non mutat.</string>
     <string name="portal_password_title">Aditus creatus</string>
     <string name="portal_password_body">Hanc tesseram %1$s trade. Semel tantum ostenditur. In porta mutari potest.</string>
-    <string name="portal_password_reset_sent">Epistula ad tesseram propriam eligendam etiam ad %1$s missa est.</string>
     <string name="portal_password_copy">Exscribe</string>
     <string name="portal_password_copied">Exscriptum</string>
     <string name="portal_password_sign_in_at">Ingredere hic: %1$s</string>
