@@ -505,9 +505,12 @@ class FirestoreSyncIntegrityTest {
             portalGoogleEmail = "ada@assoc.org",
             portalGoogleUid = "google-uid-1",
             portalGoogleLinkedBy = "ADMIN",
+            temporaryPortalEmail = "artist@example.org",
         )
         val decrypted = com.eventmanager.app.data.security.crypto.SensitiveFieldCodec
             .decryptGuestMap(gateway.guestToMap(guest), "org-a")
+        assertEquals("artist@example.org", decrypted["temporaryPortalEmail"])
+        assertEquals("", Guest(name = "B", invitations = 1, venueName = "Main").temporaryPortalEmail)
         assertEquals(true, decrypted["portalEnabled"])
         assertEquals("portal-uid-1", decrypted["portalUid"])
         assertEquals("ada@assoc.org", decrypted["portalGoogleEmail"])
@@ -532,6 +535,7 @@ class FirestoreSyncIntegrityTest {
             headers.forEach { header ->
                 assertFalse(header.contains("portal", ignoreCase = true), header)
                 assertFalse(header.contains("google", ignoreCase = true), header)
+                assertFalse(header.contains("portalemail", ignoreCase = true), header)
             }
         }
     }

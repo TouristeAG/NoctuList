@@ -637,6 +637,7 @@ class GitLiveFirestoreGateway(
             put("temporaryContactPhone", guest.temporaryContactPhone)
             put("temporaryVenueName", guest.temporaryVenueName)
             put("temporaryContactEmail", guest.temporaryContactEmail)
+            put("temporaryPortalEmail", guest.temporaryPortalEmail)
             put("temporaryAccessIds", guest.temporaryAccessIds)
             put("temporaryEntryValidatedAt", guest.temporaryEntryValidatedAt)
             put("temporaryEntryValidatedBy", guest.temporaryEntryValidatedBy)

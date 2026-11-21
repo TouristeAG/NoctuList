@@ -60,7 +60,11 @@ import com.eventmanager.app.portal.PortalHolderKind
 import com.eventmanager.app.portal.PortalMailTemplate
 import com.eventmanager.app.portal.PortalQrMailer
 import com.eventmanager.app.portal.PortalServerStatus
+import com.eventmanager.app.portal.PortalAuthClient
+import com.eventmanager.app.portal.PortalAuthResult
 import com.eventmanager.app.portal.SignupFormState
+import com.eventmanager.app.portal.TemporaryGroupAccessResult
+import com.eventmanager.app.portal.TemporaryGuestPortalAccess
 import com.eventmanager.app.portal.VolunteerPortalHost
 import com.eventmanager.app.portal.VolunteerPortalService
 import com.eventmanager.app.portal.VolunteerSignupForm
@@ -3016,6 +3020,41 @@ class EventManagerViewModel(
 
     suspend fun sendGuestPortalPasswordReset(guest: Guest, languageCode: String): Boolean =
         requirePortalService()?.sendGuestPasswordReset(guest, languageCode) ?: false
+
+    private fun temporaryGroupAccess(): TemporaryGuestPortalAccess? {
+        val service = requirePortalService() ?: return null
+        return TemporaryGuestPortalAccess(
+            orgId = volunteerPortalServiceOrg,
+            host = volunteerPortalHost,
+            authClientFactory = { PortalAuthClient(it) },
+            republish = { service.republish() },
+        )
+    }
+
+    /** Opens the web space of the guest's whole temporary group. Sends no e-mail. */
+    suspend fun openTemporaryGroupPortal(guest: Guest): TemporaryGroupAccessResult {
+        if (rejectIfCrudSoftLocked("updating guests")) return TemporaryGroupAccessResult.Failed("LOCKED")
+        val access = temporaryGroupAccess() ?: return TemporaryGroupAccessResult.Failed("PORTAL_OFF")
+        return access.open(temporaryGuestBatch(guest))
+    }
+
+    suspend fun closeTemporaryGroupPortal(guest: Guest): Boolean {
+        if (rejectIfCrudSoftLocked("updating guests")) return false
+        val access = temporaryGroupAccess() ?: return false
+        return access.close(temporaryGuestBatch(guest))
+    }
+
+    /** Address the group's account was opened for, or null when the space is closed. */
+    fun temporaryGroupPortalEmail(guest: Guest): String? =
+        temporaryGuestBatch(guest).filter { it.portalEnabled }
+            .map { it.temporaryPortalEmail.trim() }.firstOrNull { it.isNotEmpty() }
+
+    /** Sends the Firebase "set your password" mail to the group's account address, on the admin's request only. */
+    suspend fun sendTemporaryGroupPasswordReset(guest: Guest, languageCode: String): Boolean {
+        if (requirePortalService() == null) return false
+        val email = temporaryGroupPortalEmail(guest) ?: return false
+        return PortalAuthClient(volunteerPortalHost.apiKey()).sendPasswordReset(email, languageCode) is PortalAuthResult.Sent
+    }
 
     suspend fun revokeGuestPortalAccess(guest: Guest): Boolean {
         if (rejectIfCrudSoftLocked("updating guests")) return false

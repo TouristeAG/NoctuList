@@ -41,6 +41,8 @@ data class Guest(
     val temporaryVenueName: String = "",
     /** Single artist/manager mail receiving the whole batch. Firebase-only; never synced to Google Sheets. */
     val temporaryContactEmail: String = "",
+    /** Address the temporary group's portal account was opened for. Firebase-only; never synced to Google Sheets. */
+    val temporaryPortalEmail: String = "",
     /** Comma-separated [VenueAccess] IDs. Firebase-only; never synced to Google Sheets. */
     val temporaryAccessIds: String = "",
     /** Epoch millis of the one-shot entry validation; 0 when unused. Firebase-only. */

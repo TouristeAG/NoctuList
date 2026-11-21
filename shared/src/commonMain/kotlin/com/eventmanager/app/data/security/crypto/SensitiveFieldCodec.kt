@@ -32,6 +32,7 @@ object SensitiveFieldCodec {
             phoneNumber = crypto.encrypt(guest.phoneNumber, orgId),
             temporaryContactPhone = crypto.encrypt(guest.temporaryContactPhone, orgId),
             temporaryContactEmail = crypto.encrypt(guest.temporaryContactEmail, orgId),
+            temporaryPortalEmail = crypto.encrypt(guest.temporaryPortalEmail, orgId),
             notes = crypto.encrypt(guest.notes, orgId),
             nfcCardUid = crypto.encrypt(guest.nfcCardUid, orgId),
             nfcCardUidHash = nfcLookupHash(guest.nfcCardUid, orgId),
@@ -46,6 +47,7 @@ object SensitiveFieldCodec {
             phoneNumber = crypto.decrypt(guest.phoneNumber, orgId),
             temporaryContactPhone = crypto.decrypt(guest.temporaryContactPhone, orgId),
             temporaryContactEmail = crypto.decrypt(guest.temporaryContactEmail, orgId),
+            temporaryPortalEmail = crypto.decrypt(guest.temporaryPortalEmail, orgId),
             notes = crypto.decrypt(guest.notes, orgId),
             nfcCardUid = crypto.decrypt(guest.nfcCardUid, orgId),
         )
@@ -133,6 +135,9 @@ object SensitiveFieldCodec {
         stringField(data, "temporaryContactEmail")?.let {
             m["temporaryContactEmail_enc"] = crypto.encrypt(it, orgId); m.remove("temporaryContactEmail")
         }
+        stringField(data, "temporaryPortalEmail")?.let {
+            m["temporaryPortalEmail_enc"] = crypto.encrypt(it, orgId); m.remove("temporaryPortalEmail")
+        }
         stringField(data, "notes")?.let { m["notes_enc"] = crypto.encrypt(it, orgId); m.remove("notes") }
         stringField(data, "nfcCardUid")?.let {
             m["nfcCardUid_enc"] = crypto.encrypt(it, orgId)
@@ -149,6 +154,7 @@ object SensitiveFieldCodec {
         encOrPlain(m, "phone_enc", "phone", orgId)
         encOrPlain(m, "temporaryContactPhone_enc", "temporaryContactPhone", orgId)
         encOrPlain(m, "temporaryContactEmail_enc", "temporaryContactEmail", orgId)
+        encOrPlain(m, "temporaryPortalEmail_enc", "temporaryPortalEmail", orgId)
         encOrPlain(m, "notes_enc", "notes", orgId)
         encOrPlain(m, "nfcCardUid_enc", "nfcCardUid", orgId)
         return m

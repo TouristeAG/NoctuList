@@ -188,6 +188,7 @@ object FirestoreChangeApplier {
             temporaryContactPhone = stringOf(decrypted["temporaryContactPhone"]).orEmpty(),
             temporaryVenueName = stringOf(decrypted["temporaryVenueName"]).orEmpty(),
             temporaryContactEmail = stringOf(decrypted["temporaryContactEmail"]).orEmpty(),
+            temporaryPortalEmail = stringOf(decrypted["temporaryPortalEmail"]).orEmpty(),
             temporaryAccessIds = stringOf(decrypted["temporaryAccessIds"]).orEmpty(),
             temporaryEntryValidatedAt = longOf(decrypted["temporaryEntryValidatedAt"]) ?: 0L,
             temporaryEntryValidatedBy = stringOf(decrypted["temporaryEntryValidatedBy"]).orEmpty(),
