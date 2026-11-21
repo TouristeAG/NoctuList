@@ -24,7 +24,9 @@ test("threeProfilesUseTheLastChoiceElseTheFirst", () => {
 
 test("kindsReadPerSession", () => {
   assert.deepEqual(profileKinds({ google: false, verified: true }), ["volunteer", "guest", "temporary"]);
-  assert.deepEqual(profileKinds({ google: true, verified: true }), ["volunteer", "guest"]);
+  // A Google session reads the temporary lists of its account (rules v18).
+  assert.deepEqual(profileKinds({ google: true, verified: true }), ["volunteer", "guest", "temporary"]);
+  assert.deepEqual(profileKinds({ google: true }), ["volunteer", "guest", "temporary"]);
   assert.deepEqual(profileKinds({ google: false, verified: false }), ["temporary"]);
 });
 

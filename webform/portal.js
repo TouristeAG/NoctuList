@@ -23,6 +23,7 @@ import {
   updatePassword,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {
+  collection,
   connectFirestoreEmulator,
   doc,
   getDoc,
@@ -39,12 +40,16 @@ import {
   uploadBytes,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 import { EMULATOR_PORTS, isLocalDev, loadConfig, parseOrgPath } from "./firebase-env.js?v=portal-2";
-import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=guest-1";
-import { cachedQrEntries, clearQr, closeQrDialog, isStaleFor, missingIsFinal, openQrDialog, readCachedQr, storeQr } from "./portal-qr.js?v=guest-1";
+import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=guest-2";
+import { cachedQrEntries, clearQr, closeQrDialog, isStaleFor, missingIsFinal, openQrDialog, readCachedQr, storeQr } from "./portal-qr.js?v=guest-2";
 import {
   EMAIL_RE,
   authErrorKey,
   chooseProfile,
+  inviteRemaining,
+  profilesLayout,
+  qrDialogClosesFor,
+  visibleLists,
   claimCanAsk,
   claimReloadKey,
   claimRetryDelays,
@@ -62,15 +67,17 @@ import {
   profileStoreKey,
   profilesSettled,
   toJpeg,
-} from "./portal-common.js?v=guest-1";
+} from "./portal-common.js?v=guest-2";
 
 const $ = (id) => document.getElementById(id);
 const VIEWS = ["view-loading", "view-disabled", "view-signin", "view-reset", "view-verify", "view-pending", "view-google", "view-dash", "view-offline"];
 const REMEMBER_KEY = "nl-portal-remember";
 const LAST_ORG_KEY = "nl-portal-org";
 const IDLE_LIMIT_MS = 30 * 60 * 1000;
-const DELAYS_MIN = { PROFILE: 1, QR_EMAIL: 10, GUEST_PROFILE: 1, GUEST_QR_EMAIL: 10, CLAIM: 1, GOOGLE_LINK: 1, GOOGLE_UNLINK: 1 };
-const REQUEST_TYPES = ["PROFILE", "QR_EMAIL", "GUEST_PROFILE", "GUEST_QR_EMAIL", "CLAIM", "GOOGLE_LINK", "GOOGLE_UNLINK"];
+const DELAYS_MIN = { PROFILE: 1, QR_EMAIL: 10, GUEST_PROFILE: 1, GUEST_QR_EMAIL: 10, CLAIM: 1, GOOGLE_LINK: 1, GOOGLE_UNLINK: 1, TEMP_GUEST_NAME: 1 };
+const REQUEST_TYPES = ["PROFILE", "QR_EMAIL", "GUEST_PROFILE", "GUEST_QR_EMAIL", "CLAIM", "GOOGLE_LINK", "GOOGLE_UNLINK", "TEMP_GUEST_NAME"];
+/** The only request an unverified session of a list account may send (rules v18). */
+const UNVERIFIED_REQUEST_TYPES = ["TEMP_GUEST_NAME"];
 /** The published page and QR document of each profile an account may have. */
 const PAGES = {
   volunteer: { page: "volunteerPortal", qr: "volunteerPortalQr" },
@@ -753,9 +760,20 @@ function showVerify() {
   showView("view-verify");
 }
 
+/** Profile whose code the QR dialog shows, so only that profile's QR going away closes it. */
+let qrShownKind = null;
+/** Kinds whose QR document is being listened to. */
+let qrWatched = {};
+
+function showQr(kind, args) {
+  qrShownKind = kind;
+  openQrDialog(args);
+}
+
 function resetProfiles() {
   pages = {};
   qrDocs = {};
+  qrWatched = {};
   activeKind = null;
   projection = null;
   qrDoc = null;
@@ -775,11 +793,12 @@ function watchProfiles(kinds) {
   }, OFFLINE_FALLBACK_MS);
   kinds.forEach((kind) => {
     watchPage(kind, uidAtStart);
+    qrWatched[kind] = true;
     watchQr(kind, uidAtStart);
   });
-  // Requests need a verified address or a Google link; a temporary group page sends none.
-  if (!kinds.includes("volunteer")) return;
-  REQUEST_TYPES.forEach((type) => {
+  // Requests need a verified address or a Google link, except a name change on a list account.
+  const types = kinds.includes("volunteer") ? REQUEST_TYPES : UNVERIFIED_REQUEST_TYPES;
+  types.forEach((type) => {
     const ref = doc(db, "orgs", path.orgId, "portalRequests", `${portalUid}_${type}`);
     unsubscribers.push(onSnapshot(ref, (snap) => {
       requests[type] = snap.exists() ? snap.data() : null;
@@ -809,6 +828,11 @@ function watchPage(kind, uidAtStart) {
     if (!data || typeof data !== "object") return setPage(kind, "absent");
     setPage(kind, "present", data, Number(snap.data().updatedAt || 0));
     storeKindQr(kind, uidAtStart);
+    // A page read again after a claim gets its QR listener back only once it is readable.
+    if (!qrWatched[kind]) {
+      qrWatched[kind] = true;
+      watchQr(kind, uidAtStart);
+    }
   }, (error) => {
     console.warn(`${kind} page unavailable`, error?.code);
     // The temporary page is refused, not missing, once it is gone or past its end.
@@ -821,7 +845,7 @@ function watchQr(kind, uidAtStart) {
   const drop = () => {
     qrDocs[kind] = null;
     clearQr(path.orgId, kind, uidAtStart);
-    closeQrDialog();
+    if (qrDialogClosesFor(qrShownKind, kind)) closeQrDialog();
     render();
   };
   unsubscribers.push(onSnapshot(ref, (snap) => {
@@ -835,7 +859,10 @@ function watchQr(kind, uidAtStart) {
       drop();
     }
   }, (error) => {
-    if (String(error?.code).includes("permission-denied")) drop();
+    if (String(error?.code).includes("permission-denied")) {
+      qrWatched[kind] = false;
+      drop();
+    }
   }));
 }
 
@@ -892,7 +919,8 @@ function showProfiles() {
   clearTimeout(offlineTimer);
   offlineTimer = null;
   // The profile on screen stays while it exists; the stored choice only decides the first one.
-  if (!available.includes(activeKind)) activeKind = chooseProfile(available, storedProfile());
+  const choices = profileChoices(available);
+  if (!choices.includes(activeKind)) activeKind = chooseProfile(choices, storedProfile());
   render();
   renderGoogleBox();
   showView("view-dash");
@@ -936,8 +964,8 @@ function reloadAfterClaim(uid) {
     Object.entries(pages).forEach(([kind, page]) => {
       if (page.state !== "denied") return;
       page.state = "loading";
+      // Its QR is listened to again by watchPage once the page reads (a refused QR would close the dialog).
       watchPage(kind, uid);
-      watchQr(kind, uid);
     });
     arm(step + 1);
   };
@@ -1141,7 +1169,7 @@ function profileTile() {
     qr.append(el("button", {
       type: "button",
       class: "primary qr-open",
-      onclick: () => openQrDialog(shown),
+      onclick: () => showQr(activeKind, shown),
     }, icon("qr", 18), el("span", { text: t("myQr") })));
   }
   if (!p.qrEmailAllowed) {
@@ -1361,9 +1389,129 @@ function guestBenefitsTile() {
   return card;
 }
 
-// ---------- Temporary groups page (read-only) ----------
+// ---------- Temporary guest lists (spec 2026-11-21 §6) ----------
 
-function groupTile(group, association, items) {
+/** A window built on demand, like "My account": title, body, closed and removed by its button. */
+function openSheet(title, body) {
+  const close = el("button", { type: "button", class: "icon-btn", "aria-label": t("close"), text: "✕" });
+  const dialog = el("dialog", { class: "sheet" },
+    el("div", { class: "sheet-head" }, el("h2", { text: title }), close),
+    el("div", { class: "sheet-body" }, body));
+  const done = () => {
+    if (typeof dialog.close === "function") dialog.close();
+    dialog.remove();
+  };
+  close.addEventListener("click", done);
+  dialog.addEventListener("close", () => dialog.remove());
+  document.body.append(dialog);
+  if (typeof dialog.showModal === "function") dialog.showModal();
+  else dialog.setAttribute("open", "");
+  return done;
+}
+
+function guestName(g) {
+  return `${g.firstName || ""} ${g.lastName || ""}`.trim();
+}
+
+/** Small labelled block of a guest card ("Access", "Balance", …). */
+function guestModule(label, ...lines) {
+  const content = lines.filter(Boolean);
+  if (!content.length) return null;
+  return el("div", { class: "guest-module" },
+    el("div", { class: "module-label", text: label }),
+    ...content.map((line) => (line instanceof Node ? line : el("div", { class: "module-value", text: line }))));
+}
+
+function badge(text, kind = "") {
+  return el("span", { class: `guest-badge${kind ? ` ${kind}` : ""}`, text });
+}
+
+/** Waiting answers of a list, by guest key (removals) and as plain names (additions). */
+function pendingOf(group) {
+  const list = Array.isArray(group.pending) ? group.pending : [];
+  const removing = new Set();
+  const adds = [];
+  list.forEach((p) => {
+    const names = Array.isArray(p.names) ? p.names.map(String) : [];
+    if (p.kind === "REMOVE" && p.status === "PENDING_REVIEW") (p.guestKeys || []).forEach((k) => removing.add(String(k)));
+    if (p.kind !== "REMOVE") names.forEach((name) => adds.push({ name, status: String(p.status || "") }));
+  });
+  return { removing, adds };
+}
+
+function guestCard(g, group, ctx) {
+  const name = guestName(g);
+  const key = String(g.guestKey || "");
+  const removing = ctx.pending.removing.has(key);
+  const used = g.entryUsed === true;
+  const item = g.qr === true ? ctx.items[key] : null;
+  const date = Number(group.eventDate) || 0;
+  const head = el("div", { class: "guest-head" },
+    el("div", { class: "guest-name", text: name || "-" }),
+    removing ? badge(t("removalPending"), "wait") : null,
+    !used && !removing ? el("button", {
+      type: "button",
+      class: "mini-btn",
+      onclick: () => openNameDialog(g),
+    }, icon("edit", 14), el("span", { text: t("edit") })) : null);
+  const accessNames = Array.isArray(g.accessNames) ? g.accessNames.map(String).filter(Boolean) : [];
+  const phone = String(g.emergencyPhone || "").trim();
+  let qrModule;
+  if (used) {
+    qrModule = el("div", { class: "guest-module qr-module" }, badge(t("entryUsed"), "used"));
+  } else if (item) {
+    qrModule = el("div", { class: "guest-module qr-module" }, el("button", {
+      type: "button",
+      class: "primary qr-open",
+      onclick: () => showQr("temporary", { payload: item.payload, name: item.name || name, association: ctx.association }),
+    }, icon("qr", 18), el("span", { text: t("qrShort") })));
+  }
+  const modules = el("div", { class: "guest-modules" },
+    guestModule(t("access"),
+      date ? fmtDate(date, { weekday: "short", day: "numeric", month: "long" }) : "",
+      [String(group.venueName || "").trim(), ...accessNames].filter(Boolean).join(" · ")),
+    g.wallet ? guestModule(t("balance"), el("div", { class: "module-value big", text: fmtMoney(g.wallet.balance, g.wallet.currency) })) : null,
+    phone ? guestModule(t("emergencyContactLabel"), phone) : null,
+    qrModule);
+  const card = el("li", { class: "guest-card" }, head, modules);
+  if (group.invite && !used && !removing) {
+    card.append(el("button", {
+      type: "button",
+      class: "link-btn danger-text",
+      onclick: () => confirmRemove(g, group),
+      text: t("removeGuest"),
+    }));
+  }
+  return card;
+}
+
+function pendingCard(entry) {
+  const refused = entry.status === "REJECTED";
+  return el("li", { class: `guest-card pending${refused ? " refused" : ""}` },
+    el("div", { class: "guest-head" },
+      el("div", { class: "guest-name", text: entry.name || "-" }),
+      badge(refused ? t("inviteRefused") : t("invitePending"), refused ? "refused" : "wait")));
+}
+
+function inviteBlock(group) {
+  const invite = group.invite;
+  if (!invite) return null;
+  const accesses = Array.isArray(invite.accesses) ? invite.accesses : [];
+  return el("div", { class: "invite-block" },
+    el("div", { class: "invite-count", text: t("placesLeft", { n: Number(invite.remaining || 0), max: Number(invite.maxGuests || 0) }) }),
+    accesses.length ? el("div", { class: "chips" }, ...accesses.map((a) => el("span", {
+      class: "perk",
+      text: Number(a.max) > 0 ? t("accessLeft", { name: a.name, n: Number(a.remaining || 0), max: Number(a.max) }) : String(a.name || ""),
+    }))) : null,
+    el("button", {
+      type: "button",
+      class: "tonal",
+      disabled: Number(invite.remaining || 0) <= 0,
+      onclick: () => openInviteDialog(group),
+    }, icon("plus", 16), el("span", { text: t("addGuests") })));
+}
+
+function listCard(group, association, items) {
   const date = Number(group.eventDate) || 0;
   const artist = String(group.artistName || "").trim();
   const venue = String(group.venueName || "").trim();
@@ -1373,34 +1521,34 @@ function groupTile(group, association, items) {
     class: "group-meta",
     text: [when, artist ? venue : ""].filter(Boolean).join(" · "),
   }));
+  const ctx = { association, items, pending: pendingOf(group) };
+  const block = inviteBlock(group);
+  if (block) card.append(block);
   const guests = Array.isArray(group.guests) ? group.guests : [];
-  const ul = el("ul", { class: "list guest-list" });
-  guests.forEach((g) => {
-    const name = `${g.firstName || ""} ${g.lastName || ""}`.trim();
-    const phone = String(g.emergencyPhone || "").trim();
-    const meta = [
-      phone ? t("emergencyContact", { phone }) : "",
-      g.wallet ? `${t("balance")} ${fmtMoney(g.wallet.balance, g.wallet.currency)}` : "",
-    ].filter(Boolean).join(" · ");
-    const item = g.qr === true ? items[String(g.guestKey || "")] : null;
-    let action = null;
-    if (g.entryUsed === true) {
-      action = el("span", { class: "entry-used", text: t("entryUsed") });
-    } else if (item) {
-      action = el("button", {
-        type: "button",
-        class: "mini-btn qr-mini",
-        onclick: () => openQrDialog({ payload: item.payload, name: item.name || name, association }),
-      }, icon("qr", 14), el("span", { text: t("qrShort") }));
-    }
-    ul.append(el("li", {},
-      el("div", { class: "grow" },
-        el("div", { class: "title", text: name || "-" }),
-        meta ? el("div", { class: "meta-line", text: meta }) : null),
-      action));
-  });
-  card.append(ul);
+  const ul = el("ul", { class: "guest-cards" },
+    ...guests.map((g) => guestCard(g, group, ctx)),
+    ...ctx.pending.adds.map((entry) => pendingCard(entry)));
+  if (!guests.length && !ctx.pending.adds.length) card.append(el("p", { class: "empty", text: t("noGuestsYet") }));
+  else card.append(ul);
   return card;
+}
+
+function listCards() {
+  const p = pages.temporary?.data;
+  if (!p) return [];
+  const association = String(p.association || "");
+  const items = qrDocs.temporary?.items || {};
+  return visibleLists(p.groups, Date.now()).map((g) => listCard(g, association, items));
+}
+
+/** "Guests I manage", under a volunteer or permanent guest profile. */
+function appendManagedLists(dash) {
+  if (pages.temporary?.state !== "present") return;
+  const cards = listCards();
+  if (!cards.length) return;
+  dash.append(el("section", { class: "managed full" },
+    el("h2", { class: "managed-title", text: t("managedTitle") }),
+    el("div", { class: "managed-lists" }, ...cards)));
 }
 
 function renderGroups() {
@@ -1410,30 +1558,184 @@ function renderGroups() {
   $("dash-hello").textContent = t("profileTemporary");
   $("dash-sub").textContent = [association, String(p.contactEmail || ""), projectionUpdatedAt ? t("updatedAgo", { ago: ago(projectionUpdatedAt) }) : ""]
     .filter(Boolean).join(" · ");
-  const now = Date.now();
-  const groups = (Array.isArray(p.groups) ? p.groups : [])
-    .filter((g) => !g.endsAt || Number(g.endsAt) > now)
-    .sort((a, b) => Number(a.eventDate) - Number(b.eventDate));
-  const items = qrDocs.temporary?.items || {};
+  const cards = listCards();
   const dash = $("dash");
   clear(dash);
-  if (!groups.length) {
+  if (!cards.length) {
     dash.className = "dash cols-1";
     dash.append(el("section", { class: "card tile" }, el("p", { class: "empty", text: t("noGroups") })));
     return;
   }
-  const columns = Math.min(layoutColumns(), groups.length);
+  const columns = Math.min(layoutColumns(), 2, cards.length);
   dash.className = `dash cols-${columns}`;
   const cols = Array.from({ length: columns }, () => el("div", { class: "col" }));
-  groups.forEach((g, i) => cols[i % columns].append(groupTile(g, association, items)));
+  cards.forEach((c, i) => cols[i % columns].append(c));
   dash.append(...cols);
 }
 
+/** Message line of a window form. */
+function formMessage() {
+  const msg = el("p", { class: "hidden", role: "status" });
+  const say = (cls, key, params) => {
+    msg.className = cls;
+    msg.textContent = t(key, params);
+  };
+  return { msg, say };
+}
+
+/** First and last name of one guest: TEMP_GUEST_NAME, answered by the server or a device. */
+function openNameDialog(g) {
+  const first = el("input", { value: g.firstName || "", maxlength: "60", autocomplete: "off" });
+  const last = el("input", { value: g.lastName || "", maxlength: "60", autocomplete: "off" });
+  const { msg, say } = formMessage();
+  const save = el("button", { type: "submit", class: "primary", text: t("save") });
+  const form = el("form", { novalidate: true },
+    el("div", { class: "row-2" },
+      el("label", {}, el("span", { text: t("firstName") }), first),
+      el("label", {}, el("span", { text: t("lastName") }), last)),
+    msg,
+    save);
+  const close = openSheet(t("editName"), form);
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const raw = [first.value.trim(), last.value.trim()];
+    const firstName = raw[0] ? cleanName(raw[0]) : "";
+    const lastName = raw[1] ? cleanName(raw[1]) : "";
+    if (firstName === null || lastName === null || (!firstName && !lastName)) return say("error", "errName");
+    const type = "TEMP_GUEST_NAME";
+    if (isWaiting(requests[type])) return say("error", "profilePending");
+    if (requestCooldownMinutes(type) > 0) return say("error", "profileWait");
+    save.disabled = true;
+    try {
+      await sendRequest(type, { guestKey: String(g.guestKey || ""), firstName, lastName });
+      say("success", "nameSent");
+      setTimeout(close, 1200);
+    } catch (error) {
+      console.warn("name request failed", error?.code);
+      say("error", String(error?.code).includes("permission-denied") ? "profileWait" : "errGeneric");
+    } finally {
+      save.disabled = false;
+    }
+  });
+}
+
+/** Common fields of an answer, copied from the template as the rules compare them. */
+async function inviteBase(group) {
+  const formId = String(group.invite?.formId || "");
+  const snap = await getDoc(doc(db, "orgs", path.orgId, "guestForms", formId));
+  if (!snap.exists()) throw Object.assign(new Error("template missing"), { code: "not-found" });
+  const tpl = snap.data();
+  const ref = doc(collection(db, "orgs", path.orgId, "guestForms"));
+  const now = Date.now();
+  return {
+    ref,
+    data: {
+      formId: ref.id,
+      parentFormId: formId,
+      portalUid: String(tpl.portalUid || ""),
+      status: "PENDING_REVIEW",
+      venueName: tpl.venueName,
+      eventName: tpl.eventName,
+      eventDateMillis: tpl.eventDateMillis,
+      artistName: tpl.artistName,
+      offeredAccessIds: tpl.offeredAccessIds,
+      maxGuests: tpl.maxGuests,
+      expiresAtMillis: tpl.expiresAtMillis,
+      submittedAt: now,
+      lastModified: now,
+    },
+  };
+}
+
+/** One name per line, accesses to tick per person; sent for review like a guest form answer. */
+function openInviteDialog(group) {
+  const invite = group.invite;
+  const accesses = Array.isArray(invite?.accesses) ? invite.accesses : [];
+  const rows = el("div", { class: "invite-rows" });
+  const { msg, say } = formMessage();
+  const left = el("p", { class: "hint" });
+  const draft = () => Array.from(rows.querySelectorAll(".invite-row")).map((row) => ({
+    name: row.querySelector("input[type=text]").value.trim(),
+    access: Array.from(row.querySelectorAll("input[type=checkbox]:checked")).map((c) => c.value),
+  })).filter((p) => p.name);
+  const refresh = () => {
+    const r = inviteRemaining(invite, draft());
+    left.textContent = t("placesLeft", { n: Math.max(r.remaining, 0), max: Number(invite?.maxGuests || 0) });
+    return r;
+  };
+  const addRow = () => {
+    const row = el("div", { class: "invite-row" },
+      el("input", { type: "text", maxlength: "60", autocomplete: "off", "aria-label": t("guestName"), placeholder: t("guestName") }),
+      accesses.length ? el("div", { class: "chips" }, ...accesses.map((a) => el("label", { class: "check-chip" },
+        el("input", { type: "checkbox", value: a.id }), el("span", { text: a.name })))) : null);
+    row.addEventListener("input", refresh);
+    row.addEventListener("change", refresh);
+    rows.append(row);
+    row.querySelector("input").focus();
+  };
+  const more = el("button", { type: "button", class: "ghost", onclick: addRow, text: t("addRow") });
+  const send = el("button", { type: "submit", class: "primary", text: t("sendForReview") });
+  const form = el("form", { novalidate: true }, rows, more, left, msg, send);
+  const close = openSheet(t("addGuests"), form);
+  addRow();
+  refresh();
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const people = draft();
+    if (!people.length) return say("error", "errName");
+    if (people.some((p) => cleanName(p.name) === null)) return say("error", "errName");
+    if (!refresh().ok) return say("error", "invitesFull");
+    send.disabled = true;
+    try {
+      const { ref, data } = await inviteBase(group);
+      await setDoc(ref, {
+        ...data,
+        requestKind: "ADD",
+        removeGuestKeys: "",
+        submissionJson: JSON.stringify({ people: people.map((p) => ({ name: cleanName(p.name), access: p.access })) }),
+      });
+      say("success", "invitesSent");
+      setTimeout(close, 1200);
+    } catch (error) {
+      console.warn("invite failed", error?.code);
+      say("error", "errGeneric");
+    } finally {
+      send.disabled = false;
+    }
+  });
+}
+
+function confirmRemove(g, group) {
+  const { msg, say } = formMessage();
+  const yes = el("button", { type: "button", class: "danger", text: t("removeGuest") });
+  const body = el("div", {}, el("p", { text: t("removeConfirm", { name: guestName(g) }) }), msg, yes);
+  const close = openSheet(t("removeGuest"), body);
+  yes.addEventListener("click", async () => {
+    yes.disabled = true;
+    try {
+      const { ref, data } = await inviteBase(group);
+      await setDoc(ref, { ...data, requestKind: "REMOVE", removeGuestKeys: String(g.guestKey || ""), submissionJson: "" });
+      say("success", "invitesSent");
+      setTimeout(close, 1200);
+    } catch (error) {
+      console.warn("removal failed", error?.code);
+      say("error", "errGeneric");
+      yes.disabled = false;
+    }
+  });
+}
+
 /** Buttons to move between the profiles of one account, shown only when there are several. */
+/** Personal profiles in the selector; the lists page only when the account has nothing else. */
+function profileChoices(available) {
+  const { personal, managed } = profilesLayout(available);
+  return personal.length ? personal : managed ? ["temporary"] : [];
+}
+
 function renderSwitch() {
   const box = $("profile-switch");
   clear(box);
-  const { available } = profilesSettled(pageStates());
+  const available = profileChoices(profilesSettled(pageStates()).available);
   if (available.length < 2) {
     box.classList.add("hidden");
     return;
@@ -1742,6 +2044,7 @@ function renderDashboard() {
   clear(dash);
   if (activeKind === "guest") {
     renderGuest(dash);
+    appendManagedLists(dash);
     ensurePhoto();
     return;
   }
@@ -1765,6 +2068,7 @@ function renderDashboard() {
   } else {
     dash.append(col("profile", "upcoming"), col("benefits", "wallet"), col("history"));
   }
+  appendManagedLists(dash);
   ensurePhoto();
 }
 

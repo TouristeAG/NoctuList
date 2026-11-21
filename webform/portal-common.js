@@ -54,12 +54,54 @@ export function isStalePending(r, now = Date.now()) {
 export const PROFILE_ORDER = ["volunteer", "guest", "temporary"];
 
 /**
- * Pages a session reads: a Google session never reads the temporary group pages, and a session
- * whose address is not verified only reads them (the rules refuse it everything else).
+ * Pages a session reads: a session whose address is not verified only reads the temporary guest
+ * lists (the rules refuse it everything else, and those too unless a device made the account).
  */
 export function profileKinds({ google, verified }) {
-  if (google) return ["volunteer", "guest"];
-  return verified ? [...PROFILE_ORDER] : ["temporary"];
+  return google || verified ? [...PROFILE_ORDER] : ["temporary"];
+}
+
+/**
+ * One address, one account (spec 2026-11-21 §6.1): the personal profiles go in the selector and
+ * the managed guest lists below them; an account with lists only gets the lists page.
+ */
+export function profilesLayout(available) {
+  const personal = PROFILE_ORDER.filter((k) => k !== "temporary" && available.includes(k));
+  return { personal, managed: available.includes("temporary") };
+}
+
+/** Lists still visible: schema 2 `visibleUntil`, schema 1 `endsAt`, none means visible; by date. */
+export function visibleLists(groups, now = Date.now()) {
+  return (Array.isArray(groups) ? groups : [])
+    .filter((g) => {
+      const until = Number(g.visibleUntil ?? g.endsAt ?? 0);
+      return !until || until > now;
+    })
+    .sort((a, b) => Number(a.eventDate) - Number(b.eventDate));
+}
+
+/**
+ * Places left once [draft] (people with access ids) is sent: overall and per access. An access
+ * with max 0 has no limit of its own. `ok` is false as soon as one count goes below zero.
+ */
+export function inviteRemaining(invite, draft) {
+  if (!invite) return { remaining: 0, accesses: {}, ok: false };
+  const people = Array.isArray(draft) ? draft : [];
+  const remaining = Number(invite.remaining || 0) - people.length;
+  const accesses = {};
+  let ok = remaining >= 0;
+  (Array.isArray(invite.accesses) ? invite.accesses : []).forEach((a) => {
+    const taken = people.filter((p) => (p.access || []).includes(a.id)).length;
+    const left = Number(a.remaining || 0) - taken;
+    accesses[a.id] = left;
+    if (Number(a.max || 0) > 0 && left < 0) ok = false;
+  });
+  return { remaining, accesses, ok };
+}
+
+/** The QR dialog closes only when the profile whose code went away is the one it shows. */
+export function qrDialogClosesFor(shownKind, droppedKind) {
+  return !!shownKind && shownKind === droppedKind;
 }
 
 /** `states`: kind to "loading", "present", "absent" or "denied". */
@@ -284,6 +326,7 @@ const ICON_PATHS = {
   logout: '<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3"/>',
   ticket: '<path d="M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-2a2 2 0 0 0 0-4z"/><path d="M13 6v12" stroke-dasharray="2 2"/>',
   download: '<path d="M12 3v12M7 10l5 5 5-5M4 21h16"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
   edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/>',
   mail: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 7l9 6 9-6"/>',
   drink: '<path d="M6 3h12l-1.5 17a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1z"/><path d="M6.5 8h11"/>',

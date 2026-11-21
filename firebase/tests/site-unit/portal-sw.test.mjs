@@ -31,8 +31,8 @@ test("collectsPortalJsImports", () => {
   assert.ok(urls.includes(`${CDN}/firebase-firestore.js`));
   assert.ok(urls.includes(`${CDN}/firebase-storage.js`));
   assert.ok(urls.includes(`${ORIGIN}/firebase-env.js?v=portal-2`));
-  assert.ok(urls.includes(`${ORIGIN}/portal-qr.js?v=guest-1`));
-  assert.ok(urls.includes(`${ORIGIN}/portal-common.js?v=guest-1`));
+  assert.ok(urls.includes(`${ORIGIN}/portal-qr.js?v=guest-2`));
+  assert.ok(urls.includes(`${ORIGIN}/portal-common.js?v=guest-2`));
 });
 
 test("collectsMinifiedAndRelativeImports", () => {
@@ -63,7 +63,7 @@ test("siteFilesNetworkFirstPinnedSdkCacheFirst", () => {
 });
 
 test("cacheNameBumped", () => {
-  assert.equal(vm.runInContext("CACHE", sw), "portal-v3");
+  assert.equal(vm.runInContext("CACHE", sw), "portal-v4");
 });
 
 test("i18nImportedWithOneSpecifier", () => {

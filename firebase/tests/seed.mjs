@@ -274,35 +274,63 @@ export async function seed() {
     await publish("guestPortal", portalUid, guestPage("Léa", "MARTIN", "lea.demo@example.org", { invitations: 0, wallet: null }));
     await setDoc(org(`guestPortalQr/${portalUid}`), { schema: 1, payload: "demoLeaGuestNano00001", name: "Léa MARTIN" });
 
-    // Temporary groups: yesterday's group (one entry already used) and one in two days.
+    // Temporary guest lists (schema 2): one that ended this morning at 8:00 (hidden), one tonight
+    // with invites open and answers waiting, one in two days. Léa (volunteer) manages the second.
     const startOfDay = (millis) => { const d = new Date(millis); d.setHours(0, 0, 0, 0); return d.getTime(); };
-    const group = (eventDate, venueName, artistName, guests) => ({
-      eventDate, venueName, artistName, endsAt: startOfDay(eventDate) + 3 * DAY, guests,
+    const visibleUntil = (eventDate) => startOfDay(eventDate) + 32 * 60 * 60 * 1000;
+    const group = (eventDate, venueName, artistName, guests, extra = {}) => ({
+      eventDate, venueName, artistName, visibleUntil: visibleUntil(eventDate), guests, invite: null, pending: [], ...extra,
     });
     const tempGuest = (guestKey, firstName, lastName, extra = {}) => ({
-      guestKey, firstName, lastName, emergencyPhone: "+41 79 222 33 44", entryUsed: false, qr: true, wallet: null, ...extra,
+      guestKey, firstName, lastName, emergencyPhone: "+41 79 222 33 44", accessNames: [], entryUsed: false, qr: true, wallet: null, ...extra,
     });
     const groups = [
-      group(now - 1 * DAY, "Groove", "Les Hiboux", [
+      group(now - 2 * DAY, "Groove", "Les Hiboux", [
         tempGuest("a1b2c3d4e5f60001", "Ada", "LEROY", { entryUsed: true, qr: false }),
-        tempGuest("a1b2c3d4e5f60002", "Bruno", "MEIER", { wallet: { balance: 15, currency: "CHF" } }),
       ]),
+      group(now, "Groove", "Collège Rousseau", [
+        tempGuest("a1b2c3d4e5f60005", "Ada", "LEROY", { entryUsed: true, qr: false, accessNames: ["Backstage"] }),
+        tempGuest("a1b2c3d4e5f60002", "Bruno", "MEIER", { wallet: { balance: 15, currency: "CHF" }, accessNames: ["Backstage"] }),
+        tempGuest("a1b2c3d4e5f60006", "Eva", "BLANC"),
+      ], {
+        invite: { formId: "demoInviteTpl0001", maxGuests: 6, remaining: 2, accesses: [{ id: "acc-bs", name: "Backstage", max: 3, remaining: 0 }, { id: "acc-vip", name: "VIP", max: 0, remaining: 2 }] },
+        pending: [
+          { responseId: "demoInviteAns0001", kind: "ADD", names: ["Farid NOOR"], guestKeys: [], status: "PENDING_REVIEW" },
+          { responseId: "demoInviteAns0002", kind: "REMOVE", names: ["Eva BLANC"], guestKeys: ["a1b2c3d4e5f60006"], status: "PENDING_REVIEW" },
+          { responseId: "demoInviteAns0003", kind: "ADD", names: ["Gil ROY"], guestKeys: [], status: "REJECTED" },
+        ],
+      }),
       group(now + 2 * DAY, "Le Terreau", "Nuit Mist", [
         tempGuest("a1b2c3d4e5f60003", "Chloé", "FAVRE"),
         tempGuest("a1b2c3d4e5f60004", "David", "KELLER", { emergencyPhone: "" }),
       ]),
     ];
-    const tempPage = (contactEmail, list) => ({ association: "Association Démo", contactEmail, groups: list });
-    const expiresAtMillis = Math.max(...groups.map((g) => g.endsAt));
+    const tempPage = (contactEmail, list, deviceCreated) => ({ association: "Association Démo", contactEmail, deviceCreated, groups: list });
+    const expiresAtMillis = Math.max(...groups.map((g) => g.visibleUntil));
     const tempQr = { schema: 1, items: {
       a1b2c3d4e5f60002: { payload: "demoTempNanoBruno0002", name: "Bruno MEIER" },
       a1b2c3d4e5f60003: { payload: "demoTempNanoChloe0003", name: "Chloé FAVRE" },
       a1b2c3d4e5f60004: { payload: "demoTempNanoDavid0004", name: "David KELLER" },
+      a1b2c3d4e5f60006: { payload: "demoTempNanoEva00006", name: "Eva BLANC" },
     } };
-    await publish("temporaryGuestPortal", managerUid, tempPage("manager.demo@example.org", groups), { expiresAtMillis });
+    const publish2 = (uid, payload) => setDoc(org(`temporaryGuestPortal/${uid}`), {
+      schema: 2, payload: JSON.stringify(payload), contentHash: "demo", updatedAt: now - 5 * 60 * 1000,
+      expiresAtMillis, deviceCreated: payload.deviceCreated,
+    });
+    await publish2(managerUid, tempPage("manager.demo@example.org", groups, true));
     await setDoc(org(`temporaryGuestPortalQr/${managerUid}`), tempQr);
-    await publish("temporaryGuestPortal", portalUid, tempPage("lea.demo@example.org", [groups[1]]), { expiresAtMillis });
-    await setDoc(org(`temporaryGuestPortalQr/${portalUid}`), { schema: 1, items: { a1b2c3d4e5f60003: tempQr.items.a1b2c3d4e5f60003, a1b2c3d4e5f60004: tempQr.items.a1b2c3d4e5f60004 } });
+    const leaList = { ...groups[1], invite: { ...groups[1].invite, formId: "demoInviteTpl0002" } };
+    await publish2(portalUid, tempPage("lea.demo@example.org", [leaList], false));
+    await setDoc(org(`temporaryGuestPortalQr/${portalUid}`), { schema: 1, items: { a1b2c3d4e5f60002: tempQr.items.a1b2c3d4e5f60002, a1b2c3d4e5f60006: tempQr.items.a1b2c3d4e5f60006 } });
+    // The invite template of tonight's list, bound to both demo accounts' lists for the add dialog.
+    for (const [id, uid] of [["demoInviteTpl0001", managerUid], ["demoInviteTpl0002", portalUid]]) {
+      await setDoc(org(`guestForms/${id}`), {
+        formId: id, portalUid: uid, status: "OPEN", allowMultipleResponses: true, venueName: "Groove", eventName: "",
+        eventDateMillis: now, artistName: "Collège Rousseau", offeredAccessIds: '[{"id":"acc-bs","name":"Backstage","maxRequests":3},{"id":"acc-vip","name":"VIP","maxRequests":0}]',
+        maxGuests: 6, expiresAtMillis: visibleUntil(now), askEmail: false, askPhone: false, prefillEmail: "manager.demo@example.org",
+        prefillPhone: "+41 79 222 33 44", lastModified: now, createdAt: now,
+      });
+    }
   });
   await env.cleanup();
   return { portalUid, jeanUid, ninaUid, managerUid };
