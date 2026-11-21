@@ -230,16 +230,45 @@ class GuestPortalPublisherTest {
     }
 
     @Test
-    fun guestSharingAVolunteerUidUsesTheVolunteerPhotoOnly() = runBlocking {
+    fun volunteerWithoutPhotoLeavesTheAccountPhotoToTheGuest() = runBlocking {
         val gateway = FakeGateway()
         val host = FakeHost(listOf(volunteer(photo = false))).apply {
             guestSpace = true
             guests += guest(photo = true)
             guestPhotos["GuestNano0000000000001"] = guestPhoto
         }
-        run(gateway, host)
-        until("guest page") { gateway.docs["guestPortal/$UID"] != null && gateway.docs["volunteerPortal/$UID"] != null }
-        assertNull(host.storage["orgs/$ORG/portalPhotos/$UID.jpg"])
+        val running = run(gateway, host)
+        val photoPath = "orgs/$ORG/portalPhotos/$UID.jpg"
+        until("both pages") { gateway.docs["guestPortal/$UID"] != null && gateway.docs["volunteerPortal/$UID"] != null }
+        assertContentEquals(guestPhoto, host.storage[photoPath])
+        assertTrue(gateway.docs["volunteerPortal/$UID"]!!["payload"].toString().contains("\"hasPhoto\":true"))
+        assertTrue(gateway.docs["guestPortal/$UID"]!!["payload"].toString().contains("\"hasPhoto\":true"))
+        val uploads = host.storageUploads.size
+        val deletes = host.storageDeletes.size
+        running.service.republish()
+        running.service.republish()
+        assertEquals(uploads, host.storageUploads.size, "no re-upload")
+        assertEquals(deletes, host.storageDeletes.size, "no delete")
+        assertContentEquals(guestPhoto, host.storage[photoPath])
+    }
+
+    @Test
+    fun volunteerPhotoReplacesTheGuestPhotoOnce() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(volunteer(photo = true))).apply {
+            guestSpace = true
+            guests += guest(photo = true)
+            volunteerPhotos["V1"] = volunteerPhoto
+            guestPhotos["GuestNano0000000000001"] = guestPhoto
+        }
+        val running = run(gateway, host)
+        val photoPath = "orgs/$ORG/portalPhotos/$UID.jpg"
+        until("both pages") { gateway.docs["guestPortal/$UID"] != null && gateway.docs["volunteerPortal/$UID"] != null }
+        assertContentEquals(volunteerPhoto, host.storage[photoPath])
+        val uploads = host.storageUploads.size
+        running.service.republish()
+        assertEquals(uploads, host.storageUploads.size)
+        assertTrue(host.storageDeletes.isEmpty())
     }
 
     @Test

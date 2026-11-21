@@ -112,11 +112,16 @@ internal class FakeHost(initial: List<Volunteer>) : VolunteerPortalHost {
         return true
     }
     override suspend fun downloadStorage(path: String) = storage[path]
+    /** Storage paths uploaded and deleted, in order. */
+    val storageUploads = mutableListOf<String>()
+    val storageDeletes = mutableListOf<String>()
     override suspend fun uploadStorageJpeg(path: String, bytes: ByteArray): Boolean {
+        storageUploads += path
         storage[path] = bytes
         return true
     }
     override suspend fun deleteStorage(path: String) {
+        storageDeletes += path
         storage.remove(path)
     }
     /** Photo bytes by volunteer id; none by default. */

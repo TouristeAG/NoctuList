@@ -124,7 +124,7 @@ class VolunteerPortalService(
     private val retryIntervalMs: Long = RETRY_INTERVAL_MS,
 ) {
     private val mutex = Mutex()
-    private val guestPublisher = GuestPortalPublisher(orgId, gateway, host, clock)
+    private val guestPublisher = GuestPortalPublisher(orgId, gateway, host)
     /** Local day of the last publish: a new day republishes, so ended temporary groups go away. */
     @Volatile private var lastPublishDay: Long? = null
     private val listeners = mutableListOf<AutoCloseable>()
@@ -783,7 +783,7 @@ class VolunteerPortalService(
     }
 
     /** Portal turned off: remove every projection this device published. */
-    suspend fun unpublishAll() {
+    suspend fun unpublishAll() = mutex.withLock {
         val hashes = host.loadPublishedHashes()
         hashes.keys.filter { it.startsWith("$orgId/") && !it.contains("#") }
             .map { it.removePrefix("$orgId/") }
@@ -827,12 +827,14 @@ class VolunteerPortalService(
         val jobsByVolunteer = snapshot.jobs.groupBy { it.volunteerId }
         val transfersByHolder = snapshot.transfers.groupBy { it.holderId }
         val keep = mutableSetOf<String>()
+        // §6.3: a volunteer without a photo leaves the account photo to the permanent guest.
+        val guestPhotoUids = guestPublisher.publishPhotos(snapshot.guests, snapshot.volunteers, hashes)
         for (volunteer in linked) {
             val key = "$orgId/${volunteer.portalUid}"
             keep += key
             val photoKey = "$key#photo"
             val photoVersion = photoVersionOf(volunteer)
-            if (photoVersion != (hashes[photoKey] ?: "")) {
+            if (volunteer.portalUid !in guestPhotoUids && photoVersion != (hashes[photoKey] ?: "")) {
                 if (publishPhoto(volunteer, photoVersion)) {
                     if (photoVersion.isBlank()) hashes.remove(photoKey) else hashes[photoKey] = photoVersion
                 }
@@ -876,9 +878,11 @@ class VolunteerPortalService(
         for (key in stale) {
             val uid = key.removePrefix("$orgId/")
             runCatching { gateway.deleteDocument(orgId, PortalProjection.COLLECTION, uid) }
-            runCatching { host.deleteStorage(portalPhotoPath(uid)) }
+            if (uid !in guestPhotoUids) {
+                runCatching { host.deleteStorage(portalPhotoPath(uid)) }
+                hashes.remove("$key#photo")
+            }
             hashes.remove(key)
-            hashes.remove("$key#photo")
             deleteQrDocument(uid, hashes)
         }
         // QR deletes that failed earlier (page already gone): retry them.

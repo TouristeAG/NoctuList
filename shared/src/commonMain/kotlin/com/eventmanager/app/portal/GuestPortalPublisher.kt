@@ -12,16 +12,37 @@ import kotlin.coroutines.cancellation.CancellationException
  * page and QR document per temporary guest account. Runs inside [VolunteerPortalService.publishAll],
  * after the volunteers, with the same per-device content hashes:
  *  - `"$orgId/$uid#guest"`, `#guestQr`, `#temp`, `#tempQr`;
- *  - the photo of a guest-only account under the shared `"$orgId/$uid#photo"` key (a linked
- *    volunteer with the same uid owns the photo).
+ *  - the shared `"$orgId/$uid#photo"` key for the account photo when the guest owns it (§6.3: a
+ *    linked volunteer with a photo comes first, otherwise the permanent guest's photo).
  * A space turned off, an access closed or a temporary group ended removes the documents.
  */
 internal class GuestPortalPublisher(
     private val orgId: String,
     private val gateway: FirestoreGateway,
     private val host: VolunteerPortalHost,
-    private val clock: () -> Long,
 ) {
+    /**
+     * Copies the account photo for every uid the guest space owns and returns those uids: the space
+     * is on, a permanent guest is published for the uid and no linked volunteer of the uid has a
+     * photo. Runs before the volunteer pages, which then skip these uids and read the shared hash.
+     */
+    suspend fun publishPhotos(guests: List<Guest>, volunteers: List<Volunteer>, hashes: MutableMap<String, String>): Set<String> {
+        if (!host.guestPortalEnabled()) return emptySet()
+        val volunteerPhotoUids = volunteerPhotoUids(volunteers)
+        val owned = mutableSetOf<String>()
+        for ((uid, guest) in permanentsByUid(guests)) {
+            if (uid in volunteerPhotoUids) continue
+            owned += uid
+            val photoKey = key(uid, PHOTO_SUFFIX)
+            val version = VolunteerPortalService.photoVersion(host.profilePhotosEnabled(), guest.profilePhotoUrl, guest.profilePhotoPath)
+            if (version != (hashes[photoKey] ?: "") && publishPhoto(uid, guest, version)) {
+                if (version.isBlank()) hashes.remove(photoKey) else hashes[photoKey] = version
+            }
+        }
+        return owned
+    }
+
+    /** Pages and QR documents; call [publishPhotos] first, before the volunteer pages. */
     suspend fun publish(
         guests: List<Guest>,
         volunteers: List<Volunteer>,
@@ -30,26 +51,20 @@ internal class GuestPortalPublisher(
         googleLinkAllowed: Boolean,
         now: Long,
     ) {
-        val inOrg = guests.filter { it.firebaseOrgId.isBlank() || it.firebaseOrgId == orgId }
-        val volunteerUids = volunteers.filter {
-            it.portalEnabled && it.portalUid.isNotBlank() && (it.firebaseOrgId.isBlank() || it.firebaseOrgId == orgId)
-        }.mapTo(mutableSetOf()) { it.portalUid }
+        val inOrg = inOrg(guests)
+        val volunteerPhotoUids = volunteerPhotoUids(volunteers)
         val guestTransfers = transfers.filter { it.holderType == AccountHolderType.GUEST }
 
         val keptGuests = mutableSetOf<String>()
         if (host.guestPortalEnabled()) {
-            val permanents = inOrg
-                .filter { !it.isTemporaryGuest && !it.isVolunteerBenefit && it.portalEnabled && it.portalUid.isNotBlank() }
-                .groupBy { it.portalUid }
-                .mapValues { (_, same) -> same.maxBy { it.lastModified } }
-            for ((uid, guest) in permanents) {
+            for ((uid, guest) in permanentsByUid(inOrg)) {
                 keptGuests += uid
-                publishGuest(uid, guest, uid in volunteerUids, guestTransfers, hashes, googleLinkAllowed, now)
+                publishGuest(uid, guest, guestTransfers, hashes, googleLinkAllowed, now)
             }
         }
         for (uid in uidsWith(hashes, GUEST_SUFFIX) - keptGuests) {
             removePage(GuestPortalProjectionBuilder.COLLECTION, uid, GUEST_SUFFIX, hashes)
-            if (uid !in volunteerUids) removePhoto(uid, hashes)
+            if (uid !in volunteerPhotoUids) removePhoto(uid, hashes)
         }
         for (uid in uidsWith(hashes, GUEST_QR_SUFFIX) - keptGuests) {
             deleteQr(GuestPortalQrDocument.COLLECTION, uid, GUEST_QR_SUFFIX, hashes)
@@ -91,20 +106,13 @@ internal class GuestPortalPublisher(
     private suspend fun publishGuest(
         uid: String,
         guest: Guest,
-        volunteerOwnsPhoto: Boolean,
         transfers: List<AccountTransfer>,
         hashes: MutableMap<String, String>,
         googleLinkAllowed: Boolean,
         now: Long,
     ) {
-        val photoKey = key(uid, PHOTO_SUFFIX)
-        if (!volunteerOwnsPhoto) {
-            val version = VolunteerPortalService.photoVersion(host.profilePhotosEnabled(), guest.profilePhotoUrl, guest.profilePhotoPath)
-            if (version != (hashes[photoKey] ?: "") && publishPhoto(uid, guest, version)) {
-                if (version.isBlank()) hashes.remove(photoKey) else hashes[photoKey] = version
-            }
-        }
-        val photoVersion = hashes[photoKey] ?: ""
+        // The photo itself was copied by publishPhotos (guest-owned) or the volunteer publish.
+        val photoVersion = hashes[key(uid, PHOTO_SUFFIX)] ?: ""
         val projection = GuestPortalProjectionBuilder.build(
             GuestPortalProjectionInput(
                 guest = guest,
@@ -242,7 +250,7 @@ internal class GuestPortalPublisher(
         hashes.remove(pageKey)
     }
 
-    /** Only for a guest-only account: a linked volunteer's photo is handled by the volunteer publish. */
+    /** Only when no linked volunteer has a photo: theirs is handled by the volunteer publish. */
     private suspend fun removePhoto(uid: String, hashes: MutableMap<String, String>) {
         val photoKey = key(uid, PHOTO_SUFFIX)
         if (photoKey !in hashes) return
@@ -260,6 +268,22 @@ internal class GuestPortalPublisher(
         val bytes = host.guestPhotoBytes(guest) ?: return false
         return host.uploadStorageJpeg(path, bytes)
     }
+
+    private fun inOrg(guests: List<Guest>) = guests.filter { it.firebaseOrgId.isBlank() || it.firebaseOrgId == orgId }
+
+    /** Published permanent guests, one per uid: the most recently modified. */
+    private fun permanentsByUid(guests: List<Guest>): Map<String, Guest> = inOrg(guests)
+        .filter { !it.isTemporaryGuest && !it.isVolunteerBenefit && it.portalEnabled && it.portalUid.isNotBlank() }
+        .groupBy { it.portalUid }
+        .mapValues { (_, same) -> same.maxBy { it.lastModified } }
+
+    /** Uids of linked volunteers that have a photo to publish: the volunteer owns the shared photo. */
+    private fun volunteerPhotoUids(volunteers: List<Volunteer>): Set<String> = volunteers
+        .filter {
+            it.portalEnabled && it.portalUid.isNotBlank() && (it.firebaseOrgId.isBlank() || it.firebaseOrgId == orgId) &&
+                VolunteerPortalService.photoVersion(host.profilePhotosEnabled(), it.profilePhotoUrl, it.profilePhotoPath).isNotBlank()
+        }
+        .mapTo(mutableSetOf()) { it.portalUid }
 
     private fun photoPath(uid: String) = "orgs/$orgId/portalPhotos/$uid.jpg"
 
