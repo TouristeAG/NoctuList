@@ -76,7 +76,7 @@ data class SignupSubmission(
     val venueName: String = "",
 )
 
-enum class PortalRequestType { PROFILE, QR_EMAIL, CLAIM, GOOGLE_LINK, GOOGLE_UNLINK, GUEST_PROFILE, GUEST_QR_EMAIL }
+enum class PortalRequestType { PROFILE, QR_EMAIL, CLAIM, GOOGLE_LINK, GOOGLE_UNLINK, GUEST_PROFILE, GUEST_QR_EMAIL, TEMP_GUEST_NAME }
 
 enum class PortalGoogleClaimType { ADMIN_MATCH, LINK_CODE }
 
@@ -126,6 +126,8 @@ data class PortalRequest(
     val photo: Boolean = false,
     /** GOOGLE_LINK only: SHA-256 hex of the one-time link code. */
     val codeHash: String = "",
+    /** TEMP_GUEST_NAME only: the guest's key on the account's temporary page, never its id. */
+    val guestKey: String = "",
 ) {
     companion object {
         const val COLLECTION = "portalRequests"
@@ -150,6 +152,7 @@ object PortalInputValidator {
     private val EMAIL = Regex("^[^@\\s]{1,64}@[^@\\s]{1,190}\\.[^@\\s]{2,}$")
     private val UID = Regex("^[A-Za-z0-9]{6,128}$")
     private val CODE_HASH = Regex("^[0-9a-f]{64}$")
+    private val GUEST_KEY = Regex("^[0-9a-f]{16}$")
     private val LINK_CODE = Regex("^[A-Za-z0-9_-]{32,64}$")
     private val LANGS = setOf("fr", "en", "es", "de", "it")
 
@@ -223,6 +226,23 @@ object PortalInputValidator {
                 phone = cleanPhone(data["phone"]) ?: return null,
                 photo = data["photo"] == true,
             )
+            PortalRequestType.TEMP_GUEST_NAME -> {
+                // One of the two may be left empty; a non-empty one must be a valid name.
+                fun optional(v: Any?): String? = if ((v as? String).orEmpty().trim().isEmpty()) "" else cleanName(v)
+                val first = optional(data["firstName"]) ?: return null
+                val last = optional(data["lastName"]) ?: return null
+                if (first.isEmpty() && last.isEmpty()) return null
+                PortalRequest(
+                    requestId = requestId,
+                    uid = uid,
+                    type = type,
+                    status = status,
+                    email = email,
+                    firstName = first,
+                    lastName = last,
+                    guestKey = (data["guestKey"] as? String)?.takeIf { GUEST_KEY.matches(it) } ?: return null,
+                )
+            }
             PortalRequestType.GOOGLE_LINK -> PortalRequest(
                 requestId = requestId,
                 uid = uid,

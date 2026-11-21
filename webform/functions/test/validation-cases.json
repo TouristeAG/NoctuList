@@ -1571,5 +1571,149 @@
    }
   },
   "expect": null
+ },
+ {
+  "fn": "parseRequest",
+  "input": {
+   "requestId": "Abc123XyZ9_TEMP_GUEST_NAME",
+   "data": {
+    "uid": "Abc123XyZ9",
+    "type": "TEMP_GUEST_NAME",
+    "status": "PENDING",
+    "email": "Anna@Example.com",
+    "guestKey": "0123456789abcdef",
+    "firstName": "  Anna  M ",
+    "lastName": ""
+   }
+  },
+  "expect": {
+   "requestId": "Abc123XyZ9_TEMP_GUEST_NAME",
+   "uid": "Abc123XyZ9",
+   "type": "TEMP_GUEST_NAME",
+   "status": "PENDING",
+   "email": "anna@example.com",
+   "firstName": "Anna M",
+   "lastName": "",
+   "phone": "",
+   "photo": false,
+   "guestKey": "0123456789abcdef"
+  }
+ },
+ {
+  "fn": "parseRequest",
+  "input": {
+   "requestId": "Abc123XyZ9_TEMP_GUEST_NAME",
+   "data": {
+    "uid": "Abc123XyZ9",
+    "type": "TEMP_GUEST_NAME",
+    "status": "PENDING",
+    "email": "Anna@Example.com",
+    "guestKey": "0123456789abcdef",
+    "firstName": "",
+    "lastName": "Rossi"
+   }
+  },
+  "expect": {
+   "requestId": "Abc123XyZ9_TEMP_GUEST_NAME",
+   "uid": "Abc123XyZ9",
+   "type": "TEMP_GUEST_NAME",
+   "status": "PENDING",
+   "email": "anna@example.com",
+   "firstName": "",
+   "lastName": "Rossi",
+   "phone": "",
+   "photo": false,
+   "guestKey": "0123456789abcdef"
+  }
+ },
+ {
+  "fn": "parseRequest",
+  "input": {
+   "requestId": "Abc123XyZ9_TEMP_GUEST_NAME",
+   "data": {
+    "uid": "Abc123XyZ9",
+    "type": "TEMP_GUEST_NAME",
+    "status": "PENDING",
+    "email": "Anna@Example.com",
+    "guestKey": "0123456789abcdef",
+    "firstName": "  ",
+    "lastName": ""
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseRequest",
+  "input": {
+   "requestId": "Abc123XyZ9_TEMP_GUEST_NAME",
+   "data": {
+    "uid": "Abc123XyZ9",
+    "type": "TEMP_GUEST_NAME",
+    "status": "PENDING",
+    "email": "Anna@Example.com",
+    "guestKey": "0123456789ABCDEF",
+    "firstName": "Anna",
+    "lastName": "Rossi"
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseRequest",
+  "input": {
+   "requestId": "Abc123XyZ9_TEMP_GUEST_NAME",
+   "data": {
+    "uid": "Abc123XyZ9",
+    "type": "TEMP_GUEST_NAME",
+    "status": "PENDING",
+    "email": "Anna@Example.com",
+    "guestKey": "abc",
+    "firstName": "Anna",
+    "lastName": "Rossi"
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseRequest",
+  "input": {
+   "requestId": "Abc123XyZ9_TEMP_GUEST_NAME",
+   "data": {
+    "uid": "Abc123XyZ9",
+    "type": "TEMP_GUEST_NAME",
+    "status": "PENDING",
+    "email": "Anna@Example.com",
+    "guestKey": "0123456789abcdef",
+    "firstName": "{x}",
+    "lastName": "Rossi"
+   }
+  },
+  "expect": null
+ },
+ {
+  "fn": "parseRequest",
+  "input": {
+   "requestId": "Abc123XyZ9_TEMP_GUEST_NAME",
+   "data": {
+    "uid": "Abc123XyZ9",
+    "type": "TEMP_GUEST_NAME",
+    "status": "PENDING",
+    "email": "Anna@Example.com",
+    "guestKey": "0123456789abcdef",
+    "firstName": "Anna"
+   }
+  },
+  "expect": {
+   "requestId": "Abc123XyZ9_TEMP_GUEST_NAME",
+   "uid": "Abc123XyZ9",
+   "type": "TEMP_GUEST_NAME",
+   "status": "PENDING",
+   "email": "anna@example.com",
+   "firstName": "Anna",
+   "lastName": "",
+   "phone": "",
+   "photo": false,
+   "guestKey": "0123456789abcdef"
+  }
  }
 ]

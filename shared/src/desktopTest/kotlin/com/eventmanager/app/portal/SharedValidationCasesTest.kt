@@ -85,7 +85,8 @@ class SharedValidationCasesTest {
                             "requestId" to it.requestId, "uid" to it.uid, "type" to it.type.name,
                             "status" to it.status, "email" to it.email, "firstName" to it.firstName,
                             "lastName" to it.lastName, "phone" to it.phone, "photo" to it.photo,
-                        ) + if (it.codeHash.isEmpty()) emptyMap() else mapOf("codeHash" to it.codeHash)
+                        ) + (if (it.codeHash.isEmpty()) emptyMap() else mapOf("codeHash" to it.codeHash)) +
+                            (if (it.guestKey.isEmpty()) emptyMap() else mapOf("guestKey" to it.guestKey))
                     }
                     assertEquals(expect.toKotlin(), actualMap, label)
                 }

@@ -573,6 +573,64 @@ describe("onPortalRequestWritten: protocol", () => {
   });
 });
 
+describe("onPortalRequestWritten: temporary guest names", () => {
+  const key = (nanoId) => sha256(nanoId).slice(0, 16);
+
+  async function publishTempPage(org, uid, guests) {
+    const payload = JSON.stringify({
+      association: "Asso Test", contactEmail: "c@mail.example", deviceCreated: true,
+      groups: [{ eventDate: 1, venueName: "Club", artistName: "Band", visibleUntil: Date.now() + 3_600_000,
+        guests: guests.map((g) => ({ guestKey: key(g.nanoId), firstName: g.name, lastName: g.lastNameAbbreviation, entryUsed: false })),
+        invite: null, pending: [] }],
+    });
+    await db.doc(`orgs/${org}/temporaryGuestPortal/${uid}`).set({ schema: 2, payload, contentHash: sha256(payload), updatedAt: 1, deviceCreated: true, expiresAtMillis: Date.now() + 3_600_000 });
+    await db.doc(`orgs/${org}/temporaryGuestPortalQr/${uid}`).set({
+      schema: 1, items: Object.fromEntries(guests.map((g) => [key(g.nanoId), { payload: g.nanoId, name: `${g.name} ${g.lastNameAbbreviation}` }])),
+    });
+  }
+
+  test("TEMP_GUEST_NAME renames and fixes the page", async () => {
+    const org = await newOrg();
+    await setting(org, "temp_guest_portal_enabled", "true");
+    const uid = newUid("tName");
+    const a = await addGuest(org, { portalUid: uid, isTemporaryGuest: true, temporaryEventDate: 1, name: "Ann", lastNameAbbreviation: "X" });
+    const b = await addGuest(org, { portalUid: uid, isTemporaryGuest: true, temporaryEventDate: 1, name: "Bob", lastNameAbbreviation: "Y" });
+    await publishTempPage(org, uid, [a, b]);
+
+    const ref = await sendRequest(org, uid, "TEMP_GUEST_NAME", { guestKey: key(a.nanoId), firstName: "  Anna  ", lastName: "Doe" });
+    assertResult(await waitResult(ref), "DONE", "");
+
+    const after = await guest(org, a.nanoId);
+    assert.equal(after.name, "Anna");
+    assert.equal(after.lastNameAbbreviation, "Doe");
+    assert.ok(after.lastModified > a.lastModified);
+    assert.deepEqual(await guest(org, b.nanoId), b);
+
+    const page = (await db.doc(`orgs/${org}/temporaryGuestPortal/${uid}`).get()).data();
+    assert.equal(page.contentHash, sha256(page.payload));
+    const names = JSON.parse(page.payload).groups[0].guests.map((g) => `${g.firstName} ${g.lastName}`);
+    assert.deepEqual(names, ["Anna Doe", "Bob Y"]);
+    const qr = (await db.doc(`orgs/${org}/temporaryGuestPortalQr/${uid}`).get()).data();
+    assert.equal(qr.items[key(a.nanoId)].name, "Anna Doe");
+    assert.equal(qr.items[key(a.nanoId)].payload, a.nanoId);
+  });
+
+  test("TEMP_GUEST_NAME refused for another account or a used entry", async () => {
+    const org = await newOrg();
+    await setting(org, "temp_guest_portal_enabled", "true");
+    const uid = newUid("tOther");
+    const other = await addGuest(org, { portalUid: newUid("tElse"), isTemporaryGuest: true, temporaryEventDate: 1 });
+    const used = await addGuest(org, { portalUid: uid, isTemporaryGuest: true, temporaryEventDate: 1, temporaryEntryValidatedAt: 5 });
+    const ref = await sendRequest(org, uid, "TEMP_GUEST_NAME", { guestKey: key(other.nanoId), firstName: "Eve", lastName: "" });
+    assertResult(await waitResult(ref), "REJECTED", "NOT_FOUND");
+    assert.deepEqual(await guest(org, other.nanoId), other);
+    await ref.delete();
+    const ref2 = await sendRequest(org, uid, "TEMP_GUEST_NAME", { guestKey: key(used.nanoId), firstName: "Eve", lastName: "" });
+    assertResult(await waitResult(ref2), "REJECTED", "ENTRY_USED");
+    assert.deepEqual(await guest(org, used.nanoId), used);
+  });
+});
+
 describe("onPortalRequestWritten: guests", () => {
   test("GUEST_PROFILE updates the guest and its page", async () => {
     const org = await newOrg();

@@ -8,7 +8,8 @@ export type PortalRequestType =
   | "GOOGLE_LINK"
   | "GOOGLE_UNLINK"
   | "GUEST_PROFILE"
-  | "GUEST_QR_EMAIL";
+  | "GUEST_QR_EMAIL"
+  | "TEMP_GUEST_NAME";
 /** Who a registration link registers (PortalHolderKind, Kotlin). */
 export type HolderType = "VOLUNTEER" | "GUEST";
 export type PortalGoogleClaimType = "ADMIN_MATCH" | "LINK_CODE";
@@ -44,6 +45,8 @@ export interface PortalRequest {
   photo: boolean;
   /** GOOGLE_LINK only: SHA-256 hex of the one-time link code. */
   codeHash?: string;
+  /** TEMP_GUEST_NAME only: the guest's key on the account's temporary page (never its id). */
+  guestKey?: string;
 }
 
 export interface PortalGoogleClaim {
@@ -63,9 +66,11 @@ const EMAIL = /^[^@ \t\n\x0B\f\r]{1,64}@[^@ \t\n\x0B\f\r]{1,190}\.[^@ \t\n\x0B\f
 const UID = /^[A-Za-z0-9]{6,128}$/u;
 const CODE_HASH = /^[0-9a-f]{64}$/u;
 const LINK_CODE = /^[A-Za-z0-9_-]{32,64}$/u;
+const GUEST_KEY = /^[0-9a-f]{16}$/u;
 const LANGS = new Set(["fr", "en", "es", "de", "it"]);
 const TYPES: readonly string[] = [
   "PROFILE", "QR_EMAIL", "CLAIM", "GOOGLE_LINK", "GOOGLE_UNLINK", "GUEST_PROFILE", "GUEST_QR_EMAIL",
+  "TEMP_GUEST_NAME",
 ];
 const CLAIM_TYPES: readonly string[] = ["ADMIN_MATCH", "LINK_CODE"];
 const GENDERS = new Set(["FEMALE", "MALE", "NON_BINARY", "OTHER", "PREFER_NOT_TO_DISCLOSE"]);
@@ -160,6 +165,16 @@ export function parseRequest(requestId: string, data: Record<string, unknown>): 
     const phone = cleanPhone(data.phone);
     if (firstName === null || lastName === null || phone === null) return null;
     return { requestId, uid, type, status, email, firstName, lastName, phone, photo: data.photo === true };
+  }
+  if (type === "TEMP_GUEST_NAME") {
+    const guestKey = str(data.guestKey);
+    if (guestKey === undefined || !GUEST_KEY.test(guestKey)) return null;
+    // One of the two may be left empty; a non-empty one must be a valid name.
+    const optional = (v: unknown): string | null => (kotlinTrim(str(v) ?? "") === "" ? "" : cleanName(v));
+    const firstName = optional(data.firstName);
+    const lastName = optional(data.lastName);
+    if (firstName === null || lastName === null || (firstName === "" && lastName === "")) return null;
+    return { requestId, uid, type, status, email, firstName, lastName, phone: "", photo: false, guestKey };
   }
   if (type === "GOOGLE_LINK") {
     const codeHash = str(data.codeHash);

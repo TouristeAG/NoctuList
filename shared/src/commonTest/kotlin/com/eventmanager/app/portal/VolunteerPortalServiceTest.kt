@@ -1824,4 +1824,52 @@ class VolunteerPortalServiceTest {
     }
 
     // endregion
+
+    private fun nameRequest(guestKey: String, first: String = "Anna", last: String = "Doe") = mapOf(
+        "uid" to UID, "type" to "TEMP_GUEST_NAME", "status" to "PENDING", "email" to "c@example.org",
+        "guestKey" to guestKey, "firstName" to first, "lastName" to last,
+    )
+
+    @Test
+    fun renamesOwnTemporaryGuest() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(emptyList()).apply { tempSpace = true }
+        host.guests += tempGroup("T1", "c@example.org", uid = UID).copy(portalEnabled = true, name = "Ann", lastNameAbbreviation = "X")
+        host.guests += tempGroup("T2", "c@example.org", uid = UID).copy(portalEnabled = true, name = "Bob")
+        startedService(gateway, host)
+        val key = "portalRequests/${UID}_TEMP_GUEST_NAME"
+        gateway.docs[key] = nameRequest(TemporaryGuestPortalQrDocument.guestKey(host.guests[0]), first = " Anna ", last = "")
+        gateway.push("portalRequests")
+        assertEquals("DONE", gateway.docs[key]!!["status"])
+        assertEquals("Anna", host.guests[0].name)
+        assertEquals("", host.guests[0].lastNameAbbreviation)
+        assertEquals("Bob", host.guests[1].name)
+    }
+
+    @Test
+    fun entryUsedRejected() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(emptyList()).apply { tempSpace = true }
+        host.guests += tempGroup("T1", "c@example.org", uid = UID).copy(portalEnabled = true, temporaryEntryValidatedAt = 5L)
+        startedService(gateway, host)
+        val key = "portalRequests/${UID}_TEMP_GUEST_NAME"
+        gateway.docs[key] = nameRequest(TemporaryGuestPortalQrDocument.guestKey(host.guests[0]))
+        gateway.push("portalRequests")
+        assertEquals("REJECTED", gateway.docs[key]!!["status"])
+        assertEquals("ENTRY_USED", gateway.docs[key]!!["reason"])
+        assertEquals("Band", host.guests[0].name)
+    }
+
+    @Test
+    fun otherAccountNotFound() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(emptyList()).apply { tempSpace = true }
+        host.guests += tempGroup("T1", "c@example.org", uid = "someoneElse").copy(portalEnabled = true)
+        startedService(gateway, host)
+        val key = "portalRequests/${UID}_TEMP_GUEST_NAME"
+        gateway.docs[key] = nameRequest(TemporaryGuestPortalQrDocument.guestKey(host.guests[0]))
+        gateway.push("portalRequests")
+        assertEquals("REJECTED", gateway.docs[key]!!["status"])
+        assertEquals("NOT_FOUND", gateway.docs[key]!!["reason"])
+    }
 }

@@ -3,6 +3,7 @@ package com.eventmanager.app.portal
 import com.eventmanager.app.data.models.AccountTransfer
 import com.eventmanager.app.data.models.Guest
 import com.eventmanager.app.data.models.GuestForm
+import com.eventmanager.app.data.models.temporaryEntryValidated
 import com.eventmanager.app.data.models.GuestFormLogoCodec
 import com.eventmanager.app.data.models.Job
 import com.eventmanager.app.data.models.JobTypeConfig
@@ -447,7 +448,8 @@ class VolunteerPortalService(
             claimable = {
                 (it["status"] == PortalRequest.STATUS_PENDING || isStaleProcessing(it)) &&
                     it["type"] != PortalRequestType.GOOGLE_LINK.name &&
-                    (!isGuestRequestType(it["type"]?.toString()) || host.guestPortalEnabled())
+                    (!isGuestRequestType(it["type"]?.toString()) || host.guestPortalEnabled()) &&
+                    (it["type"] != PortalRequestType.TEMP_GUEST_NAME.name || host.temporaryGuestPortalEnabled())
             },
             claimFields = processingFields(now),
         ) ?: return
@@ -516,6 +518,7 @@ class VolunteerPortalService(
                 )
                 complete(requestId, if (ok) PortalRequest.STATUS_DONE else PortalRequest.STATUS_REJECTED, if (ok) "" else "SAVE_FAILED")
             }
+            PortalRequestType.TEMP_GUEST_NAME -> renameTemporaryGuest(request, guests, now)
             // Never claimed (see processRequests): it is answered through its Google claim.
             PortalRequestType.GOOGLE_LINK -> Unit
         }
@@ -641,6 +644,26 @@ class VolunteerPortalService(
         for (g in freeGuests) {
             ok = host.saveGuest(g.copy(portalUid = uid, lastModified = maxOf(clock(), g.lastModified + 1))) && ok
         }
+        complete(request.requestId, if (ok) PortalRequest.STATUS_DONE else PortalRequest.STATUS_REJECTED, if (ok) "" else "SAVE_FAILED")
+    }
+
+    /**
+     * First and last name of one temporary guest of the account, found by its page key among the
+     * open temporary guests of the uid. A used entry keeps its name. Same answers as the Functions.
+     */
+    private suspend fun renameTemporaryGuest(request: PortalRequest, guests: List<Guest>, now: Long) {
+        val target = guests.firstOrNull {
+            it.isTemporaryGuest && it.portalEnabled && it.portalUid == request.uid &&
+                TemporaryGuestPortalQrDocument.guestKey(it) == request.guestKey
+        } ?: return complete(request.requestId, PortalRequest.STATUS_REJECTED, "NOT_FOUND")
+        if (target.temporaryEntryValidated) return complete(request.requestId, PortalRequest.STATUS_REJECTED, "ENTRY_USED")
+        val ok = host.saveGuest(
+            target.copy(
+                name = request.firstName,
+                lastNameAbbreviation = request.lastName,
+                lastModified = maxOf(now, target.lastModified + 1),
+            ),
+        )
         complete(request.requestId, if (ok) PortalRequest.STATUS_DONE else PortalRequest.STATUS_REJECTED, if (ok) "" else "SAVE_FAILED")
     }
 

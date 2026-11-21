@@ -47,7 +47,9 @@ export type RequestReason =
   | "SEND_FAILED"
   | "SAVE_FAILED"
   | "LINKED_ELSEWHERE"
-  | "ADMIN_LINK";
+  | "ADMIN_LINK"
+  | "NOT_FOUND"
+  | "ENTRY_USED";
 
 export interface RequestResult {
   status: "DONE" | "REJECTED";
@@ -67,6 +69,7 @@ const rejected = (reason: Exclude<RequestReason, "">): RequestResult => ({ statu
 const isClaimable = (d: Data): boolean => d.status === STATUS_PENDING && d.type !== "GOOGLE_LINK";
 
 const GUEST_TYPES: readonly unknown[] = ["GUEST_PROFILE", "GUEST_QR_EMAIL"];
+const TEMP_TYPES: readonly unknown[] = ["TEMP_GUEST_NAME"];
 
 /** Thrown when a claimed request must go back to PENDING for later (a device, or the server again). */
 class Deferred extends Error {
@@ -141,6 +144,7 @@ export async function onRequestDocument(
  * volunteer template is never mailed to guests: a device sends it after its grace period.
  */
 async function waitReason(db: Firestore, orgId: string, type: unknown): Promise<string | null> {
+  if (TEMP_TYPES.includes(type)) return (await temporaryGuestPortalEnabled(db, orgId)) ? null : "TEMP_SPACE_OFF";
   if (!GUEST_TYPES.includes(type)) return null;
   if (!(await guestPortalEnabled(db, orgId))) return "GUEST_SPACE_OFF";
   if (type === "GUEST_QR_EMAIL" && (await publishedGuestTemplate(db, orgId)) === null) return "NO_TEMPLATE";
@@ -187,10 +191,83 @@ async function processClaimed(
       const reason = await unlinkGoogle(db, orgId, requestId, request.uid);
       return reason === "" ? DONE : rejected(reason);
     }
+    case "TEMP_GUEST_NAME":
+      if (!(await temporaryGuestPortalEnabled(db, orgId))) throw new Deferred("TEMP_SPACE_OFF");
+      return renameTemporaryGuest(db, orgId, requestId, request);
     case "GOOGLE_LINK":
       // Never claimed (isClaimable): answered through its Google claim.
       return rejected("INVALID");
   }
+}
+
+/** The key a temporary page shows for a guest: SHA-256 hex of its nanoId, first 16 characters. */
+const guestKeyOf = (nanoId: string): string => sha256(nanoId).slice(0, 16);
+
+/**
+ * `renameTemporaryGuest` (Kotlin): first and last name of one temporary guest of the account, found
+ * by its page key among the open temporary guests carrying the uid. A used entry keeps its name.
+ * The page and the QR item get the new name in the same transaction (devices republish anyway).
+ */
+async function renameTemporaryGuest(
+  db: Firestore,
+  orgId: string,
+  requestId: string,
+  request: PortalRequest,
+): Promise<RequestResult> {
+  const pageRef = db.doc(`orgs/${orgId}/temporaryGuestPortal/${request.uid}`);
+  const qrRef = db.doc(`orgs/${orgId}/temporaryGuestPortalQr/${request.uid}`);
+  try {
+    return await db.runTransaction(async (tx) => {
+      const linked = await tx.get(guests(db, orgId).where("portalUid", "==", request.uid));
+      const target = linked.docs.find(
+        (d) => boolOf(d.get("isTemporaryGuest")) && boolOf(d.get("portalEnabled")) &&
+          guestKeyOf(stringOf(d.get("nanoId")) || d.id) === request.guestKey,
+      );
+      if (target === undefined) return rejected("NOT_FOUND");
+      if ((millisOf(target.get("temporaryEntryValidatedAt")) ?? 0) > 0) return rejected("ENTRY_USED");
+      const page = await tx.get(pageRef);
+      const qr = await tx.get(qrRef);
+      const now = Date.now();
+      tx.update(target.ref, {
+        name: request.firstName,
+        lastNameAbbreviation: request.lastName,
+        lastModified: Math.max(now, (millisOf(target.get("lastModified")) ?? 0) + 1),
+      });
+      const patch = renamedPage(page.data(), request, now);
+      if (patch !== null) tx.update(pageRef, patch);
+      const item = (qr.data()?.items as Data | undefined)?.[request.guestKey ?? ""];
+      if (item !== undefined && item !== null && typeof item === "object") {
+        tx.update(qrRef, { [`items.${request.guestKey}.name`]: `${request.firstName} ${request.lastName}`.trim() });
+      }
+      return DONE;
+    });
+  } catch (e) {
+    logger.error("name not saved", { orgId, requestId, code: errorCode(e) });
+    return rejected("SAVE_FAILED");
+  }
+}
+
+/** The temporary page with the guest's new name, or null when it cannot be read. Key order is kept. */
+function renamedPage(data: Data | undefined, request: PortalRequest, now: number): Data | null {
+  if (data === undefined || typeof data.payload !== "string") return null;
+  let payload: { groups?: unknown };
+  try {
+    payload = JSON.parse(data.payload);
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(payload?.groups)) return null;
+  for (const group of payload.groups as Data[]) {
+    if (!Array.isArray(group?.guests)) continue;
+    for (const g of group.guests as Data[]) {
+      if (g?.guestKey === request.guestKey) {
+        g.firstName = request.firstName;
+        g.lastName = request.lastName;
+      }
+    }
+  }
+  const text = JSON.stringify(payload);
+  return { payload: text, contentHash: sha256(text), updatedAt: now };
 }
 
 /** `complete` (Kotlin): the answer the portal page waits for. */

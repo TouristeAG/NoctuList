@@ -21,6 +21,7 @@ var EMAIL = /^[^@ \t\n\x0B\f\r]{1,64}@[^@ \t\n\x0B\f\r]{1,190}\.[^@ \t\n\x0B\f\r
 var UID = /^[A-Za-z0-9]{6,128}$/u;
 var CODE_HASH = /^[0-9a-f]{64}$/u;
 var LINK_CODE = /^[A-Za-z0-9_-]{32,64}$/u;
+var GUEST_KEY = /^[0-9a-f]{16}$/u;
 var LANGS = /* @__PURE__ */ new Set(["fr", "en", "es", "de", "it"]);
 var TYPES = [
   "PROFILE",
@@ -29,7 +30,8 @@ var TYPES = [
   "GOOGLE_LINK",
   "GOOGLE_UNLINK",
   "GUEST_PROFILE",
-  "GUEST_QR_EMAIL"
+  "GUEST_QR_EMAIL",
+  "TEMP_GUEST_NAME"
 ];
 var CLAIM_TYPES = ["ADMIN_MATCH", "LINK_CODE"];
 var GENDERS = /* @__PURE__ */ new Set(["FEMALE", "MALE", "NON_BINARY", "OTHER", "PREFER_NOT_TO_DISCLOSE"]);
@@ -106,6 +108,15 @@ function parseRequest(requestId, data) {
     const phone = cleanPhone(data.phone);
     if (firstName === null || lastName === null || phone === null) return null;
     return { requestId, uid, type, status, email, firstName, lastName, phone, photo: data.photo === true };
+  }
+  if (type === "TEMP_GUEST_NAME") {
+    const guestKey = str(data.guestKey);
+    if (guestKey === void 0 || !GUEST_KEY.test(guestKey)) return null;
+    const optional = (v) => kotlinTrim(str(v) ?? "") === "" ? "" : cleanName(v);
+    const firstName = optional(data.firstName);
+    const lastName = optional(data.lastName);
+    if (firstName === null || lastName === null || firstName === "" && lastName === "") return null;
+    return { requestId, uid, type, status, email, firstName, lastName, phone: "", photo: false, guestKey };
   }
   if (type === "GOOGLE_LINK") {
     const codeHash = str(data.codeHash);
@@ -1181,6 +1192,7 @@ var DONE2 = { status: "DONE", reason: "" };
 var rejected2 = (reason) => ({ status: "REJECTED", reason });
 var isClaimable3 = (d) => d.status === STATUS_PENDING2 && d.type !== "GOOGLE_LINK";
 var GUEST_TYPES = ["GUEST_PROFILE", "GUEST_QR_EMAIL"];
+var TEMP_TYPES = ["TEMP_GUEST_NAME"];
 var Deferred = class extends Error {
   code = "DEFERRED";
 };
@@ -1224,6 +1236,7 @@ async function onRequestDocument(db, bucket, mail, orgId, requestId, current) {
   logger4.info("request processed", { orgId, requestId, status: result.status, reason: result.reason });
 }
 async function waitReason(db, orgId, type) {
+  if (TEMP_TYPES.includes(type)) return await temporaryGuestPortalEnabled(db, orgId) ? null : "TEMP_SPACE_OFF";
   if (!GUEST_TYPES.includes(type)) return null;
   if (!await guestPortalEnabled(db, orgId)) return "GUEST_SPACE_OFF";
   if (type === "GUEST_QR_EMAIL" && await publishedGuestTemplate(db, orgId) === null) return "NO_TEMPLATE";
@@ -1258,9 +1271,66 @@ async function processClaimed2(db, bucket, mail, orgId, requestId, claimed) {
       const reason = await unlinkGoogle(db, orgId, requestId, request.uid);
       return reason === "" ? DONE2 : rejected2(reason);
     }
+    case "TEMP_GUEST_NAME":
+      if (!await temporaryGuestPortalEnabled(db, orgId)) throw new Deferred("TEMP_SPACE_OFF");
+      return renameTemporaryGuest(db, orgId, requestId, request);
     case "GOOGLE_LINK":
       return rejected2("INVALID");
   }
+}
+var guestKeyOf = (nanoId) => sha256(nanoId).slice(0, 16);
+async function renameTemporaryGuest(db, orgId, requestId, request) {
+  const pageRef2 = db.doc(`orgs/${orgId}/temporaryGuestPortal/${request.uid}`);
+  const qrRef = db.doc(`orgs/${orgId}/temporaryGuestPortalQr/${request.uid}`);
+  try {
+    return await db.runTransaction(async (tx) => {
+      const linked = await tx.get(guests(db, orgId).where("portalUid", "==", request.uid));
+      const target = linked.docs.find(
+        (d) => boolOf(d.get("isTemporaryGuest")) && boolOf(d.get("portalEnabled")) && guestKeyOf(stringOf(d.get("nanoId")) || d.id) === request.guestKey
+      );
+      if (target === void 0) return rejected2("NOT_FOUND");
+      if ((millisOf(target.get("temporaryEntryValidatedAt")) ?? 0) > 0) return rejected2("ENTRY_USED");
+      const page = await tx.get(pageRef2);
+      const qr = await tx.get(qrRef);
+      const now = Date.now();
+      tx.update(target.ref, {
+        name: request.firstName,
+        lastNameAbbreviation: request.lastName,
+        lastModified: Math.max(now, (millisOf(target.get("lastModified")) ?? 0) + 1)
+      });
+      const patch = renamedPage(page.data(), request, now);
+      if (patch !== null) tx.update(pageRef2, patch);
+      const item = qr.data()?.items?.[request.guestKey ?? ""];
+      if (item !== void 0 && item !== null && typeof item === "object") {
+        tx.update(qrRef, { [`items.${request.guestKey}.name`]: `${request.firstName} ${request.lastName}`.trim() });
+      }
+      return DONE2;
+    });
+  } catch (e) {
+    logger4.error("name not saved", { orgId, requestId, code: errorCode3(e) });
+    return rejected2("SAVE_FAILED");
+  }
+}
+function renamedPage(data, request, now) {
+  if (data === void 0 || typeof data.payload !== "string") return null;
+  let payload;
+  try {
+    payload = JSON.parse(data.payload);
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(payload?.groups)) return null;
+  for (const group of payload.groups) {
+    if (!Array.isArray(group?.guests)) continue;
+    for (const g of group.guests) {
+      if (g?.guestKey === request.guestKey) {
+        g.firstName = request.firstName;
+        g.lastName = request.lastName;
+      }
+    }
+  }
+  const text = JSON.stringify(payload);
+  return { payload: text, contentHash: sha256(text), updatedAt: now };
 }
 async function complete(ref, result) {
   await ref.set({ status: result.status, reason: result.reason, processedAt: Date.now() }, { merge: true });
