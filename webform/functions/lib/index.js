@@ -1292,6 +1292,9 @@ function loadFile(name) {
   if (!p) {
     p = readFile(fileURLToPath(new URL(`../assets/${name}`, import.meta.url)));
     fontBytes.set(name, p);
+    p.catch(() => {
+      if (fontBytes.get(name) === p) fontBytes.delete(name);
+    });
   }
   return p;
 }

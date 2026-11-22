@@ -165,6 +165,10 @@ function loadFile(name: string): Promise<Uint8Array> {
   if (!p) {
     p = readFile(fileURLToPath(new URL(`../assets/${name}`, import.meta.url)));
     fontBytes.set(name, p);
+    // A failed read must not stay cached: the next call retries.
+    p.catch(() => {
+      if (fontBytes.get(name) === p) fontBytes.delete(name);
+    });
   }
   return p;
 }

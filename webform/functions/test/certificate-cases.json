@@ -1607,5 +1607,374 @@
         }
       }
     }
+  },
+  {
+    "name": "many-shifts-several-roles-mandate-de",
+    "language": "de",
+    "association": "Nova Events",
+    "person": {
+      "firstName": "Mara",
+      "lastName": "Keller",
+      "gender": "FEMALE"
+    },
+    "types": [
+      {
+        "name": "Eingang",
+        "category": "SHIFT",
+        "description": "Einlass und Ticketkontrolle"
+      },
+      {
+        "name": "Bar",
+        "category": "SHIFT",
+        "description": "Ausschank an der Theke"
+      },
+      {
+        "name": "Co-Präsidium",
+        "category": "MANDATE",
+        "description": "Leitung des Vereins"
+      }
+    ],
+    "jobs": [
+      {
+        "jobTypeName": "Eingang",
+        "day": 20260105
+      },
+      {
+        "jobTypeName": "Eingang",
+        "day": 20260112
+      },
+      {
+        "jobTypeName": "Eingang",
+        "day": 20260119
+      },
+      {
+        "jobTypeName": "Eingang",
+        "day": 20260126
+      },
+      {
+        "jobTypeName": "Eingang",
+        "day": 20260202
+      },
+      {
+        "jobTypeName": "Eingang",
+        "day": 20260209
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260110
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260117
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260124
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260131
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260207
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260214
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260221
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260228
+      },
+      {
+        "jobTypeName": "Co-Präsidium",
+        "day": 20260101
+      },
+      {
+        "jobTypeName": "Co-Präsidium",
+        "day": 20260301
+      },
+      {
+        "jobTypeName": "Co-Präsidium",
+        "day": 20260401
+      }
+    ],
+    "selection": {
+      "fromDay": 20260101,
+      "toDay": 20261231,
+      "todayDay": 20260615,
+      "jobTypes": [
+        "Bar",
+        "Eingang",
+        "Co-Präsidium"
+      ]
+    },
+    "expect": {
+      "body": [
+        "Nova Events",
+        "Bestätigung über ehrenamtliches Engagement",
+        "Nova Events bestätigt, dass sich Mara Keller zwischen Januar und April 2026 ehrenamtlich im Verein engagiert hat.",
+        "Mara hat zwischen Januar und April 2026 das Amt als Co-Präsidium ausgeübt.",
+        "Leitung des Vereins",
+        "Mara hat sich zwischen Januar und Februar 2026 ehrenamtlich bei 14 Veranstaltungen von Nova Events engagiert, und zwar in folgenden Funktionen:",
+        "Bar: Ausschank an der Theke",
+        "Eingang: Einlass und Ticketkontrolle",
+        "Wir danken Mara herzlich für das Engagement.",
+        "Ausgestellt in Bern, am 15. Juni 2026"
+      ],
+      "footer": []
+    },
+    "place": "Bern"
+  },
+  {
+    "name": "many-shifts-several-roles-mandate-it",
+    "language": "it",
+    "association": "Nova Events",
+    "person": {
+      "firstName": "Luca",
+      "lastName": "Rossi",
+      "gender": "MALE"
+    },
+    "types": [
+      {
+        "name": "Ingresso",
+        "category": "SHIFT",
+        "description": "Accoglienza e controllo dei biglietti"
+      },
+      {
+        "name": "Bar",
+        "category": "SHIFT",
+        "description": "Servizio al bancone"
+      },
+      {
+        "name": "Co-presidenza",
+        "category": "MANDATE",
+        "description": "Direzione dell'associazione"
+      }
+    ],
+    "jobs": [
+      {
+        "jobTypeName": "Ingresso",
+        "day": 20260105
+      },
+      {
+        "jobTypeName": "Ingresso",
+        "day": 20260112
+      },
+      {
+        "jobTypeName": "Ingresso",
+        "day": 20260119
+      },
+      {
+        "jobTypeName": "Ingresso",
+        "day": 20260126
+      },
+      {
+        "jobTypeName": "Ingresso",
+        "day": 20260202
+      },
+      {
+        "jobTypeName": "Ingresso",
+        "day": 20260209
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260110
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260117
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260124
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260131
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260207
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260214
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260221
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260228
+      },
+      {
+        "jobTypeName": "Co-presidenza",
+        "day": 20260101
+      },
+      {
+        "jobTypeName": "Co-presidenza",
+        "day": 20260301
+      },
+      {
+        "jobTypeName": "Co-presidenza",
+        "day": 20260401
+      }
+    ],
+    "selection": {
+      "fromDay": 20260101,
+      "toDay": 20261231,
+      "todayDay": 20260615,
+      "jobTypes": [
+        "Bar",
+        "Ingresso",
+        "Co-presidenza"
+      ]
+    },
+    "expect": {
+      "body": [
+        "Nova Events",
+        "Attestazione di volontariato",
+        "Nova Events attesta che Luca Rossi ha svolto attività di volontariato nell'associazione tra gennaio e aprile 2026.",
+        "Luca ha ricoperto l'incarico di Co-presidenza tra gennaio e aprile 2026.",
+        "Direzione dell'associazione",
+        "Luca ha svolto attività di volontariato a 14 eventi organizzati da Nova Events tra gennaio e febbraio 2026, con i seguenti ruoli:",
+        "Bar: Servizio al bancone",
+        "Ingresso: Accoglienza e controllo dei biglietti",
+        "Ringraziamo calorosamente Luca per il suo impegno.",
+        "Fatto a Lugano, il 15 giugno 2026"
+      ],
+      "footer": []
+    },
+    "place": "Lugano"
+  },
+  {
+    "name": "many-shifts-several-roles-mandate-es",
+    "language": "es",
+    "association": "Nova Events",
+    "person": {
+      "firstName": "Lucía",
+      "lastName": "Gómez",
+      "gender": "FEMALE"
+    },
+    "types": [
+      {
+        "name": "Entrada",
+        "category": "SHIFT",
+        "description": "Acogida y control de entradas"
+      },
+      {
+        "name": "Bar",
+        "category": "SHIFT",
+        "description": "Servicio en la barra"
+      },
+      {
+        "name": "Copresidencia",
+        "category": "MANDATE",
+        "description": "Dirección de la asociación"
+      }
+    ],
+    "jobs": [
+      {
+        "jobTypeName": "Entrada",
+        "day": 20260105
+      },
+      {
+        "jobTypeName": "Entrada",
+        "day": 20260112
+      },
+      {
+        "jobTypeName": "Entrada",
+        "day": 20260119
+      },
+      {
+        "jobTypeName": "Entrada",
+        "day": 20260126
+      },
+      {
+        "jobTypeName": "Entrada",
+        "day": 20260202
+      },
+      {
+        "jobTypeName": "Entrada",
+        "day": 20260209
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260110
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260117
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260124
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260131
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260207
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260214
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260221
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260228
+      },
+      {
+        "jobTypeName": "Copresidencia",
+        "day": 20260101
+      },
+      {
+        "jobTypeName": "Copresidencia",
+        "day": 20260301
+      },
+      {
+        "jobTypeName": "Copresidencia",
+        "day": 20260401
+      }
+    ],
+    "selection": {
+      "fromDay": 20260101,
+      "toDay": 20261231,
+      "todayDay": 20260615,
+      "jobTypes": [
+        "Bar",
+        "Entrada",
+        "Copresidencia"
+      ]
+    },
+    "expect": {
+      "body": [
+        "Nova Events",
+        "Certificado de voluntariado",
+        "Nova Events certifica que Lucía Gómez ha realizado tareas de voluntariado en la asociación entre enero y abril de 2026.",
+        "Lucía ejerció el cargo de Copresidencia entre enero y abril de 2026.",
+        "Dirección de la asociación",
+        "Lucía realizó tareas de voluntariado en 14 eventos organizados por Nova Events entre enero y febrero de 2026, con las siguientes funciones:",
+        "Bar: Servicio en la barra",
+        "Entrada: Acogida y control de entradas",
+        "Agradecemos sinceramente a Lucía su compromiso.",
+        "Expedido en Madrid, a 15 de junio de 2026"
+      ],
+      "footer": []
+    },
+    "place": "Madrid"
   }
 ]
