@@ -168,8 +168,7 @@ Fenêtre « Attestation de bénévolat »
      « … s'est engagé{·e·x} bénévolement au sein de l'association. »)
   4. Un bloc par catégorie, chacun avec ses variantes « un seul » / « plusieurs » (onglets dans le
      bloc), plus le format de ligne de la liste des rôles
-  5. Conclusion (défaut : « Nous la·le·x remercions chaleureusement pour son engagement. » avec
-     accord de genre)
+  5. Conclusion (défaut : « Nous remercions chaleureusement {prénom} pour son engagement. »)
   6. Lieu et date (défaut « Fait à {lieu}, le {date_du_jour} » ; champ « Lieu »)
   7. Signature : nom, fonction, image de signature facultative (PNG/JPEG, fond transparent
      conseillé, redimensionnée à 600 px de large max)
