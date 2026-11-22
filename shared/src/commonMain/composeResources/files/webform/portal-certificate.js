@@ -1,6 +1,8 @@
 // Volunteer certificate request: the pure parts (grouping of job types, default period and
 // selection, request fields). No Firebase and no DOM here, so they can be unit tested in Node.
 
+import { isWaiting } from "./portal-common.js?v=guest-3";
+
 /** Categories in the order of the certificate, as published by the devices. */
 export const CATEGORIES = ["MANDATE", "SHIFT", "PHOTO", "GRAPHIC_EVENT", "GRAPHIC_ASSOCIATION", "OTHER", "MEETING"];
 
@@ -81,4 +83,27 @@ export function periodValid(from, to, todayIso) {
 /** Fields of the CERTIFICATE_EMAIL request. */
 export function requestFields(from, to, selection) {
   return { from, to, jobTypes: [...selection].sort() };
+}
+
+/**
+ * What the volunteer sees of the CERTIFICATE_EMAIL request:
+ * "none", "waiting" (sent, the server has not looked at it yet), "review" (the team has to
+ * validate it, or it was validated and is being sent), "sent", "refused" (the team said no) or
+ * "failed" (rejected by the server, or stuck before the review). Internal reasons such as
+ * SEND_FAILED after a first attempt stay hidden: the volunteer only sees "review".
+ */
+export function certificateState(request, now = Date.now()) {
+  const status = request?.status;
+  if (!status) return "none";
+  if (status === "DONE") return "sent";
+  if (status === "REJECTED") return request.reason === "REFUSED" ? "refused" : "failed";
+  if (status === "PENDING_REVIEW" || status === "APPROVED") return "review";
+  if (status === "PROCESSING" && (request.reviewAt || request.approvalId)) return "review";
+  if (status === "PENDING" || status === "PROCESSING") return isWaiting({ type: "CERTIFICATE_EMAIL", ...request }, now) ? "waiting" : "failed";
+  return "none";
+}
+
+/** The note of a refusal, as plain text (empty when there is none). */
+export function refusalNote(request) {
+  return typeof request?.note === "string" ? request.note.trim() : "";
 }

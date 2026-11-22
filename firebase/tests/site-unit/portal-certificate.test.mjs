@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 const {
-  canSend, defaultPeriod, defaultSelection, groupTypes, needsFullName, periodValid, profileFields, requestFields, typesInPeriod,
+  canSend, certificateState, refusalNote, defaultPeriod, defaultSelection, groupTypes, needsFullName, periodValid, profileFields, requestFields, typesInPeriod,
 } = await import("../site/portal-certificate.js");
 
 const TYPES = [
@@ -84,4 +84,29 @@ test("profile fields need a first name, a full last name and a phone", () => {
   assert.equal(profileFields("Anna", "Dupont", null), null);
   assert.equal(profileFields(null, "Dupont", "+41 79 000 00 00"), null);
   assert.equal(profileFields("Anna", "D.", "+41 79 000 00 00"), null);
+});
+
+test("certificate state of the request", () => {
+  const now = Date.parse("2026-11-22T12:00:00Z");
+  const at = (min) => now - min * 60_000;
+  assert.equal(certificateState(undefined, now), "none");
+  assert.equal(certificateState({ status: "PENDING", requestedAt: at(1) }, now), "waiting");
+  assert.equal(certificateState({ status: "PENDING" }, now), "waiting");
+  assert.equal(certificateState({ status: "PROCESSING", requestedAt: at(2), processingAt: at(1) }, now), "waiting");
+  assert.equal(certificateState({ status: "PENDING_REVIEW", reviewAt: at(1) }, now), "review");
+  assert.equal(certificateState({ status: "PENDING_REVIEW", reason: "SEND_FAILED", processingAt: at(30) }, now), "review");
+  assert.equal(certificateState({ status: "APPROVED", approvalId: "a" }, now), "review");
+  assert.equal(certificateState({ status: "PROCESSING", approvalId: "a", processingAt: at(20) }, now), "review");
+  assert.equal(certificateState({ status: "DONE" }, now), "sent");
+  assert.equal(certificateState({ status: "REJECTED", reason: "REFUSED", note: "x" }, now), "refused");
+  assert.equal(certificateState({ status: "REJECTED", reason: "NO_EMAIL" }, now), "failed");
+  assert.equal(certificateState({ status: "REJECTED" }, now), "failed");
+  assert.equal(certificateState({ status: "PROCESSING", processingAt: at(30) }, now), "failed");
+});
+
+test("refusal note is plain trimmed text, empty when missing", () => {
+  assert.equal(refusalNote({ note: "  Dates <b>fausses</b>  " }), "Dates <b>fausses</b>");
+  assert.equal(refusalNote({ note: "" }), "");
+  assert.equal(refusalNote({}), "");
+  assert.equal(refusalNote({ note: 3 }), "");
 });

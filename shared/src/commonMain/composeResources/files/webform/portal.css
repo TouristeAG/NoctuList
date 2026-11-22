@@ -478,6 +478,7 @@ details.fold[open] summary { color: var(--on); }
 
 /* Certificate request sheet */
 .cert-sheet { padding-top: 12px; }
+.cert-note { margin: -6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--muted); }
 .cert-bulk { display: flex; gap: 16px; margin: 14px 0 2px; }
 .cert-bulk .link-btn { font-size: 0.88rem; }
 .cert-group { margin-top: 14px; }
