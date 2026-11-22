@@ -178,3 +178,43 @@ Anti-objectifs
 - **Limites revérifiées par le serveur** : body + footer ≤ 200 000 caractères, image de
   signature ≤ 200 000 caractères, sinon `INVALID` et retour à `PENDING_REVIEW` ; note ≤ 300
   caractères vérifiée par les règles.
+
+## 12. Correction du texte : seulement pour cette attestation (rappel du propriétaire)
+
+Quand l'admin modifie le texte dans la fenêtre de relecture ou de génération, la modification ne
+vaut que pour l'attestation en cours. Le modèle par défaut (Paramètres) n'est jamais modifié par
+cette fenêtre. Le but est d'ajouter ce qui manque pour ce bénévole précis.
+
+## 13. Générer une attestation depuis la fiche d'un bénévole (sans demande)
+
+Demande du propriétaire : un admin peut produire et envoyer une attestation pour n'importe quel
+bénévole, sans que celui-ci passe par le portail.
+
+- **Où** : un petit bouton « Générer une attestation » dans le panneau du bénévole de l'admin
+  (`VolunteerDetailPanel`, Android et desktop). Visible quand l'option attestation est active et
+  qu'un modèle est enregistré, et que le bénévole a au moins un job passé. Le bénévole n'a pas
+  besoin de compte sur le portail.
+- **Écran** : la même fenêtre que la relecture, avec en plus, en haut, le choix de la période
+  (« Du », « Au », défaut : premier job → aujourd'hui) et des types de job (groupés par catégorie,
+  réunions décochées, « Tout » / « Aucun »), comme sur le portail. Changer la période ou les types
+  réassemble le texte ; si le texte a déjà été corrigé à la main, une confirmation prévient que
+  les corrections seront remplacées. Destinataire affiché : l'adresse de la fiche (non
+  modifiable ici ; sans adresse valide, le bouton d'envoi est désactivé avec un message).
+  Boutons : « Annuler », « Envoyer ».
+- **Envoi** : l'appareil écrit `certificateApprovals/{id aléatoire}` avec `kind: "DIRECT"`,
+  `email`, `firstName`, `lastName` (pour le nom du fichier), `body`, `footer`, `title`,
+  `signer`, `approvedBy`, `approvedAt`. Les approbations liées à une demande portent
+  `kind: "REQUEST"` et `requestId`.
+- **Serveur** (même trigger) : pour `DIRECT`, il réclame l'approbation elle-même
+  (`status` absent → `PROCESSING` en transaction, pour n'envoyer qu'une fois), vérifie l'adresse
+  avec `safeRecipient`, rend le PDF, l'envoie avec les réglages d'e-mail publiés, puis supprime
+  l'approbation. En cas d'échec, il garde l'approbation avec `status: "FAILED"` et `reason`.
+- **Retour à l'admin** : la fenêtre attend le résultat (approbation supprimée = envoyée ;
+  `FAILED` = message avec la raison). Si la fenêtre a été fermée avant, un envoi direct en échec
+  apparaît dans la carte « Attestations à valider » (« Échec de l'envoi à {nom} ») avec
+  « Ignorer » (supprime l'approbation). L'admin peut regénérer depuis la fiche.
+- **Sécurité** : les membres peuvent déjà faire envoyer un e-mail par le compte de l'association
+  (file `mailOutbox`). Un envoi direct n'ouvre donc pas de nouveau droit. Règles : création d'un
+  `DIRECT` par un membre avec exactement les champs ci-dessus (adresse au format e-mail,
+  limites de taille), lecture et suppression par les membres, aucun accès portail.
+- Rien n'est écrit sur le portail du bénévole pour un envoi direct.
