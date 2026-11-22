@@ -583,6 +583,129 @@ class EventManagerViewModel(
         return true
     }
 
+    /**
+     * "On every device of the org": creates [newOrgId] when new, pushes the shared org list, then
+     * publishes an invitation (with the admin's [message]) into [sourceOrgId] so each of its
+     * devices can join [newOrgId] from a popup.
+     */
+    suspend fun shareFirebaseOrgWithOrg(
+        newOrgId: String,
+        sourceOrgId: String,
+        message: String,
+    ): com.eventmanager.app.data.remote.FirebaseOrgInvitationActions.ShareResult {
+        val settings = settingsManagerCached
+            ?: return com.eventmanager.app.data.remote.FirebaseOrgInvitationActions.ShareResult.Failed("NOT_READY")
+        if (settings.getBackendType() != BackendType.FIREBASE || !FirebaseOrgBootstrap.isValidOrgId(newOrgId)) {
+            return com.eventmanager.app.data.remote.FirebaseOrgInvitationActions.ShareResult.Failed("NOT_READY")
+        }
+        return try {
+            val auth = createFirebaseAuthService(platformContext)
+            auth.restoreSession()
+            syncCoordinator?.provisionFirebaseOrg(newOrgId.trim())
+            syncCoordinator?.replicateFirebaseConfiguredOrgs()
+            val result = com.eventmanager.app.data.remote.FirebaseOrgInvitationActions.prepareInvitation(
+                gateway = createFirestoreGateway(platformContext, settings),
+                settings = settings,
+                sourceOrgId = sourceOrgId,
+                targetOrgId = newOrgId,
+                message = message,
+                sentBy = auth.currentUserEmail() ?: settings.getFirebaseAuthEmail(),
+            )
+            if (result is com.eventmanager.app.data.remote.FirebaseOrgInvitationActions.ShareResult.Sent) {
+                syncCoordinator?.afterInstitutionSettingsChanged()
+            }
+            result
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            com.eventmanager.app.data.remote.FirebaseOrgInvitationActions.ShareResult.Failed(e.message ?: e::class.simpleName.orEmpty())
+        }
+    }
+
+    /** Name shown for an org: its synced display name, or its ID. */
+    fun firebaseOrgLabel(orgId: String): String =
+        settingsManagerCached?.getFirebaseOrgLabel(orgId) ?: orgId.trim()
+
+    private val _pendingOrgInvitation =
+        MutableStateFlow<com.eventmanager.app.data.remote.FirebaseOrgInvitation?>(null)
+
+    /** The org invitation this device should be asked about now, or null. */
+    val pendingOrgInvitation: StateFlow<com.eventmanager.app.data.remote.FirebaseOrgInvitation?> =
+        _pendingOrgInvitation.asStateFlow()
+
+    /**
+     * Looks for an invitation this device has not answered. One this account already joined (on
+     * another device, or by QR) is marked joined without asking.
+     */
+    suspend fun refreshPendingOrgInvitation() {
+        val settings = settingsManagerCached ?: return
+        if (settings.getBackendType() != BackendType.FIREBASE) {
+            _pendingOrgInvitation.value = null
+            return
+        }
+        if (_pendingOrgInvitation.value != null) return
+        val uid = createFirebaseAuthService(platformContext).currentUserId()?.trim().orEmpty()
+        if (uid.isBlank()) return
+        val gateway = createFirestoreGateway(platformContext, settings)
+        for (invitation in settings.getPendingFirebaseOrgInvitations()) {
+            val probe = try {
+                gateway.probeMembership(invitation.orgId, uid)
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                com.eventmanager.app.data.remote.MembershipProbe.Unavailable
+            }
+            when (probe) {
+                is com.eventmanager.app.data.remote.MembershipProbe.Member ->
+                    settings.markFirebaseOrgInvitationJoined(invitation)
+                com.eventmanager.app.data.remote.MembershipProbe.Unavailable -> return
+                else -> {
+                    _pendingOrgInvitation.value = invitation
+                    return
+                }
+            }
+        }
+    }
+
+    /** "Not now": the popup does not come back; the org's row in Settings still offers to join. */
+    fun declineOrgInvitation(invitation: com.eventmanager.app.data.remote.FirebaseOrgInvitation) {
+        settingsManagerCached?.markFirebaseOrgInvitationDeclined(invitation)
+        if (_pendingOrgInvitation.value?.key == invitation.key) _pendingOrgInvitation.value = null
+    }
+
+    /** Joins the invited org with this account, then restarts sync so its data starts flowing. */
+    suspend fun joinOrgFromInvitation(
+        invitation: com.eventmanager.app.data.remote.FirebaseOrgInvitation,
+    ): com.eventmanager.app.data.remote.FirebaseOrgInvitationActions.JoinResult {
+        val settings = settingsManagerCached ?: return com.eventmanager.app.data.remote.FirebaseOrgInvitationActions.JoinResult.Failed("NOT_READY")
+        val auth = createFirebaseAuthService(platformContext)
+        runCatching { auth.restoreSession() }
+        val result = com.eventmanager.app.data.remote.FirebaseOrgInvitationActions.join(
+            gateway = createFirestoreGateway(platformContext, settings),
+            invitation = invitation,
+            uid = auth.currentUserId(),
+            email = auth.currentUserEmail() ?: settings.getFirebaseAuthEmail(),
+        )
+        if (result is com.eventmanager.app.data.remote.FirebaseOrgInvitationActions.JoinResult.Joined) {
+            settings.markFirebaseOrgInvitationJoined(invitation)
+            val current = settings.getFirebaseConfiguredOrgs()
+            if (current.none { it.orgId == invitation.orgId.trim() }) {
+                settings.setFirebaseConfiguredOrgs(
+                    current + com.eventmanager.app.data.remote.FirebaseConfiguredOrg(
+                        orgId = invitation.orgId.trim(),
+                        colorArgb = com.eventmanager.app.data.remote.FirebaseConfiguredOrgCodec
+                            .nextAvailableColor(current.map { it.colorArgb }),
+                        displayName = invitation.displayName,
+                    ),
+                )
+            }
+            if (_pendingOrgInvitation.value?.key == invitation.key) _pendingOrgInvitation.value = null
+            syncCoordinator?.stopBackgroundRemoteSync()
+            syncCoordinator?.startBackgroundRemoteSync(viewModelScope)
+        }
+        return result
+    }
+
     fun provisionFirebaseOrg(orgId: String) {
         viewModelScope.launch {
             val settings = settingsManagerCached ?: return@launch

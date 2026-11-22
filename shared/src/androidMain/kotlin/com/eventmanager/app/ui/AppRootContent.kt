@@ -1726,6 +1726,9 @@ if (pageAnimationsEnabled) {
             )
         }
 
+        // Join an org an admin added for every device of this org.
+        com.eventmanager.app.ui.components.FirebaseOrgInvitationHost(viewModel)
+
         // Announcement Receive Popup
         val currentAnnouncement = pendingAnnouncements.firstOrNull()
         if (currentAnnouncement != null) {

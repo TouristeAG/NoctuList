@@ -197,6 +197,9 @@ class SettingsManager(private val storage: AppStorage) {
         private const val KEY_FIREBASE_ORG_VIEW_MODE = "firebase_org_view_mode"
         private const val KEY_FIREBASE_LAST_SINGLE_ORG_ID = "firebase_last_single_org_id"
         private const val KEY_FIREBASE_CONFIGURED_ORGS = "firebase_configured_orgs"
+        private const val KEY_FIREBASE_ORG_INVITATIONS = "firebase_org_invitations"
+        private const val KEY_FIREBASE_ORG_INVITATIONS_JOINED = "firebase_org_invitations_joined"
+        private const val KEY_FIREBASE_ORG_INVITATIONS_DECLINED = "firebase_org_invitations_declined"
         private const val KEY_FIREBASE_BOOTSTRAP_CODE = "firebase_bootstrap_code"
         private const val KEY_FIREBASE_JOIN_IMPORTED = "firebase_join_imported"
         private const val KEY_FIREBASE_AUTH_EMAIL = "firebase_auth_email"
@@ -775,6 +778,49 @@ class SettingsManager(private val storage: AppStorage) {
         return !target.localOnly
     }
 
+    fun getFirebaseOrgInvitations(): List<com.eventmanager.app.data.remote.FirebaseOrgInvitation> =
+        com.eventmanager.app.data.remote.FirebaseOrgInvitationCodec.decode(
+            storage.getString(KEY_FIREBASE_ORG_INVITATIONS, "").orEmpty(),
+        )
+
+    /** Records an invitation this admin device sends; the next institution push publishes it. */
+    fun addFirebaseOrgInvitation(invitation: com.eventmanager.app.data.remote.FirebaseOrgInvitation) {
+        val codec = com.eventmanager.app.data.remote.FirebaseOrgInvitationCodec
+        storage.putString(KEY_FIREBASE_ORG_INVITATIONS, codec.encode(codec.upsert(getFirebaseOrgInvitations(), invitation)))
+        touchInstitutionSettingLastModified(InstitutionSettingsKeys.FIREBASE_ORG_INVITATIONS)
+    }
+
+    /** Invitations this device has not answered yet, newest first. */
+    fun getPendingFirebaseOrgInvitations(): List<com.eventmanager.app.data.remote.FirebaseOrgInvitation> =
+        com.eventmanager.app.data.remote.FirebaseOrgInvitationCodec.pending(
+            invitations = getFirebaseOrgInvitations(),
+            configuredOrgIds = getFirebaseConfiguredOrgs().map { it.orgId },
+            answeredKeys = getFirebaseOrgInvitationsJoined() + getFirebaseOrgInvitationsDeclined(),
+        )
+
+    /** The latest invitation to [orgId] this device declined, so it can still join later. */
+    fun getDeclinedFirebaseOrgInvitation(orgId: String): com.eventmanager.app.data.remote.FirebaseOrgInvitation? {
+        val declined = getFirebaseOrgInvitationsDeclined()
+        val joined = getFirebaseOrgInvitationsJoined()
+        return getFirebaseOrgInvitations()
+            .filter { it.orgId == orgId.trim() && it.key in declined && it.key !in joined }
+            .maxByOrNull { it.sentAt }
+    }
+
+    fun markFirebaseOrgInvitationJoined(invitation: com.eventmanager.app.data.remote.FirebaseOrgInvitation) {
+        storage.putStringSet(KEY_FIREBASE_ORG_INVITATIONS_JOINED, getFirebaseOrgInvitationsJoined() + invitation.key)
+    }
+
+    fun markFirebaseOrgInvitationDeclined(invitation: com.eventmanager.app.data.remote.FirebaseOrgInvitation) {
+        storage.putStringSet(KEY_FIREBASE_ORG_INVITATIONS_DECLINED, getFirebaseOrgInvitationsDeclined() + invitation.key)
+    }
+
+    private fun getFirebaseOrgInvitationsJoined(): Set<String> =
+        storage.getStringSet(KEY_FIREBASE_ORG_INVITATIONS_JOINED, emptySet())
+
+    private fun getFirebaseOrgInvitationsDeclined(): Set<String> =
+        storage.getStringSet(KEY_FIREBASE_ORG_INVITATIONS_DECLINED, emptySet())
+
     /** Name shown for an org: its synced display name, or its ID. */
     fun getFirebaseOrgLabel(orgId: String): String {
         val trimmed = orgId.trim()
@@ -1182,6 +1228,15 @@ class SettingsManager(private val storage: AppStorage) {
         lastModified: Long,
         sourceOrgId: String = "",
     ) {
+        if (key == InstitutionSettingsKeys.FIREBASE_ORG_INVITATIONS) {
+            // Each org's invitations replace only that org's: several orgs feed this one value.
+            val codec = com.eventmanager.app.data.remote.FirebaseOrgInvitationCodec
+            val merged = codec.mergeFromSource(getFirebaseOrgInvitations(), sourceOrgId, codec.decode(value))
+            storage.putString(KEY_FIREBASE_ORG_INVITATIONS, codec.encode(merged))
+            setInstitutionSettingLastModified(key, lastModified)
+            storage.putLong(KEY_INSTITUTION_SETTING_PUSHED_LM_PREFIX + key, lastModified)
+            return
+        }
         if (key == InstitutionSettingsKeys.FIREBASE_CONFIGURED_ORGS) {
             val codec = com.eventmanager.app.data.remote.FirebaseConfiguredOrgCodec
             val local = codec.decode(storage.getString(KEY_FIREBASE_CONFIGURED_ORGS, "").orEmpty())
@@ -1248,6 +1303,14 @@ class SettingsManager(private val storage: AppStorage) {
                 storage.getString("inst_val_" + InstitutionSettingsKeys.BACKEND_MIGRATION_BY, "") ?: ""
             InstitutionSettingsKeys.FIREBASE_ORG_ID ->
                 storage.getString("inst_val_" + InstitutionSettingsKeys.FIREBASE_ORG_ID, "").ifBlank { getFirebaseOrgId() }
+            // Only the invitations of the org this device writes to: each org has its own list.
+            InstitutionSettingsKeys.FIREBASE_ORG_INVITATIONS ->
+                com.eventmanager.app.data.remote.FirebaseOrgInvitationCodec.encode(
+                    com.eventmanager.app.data.remote.FirebaseOrgInvitationCodec.forSource(
+                        getFirebaseOrgInvitations(),
+                        resolveWritableFirebaseOrgId(),
+                    ),
+                )
             // The shared orgs of this device; orgs added here only never leave it.
             InstitutionSettingsKeys.FIREBASE_CONFIGURED_ORGS ->
                 runCatching {

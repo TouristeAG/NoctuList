@@ -84,7 +84,13 @@ import com.eventmanager.app.resources.sync_org_remove_title
 import com.eventmanager.app.resources.sync_reconfigure
 import com.eventmanager.app.resources.sync_state_needs_config
 import com.eventmanager.app.resources.sync_state_ready
+import com.eventmanager.app.data.remote.FirebaseOrgInvitation
+import com.eventmanager.app.data.remote.FirebaseOrgInvitationCodec
+import com.eventmanager.app.resources.sync_org_add_message_hint
+import com.eventmanager.app.resources.sync_org_add_message_label
+import com.eventmanager.app.resources.sync_org_invite_join
 import com.eventmanager.app.ui.components.FirebaseAdminProjectConfigCard
+import com.eventmanager.app.ui.components.FirebaseOrgInvitationDialog
 import com.eventmanager.app.ui.components.OrgColorSwatchRow
 import com.eventmanager.app.ui.components.firebaseConfiguredOrgsReady
 import androidx.compose.foundation.selection.selectable
@@ -147,8 +153,8 @@ fun SyncConnectionPage(b: SyncSettingsBindings, showTitle: Boolean = true) {
             // Only an org admin can push the org list, so only an admin gets the choice.
             showScopeChoice = b.isOrgAdmin,
             onDismiss = { showAddOrgDialog = false },
-            onAdd = { orgId, shareWithOrg ->
-                b.onAddOrg(orgId, shareWithOrg)
+            onAdd = { orgId, shareWithOrg, message ->
+                b.onAddOrg(orgId, shareWithOrg, message)
                 showAddOrgDialog = false
             },
         )
@@ -278,6 +284,7 @@ private fun OrganisationsBlock(b: SyncSettingsBindings, onAddOrganisation: () ->
     val orgs = b.configuredOrgs.filter { it.orgId.isNotBlank() }
     var orgToRemove by remember { mutableStateOf<String?>(null) }
     var orgToRename by remember { mutableStateOf<FirebaseConfiguredOrg?>(null) }
+    var invitationToJoin by remember { mutableStateOf<FirebaseOrgInvitation?>(null) }
 
     SettingsBlock(
         title = title,
@@ -306,6 +313,12 @@ private fun OrganisationsBlock(b: SyncSettingsBindings, onAddOrganisation: () ->
                                 )
                             },
                         )
+                        // Declined in the popup earlier: joining stays one tap away here.
+                        b.declinedInvitationFor(org.orgId)?.let { invitation ->
+                            TextButton(onClick = { invitationToJoin = invitation }) {
+                                Text(stringResource(Res.string.sync_org_invite_join))
+                            }
+                        }
                         if (b.isOrgAdmin && !malformed) {
                             IconButton(onClick = { orgToRename = org }) {
                                 Icon(
@@ -329,6 +342,30 @@ private fun OrganisationsBlock(b: SyncSettingsBindings, onAddOrganisation: () ->
         SettingsRow(
             title = stringResource(Res.string.firebase_configured_org_add),
             onClick = onAddOrganisation,
+        )
+        b.orgNotice?.let { notice ->
+            Text(
+                notice,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(
+                    horizontal = SettingsKitDefaults.RowHorizontalPadding,
+                    vertical = 12.dp,
+                ),
+            )
+        }
+    }
+
+    invitationToJoin?.let { invitation ->
+        FirebaseOrgInvitationDialog(
+            invitation = invitation,
+            sourceLabel = b.settingsManager.getFirebaseOrgLabel(invitation.sourceOrgId),
+            onJoin = { b.onJoinFromInvitation(invitation) },
+            onDecline = { invitationToJoin = null },
+            onJoined = {
+                invitationToJoin = null
+                b.onJoinedFromInvitation(invitation)
+            },
         )
     }
 
@@ -455,22 +492,24 @@ private fun RenameOrganisationDialog(
 fun AddOrganisationDialog(
     existingOrgIds: List<String>,
     onDismiss: () -> Unit,
-    onAdd: (orgId: String, shareWithOrg: Boolean) -> Unit,
+    onAdd: (orgId: String, shareWithOrg: Boolean, message: String) -> Unit,
     showScopeChoice: Boolean = false,
 ) {
     var value by remember { mutableStateOf("") }
     var shareWithOrg by remember { mutableStateOf(false) }
+    var message by remember { mutableStateOf("") }
     val trimmed = value.trim()
     val malformed = trimmed.isNotBlank() && !FirebaseOrgBootstrap.isValidOrgId(trimmed)
     val duplicate = trimmed.isNotBlank() && existingOrgIds.any { it.trim() == trimmed }
     val canAdd = trimmed.isNotBlank() && !malformed && !duplicate
-    val submit = { if (canAdd) onAdd(trimmed, showScopeChoice && shareWithOrg) }
+    val share = showScopeChoice && shareWithOrg
+    val submit = { if (canAdd) onAdd(trimmed, share, if (share) message else "") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(Res.string.firebase_configured_org_add)) },
         text = {
-            Column {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 OutlinedTextField(
                     value = value,
                     // Spaces and accents cannot appear in a Firestore path segment.
@@ -502,6 +541,18 @@ fun AddOrganisationDialog(
                             title = stringResource(Res.string.sync_org_add_scope_org),
                             body = stringResource(Res.string.sync_org_add_scope_org_body),
                             onSelect = { shareWithOrg = true },
+                        )
+                    }
+                    if (shareWithOrg) {
+                        // Shown to the other devices with the invitation to join.
+                        OutlinedTextField(
+                            value = message,
+                            onValueChange = { message = it.take(FirebaseOrgInvitationCodec.MESSAGE_MAX_LENGTH) },
+                            label = { Text(stringResource(Res.string.sync_org_add_message_label)) },
+                            supportingText = { Text(stringResource(Res.string.sync_org_add_message_hint)) },
+                            minLines = 3,
+                            maxLines = 6,
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                         )
                     }
                 }

@@ -844,6 +844,9 @@ actual fun AppRootContent(
                     )
                 }
 
+                // Join an org an admin added for every device of this org.
+                com.eventmanager.app.ui.components.FirebaseOrgInvitationHost(viewModel)
+
                 val downloadState by viewModel.updateDownloadState.collectAsState()
 
                 AppUpdateFlowDialog(
