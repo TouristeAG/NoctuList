@@ -243,7 +243,7 @@ export function safeRecipient(raw: string): string | null {
   return address;
 }
 
-const isCapture = (): boolean =>
+export const isCapture = (): boolean =>
   // Capture is test plumbing: it is ignored outside the emulator, so a stray setting never stores mail.
   process.env.FUNCTIONS_EMULATOR === "true" && process.env.PORTAL_MAIL_TRANSPORT === "capture";
 

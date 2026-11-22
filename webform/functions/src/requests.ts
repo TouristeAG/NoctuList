@@ -82,7 +82,7 @@ class Deferred extends Error {
 }
 
 /** The owner of a portal account, as on devices: `portalEnabled && portalUid == uid`. */
-const isOwner = (d: Fields, uid: string): boolean =>
+export const isOwner = (d: Fields, uid: string): boolean =>
   boolOf(d.get("portalEnabled")) && stringOf(d.get("portalUid")) === uid;
 
 const errorCode = (e: unknown): string => {

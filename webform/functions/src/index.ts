@@ -3,13 +3,14 @@ import { getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import * as logger from "firebase-functions/logger";
-import { onDocumentWritten } from "firebase-functions/v2/firestore";
+import { onDocumentCreated, onDocumentWritten } from "firebase-functions/v2/firestore";
 import { defineSecret, defineString } from "firebase-functions/params";
 import type { MailTransport } from "./mail";
 import { onRequestDocument } from "./requests";
 import { onSignupDocument } from "./signup";
 import { onOutboxDocument } from "./outbox";
 import { onGoogleClaimDocument } from "./google";
+import { onApprovalCreated } from "./approvals";
 
 export { cleanName, cleanPhone, cleanEmail, parseSignup, parseRequest, parseGoogleClaim } from "./validate";
 export type { SignupSubmission, PortalRequest, PortalRequestType, PortalGoogleClaim, PortalGoogleClaimType } from "./validate";
@@ -21,6 +22,8 @@ export { parseTemplate } from "./certificate";
 export type { CertificateTemplate, ResolvedParagraph, ResolvedRun } from "./certificate";
 export { layoutParagraphs, renderCertificatePdf } from "./certificatePdf";
 export type { LaidLine, LaidSegment, CertificatePdfInput } from "./certificatePdf";
+export { parseApproval, onApprovalCreated, MAX_TEXT_JSON, MAX_SIGNER_IMAGE } from "./approvals";
+export type { Approval, ApprovalCommon } from "./approvals";
 export { domainAllowed, parseDomains } from "./google";
 
 const REGION = defineString("REGION", { default: "europe-west1" });
@@ -84,6 +87,23 @@ export const onPortalRequestWritten = onDocumentWritten(
     const { db, bucket } = admin();
     const mail = transport(db);
     await onRequestDocument(db, bucket, mail, event.params.orgId, event.params.requestId, after.data());
+  },
+);
+
+/** Certificates an admin approved or generated: rendered and mailed once (approvals.ts). */
+export const onCertificateApprovalCreated = onDocumentCreated(
+  {
+    document: "orgs/{orgId}/certificateApprovals/{approvalId}",
+    region: REGION,
+    retry: false,
+    timeoutSeconds: 120,
+    secrets: [GMAIL_APP_PASSWORD],
+  },
+  async (event) => {
+    const snap = event.data;
+    if (!snap?.exists) return;
+    const { db } = admin();
+    await onApprovalCreated(db, transport(db), event.params.orgId, event.params.approvalId, snap.data());
   },
 );
 
