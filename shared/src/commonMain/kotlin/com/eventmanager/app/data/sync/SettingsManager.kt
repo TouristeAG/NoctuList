@@ -11,6 +11,7 @@ import com.eventmanager.app.data.models.VenueAccessCatalog
 import com.eventmanager.app.data.utils.AppIconStyles
 import com.eventmanager.app.data.utils.NanoIdGenerator
 import com.eventmanager.app.platform.AppBuildInfo
+import com.eventmanager.app.portal.certificate.CertificateTemplate
 import com.eventmanager.app.platform.AppStorage
 import com.eventmanager.app.platform.PlatformContext
 import com.eventmanager.app.platform.createAppStorage
@@ -229,9 +230,12 @@ class SettingsManager(private val storage: AppStorage) {
             "guest_forms_billeterie_validate_enabled"
         private const val KEY_GUEST_FORM_BASE_URL = "guest_form_base_url"
         private const val KEY_PENDING_PHOTO_REQUESTS = "pending_profile_photo_requests"
+        private const val KEY_VOLUNTEER_PORTAL_CERTIFICATE_ENABLED = "volunteer_portal_certificate_enabled"
+        private const val KEY_VOLUNTEER_PORTAL_CERTIFICATE_TEMPLATE = "volunteer_portal_certificate_template"
         private const val KEY_INSTITUTION_LOGO_PNG = "institution_logo_png"
         /** Prefs only holds this marker — the PNG bytes live on disk (Preferences max ~8 KiB). */
         private const val LOGO_ON_DISK_MARKER = "disk"
+        private const val CERTIFICATE_ON_DISK_MARKER = "disk"
         private const val KEY_TEMP_GUEST_EMAIL_SUBJECT = "temp_guest_email_subject"
         private const val KEY_TEMP_GUEST_EMAIL_HEADER = "temp_guest_email_header"
         private const val KEY_TEMP_GUEST_EMAIL_CONTENT_BEFORE = "temp_guest_email_content_before"
@@ -482,6 +486,26 @@ class SettingsManager(private val storage: AppStorage) {
 
     /** Volunteers see their own QR code in the volunteer portal. On by default. */
     fun isVolunteerPortalQrEnabled(): Boolean = storage.getBoolean(KEY_VOLUNTEER_PORTAL_QR_ENABLED, true)
+
+    fun isVolunteerPortalCertificateEnabled(): Boolean =
+        storage.getBoolean(KEY_VOLUNTEER_PORTAL_CERTIFICATE_ENABLED, false)
+
+    fun setVolunteerPortalCertificateEnabled(enabled: Boolean) {
+        storage.putBoolean(KEY_VOLUNTEER_PORTAL_CERTIFICATE_ENABLED, enabled)
+        touchInstitutionSettingLastModified(InstitutionSettingsKeys.VOLUNTEER_PORTAL_CERTIFICATE_ENABLED)
+    }
+
+    /** The certificate template, or null when none was ever saved or the stored JSON is unreadable. */
+    fun volunteerPortalCertificateTemplate(): CertificateTemplate? =
+        CertificateTemplateStore.readFromDisk()?.takeIf { it.isNotBlank() }
+            ?.let { CertificateTemplate.parse(it) }
+
+    fun saveVolunteerPortalCertificateTemplate(template: CertificateTemplate) {
+        CertificateTemplateStore.mirrorToDisk(template.toJson())
+        // Desktop Preferences rejects values over ~8 KiB: keep only a presence marker.
+        storage.putString(KEY_VOLUNTEER_PORTAL_CERTIFICATE_TEMPLATE, CERTIFICATE_ON_DISK_MARKER)
+        touchInstitutionSettingLastModified(InstitutionSettingsKeys.VOLUNTEER_PORTAL_CERTIFICATE_TEMPLATE)
+    }
 
     fun setVolunteerPortalQrEnabled(enabled: Boolean) {
         storage.putBoolean(KEY_VOLUNTEER_PORTAL_QR_ENABLED, enabled)
@@ -1278,6 +1302,10 @@ class SettingsManager(private val storage: AppStorage) {
                 isVolunteerPortalShowLogo().toString()
             InstitutionSettingsKeys.VOLUNTEER_PORTAL_QR_ENABLED ->
                 isVolunteerPortalQrEnabled().toString()
+            InstitutionSettingsKeys.VOLUNTEER_PORTAL_CERTIFICATE_ENABLED ->
+                isVolunteerPortalCertificateEnabled().toString()
+            InstitutionSettingsKeys.VOLUNTEER_PORTAL_CERTIFICATE_TEMPLATE ->
+                volunteerPortalCertificateTemplate()?.toJson().orEmpty()
             InstitutionSettingsKeys.VOLUNTEER_PORTAL_GOOGLE_DOMAINS ->
                 com.eventmanager.app.data.remote.FirebaseEmailDomainPolicy.serialize(volunteerPortalGoogleDomains())
             InstitutionSettingsKeys.VOLUNTEER_PORTAL_GOOGLE_ANY_ACCOUNT ->
@@ -1478,6 +1506,19 @@ class SettingsManager(private val storage: AppStorage) {
                     KEY_VOLUNTEER_PORTAL_QR_ENABLED,
                     !value.trim().equals("false", ignoreCase = true),
                 )
+            InstitutionSettingsKeys.VOLUNTEER_PORTAL_CERTIFICATE_ENABLED ->
+                storage.putBoolean(
+                    KEY_VOLUNTEER_PORTAL_CERTIFICATE_ENABLED,
+                    value.trim().equals("true", ignoreCase = true),
+                )
+            InstitutionSettingsKeys.VOLUNTEER_PORTAL_CERTIFICATE_TEMPLATE -> {
+                // An unreadable template from another device must never replace a good one.
+                val received = value.trim()
+                if (received.isNotEmpty() && CertificateTemplate.parse(received) != null) {
+                    CertificateTemplateStore.mirrorToDisk(received)
+                    storage.putString(KEY_VOLUNTEER_PORTAL_CERTIFICATE_TEMPLATE, CERTIFICATE_ON_DISK_MARKER)
+                }
+            }
             InstitutionSettingsKeys.VOLUNTEER_PORTAL_GOOGLE_DOMAINS ->
                 storage.putString(
                     KEY_VOLUNTEER_PORTAL_GOOGLE_DOMAINS,

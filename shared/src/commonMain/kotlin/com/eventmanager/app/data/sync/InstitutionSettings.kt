@@ -122,6 +122,12 @@ object InstitutionSettingsKeys {
     /** Let each volunteer see their own QR code in the volunteer portal. On by default. */
     const val VOLUNTEER_PORTAL_QR_ENABLED = "volunteer_portal_qr_enabled"
 
+    /** Volunteers can request their volunteering certificate from the portal. Off by default. */
+    const val VOLUNTEER_PORTAL_CERTIFICATE_ENABLED = "volunteer_portal_certificate_enabled"
+
+    /** Full certificate template as JSON. Kept on disk locally, synced as the complete JSON. */
+    const val VOLUNTEER_PORTAL_CERTIFICATE_TEMPLATE = "volunteer_portal_certificate_template"
+
     /** Permanent guests get their own space in the portal. Off by default. */
     const val GUEST_PORTAL_ENABLED = "guest_portal_enabled"
 
@@ -218,6 +224,8 @@ object InstitutionSettingsKeys {
         VOLUNTEER_PORTAL_GOOGLE_ENABLED,
         VOLUNTEER_PORTAL_SHOW_LOGO,
         VOLUNTEER_PORTAL_QR_ENABLED,
+        VOLUNTEER_PORTAL_CERTIFICATE_ENABLED,
+        VOLUNTEER_PORTAL_CERTIFICATE_TEMPLATE,
         VOLUNTEER_PORTAL_GOOGLE_DOMAINS,
         VOLUNTEER_PORTAL_GOOGLE_ANY_ACCOUNT,
         VOLUNTEER_PORTAL_AUTO_ACCESS,
@@ -239,6 +247,8 @@ object InstitutionSettingsKeys {
         VOLUNTEER_PORTAL_GOOGLE_ENABLED,
         VOLUNTEER_PORTAL_SHOW_LOGO,
         VOLUNTEER_PORTAL_QR_ENABLED,
+        VOLUNTEER_PORTAL_CERTIFICATE_ENABLED,
+        VOLUNTEER_PORTAL_CERTIFICATE_TEMPLATE,
         VOLUNTEER_PORTAL_GOOGLE_DOMAINS,
         VOLUNTEER_PORTAL_GOOGLE_ANY_ACCOUNT,
         VOLUNTEER_PORTAL_AUTO_ACCESS,

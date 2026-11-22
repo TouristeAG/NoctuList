@@ -85,6 +85,23 @@ actual class PlatformFileManager actual constructor(private val context: Platfor
     actual fun readEmailLogoBytes(): ByteArray? =
         runCatching { emailLogoPath().takeIf { it.exists() }?.readBytes() }.getOrNull()
 
+    private fun certificateTemplatePath(): File = File(context.appDataDir, "certificate_template.json")
+
+    actual fun saveCertificateTemplateJson(json: String?) {
+        val destination = certificateTemplatePath()
+        if (json == null) {
+            runCatching { destination.delete() }
+            return
+        }
+        runCatching {
+            destination.parentFile?.mkdirs()
+            destination.writeText(json)
+        }
+    }
+
+    actual fun readCertificateTemplateJson(): String? =
+        runCatching { certificateTemplatePath().takeIf { it.exists() }?.readText() }.getOrNull()
+
     private fun walletPassCertificatePath(): File = File(context.appDataDir, "wallet_pass_certificate.p12")
 
     actual fun getWalletPassCertificateFile(): File? = walletPassCertificatePath().takeIf { it.exists() }

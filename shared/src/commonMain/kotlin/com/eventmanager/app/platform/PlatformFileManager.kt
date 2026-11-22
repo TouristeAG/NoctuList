@@ -29,6 +29,11 @@ expect class PlatformFileManager(context: PlatformContext) {
 
     /** Raw bytes of the current local logo, for uploading it as the synced institution logo. */
     fun readEmailLogoBytes(): ByteArray?
+    /** Writes the certificate template JSON (`certificate_template.json`), or deletes it when null. */
+    fun saveCertificateTemplateJson(json: String?)
+
+    /** The local certificate template JSON, or null when none is stored. */
+    fun readCertificateTemplateJson(): String?
     fun getWalletPassCertificateFile(): File?
     fun saveWalletPassCertificate(bytes: ByteArray): Boolean
     suspend fun pickWalletPassCertificateFile(): ByteArray?

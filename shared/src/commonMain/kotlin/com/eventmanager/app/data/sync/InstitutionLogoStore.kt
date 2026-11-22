@@ -69,6 +69,7 @@ fun installInstitutionLogoBridge(platformContext: PlatformContext, settingsManag
     InstitutionLogoStore.installDiskReader {
         PlatformFileManager(platformContext).readEmailLogoBytes()
     }
+    installCertificateTemplateBridge(platformContext)
     // Drop any oversized base64 that an older build may have left in Preferences — reading is
     // fine, but the next write would crash the desktop JVM (Preferences max value ~8 KiB).
     settingsManager.migrateInstitutionLogoOffPreferences()
