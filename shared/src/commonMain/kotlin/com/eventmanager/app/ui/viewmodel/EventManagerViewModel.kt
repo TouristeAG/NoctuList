@@ -1369,7 +1369,10 @@ class EventManagerViewModel(
 
     /** Upcoming lists of [address], each with its invite template if one exists. */
     fun portalInviteLists(address: String): List<PortalInviteList> =
-        PortalInvites.upcomingLists(_guests.value, _guestForms.value, address, System.currentTimeMillis())
+        PortalInvites.upcomingLists(_guests.value, _guestForms.value, address, System.currentTimeMillis(), dateChangeOffsetHours())
+
+    /** The synced day-change offset (institution setting): where the event day ends. */
+    fun dateChangeOffsetHours(): Int = platformContext?.let { SettingsManager(it).getDateChangeOffsetHours() } ?: 0
 
     /** Accesses the admin may offer for an event at [venueName]. */
     fun portalInviteAccessesFor(venueName: String): List<VenueAccess> =
@@ -1412,6 +1415,7 @@ class EventManagerViewModel(
             accesses = portalInviteAccessesFor(venueName),
             emergencyPhone = emergencyPhone,
             now = now,
+            offsetHours = dateChangeOffsetHours(),
         ).copy(firebaseOrgId = orgId)
         return try {
             if (existing == null) {

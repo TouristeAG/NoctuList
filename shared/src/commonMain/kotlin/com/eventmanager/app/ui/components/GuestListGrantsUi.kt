@@ -68,8 +68,9 @@ fun GuestListGrantsDialog(viewModel: EventManagerViewModel, holder: PortalHolder
     val guests by viewModel.guests.collectAsState()
     val raw = remember(volunteers, guests, holder) { viewModel.guestListGrantsOf(holder) }
     val now = System.currentTimeMillis()
-    val current = remember(raw) { GuestListGrants.active(raw, now) }
-    val history = remember(raw) { GuestListGrants.history(raw, now) }
+    val offset = remember { viewModel.dateChangeOffsetHours() }
+    val current = remember(raw) { GuestListGrants.active(raw, now, offset) }
+    val history = remember(raw) { GuestListGrants.history(raw, now, offset) }
     var adding by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 

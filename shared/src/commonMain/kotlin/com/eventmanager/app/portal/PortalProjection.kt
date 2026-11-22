@@ -79,11 +79,9 @@ object PortalProjectionBuilder {
         val configsByName = input.jobTypeConfigs.associateBy { it.name }
         val timeline = PortalTimelineBuilder.build(volunteer, jobs, input.jobTypeConfigs, input.now, input.offsetHours)
         val gainsByJob = timeline.gains.associateBy { it.jobNanoId }
-        // Day-aligned like the timeline, never the raw `now`: the hash stays stable within a local day.
-        val today = DateTimeUtils.getStartOfDayWithOffset(input.now, input.offsetHours)
-        val (upcomingJobs, pastJobs) = jobs.partition {
-            DateTimeUtils.getStartOfDayWithOffset(it.date, input.offsetHours) >= today
-        }
+        // A shift stays upcoming until its event day ends (synced day-change offset), as the page
+        // splits them: the split only moves at those ends, so the hash stays stable in between.
+        val (upcomingJobs, pastJobs) = jobs.partition { input.now < pastFrom(it.date, input.offsetHours) }
         // Order: upcoming ascending, then past descending.
         val shifts = upcomingJobs.sortedBy { it.date }.take(MAX_UPCOMING_SHIFTS) +
             pastJobs.sortedByDescending { it.date }.take(MAX_PAST_SHIFTS)
@@ -99,7 +97,7 @@ object PortalProjectionBuilder {
             put("hasPhoto", input.hasPhoto)
             put("photoVersion", if (input.hasPhoto) input.photoVersion else "")
             put("shifts", buildJsonArray {
-                shifts.forEach { add(shiftJson(it, configsByName, (if (it.jobNanoId in upcomingIds) gainsByJob[it.jobNanoId]?.gains else null).orEmpty())) }
+                shifts.forEach { add(shiftJson(it, input.offsetHours, configsByName, (if (it.jobNanoId in upcomingIds) gainsByJob[it.jobNanoId]?.gains else null).orEmpty())) }
             })
             // Past shifts left out by the cap, so the page can still show the real total.
             put("olderShifts", (pastJobs.size - MAX_PAST_SHIFTS).coerceAtLeast(0))
@@ -123,12 +121,17 @@ object PortalProjectionBuilder {
         return PortalProjection(payload = payload, contentHash = sha256(payload))
     }
 
-    private fun shiftJson(job: Job, configsByName: Map<String, JobTypeConfig>, gains: List<Benefit>): JsonObject {
+    /** When a shift dated [date] becomes past: the end of its event day, the offset included. */
+    fun pastFrom(date: Long, offsetHours: Int): Long =
+        DateTimeUtils.getEndOfDayWithOffset(date, offsetHours).timeInMillis + 1
+
+    private fun shiftJson(job: Job, offsetHours: Int, configsByName: Map<String, JobTypeConfig>, gains: List<Benefit>): JsonObject {
         val config = configsByName[job.jobTypeName]
         val tracksShiftTime = config == null ||
             (config.isShiftJob && config.requiresShiftTime && config.novaJobType == NovaJobType.DEFAULT_SHIFT)
         return buildJsonObject {
             put("date", job.date)
+            put("pastFrom", pastFrom(job.date, offsetHours))
             put("jobTypeName", job.jobTypeName.take(MAX_LABEL))
             put("venueName", job.venueName.take(MAX_LABEL))
             put("shiftTime", if (tracksShiftTime) job.shiftTime.name else "")

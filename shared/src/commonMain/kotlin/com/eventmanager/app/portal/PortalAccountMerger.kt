@@ -32,12 +32,12 @@ object PortalAccountMerger {
 
     private class Holder(val addresses: Set<String>, val uid: String, val eligible: Boolean)
 
-    fun plan(volunteers: List<Volunteer>, guests: List<Guest>, guestSpaceOn: Boolean, tempSpaceOn: Boolean, now: Long): PortalMergePlan {
+    fun plan(volunteers: List<Volunteer>, guests: List<Guest>, guestSpaceOn: Boolean, tempSpaceOn: Boolean, now: Long, offsetHours: Int): PortalMergePlan {
         fun eligible(g: Guest) = when {
             g.isVolunteerBenefit -> false
             // Past lists are never touched: joining them would rewrite history for nothing.
             g.isTemporaryGuest -> tempSpaceOn && (g.temporaryEventDate ?: 0L).let {
-                it > 0L && TemporaryGuestPortalProjectionBuilder.visibleUntil(it) > now
+                it > 0L && TemporaryGuestPortalProjectionBuilder.visibleUntil(it, offsetHours) > now
             }
             else -> guestSpaceOn && !g.portalRevoked
         }

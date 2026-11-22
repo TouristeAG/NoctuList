@@ -144,7 +144,7 @@ class GuestPortalPublisherTest {
         val running = run(gateway, host)
         until("temp page") { gateway.docs["temporaryGuestPortal/$TEMP_UID"] != null && gateway.docs["temporaryGuestPortalQr/$TEMP_UID"] != null }
         val page = gateway.docs["temporaryGuestPortal/$TEMP_UID"]!!
-        assertEquals(TemporaryGuestPortalProjectionBuilder.visibleUntil(start), page["expiresAtMillis"])
+        assertEquals(TemporaryGuestPortalProjectionBuilder.visibleUntil(start, 0), page["expiresAtMillis"])
         @Suppress("UNCHECKED_CAST")
         val items = gateway.docs["temporaryGuestPortalQr/$TEMP_UID"]!!["items"] as Map<String, Any?>
         assertEquals(2, items.size)
@@ -208,14 +208,17 @@ class GuestPortalPublisherTest {
         val gateway = FakeGateway()
         val host = FakeHost(emptyList()).apply {
             tempSpace = true
-            // The app's day changes at 10:00, so reaching 8:00 the next day is not a new day.
+            // The app's day changes at 10:00: the list stays until 10:00 the next day, not midnight.
             dateOffset = 10
             guests += temp("Ana", "TempNano00000000000001")
         }
-        run(gateway, host, retryMs = 50L)
+        val running = run(gateway, host, retryMs = 50L)
         until("temp page") { gateway.docs["temporaryGuestPortal/$TEMP_UID"] != null }
-        now = TemporaryGuestPortalProjectionBuilder.visibleUntil(start)
-        until("page removed at 8:00") { gateway.docs["temporaryGuestPortal/$TEMP_UID"] == null }
+        now = TemporaryGuestPortalProjectionBuilder.visibleUntil(start, 0)
+        running.service.republish()
+        assertNotNull(gateway.docs["temporaryGuestPortal/$TEMP_UID"], "still shown at midnight")
+        now = TemporaryGuestPortalProjectionBuilder.visibleUntil(start, 10)
+        until("page removed at 10:00") { gateway.docs["temporaryGuestPortal/$TEMP_UID"] == null }
         assertNull(gateway.docs["temporaryGuestPortalQr/$TEMP_UID"])
     }
 
@@ -244,7 +247,7 @@ class GuestPortalPublisherTest {
         val host = FakeHost(emptyList()).apply { tempSpace = true; guests += temp("Ana", "TempNano00000000000001") }
         val running = run(gateway, host)
         until("temp page") { gateway.docs["temporaryGuestPortalQr/$TEMP_UID"] != null }
-        now = TemporaryGuestPortalProjectionBuilder.visibleUntil(start) + 1
+        now = TemporaryGuestPortalProjectionBuilder.visibleUntil(start, 0) + 1
         running.service.republish()
         assertNull(gateway.docs["temporaryGuestPortal/$TEMP_UID"])
         assertNull(gateway.docs["temporaryGuestPortalQr/$TEMP_UID"])

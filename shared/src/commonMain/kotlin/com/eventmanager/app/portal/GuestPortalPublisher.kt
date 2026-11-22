@@ -94,7 +94,7 @@ internal class GuestPortalPublisher(
                 val members = groups[uid].orEmpty()
                 val forms = formsByUid[uid].orEmpty()
                 val deviceCreated = members.isNotEmpty() && members.all { it.temporaryPortalCreated } && uid !in holderUids
-                TemporaryGuestPortalProjectionBuilder.runningBatches(members, now).minOfOrNull { it.second }
+                TemporaryGuestPortalProjectionBuilder.runningBatches(members, now, host.dateOffsetHours()).minOfOrNull { it.second }
                     ?.let { until -> nextExpiry = minOf(nextExpiry ?: until, until) }
                 keptTemps += uid
                 publishTemporary(uid, members, guestTransfers, hashes, now, forms, deviceCreated)
@@ -112,12 +112,12 @@ internal class GuestPortalPublisher(
                 .groupBy({ it.first }, { it.second })
             for ((uid, raws) in grantsByUid) {
                 val grants = raws.flatMap { GuestListGrants.decode(it) }
-                val projection = GuestListPortalProjectionBuilder.build(grants, inOrg, host.venueAccessCatalog(), host.associationName(), now)
+                val projection = GuestListPortalProjectionBuilder.build(grants, inOrg, host.venueAccessCatalog(), host.associationName(), now, host.dateOffsetHours())
                     ?: continue
                 keptLists += uid
                 writePage(GuestListPortalProjectionBuilder.COLLECTION, uid, LIST_SUFFIX, projection, hashes, now)
-                GuestListPortalProjectionBuilder.effective(grants, now)
-                    .minOfOrNull { TemporaryGuestPortalProjectionBuilder.visibleUntil(it.eventDateMillis) }
+                GuestListPortalProjectionBuilder.effective(grants, now, host.dateOffsetHours())
+                    .minOfOrNull { TemporaryGuestPortalProjectionBuilder.visibleUntil(it.eventDateMillis, host.dateOffsetHours()) }
                     ?.let { until -> nextExpiry = minOf(nextExpiry ?: until, until) }
             }
         }
@@ -219,6 +219,7 @@ internal class GuestPortalPublisher(
                 currencyCode = host.currencyCode(),
                 associationName = host.associationName(),
                 now = now,
+                offsetHours = host.dateOffsetHours(),
                 deviceCreated = deviceCreated,
                 accessNames = host.venueAccessNames(),
                 inviteForms = inviteForms,
@@ -241,7 +242,7 @@ internal class GuestPortalPublisher(
         }
         publishQr(
             TemporaryGuestPortalQrDocument.COLLECTION, uid, TEMP_QR_SUFFIX,
-            TemporaryGuestPortalQrDocument.build(members, host.portalQrEnabled(), now), hashes,
+            TemporaryGuestPortalQrDocument.build(members, host.portalQrEnabled(), now, host.dateOffsetHours()), hashes,
         )
     }
 

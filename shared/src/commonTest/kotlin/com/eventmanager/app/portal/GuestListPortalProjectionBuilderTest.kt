@@ -31,7 +31,7 @@ class GuestListPortalProjectionBuilderTest {
     private fun grant(id: String, venue: String = "", date: Long = event) = GuestListGrant(id = id, eventDateMillis = date, venueName = venue)
 
     private fun build(grants: List<GuestListGrant>, guests: List<Guest>) =
-        GuestListPortalProjectionBuilder.build(grants, guests, accesses, "Asso", event)
+        GuestListPortalProjectionBuilder.build(grants, guests, accesses, "Asso", event, 8)
 
     private fun grantsOf(p: PortalProjection) =
         Json.parseToJsonElement(p.payload).jsonObject.getValue("grants").jsonArray.map { it.jsonObject }
@@ -46,7 +46,7 @@ class GuestListPortalProjectionBuilderTest {
         assertEquals(listOf("Ann"), names(grantsOf(p).single()))
         @Suppress("UNCHECKED_CAST")
         assertEquals(listOf(event), p.extraFields["grantDates"] as List<Long>)
-        assertEquals(TemporaryGuestPortalProjectionBuilder.visibleUntil(event), p.extraFields["expiresAtMillis"])
+        assertEquals(TemporaryGuestPortalProjectionBuilder.visibleUntil(event, 8), p.extraFields["expiresAtMillis"])
     }
 
     @Test

@@ -400,3 +400,16 @@ export function guestListAddEdits({ people, listName, venueName = "", newList = 
   const shared = { action: "ADD", listName: list, venueName: String(venueName || "").trim(), notes: note, ...(newList ? { phone: tel, contactEmail: mail } : {}) };
   return { edits: persons.map((p) => ({ ...shared, ...p })) };
 }
+
+/**
+ * Past and upcoming shifts as of [now]. A shift is past once its event day ends: `pastFrom`, the
+ * next midnight plus the app's synced day-change offset. Older pages without it use the date.
+ */
+export function splitShifts(shifts, now) {
+  const list = Array.isArray(shifts) ? shifts : [];
+  const pastFrom = (s) => Number(s.pastFrom ?? s.date);
+  return {
+    past: list.filter((s) => pastFrom(s) <= now),
+    upcoming: list.filter((s) => pastFrom(s) > now),
+  };
+}

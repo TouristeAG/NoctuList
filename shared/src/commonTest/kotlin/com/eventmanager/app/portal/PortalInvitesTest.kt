@@ -28,7 +28,7 @@ class PortalInvitesTest {
     private fun template(max: Int = 3) = PortalInvites.template(
         existing = null, formId = "TPL", contactEmail = "lea@example.org", portalUid = "U1",
         eventDateMillis = event, venueName = "Club", artistName = "Friends", maxGuests = max,
-        accessLimits = mapOf("bs" to 1), accesses = accesses, emergencyPhone = "+41 79 1", now = 5L,
+        accessLimits = mapOf("bs" to 1), accesses = accesses, emergencyPhone = "+41 79 1", now = 5L, offsetHours = 8,
     )
 
     private fun add(id: String, vararg names: String) = GuestForm(
@@ -42,7 +42,7 @@ class PortalInvitesTest {
         assertEquals("U1", t.portalUid)
         assertTrue(t.allowMultipleResponses)
         assertEquals("MANUAL", t.expiryMode)
-        assertEquals(TemporaryGuestPortalProjectionBuilder.visibleUntil(event), t.expiresAtMillis)
+        assertEquals(TemporaryGuestPortalProjectionBuilder.visibleUntil(event, 8), t.expiresAtMillis)
         assertFalse(t.askEmail)
         assertFalse(t.askPhone)
         assertEquals("lea@example.org", t.prefillEmail)
@@ -54,7 +54,7 @@ class PortalInvitesTest {
         val edited = PortalInvites.template(
             existing = t, formId = "ignored", contactEmail = "lea@example.org", portalUid = "U1",
             eventDateMillis = event, venueName = "Club", artistName = "Friends", maxGuests = 8,
-            accessLimits = emptyMap(), accesses = accesses, emergencyPhone = "", now = 9L,
+            accessLimits = emptyMap(), accesses = accesses, emergencyPhone = "", now = 9L, offsetHours = 8,
         )
         assertEquals("TPL", edited.formId)
         assertEquals(5L, edited.createdAt)
@@ -90,20 +90,20 @@ class PortalInvitesTest {
     @Test
     fun emptyEventTemplateHasNoGuests() {
         val lists = PortalInvites.upcomingLists(
-            guests = emptyList(), templates = listOf(template()), address = "LEA@example.org ", now = event,
+            guests = emptyList(), templates = listOf(template()), address = "LEA@example.org ", now = event, offsetHours = 8,
         )
         val only = lists.single()
         assertEquals("Friends", only.artistName)
         assertTrue(only.members.isEmpty())
         assertEquals("TPL", only.template?.formId)
-        assertNull(PortalInvites.upcomingLists(emptyList(), listOf(template()), "lea@example.org", TemporaryGuestPortalProjectionBuilder.visibleUntil(event)).firstOrNull())
+        assertNull(PortalInvites.upcomingLists(emptyList(), listOf(template()), "lea@example.org", TemporaryGuestPortalProjectionBuilder.visibleUntil(event, 8), 8).firstOrNull())
     }
 
     @Test
     fun upcomingListsMatchTheAddressAndJoinTheirTemplate() {
         val lists = PortalInvites.upcomingLists(
             guests = listOf(member("A"), member("Z").copy(temporaryContactEmail = "other@example.org", temporaryArtistName = "Other")),
-            templates = listOf(template()), address = "lea@example.org", now = event,
+            templates = listOf(template()), address = "lea@example.org", now = event, offsetHours = 8,
         )
         assertEquals(1, lists.size)
         assertEquals(listOf("A"), lists.single().members.map { it.nanoId })
@@ -114,14 +114,14 @@ class PortalInvitesTest {
     fun aListWithoutVenueKeepsOneRowOnceInvitesAreOpen() {
         // Admin list with no venue: the guests carry the technical "BOTH" as their own venue.
         val guest = member("A").copy(venueName = "BOTH", temporaryVenueName = "")
-        val before = PortalInvites.upcomingLists(listOf(guest), emptyList(), "lea@example.org", event).single()
+        val before = PortalInvites.upcomingLists(listOf(guest), emptyList(), "lea@example.org", event, 8).single()
         assertEquals("", before.venueName, "BOTH is no venue to show or to key a template on")
         val opened = PortalInvites.template(
             existing = null, formId = "TPL", contactEmail = "lea@example.org", portalUid = "U1",
             eventDateMillis = before.eventDateMillis, venueName = before.venueName, artistName = before.artistName,
-            maxGuests = 3, accessLimits = emptyMap(), accesses = accesses, emergencyPhone = "", now = 5L,
+            maxGuests = 3, accessLimits = emptyMap(), accesses = accesses, emergencyPhone = "", now = 5L, offsetHours = 8,
         )
-        val after = PortalInvites.upcomingLists(listOf(guest), listOf(opened), "lea@example.org", event)
+        val after = PortalInvites.upcomingLists(listOf(guest), listOf(opened), "lea@example.org", event, 8)
         assertEquals(1, after.size)
         assertEquals("TPL", after.single().template?.formId)
     }
@@ -132,7 +132,7 @@ class PortalInvitesTest {
         val admin = member("A").copy(venueName = "BOTH", temporaryVenueName = "")
         val added = member("B").copy(venueName = "BOTH", temporaryVenueName = "BOTH")
         val old = template().copy(venueName = "BOTH")
-        val lists = PortalInvites.upcomingLists(listOf(admin, added), listOf(old), "lea@example.org", event)
+        val lists = PortalInvites.upcomingLists(listOf(admin, added), listOf(old), "lea@example.org", event, 8)
         assertEquals(1, lists.size)
         assertEquals(listOf("A", "B"), lists.single().members.map { it.nanoId }.sorted())
         assertEquals("TPL", lists.single().template?.formId)

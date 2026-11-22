@@ -6,8 +6,9 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class GuestListGrantsTest {
+    private val OFFSET = 8
     private val event = 1_800_000_000_000L
-    private val until = TemporaryGuestPortalProjectionBuilder.visibleUntil(event)
+    private val until = TemporaryGuestPortalProjectionBuilder.visibleUntil(event, OFFSET)
 
     private fun grant(id: String, date: Long = event, venue: String = "") =
         GuestListGrant(id = id, eventDateMillis = date, venueName = venue, grantedBy = "Admin", grantedAt = 1L)
@@ -15,11 +16,11 @@ class GuestListGrantsTest {
     @Test
     fun activeUntilEightNextDay() {
         val g = grant("A")
-        assertTrue(g.isActive(until - 1))
-        assertFalse(g.isActive(until))
+        assertTrue(g.isActive(until - 1, OFFSET))
+        assertFalse(g.isActive(until, OFFSET))
         val raw = GuestListGrants.add("", g)
-        assertEquals(listOf("A"), GuestListGrants.active(raw, until - 1).map { it.id })
-        assertEquals(listOf("A"), GuestListGrants.history(raw, until).map { it.id })
+        assertEquals(listOf("A"), GuestListGrants.active(raw, until - 1, OFFSET).map { it.id })
+        assertEquals(listOf("A"), GuestListGrants.history(raw, until, OFFSET).map { it.id })
     }
 
     @Test
@@ -27,8 +28,8 @@ class GuestListGrantsTest {
         var raw = GuestListGrants.add("", grant("A"))
         raw = GuestListGrants.add(raw, grant("B", date = event + 86_400_000L))
         raw = GuestListGrants.revoke(raw, "A", "Admin", 5L)
-        assertEquals(listOf("B"), GuestListGrants.active(raw, event).map { it.id })
-        val history = GuestListGrants.history(raw, event)
+        assertEquals(listOf("B"), GuestListGrants.active(raw, event, OFFSET).map { it.id })
+        val history = GuestListGrants.history(raw, event, OFFSET)
         assertEquals(listOf("A"), history.map { it.id })
         assertEquals(5L, history.single().revokedAt)
         assertEquals("Admin", history.single().revokedBy)
@@ -40,7 +41,7 @@ class GuestListGrantsTest {
     fun historyNewestFirst() {
         var raw = ""
         listOf(1L, 3L, 2L).forEach { raw = GuestListGrants.add(raw, grant("G$it", date = event - it * 10 * 86_400_000L)) }
-        assertEquals(listOf("G1", "G2", "G3"), GuestListGrants.history(raw, event).map { it.id })
+        assertEquals(listOf("G1", "G2", "G3"), GuestListGrants.history(raw, event, OFFSET).map { it.id })
     }
 
     @Test

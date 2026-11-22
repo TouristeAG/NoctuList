@@ -28,7 +28,7 @@ class PortalAccountMergerTest {
         )
 
     private fun plan(vs: List<Volunteer>, gs: List<Guest>, guestSpace: Boolean = true, tempSpace: Boolean = true) =
-        PortalAccountMerger.plan(vs, gs, guestSpace, tempSpace, now)
+        PortalAccountMerger.plan(vs, gs, guestSpace, tempSpace, now, 8)
 
     @Test
     fun volunteerJoinsGuestAccount() {

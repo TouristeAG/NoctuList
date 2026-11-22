@@ -1399,6 +1399,7 @@ class VolunteerPortalService(
             host.guestPortalEnabled(),
             host.temporaryGuestPortalEnabled(),
             clock(),
+            host.dateOffsetHours(),
         )
         _addressConflicts.value = plan.conflicts
         if (plan.volunteers.isEmpty() && plan.guests.isEmpty()) return snapshot

@@ -83,7 +83,7 @@ class GuestListEditProcessor(
         val grants = volunteers.filter { it.portalEnabled && it.portalUid == edit.uid }.map { it.guestListGrantsJson } +
             guests.filter { it.portalEnabled && it.portalUid == edit.uid }.map { it.guestListGrantsJson }
         val grant = grants.flatMap { GuestListGrants.decode(it) }
-            .firstOrNull { it.id == edit.grantId && it.isActive(now) && day(it.eventDateMillis) == day(edit.eventDateMillis) }
+            .firstOrNull { it.id == edit.grantId && it.isActive(now, host.dateOffsetHours()) && day(it.eventDateMillis) == day(edit.eventDateMillis) }
             ?: return REJECTED to "NO_GRANT"
         return when (edit.action) {
             GuestListEdit.ADD -> add(edit, grant, guests)

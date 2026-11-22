@@ -40,8 +40,8 @@ import {
   uploadBytes,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 import { EMULATOR_PORTS, isLocalDev, loadConfig, parseOrgPath } from "./firebase-env.js?v=portal-2";
-import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=guest-5";
-import { cachedQrEntries, clearQr, closeQrDialog, isStaleFor, missingIsFinal, openQrDialog, readCachedQr, storeQr } from "./portal-qr.js?v=guest-5";
+import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=guest-6";
+import { cachedQrEntries, clearQr, closeQrDialog, isStaleFor, missingIsFinal, openQrDialog, readCachedQr, storeQr } from "./portal-qr.js?v=guest-6";
 import {
   EMAIL_RE,
   authErrorKey,
@@ -50,6 +50,7 @@ import {
   guestListGroups,
   guestListAddEdits,
   guestListOnly,
+  splitShifts,
   inviteRemaining,
   MAX_GUEST_NOTES,
   profilesLayout,
@@ -72,7 +73,7 @@ import {
   profileStoreKey,
   profilesSettled,
   toJpeg,
-} from "./portal-common.js?v=guest-5";
+} from "./portal-common.js?v=guest-6";
 
 const $ = (id) => document.getElementById(id);
 const VIEWS = ["view-loading", "view-disabled", "view-signin", "view-reset", "view-verify", "view-pending", "view-google", "view-dash", "view-offline"];
@@ -1241,15 +1242,6 @@ function currentStep(payload, now) {
     if (Number(step.from) <= now) current = step;
   });
   return current;
-}
-
-/** Shifts that already started (past) and the rest (upcoming), by comparing the shift date with now. */
-function splitShifts(shifts, now) {
-  const list = Array.isArray(shifts) ? shifts : [];
-  return {
-    past: list.filter((s) => Number(s.date) < now),
-    upcoming: list.filter((s) => Number(s.date) >= now),
-  };
 }
 
 /** Latest of the past shift dates and the published floor; 0 means no shift yet. */

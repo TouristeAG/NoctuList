@@ -20,9 +20,9 @@ data class GuestListGrant(
     val revokedAt: Long = 0L,
     val revokedBy: String = "",
 ) {
-    /** Until 8:00 the morning after the event, unless revoked. */
-    fun isActive(now: Long): Boolean =
-        revokedAt == 0L && now < TemporaryGuestPortalProjectionBuilder.visibleUntil(eventDateMillis)
+    /** Until the event day ends (synced day-change offset), unless revoked. */
+    fun isActive(now: Long, offsetHours: Int): Boolean =
+        revokedAt == 0L && now < TemporaryGuestPortalProjectionBuilder.visibleUntil(eventDateMillis, offsetHours)
 }
 
 /** The JSON list a profile carries in `guestListGrantsJson`. */
@@ -54,10 +54,10 @@ object GuestListGrants {
     fun revoke(raw: String, id: String, by: String, now: Long): String =
         encode(decode(raw).map { if (it.id == id && it.revokedAt == 0L) it.copy(revokedAt = now, revokedBy = by) else it })
 
-    fun active(raw: String, now: Long): List<GuestListGrant> =
-        decode(raw).filter { it.isActive(now) }.sortedBy { it.eventDateMillis }
+    fun active(raw: String, now: Long, offsetHours: Int): List<GuestListGrant> =
+        decode(raw).filter { it.isActive(now, offsetHours) }.sortedBy { it.eventDateMillis }
 
     /** Past or revoked grants, newest event first. */
-    fun history(raw: String, now: Long): List<GuestListGrant> =
-        decode(raw).filter { !it.isActive(now) }.sortedByDescending { it.eventDateMillis }
+    fun history(raw: String, now: Long, offsetHours: Int): List<GuestListGrant> =
+        decode(raw).filter { !it.isActive(now, offsetHours) }.sortedByDescending { it.eventDateMillis }
 }

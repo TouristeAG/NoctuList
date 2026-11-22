@@ -34,6 +34,8 @@ data class TemporaryGuestPortalInput(
     val currencyCode: String,
     val associationName: String,
     val now: Long,
+    /** The synced day-change offset: a list ends with its event day as the door counts it. */
+    val offsetHours: Int,
     /** The account was created by a device for a list: an unverified session may read the page (rules v18). */
     val deviceCreated: Boolean = true,
     /** Venue access id to its name; ids never reach the page. */
@@ -46,20 +48,20 @@ object TemporaryGuestPortalProjectionBuilder {
     const val COLLECTION = "temporaryGuestPortal"
     const val SCHEMA = 2
 
-    /** Midnight of the event day (Geneva) to 8:00 the next morning: a night event still shows at 1:00. */
-    private const val VISIBLE_MILLIS = 32 * 3_600_000L
-
-    /** Fixed 8 h past the event day, whatever the app's own day-change setting says. */
-    fun visibleUntil(eventDate: Long): Long =
-        DateTimeUtils.getStartOfDayWithOffset(eventDate, 0) + VISIBLE_MILLIS
+    /**
+     * End of the event day as the door counts it: the next midnight (Geneva) plus the synced
+     * day-change offset, so with +6 a Friday list stays until Saturday 6:00.
+     */
+    fun visibleUntil(eventDate: Long, offsetHours: Int): Long =
+        DateTimeUtils.getEndOfDayWithOffset(eventDate, offsetHours).timeInMillis + 1
 
     /** The one definition of what the page shows: dated temporary guests of lists still visible, by event date. */
-    internal fun runningBatches(guests: List<Guest>, now: Long): List<Pair<List<Guest>, Long>> =
+    internal fun runningBatches(guests: List<Guest>, now: Long, offsetHours: Int): List<Pair<List<Guest>, Long>> =
         guests
             .filter { it.isTemporaryGuest && it.temporaryEventDate != null }
             .groupBy { it.temporaryBatchKey() }
             .values
-            .map { members -> members to visibleUntil(members.first().temporaryEventDate!!) }
+            .map { members -> members to visibleUntil(members.first().temporaryEventDate!!, offsetHours) }
             .filter { (_, until) -> until > now }
             .sortedWith(compareBy({ it.first.first().temporaryEventDate }, { it.first.first().temporaryArtistName.lowercase() }))
 
@@ -79,8 +81,9 @@ object TemporaryGuestPortalProjectionBuilder {
         val members: List<Guest>,
         val template: GuestForm?,
         val responses: List<GuestForm>,
+        offsetHours: Int,
     ) {
-        val until = visibleUntil(eventDate)
+        val until = visibleUntil(eventDate, offsetHours)
     }
 
     /** Lists still visible: dated temporary guests and open invite templates, merged by list key. */
@@ -104,10 +107,10 @@ object TemporaryGuestPortalProjectionBuilder {
                     first.temporaryEventDate!!,
                     com.eventmanager.app.data.models.listVenueLabel(first.temporaryVenueName.ifBlank { first.venueName }),
                     first.temporaryArtistName,
-                    group, open, responsesByKey[key].orEmpty(),
+                    group, open, responsesByKey[key].orEmpty(), input.offsetHours,
                 )
             } else {
-                ListView(open!!.eventDateMillis, com.eventmanager.app.data.models.listVenueLabel(open.venueName), open.artistName, group, open, responsesByKey[key].orEmpty())
+                ListView(open!!.eventDateMillis, com.eventmanager.app.data.models.listVenueLabel(open.venueName), open.artistName, group, open, responsesByKey[key].orEmpty(), input.offsetHours)
             }
             view.takeIf { it.until > input.now }
         }.sortedWith(compareBy({ it.eventDate }, { it.artistName.lowercase() }))
@@ -235,9 +238,9 @@ object TemporaryGuestPortalQrDocument {
     internal fun hasQr(guest: Guest): Boolean =
         !guest.isAdmin && !guest.temporaryEntryValidated && guest.nanoId.isNotBlank()
 
-    fun build(guests: List<Guest>, enabled: Boolean, now: Long): Map<String, Any>? {
+    fun build(guests: List<Guest>, enabled: Boolean, now: Long, offsetHours: Int): Map<String, Any>? {
         if (!enabled) return null
-        val items = TemporaryGuestPortalProjectionBuilder.runningBatches(guests, now)
+        val items = TemporaryGuestPortalProjectionBuilder.runningBatches(guests, now, offsetHours)
             .flatMap { it.first }
             .filter { hasQr(it) }
             .associate { guest ->

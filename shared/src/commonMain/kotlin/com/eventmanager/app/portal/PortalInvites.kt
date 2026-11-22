@@ -47,6 +47,7 @@ object PortalInvites {
         accesses: List<VenueAccess>,
         emergencyPhone: String,
         now: Long,
+        offsetHours: Int,
     ): GuestForm {
         val cap = maxGuests.coerceIn(1, GuestForm.MAX_GUESTS_LIMIT)
         val offered = accesses.filter { it.id in accessLimits }
@@ -59,7 +60,7 @@ object PortalInvites {
             offeredAccessIds = GuestFormOfferedAccessCodec.encode(offered, accessLimits, cap),
             allowMultipleResponses = true,
             expiryMode = GuestFormExpiry.MANUAL.name,
-            expiresAtMillis = TemporaryGuestPortalProjectionBuilder.visibleUntil(eventDateMillis),
+            expiresAtMillis = TemporaryGuestPortalProjectionBuilder.visibleUntil(eventDateMillis, offsetHours),
             askEmail = false,
             askPhone = false,
             prefillEmail = contactEmail.trim(),
@@ -92,7 +93,7 @@ object PortalInvites {
     }
 
     /** Lists of [address] still visible at [now], with their templates; a template alone is a list too. */
-    fun upcomingLists(guests: List<Guest>, templates: List<GuestForm>, address: String, now: Long): List<PortalInviteList> {
+    fun upcomingLists(guests: List<Guest>, templates: List<GuestForm>, address: String, now: Long, offsetHours: Int): List<PortalInviteList> {
         val key = address.trim().lowercase()
         if (key.isEmpty()) return emptyList()
         val members = guests
@@ -115,7 +116,7 @@ object PortalInvites {
                 template?.takeIf { it.statusValue == GuestFormStatus.OPEN }
                     ?.let { PortalInviteList(it.eventDateMillis, listVenueLabel(it.venueName), it.artistName, group, it) }
             }
-            list?.takeIf { TemporaryGuestPortalProjectionBuilder.visibleUntil(it.eventDateMillis) > now }
+            list?.takeIf { TemporaryGuestPortalProjectionBuilder.visibleUntil(it.eventDateMillis, offsetHours) > now }
         }.sortedWith(compareBy({ it.eventDateMillis }, { it.artistName.lowercase() }))
     }
 }

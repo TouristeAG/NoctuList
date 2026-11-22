@@ -84,6 +84,7 @@ class PortalProjectionBuilderTest {
         at: Long = now,
         configs: List<JobTypeConfig> = emptyList(),
         googleLinkAllowed: Boolean = false,
+        offset: Int = 0,
     ) = PortalProjectionInput(
         volunteer = v,
         jobs = jobs,
@@ -96,7 +97,7 @@ class PortalProjectionBuilderTest {
         mustSetPassword = false,
         googleLinkAllowed = googleLinkAllowed,
         now = at,
-        offsetHours = 0,
+        offsetHours = offset,
     )
 
     @Test
@@ -151,7 +152,7 @@ class PortalProjectionBuilderTest {
         val past = shifts.filter { it["date"]!!.jsonPrimitive.long < now - day }
         assertEquals(3, past.size)
         assertTrue(past.none { "gains" in it }, "past shifts must not carry gains")
-        shifts.forEach { assertTrue(it.keys.all { k -> k in setOf("date", "jobTypeName", "venueName", "shiftTime", "gains") }) }
+        shifts.forEach { assertTrue(it.keys.all { k -> k in setOf("date", "pastFrom", "jobTypeName", "venueName", "shiftTime", "gains") }) }
     }
 
     private val barConfig = JobTypeConfig(
@@ -322,13 +323,37 @@ class PortalProjectionBuilderTest {
 
     @Test
     fun volunteerProjectionUnchanged() {
-        // Fixed reference input; the literal was recorded before walletJson was extracted for guests.
+        // Fixed reference input; the literal was recorded when shifts gained pastFrom (synced day change).
         val transfers = listOf(
             transfer(-2.0, 1), transfer(50.0, 20, type = AccountTransferType.SHIFT_CREDIT),
             transfer(-30.0, 2, holderId = "someone-else"),
         )
         val projection = PortalProjectionBuilder.build(input(transfers = transfers))
-        assertEquals("e8194e40583132dd627ba5bbca7aa5a61c208178bddab54910da56ddaacb46bf", projection.contentHash)
+        assertEquals("1a49adcf70c1d949939043e3dadb2dd72ffefc1262968c363926c9a5cbf577e1", projection.contentHash)
         assertEquals(2, projection.toFirestoreMap(1L)["schema"])
+    }
+
+    @Test
+    fun tonightsShiftStaysUpcomingUntilTheDayChange() {
+        // Friday's shift, read at 3:00 on Saturday with the day changing at 6:00: still tonight's.
+        val friday = DateTimeUtils.getStartOfDayWithOffset(now, 0)
+        val shift = Job(
+            volunteerId = secretId, jobType = JobType.BAR, jobTypeName = "Bar", venueName = "Le Terreau",
+            date = friday, shiftTime = ShiftTime.AFTER_MIDNIGHT,
+        )
+        val hour = 3_600_000L
+        val dayEnd = DateTimeUtils.getEndOfDayWithOffset(friday, 6).timeInMillis + 1
+        assertEquals(dayEnd, PortalProjectionBuilder.pastFrom(friday, 6))
+        val later = job(2)
+        val older = job(-3)
+        fun shifts(at: Long) = Json.parseToJsonElement(
+            PortalProjectionBuilder.build(input(jobs = listOf(older, later, shift), at = at, offset = 6)).payload,
+        ).jsonObject["shifts"]!!.jsonArray.map { it.jsonObject }
+        // Upcoming first (ascending), then past: tonight's shift leads while the night lasts.
+        val atThree = shifts(dayEnd - 3 * hour)
+        assertEquals(listOf(friday, later.date, older.date), atThree.map { it["date"]!!.jsonPrimitive.long })
+        assertEquals(dayEnd, atThree.first()["pastFrom"]!!.jsonPrimitive.long)
+        assertEquals(listOf(later.date, friday, older.date), shifts(dayEnd).map { it["date"]!!.jsonPrimitive.long })
+        assertEquals(friday + 30 * hour, dayEnd, "next midnight plus 6 h")
     }
 }
