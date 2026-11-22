@@ -1,6 +1,10 @@
 package com.eventmanager.app.portal
 
 import com.eventmanager.app.data.models.Guest
+import com.eventmanager.app.data.models.GuestForm
+import com.eventmanager.app.data.models.GuestFormRequestKind
+import com.eventmanager.app.data.models.GuestFormStatus
+import com.eventmanager.app.data.models.ManualTemporaryGuestEntry
 import com.eventmanager.app.data.models.VenueAccess
 import com.eventmanager.app.data.models.Volunteer
 import kotlinx.coroutines.runBlocking
@@ -40,9 +44,24 @@ class GuestListEditProcessorTest {
             firstName = first, lastName = last, listName = list, venueName = venue, accessIds = access,
         )
 
-    private fun run(e: GuestListEdit, grants: List<GuestListGrant> = listOf(grant)) = runBlocking {
-        GuestListEditProcessor(host) { event }.apply(e, listOf(holder(grants)), host.guests.toList())
+    private fun run(e: GuestListEdit, grants: List<GuestListGrant> = listOf(grant), forms: List<GuestForm> = emptyList()) = runBlocking {
+        GuestListEditProcessor(host) { event }.apply(e, listOf(holder(grants)), host.guests.toList(), forms)
     }
+
+    private fun request(
+        id: String,
+        venue: String = "Groove",
+        kind: GuestFormRequestKind = GuestFormRequestKind.ADD,
+        status: GuestFormStatus = GuestFormStatus.PENDING_REVIEW,
+    ) = GuestForm(
+        formId = id, venueName = venue, eventName = "Band", eventDateMillis = event,
+        status = status.name, submittedAt = 10L, requestKind = kind.name,
+    )
+
+    private fun review(action: String, form: GuestForm, people: List<ManualTemporaryGuestEntry> = emptyList()) =
+        edit(action).copy(reviewKey = GuestListReviews.reviewKey(form), people = people)
+
+    private fun reviewing() = host.apply { portalValidate = true }
 
     @Test
     fun addToExistingListCopiesContact() {
@@ -174,6 +193,166 @@ class GuestListEditProcessorTest {
         // A venue-limited grant adds to its own venue whatever the request says.
         assertEquals("DONE" to "", run(edit("ADD", first = "Cy", list = "New", venue = "Terreau"), limited))
         assertEquals("Groove", host.addedBatches.single().venueName)
+    }
+
+    @Test
+    fun acceptAddWithCorrections() {
+        reviewing()
+        val form = request("F1", venue = "")
+        val e = review("ACCEPT", form, listOf(ManualTemporaryGuestEntry("Ann Lee", setOf("bs", "vip")), ManualTemporaryGuestEntry("Bob", emptySet())))
+            .copy(contactEmail = "fix@example.org", phone = "+41 79 2", notes = "Corrected")
+        assertEquals("DONE" to "", run(e, forms = listOf(form)))
+        val a = host.acceptedReviews.single()
+        assertEquals("F1", a.form.formId)
+        assertEquals(listOf("Ann Lee", "Bob"), a.people.map { it.name })
+        assertEquals(setOf("bs", "vip"), a.people.first().accessIds)
+        assertEquals("fix@example.org", a.contactEmail)
+        assertEquals("+41 79 2", a.phone)
+        assertEquals("Corrected", a.notes)
+        assertTrue(a.reviewedBy.startsWith("Plateforme · "), a.reviewedBy)
+        assertEquals("Plateforme · Lea M", a.reviewedBy)
+        assertTrue(host.rejectedReviews.isEmpty())
+    }
+
+    @Test
+    fun acceptRemoval() {
+        reviewing()
+        val form = request("F2", kind = GuestFormRequestKind.REMOVE)
+        assertEquals("DONE" to "", run(review("ACCEPT", form, listOf(ManualTemporaryGuestEntry("Ignored"))), forms = listOf(form)))
+        assertEquals("F2", host.removedReviews.single().first.formId)
+        assertEquals("Plateforme · Lea M", host.removedReviews.single().second)
+        assertTrue(host.acceptedReviews.isEmpty())
+    }
+
+    @Test
+    fun rejectRequest() {
+        reviewing()
+        val form = request("F3")
+        assertEquals("DONE" to "", run(review("REJECT", form), forms = listOf(form)))
+        assertEquals("F3", host.rejectedReviews.single().first.formId)
+        assertEquals("Plateforme · Lea M", host.rejectedReviews.single().second)
+    }
+
+    @Test
+    fun disabledRejects() {
+        val form = request("F4")
+        assertEquals("REJECTED" to "DISABLED", run(review("REJECT", form), forms = listOf(form)))
+        assertEquals("REJECTED" to "DISABLED", run(review("ACCEPT", form, listOf(ManualTemporaryGuestEntry("Ann"))), forms = listOf(form)))
+        assertTrue(host.rejectedReviews.isEmpty() && host.acceptedReviews.isEmpty())
+    }
+
+    @Test
+    fun revokedGrantRejectsReview() {
+        reviewing()
+        val form = request("F5")
+        assertEquals("REJECTED" to "NO_GRANT", run(review("REJECT", form), listOf(grant.copy(revokedAt = 1L)), listOf(form)))
+        assertTrue(host.rejectedReviews.isEmpty())
+    }
+
+    @Test
+    fun alreadyReviewedNotPending() {
+        reviewing()
+        val done = request("F6", status = GuestFormStatus.ACCEPTED)
+        assertEquals("REJECTED" to "NOT_PENDING", run(review("REJECT", done), forms = listOf(done)))
+        val gone = request("F7")
+        assertEquals("REJECTED" to "NOT_PENDING", run(review("REJECT", gone), forms = emptyList()))
+        assertTrue(host.rejectedReviews.isEmpty())
+    }
+
+    @Test
+    fun otherVenueReviewNotPending() {
+        reviewing()
+        val form = request("F8", venue = "Terreau")
+        assertEquals("REJECTED" to "NOT_PENDING", run(review("REJECT", form), listOf(grant.copy(venueName = "Groove")), listOf(form)))
+        assertTrue(host.rejectedReviews.isEmpty())
+    }
+
+    @Test
+    fun acceptFiltersAccessAndNeedsPeople() {
+        reviewing()
+        val form = request("F9", venue = "Groove")
+        assertEquals("REJECTED" to "INVALID", run(review("ACCEPT", form, listOf(ManualTemporaryGuestEntry(" "))), forms = listOf(form)))
+        assertEquals("REJECTED" to "INVALID", run(review("ACCEPT", form), forms = listOf(form)))
+        assertTrue(host.acceptedReviews.isEmpty())
+        assertTrue(host.rejectedReviews.isEmpty(), "the request stays pending")
+        assertEquals("DONE" to "", run(review("ACCEPT", form, listOf(ManualTemporaryGuestEntry("Ann", setOf("bs", "vip", "gone")), ManualTemporaryGuestEntry(""))), forms = listOf(form)))
+        val a = host.acceptedReviews.single()
+        assertEquals(listOf("Ann"), a.people.map { it.name })
+        assertEquals(setOf("bs"), a.people.single().accessIds, "accesses of another venue are dropped")
+    }
+
+    @Test
+    fun acceptWithoutVenueIsBoundedByTheGrantVenue() {
+        reviewing()
+        val form = request("F10", venue = "")
+        val people = listOf(ManualTemporaryGuestEntry("Ann", setOf("bs", "vip")))
+        assertEquals("DONE" to "", run(review("ACCEPT", form, people), listOf(grant.copy(venueName = "Groove")), listOf(form)))
+        assertEquals(setOf("bs"), host.acceptedReviews.single().people.single().accessIds, "the Terreau access is dropped")
+    }
+
+    @Test
+    fun acceptWithoutVenueOnAnEveryVenueGrantKeepsAllAccesses() {
+        reviewing()
+        val form = request("F11", venue = "")
+        val people = listOf(ManualTemporaryGuestEntry("Ann", setOf("bs", "vip")))
+        assertEquals("DONE" to "", run(review("ACCEPT", form, people), forms = listOf(form)))
+        assertEquals(setOf("bs", "vip"), host.acceptedReviews.single().people.single().accessIds)
+    }
+
+    @Test
+    fun overLimitKeepsPending() {
+        reviewing()
+        host.acceptResult = GuestReviewOutcome.OVER_LIMIT
+        val form = request("F10")
+        assertEquals("REJECTED" to "OVER_LIMIT", run(review("ACCEPT", form, listOf(ManualTemporaryGuestEntry("Ann"))), forms = listOf(form)))
+        assertTrue(host.rejectedReviews.isEmpty())
+    }
+
+    @Test
+    fun acceptSaveFailureIsNotALimit() {
+        reviewing()
+        host.acceptResult = GuestReviewOutcome.SAVE_FAILED
+        val form = request("F11")
+        assertEquals("REJECTED" to "SAVE_FAILED", run(review("ACCEPT", form, listOf(ManualTemporaryGuestEntry("Ann"))), forms = listOf(form)))
+    }
+
+    @Test
+    fun removalAndRejectSaveFailure() {
+        reviewing()
+        host.removeResult = GuestReviewOutcome.SAVE_FAILED
+        host.rejectResult = GuestReviewOutcome.SAVE_FAILED
+        val removal = request("F12", kind = GuestFormRequestKind.REMOVE)
+        assertEquals("REJECTED" to "SAVE_FAILED", run(review("ACCEPT", removal), forms = listOf(removal)))
+        val add = request("F13")
+        assertEquals("REJECTED" to "SAVE_FAILED", run(review("REJECT", add), forms = listOf(add)))
+    }
+
+    @Test
+    fun decidedMeanwhileNotPending() {
+        // The device rereads the request and finds it already decided (another decision got there first).
+        reviewing()
+        host.rejectResult = GuestReviewOutcome.NOT_PENDING
+        val form = request("F14")
+        assertEquals("REJECTED" to "NOT_PENDING", run(review("REJECT", form), forms = listOf(form)))
+    }
+
+    @Test
+    fun parseReviews() {
+        val ok = mapOf(
+            "uid" to uid, "grantId" to "G1", "eventDateMillis" to event, "action" to "ACCEPT",
+            "reviewKey" to "0123456789abcdef", "status" to "PENDING",
+            "people" to listOf(mapOf("name" to " Ann  Lee ", "accessIds" to listOf("bs", " "))),
+        )
+        val parsed = GuestListEdit.parse("E9", ok)!!
+        assertEquals("0123456789abcdef", parsed.reviewKey)
+        assertEquals(listOf(ManualTemporaryGuestEntry("Ann Lee", setOf("bs"))), parsed.people)
+        assertEquals("REJECT", GuestListEdit.parse("E9", ok + ("action" to "REJECT"))!!.action)
+        assertNull(GuestListEdit.parse("E9", ok - "reviewKey"))
+        assertNull(GuestListEdit.parse("E9", ok + ("reviewKey" to "raw-form-id")))
+        assertNull(GuestListEdit.parse("E9", ok + ("action" to "REJECT") - "reviewKey"))
+        assertNull(GuestListEdit.parse("E9", ok + ("people" to List(101) { mapOf("name" to "Ann") })))
+        assertNull(GuestListEdit.parse("E9", ok + ("people" to listOf(mapOf("name" to "<b>")))))
+        assertNull(GuestListEdit.parse("E9", ok + ("people" to listOf(mapOf("name" to "Ann", "accessIds" to List(21) { "a$it" })))))
     }
 
     @Test

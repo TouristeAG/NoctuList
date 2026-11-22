@@ -2561,6 +2561,7 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="sync_online_features_title">सुविधाएँ</string>
     <string name="sync_online_guest_forms">गेस्ट लिस्ट फ़ॉर्म</string>
     <string name="sync_online_billeterie_validates">टिकट काउंटर फ़ॉर्म स्वीकृत करता है</string>
+    <string name="sync_online_portal_validates">पोर्टल फ़ॉर्म स्वीकृत करता है</string>
     <string name="sync_online_portal_link">पोर्टल लिंक</string>
     <string name="sync_online_logo_hint">सेटिंग्स, संस्था में सेट किया गया लोगो</string>
     <string name="sync_online_use_domain">%1$s इस्तेमाल करें</string>

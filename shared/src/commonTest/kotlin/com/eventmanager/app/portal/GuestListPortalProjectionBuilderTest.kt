@@ -105,4 +105,33 @@ class GuestListPortalProjectionBuilderTest {
         assertNull(build(listOf(grant("G1").copy(revokedAt = 5L)), listOf(temp("A1", "Ann"))))
         assertNull(build(listOf(grant("G1", date = event - 3 * day)), listOf(temp("A1", "Ann"))))
     }
+
+    @Test
+    fun schemaIsTwo() {
+        assertEquals(2, build(listOf(grant("G1")), listOf(temp("A1", "Ann")))!!.schema)
+    }
+
+    private fun pendingForm() = com.eventmanager.app.data.models.GuestForm(
+        formId = "F1", eventName = "Band", eventDateMillis = event,
+        status = com.eventmanager.app.data.models.GuestFormStatus.PENDING_REVIEW.name,
+        submissionJson = com.eventmanager.app.data.models.GuestFormSubmissionCodec.encode(
+            com.eventmanager.app.data.models.GuestFormSubmission(people = listOf(com.eventmanager.app.data.models.GuestFormPerson("Ann", emptySet()))),
+        ),
+    )
+
+    @Test
+    fun noReviewsWhenOff() {
+        val p = GuestListPortalProjectionBuilder.build(listOf(grant("G1")), listOf(temp("A1", "Ann")), accesses, "Asso", event, 8, reviewForms = listOf(pendingForm()))!!
+        assertFalse(grantsOf(p).single().containsKey("reviews"))
+    }
+
+    @Test
+    fun reviewsWhenOn() {
+        val on = GuestListPortalProjectionBuilder.build(listOf(grant("G1")), listOf(temp("A1", "Ann")), accesses, "Asso", event, 8, reviewForms = listOf(pendingForm()), reviewsEnabled = true)!!
+        val reviews = grantsOf(on).single().getValue("reviews").jsonArray
+        assertEquals(1, reviews.size)
+        assertEquals(GuestListReviews.reviewKey(pendingForm()), reviews[0].jsonObject.getValue("reviewKey").jsonPrimitive.content)
+        val none = GuestListPortalProjectionBuilder.build(listOf(grant("G1")), listOf(temp("A1", "Ann")), accesses, "Asso", event, 8, reviewsEnabled = true)!!
+        assertEquals(0, grantsOf(none).single().getValue("reviews").jsonArray.size)
+    }
 }

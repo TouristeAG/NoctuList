@@ -673,6 +673,21 @@ dialog.qr-dialog .primary { margin-top: 14px; min-width: 160px; }
 .gl-access { margin-top: 12px; }
 .gl-new { display: flex; flex-direction: column; gap: 4px; }
 
+/* Guest requests to review, above the tools of a guest list */
+.gl-reviews { margin: 4px 0 14px; padding: 12px 14px; border-radius: 16px; border: 1px solid var(--line-strong); }
+.gl-reviews-title { margin: 0 0 6px; font-size: 0.95rem; font-weight: 800; }
+.gl-review-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.gl-review {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 12px; text-align: left;
+  border: 0; border-left: 4px solid var(--primary); border-radius: 10px; background: var(--container);
+  color: var(--on); font: inherit; cursor: pointer;
+}
+.gl-review .grow { flex: 1; min-width: 0; }
+.gl-review .gl-name, .gl-review .meta-line { display: block; }
+.gl-review .meta-line { color: inherit; opacity: 0.75; font-weight: 600; font-size: 0.8rem; margin-top: 2px; }
+.gl-review:hover { background: var(--primary-container); color: var(--on-primary-container); }
+.gl-review:disabled { cursor: default; background: var(--container); color: var(--on); }
+
 /* "Add guests" sheet of a guest list: one box per person */
 .gl-add .gl-sheet-date {
   display: flex; align-items: center; gap: 8px; margin: 10px 0 2px;

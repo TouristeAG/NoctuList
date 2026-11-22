@@ -2561,6 +2561,7 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="sync_online_features_title">Functiones</string>
     <string name="sync_online_guest_forms">Formulae indicis hospitum</string>
     <string name="sync_online_billeterie_validates">Tesseraria formulas probat</string>
+    <string name="sync_online_portal_validates">Porta formulas probat</string>
     <string name="sync_online_portal_link">Nexus portae</string>
     <string name="sync_online_logo_hint">Signum in Optionibus, Societas positum</string>
     <string name="sync_online_use_domain">Utere %1$s</string>

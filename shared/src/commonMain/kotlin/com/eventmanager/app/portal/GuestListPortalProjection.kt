@@ -1,6 +1,7 @@
 package com.eventmanager.app.portal
 
 import com.eventmanager.app.data.models.Guest
+import com.eventmanager.app.data.models.GuestForm
 import com.eventmanager.app.data.models.VenueAccess
 import com.eventmanager.app.data.models.temporaryEntryValidated
 import com.eventmanager.app.data.utils.DateTimeUtils
@@ -15,7 +16,7 @@ import kotlinx.serialization.json.put
  */
 object GuestListPortalProjectionBuilder {
     const val COLLECTION = "guestListPortal"
-    const val SCHEMA = 1
+    const val SCHEMA = 2
 
     private fun day(millis: Long) = DateTimeUtils.getStartOfDayWithOffset(millis, 0)
 
@@ -43,6 +44,10 @@ object GuestListPortalProjectionBuilder {
         associationName: String,
         now: Long,
         offsetHours: Int,
+        reviewForms: List<GuestForm> = emptyList(),
+        holderNames: Map<String, String> = emptyMap(),
+        reviewsEnabled: Boolean = false,
+        orgId: String = "",
     ): PortalProjection? {
         val active = effective(grants, now, offsetHours)
         if (active.isEmpty()) return null
@@ -81,6 +86,11 @@ object GuestListPortalProjectionBuilder {
                             put("emergencyPhone", g.temporaryContactPhone.trim())
                         }
                     }))
+                    if (reviewsEnabled) {
+                        put("reviews", JsonArray(GuestListReviews.covered(grant, reviewForms, orgId).map {
+                            GuestListReviews.toJson(it, reviewForms, guests, holderNames)
+                        }))
+                    }
                 }
             }))
         }.toString()

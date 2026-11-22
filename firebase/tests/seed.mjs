@@ -339,9 +339,20 @@ export async function seed() {
         glGuest("a1b2c3d4e5f60007", "Hugo", "LEMAIRE", "Les Amis", { accessIds: ["acc-vip"], accessNames: ["VIP"] }),
         glGuest("a1b2c3d4e5f60008", "Ines", "ROCHAT", "Marco", { venueName: "" }),
       ],
+      // "The portal approves" is on: one form request and one portal removal wait for a decision.
+      reviews: [
+        { reviewKey: "de30f0a3add00001", source: "FORM", kind: "ADD", listName: "Groove Collective", venueName: "Groove",
+          eventDate: now, submittedAt: now - 3 * 60 * 60 * 1000, contactEmail: "groove.demo@example.org",
+          emergencyPhone: "+41 79 333 44 55", notes: "Arrive after the soundcheck", requestedBy: "",
+          people: [{ name: "Sam Rossi", accessIds: ["acc-bs"] }, { name: "Tara Klein", accessIds: ["acc-bs", "acc-vip"] },
+            { name: "Uri Blanc", accessIds: [] }, { name: "Vera Moll", accessIds: [] }] },
+        { reviewKey: "de30be7a0e000002", source: "PORTAL", kind: "REMOVE", listName: "Les Amis", venueName: "Groove",
+          eventDate: now, submittedAt: now - 30 * 60 * 1000, contactEmail: "", emergencyPhone: "", notes: "",
+          requestedBy: "Marie Dupont", removeGuests: [{ guestKey: "a1b2c3d4e5f60007", name: "Hugo L" }] },
+      ],
     }] };
     await setDoc(org(`guestListPortal/${portalUid}`), {
-      schema: 1, payload: JSON.stringify(glPayload), contentHash: "demo", updatedAt: now - 60 * 1000,
+      schema: 2, payload: JSON.stringify(glPayload), contentHash: "demo", updatedAt: now - 60 * 1000,
       expiresAtMillis: visibleUntil(now), grantDates: [now],
     });
     // The invite template of tonight's list, bound to both demo accounts' lists for the add dialog.

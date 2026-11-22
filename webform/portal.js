@@ -40,8 +40,8 @@ import {
   uploadBytes,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 import { EMULATOR_PORTS, isLocalDev, loadConfig, parseOrgPath } from "./firebase-env.js?v=portal-2";
-import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=guest-6";
-import { cachedQrEntries, clearQr, closeQrDialog, isStaleFor, missingIsFinal, openQrDialog, readCachedQr, storeQr } from "./portal-qr.js?v=guest-6";
+import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=guest-8";
+import { cachedQrEntries, clearQr, closeQrDialog, isStaleFor, missingIsFinal, openQrDialog, readCachedQr, storeQr } from "./portal-qr.js?v=guest-8";
 import {
   EMAIL_RE,
   authErrorKey,
@@ -50,6 +50,9 @@ import {
   guestListGroups,
   guestListAddEdits,
   guestListOnly,
+  guestListReviewEdit,
+  MAX_REVIEW_PEOPLE,
+  reviewSummary,
   splitShifts,
   inviteRemaining,
   MAX_GUEST_NOTES,
@@ -73,7 +76,7 @@ import {
   profileStoreKey,
   profilesSettled,
   toJpeg,
-} from "./portal-common.js?v=guest-6";
+} from "./portal-common.js?v=guest-8";
 
 const $ = (id) => document.getElementById(id);
 const VIEWS = ["view-loading", "view-disabled", "view-signin", "view-reset", "view-verify", "view-pending", "view-google", "view-dash", "view-offline"];
@@ -1756,7 +1759,7 @@ function confirmRemove(g, group) {
 
 /** Page of the dates this account manages, or null. */
 let guestListPage = null;
-/** Edits sent from this page and not answered yet, by edit id: { guestKey, grantId }. */
+/** Edits sent from this page and not answered yet, by edit id: { guestKey, reviewKey, grantId }. */
 let guestListPending = {};
 /** Last refusal per grant, shown under its section. */
 let guestListErrors = {};
@@ -1802,7 +1805,10 @@ function renderGuestListOnly() {
   appendGuestLists(dash);
 }
 
-const GUEST_LIST_REASONS = { NO_GRANT: "guestListNoGrant", NOT_FOUND: "guestListNotFound", ENTRY_USED: "guestListEntryUsed" };
+const GUEST_LIST_REASONS = {
+  NO_GRANT: "guestListNoGrant", NOT_FOUND: "guestListNotFound", ENTRY_USED: "guestListEntryUsed",
+  NOT_PENDING: "guestListNotPending", OVER_LIMIT: "guestListOverLimit", DISABLED: "guestListDisabled", INVALID: "guestListFailed",
+};
 
 /** Sends one edit and follows its answer until a device applied or refused it. */
 async function sendGuestListEdit(grant, fields) {
@@ -1822,7 +1828,7 @@ async function sendGuestListEdit(grant, fields) {
     createdAt: serverTimestamp(),
     ...fields,
   });
-  guestListPending[ref.id] = { guestKey: String(fields.guestKey || ""), grantId: String(grant.grantId || "") };
+  guestListPending[ref.id] = { guestKey: String(fields.guestKey || ""), reviewKey: String(fields.reviewKey || ""), grantId: String(grant.grantId || "") };
   render();
   const stop = onSnapshot(ref, (snap) => {
     const d = snap.data();
@@ -1877,6 +1883,7 @@ function guestListSection(grant) {
   });
   card.append(...[
     el("p", { class: "group-meta", text: t("guestListCount", { entered: counts.entered, total: counts.total }) }),
+    guestListReviews(grant),
     el("div", { class: "gl-tools" }, search,
       el("button", { type: "button", class: "tonal", onclick: () => openGuestListAdd(grant) }, icon("plus", 16), el("span", { text: t("addGuests") }))),
     guestListErrors[id] ? el("p", { class: "error", text: t(guestListErrors[id]) }) : null,
@@ -1884,6 +1891,156 @@ function guestListSection(grant) {
   ].filter(Boolean));
   fill();
   return card;
+}
+
+// ---------- Guest requests to review (spec 2026-11-22 guest list review §6.1) ----------
+
+/** "{n} people · form" or "Removal of {n} guests · from the portal". */
+function reviewMeta(review) {
+  const { count, sourceKey } = reviewSummary(review);
+  const what = review.kind === "REMOVE"
+    ? t(count === 1 ? "reviewRemovalOne" : "reviewRemoval", { n: count })
+    : t(count === 1 ? "reviewPeopleOne" : "reviewPeople", { n: count });
+  return `${what} · ${t(sourceKey)}`;
+}
+
+/** The card of the pending requests of a date, or null when there is none. */
+function guestListReviews(grant) {
+  const reviews = Array.isArray(grant.reviews) ? grant.reviews : [];
+  if (!reviews.length) return null;
+  const rows = reviews.map((review) => {
+    const busy = Object.values(guestListPending).some((p) => p.reviewKey && p.reviewKey === review.reviewKey);
+    return el("li", {},
+      el("button", { type: "button", class: "gl-review", disabled: busy, onclick: () => openGuestListReview(review, grant) },
+        el("span", { class: "grow" },
+          el("span", { class: "gl-name", text: reviewSummary(review).title || "-" }),
+          el("span", { class: "meta-line", text: reviewMeta(review) })),
+        busy ? badge(t("inProgress"), "wait") : null));
+  });
+  return el("div", { class: "gl-reviews" },
+    el("h3", { class: "gl-reviews-title", text: reviews.length === 1 ? t("reviewsHeadingOne") : t("reviewsHeading", { n: reviews.length }) }),
+    el("ul", { class: "gl-review-rows" }, ...rows));
+}
+
+/** One person of a request: name and the accesses of its venue. */
+function reviewPersonCard(grant, venue, person, renumber) {
+  const card = el("div", { class: "person-card" },
+    el("div", { class: "person-head" },
+      el("span", { class: "person-title" }),
+      el("button", { type: "button", class: "icon-btn person-remove", "aria-label": t("removePerson"), text: "✕",
+        onclick: () => { card.remove(); renumber(); } })),
+    el("label", {}, el("span", { text: t("guestName") }),
+      el("input", { value: String(person.name || ""), maxlength: "60", autocomplete: "off", "data-role": "name" })),
+    accessBoxes(grant, venue, Array.isArray(person.accessIds) ? person.accessIds.map(String) : []));
+  return card;
+}
+
+/** The window of one request: what it asks, then "Refuse" and "Accept". */
+function openGuestListReview(review, grant) {
+  const isAdd = review.kind !== "REMOVE";
+  const { title } = reviewSummary(review);
+  const rows = [
+    ...(String(review.listName || "").trim() ? [[t("listLabel"), String(review.listName).trim()]] : []),
+    ...(review.venueName ? [[t("venueLabel"), venueText(review.venueName)]] : []),
+  ];
+  const details = rows.length ? el("div", { class: "dialog-block" }, kv(rows)) : null;
+  const { msg, say } = formMessage();
+  const refuse = el("button", { type: "button", class: "ghost", text: t("refuse") });
+  const accept = el("button", { type: "submit", class: "primary", text: t("accept") });
+  const blocks = [];
+  let people = null;
+  let phone = null;
+  let email = null;
+  let notes = null;
+  if (isAdd) {
+    people = el("div", { class: "person-cards" });
+    const renumber = () => {
+      const cards = Array.from(people.children);
+      cards.forEach((c, i) => {
+        c.querySelector(".person-title").textContent = t("personN", { n: i + 1 });
+        c.querySelector(".person-remove").classList.toggle("hidden", cards.length === 1);
+      });
+      more.classList.toggle("hidden", cards.length >= MAX_REVIEW_PEOPLE);
+    };
+    const add = (person) => people.append(reviewPersonCard(grant, review.venueName, person, renumber));
+    const more = el("button", { type: "button", class: "ghost add-person", onclick: () => {
+      add({ name: "", accessIds: [] });
+      renumber();
+      people.lastElementChild.querySelector("[data-role=name]").focus();
+    } }, icon("plus", 16), el("span", { text: t("addRow") }));
+    const list = Array.isArray(review.people) && review.people.length ? review.people : [{ name: "", accessIds: [] }];
+    list.forEach(add);
+    renumber();
+    // A portal request takes the contact of its invite on the device, so it is shown but not editable.
+    const locked = review.source === "PORTAL";
+    phone = el("input", { type: "tel", maxlength: "32", autocomplete: "off", readonly: locked, value: String(review.emergencyPhone || ""), placeholder: locked ? "" : t("optional") });
+    email = el("input", { type: "email", maxlength: "254", autocomplete: "off", readonly: locked, value: String(review.contactEmail || ""), placeholder: locked ? "" : t("optional") });
+    notes = el("textarea", { rows: "3", maxlength: String(MAX_GUEST_NOTES), placeholder: t("guestNotesHint") });
+    notes.value = String(review.notes || "");
+    blocks.push(
+      el("div", { class: "dialog-block" }, el("h3", { class: "block-title", text: t("guestsLabel") }), people, more),
+      el("div", { class: "dialog-block" }, el("h3", { class: "block-title", text: t("listContact") }),
+        el("label", {}, el("span", { text: t("phone") }), phone),
+        el("label", {}, el("span", { text: t("email") }), email)),
+      el("div", { class: "dialog-block" }, el("label", {}, el("span", { text: t("notesOptional") }), notes)));
+  } else {
+    const names = Array.isArray(review.removeGuests) ? review.removeGuests : [];
+    blocks.push(el("div", { class: "dialog-block" },
+      el("h3", { class: "block-title", text: t(names.length === 1 ? "reviewRemovalOne" : "reviewRemoval", { n: names.length }) }),
+      el("ul", { class: "gl-rows" }, ...names.map((g) => el("li", { class: "gl-row" }, el("div", { class: "gl-name", text: String(g.name || "-") }))))));
+  }
+  const form = el("form", { novalidate: true, class: "gl-add" },
+    el("p", { class: "gl-sheet-date" }, icon("calendar", 16), el("span", { text: grantTitle(grant) })),
+    details, ...blocks, msg,
+    el("div", { class: "btn-row" }, refuse, accept));
+  const close = openSheet(title || t("guestsLabel"), form);
+  const busy = (on) => { refuse.disabled = on; accept.disabled = on; };
+  const send = async (fields, done) => {
+    busy(true);
+    try {
+      await sendGuestListEdit(grant, fields);
+      done();
+    } catch (error) {
+      console.warn("guest list review failed", error?.code);
+      say("error", "errGeneric");
+      busy(false);
+    }
+  };
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    let fields = guestListReviewEdit({ review, accept: true });
+    if (isAdd) {
+      const tel = phone.value.trim();
+      const mail = email.value.trim();
+      if (!phone.readOnly && tel && cleanPhone(tel) === null) return say("error", "errPhone");
+      if (!email.readOnly && mail && !(mail.length <= 254 && EMAIL_RE.test(mail.toLowerCase()))) return say("error", "errEmail");
+      if (notes.value.trim().length > MAX_GUEST_NOTES) return say("error", "notesTooLong");
+      fields = guestListReviewEdit({
+        review, accept: true,
+        people: Array.from(people.children).map((card) => ({ name: card.querySelector("[data-role=name]").value, accessIds: tickedAccess(card) })),
+        contactEmail: email.value, phone: phone.value, notes: notes.value,
+      });
+      if (!fields) return say("error", "errName");
+    }
+    send(fields, close);
+  });
+  refuse.addEventListener("click", () => {
+    const confirm = formMessage();
+    const yes = el("button", { type: "button", class: "danger", text: t("refuse") });
+    const closeConfirm = openSheet(t("refuse"), el("div", {}, el("p", { text: t("refuseConfirm") }), confirm.msg, yes));
+    yes.addEventListener("click", async () => {
+      yes.disabled = true;
+      try {
+        await sendGuestListEdit(grant, guestListReviewEdit({ review, accept: false }));
+        closeConfirm();
+        close();
+      } catch (error) {
+        console.warn("guest list review failed", error?.code);
+        confirm.say("error", "errGeneric");
+        yes.disabled = false;
+      }
+    });
+  });
 }
 
 /** One section per granted date, under everything else. */

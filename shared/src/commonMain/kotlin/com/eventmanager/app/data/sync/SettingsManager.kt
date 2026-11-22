@@ -232,6 +232,8 @@ class SettingsManager(private val storage: AppStorage) {
         private const val KEY_PORTAL_PUBLISHED_HASHES = "volunteer_portal_published_hashes"
         private const val KEY_GUEST_FORMS_BILLETERIE_VALIDATE_ENABLED =
             "guest_forms_billeterie_validate_enabled"
+        private const val KEY_GUEST_FORMS_PORTAL_VALIDATE_ENABLED =
+            "guest_forms_portal_validate_enabled"
         private const val KEY_GUEST_FORM_BASE_URL = "guest_form_base_url"
         private const val KEY_PENDING_PHOTO_REQUESTS = "pending_profile_photo_requests"
         private const val KEY_INSTITUTION_LOGO_PNG = "institution_logo_png"
@@ -591,6 +593,15 @@ class SettingsManager(private val storage: AppStorage) {
     fun setGuestFormsBilleterieValidateEnabled(enabled: Boolean) {
         storage.putBoolean(KEY_GUEST_FORMS_BILLETERIE_VALIDATE_ENABLED, enabled)
         touchInstitutionSettingLastModified(InstitutionSettingsKeys.GUEST_FORMS_BILLETERIE_VALIDATE_ENABLED)
+    }
+
+    /** Off by default: portal users cannot accept or refuse pending forms. */
+    fun isGuestFormsPortalValidateEnabled(): Boolean =
+        storage.getBoolean(KEY_GUEST_FORMS_PORTAL_VALIDATE_ENABLED, false)
+
+    fun setGuestFormsPortalValidateEnabled(enabled: Boolean) {
+        storage.putBoolean(KEY_GUEST_FORMS_PORTAL_VALIDATE_ENABLED, enabled)
+        touchInstitutionSettingLastModified(InstitutionSettingsKeys.GUEST_FORMS_PORTAL_VALIDATE_ENABLED)
     }
 
     /** Empty means the origin is derived from the Firebase project ID. */
@@ -1402,6 +1413,8 @@ class SettingsManager(private val storage: AppStorage) {
             InstitutionSettingsKeys.VOLUNTEER_PORTAL_GOOGLE_TEMPLATE -> volunteerPortalGoogleTemplate()
             InstitutionSettingsKeys.GUEST_FORMS_BILLETERIE_VALIDATE_ENABLED ->
                 isGuestFormsBilleterieValidateEnabled().toString()
+            InstitutionSettingsKeys.GUEST_FORMS_PORTAL_VALIDATE_ENABLED ->
+                isGuestFormsPortalValidateEnabled().toString()
             InstitutionSettingsKeys.GUEST_FORM_BASE_URL -> getGuestFormBaseUrl()
             InstitutionSettingsKeys.INSTITUTION_LOGO_PNG -> getInstitutionLogoPng()
             InstitutionSettingsKeys.TEMP_GUEST_EMAIL_SUBJECT -> getTemporaryGuestEmailSubject()
@@ -1603,6 +1616,11 @@ class SettingsManager(private val storage: AppStorage) {
             InstitutionSettingsKeys.GUEST_FORMS_BILLETERIE_VALIDATE_ENABLED ->
                 storage.putBoolean(
                     KEY_GUEST_FORMS_BILLETERIE_VALIDATE_ENABLED,
+                    value.trim().equals("true", ignoreCase = true),
+                )
+            InstitutionSettingsKeys.GUEST_FORMS_PORTAL_VALIDATE_ENABLED ->
+                storage.putBoolean(
+                    KEY_GUEST_FORMS_PORTAL_VALIDATE_ENABLED,
                     value.trim().equals("true", ignoreCase = true),
                 )
             InstitutionSettingsKeys.GUEST_FORM_BASE_URL ->

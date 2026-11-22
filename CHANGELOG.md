@@ -14,6 +14,7 @@ All notable changes to NoctuList are documented here. Version numbers follow [Se
 - **Guest lists on the portal.** One card per guest with access, balance, emergency contact and QR; lists show until 8:00 the morning after the event. The contact can correct a guest's name.
 - **Full guest list access.** From a profile's portal access card, "Manage guest list access" gives a volunteer, a permanent guest or a list contact the whole temporary guest list of a date, for every venue or one. The person sees it in their space (who entered, accesses, contacts) and adds, edits or removes guests directly; a NoctuList device applies the changes. Current access and history are listed apart.
 - **Invitations from the portal.** The admin opens invitations event by event, with a maximum number of people and a maximum per access. Additions and removals are reviewed like guest form answers.
+- **Approving guest requests from the portal.** A new setting, "The portal approves the forms", lets a person with guest list access review guest requests from the portal. Pending requests sit at the top of the guest list section with the whole request shown; the person corrects it, then accepts or refuses it. A NoctuList device applies the result.
 
 ### Fixes
 
@@ -22,7 +23,7 @@ All notable changes to NoctuList are documented here. Version numbers follow [Se
 
 ### Upgrade notes
 
-- **Firestore rules:** version 19 (publish again). Storage rules unchanged.
+- **Firestore rules:** version 20 (publish again). Storage rules unchanged.
 - **Hosting and functions:** export the form site again and run `firebase deploy --only hosting,functions`, at the same time as the rules. The old functions drop guest signups and name requests.
 - **Database:** Room migrations 53 to 57 (guest portal fields, `temporaryPortalEmail`, portal invite fields and `portalRevoked`, then guest list access grants).
 - **Guest list changes from the portal** are applied by a NoctuList device that is online; without one they wait.

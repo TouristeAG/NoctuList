@@ -110,9 +110,16 @@ internal class GuestPortalPublisher(
                 )
                 .filter { it.second.isNotBlank() }
                 .groupBy({ it.first }, { it.second })
+            val reviewsEnabled = host.portalValidateEnabled()
+            val holderNames = (
+                volunteers.filter { (it.firebaseOrgId.isBlank() || it.firebaseOrgId == orgId) && it.portalUid.isNotBlank() }
+                    .map { it.portalUid to "${it.name} ${it.lastNameAbbreviation}".trim() } +
+                    inOrg.filter { it.portalUid.isNotBlank() }.map { it.portalUid to "${it.name} ${it.lastNameAbbreviation}".trim() }
+                ).toMap()
             for ((uid, raws) in grantsByUid) {
                 val grants = raws.flatMap { GuestListGrants.decode(it) }
-                val projection = GuestListPortalProjectionBuilder.build(grants, inOrg, host.venueAccessCatalog(), host.associationName(), now, host.dateOffsetHours())
+                val projection = GuestListPortalProjectionBuilder.build(grants, inOrg, host.venueAccessCatalog(), host.associationName(), now, host.dateOffsetHours(),
+                    reviewForms = inviteForms, holderNames = holderNames, reviewsEnabled = reviewsEnabled, orgId = orgId)
                     ?: continue
                 keptLists += uid
                 writePage(GuestListPortalProjectionBuilder.COLLECTION, uid, LIST_SUFFIX, projection, hashes, now)

@@ -58,6 +58,9 @@ interface VolunteerPortalHost {
     /** Temporary guests have their own space in the portal. */
     fun temporaryGuestPortalEnabled(): Boolean = false
 
+    /** A portal user with guest list access may accept or refuse pending guest forms. */
+    fun portalValidateEnabled(): Boolean = false
+
     /** Temporary guest credits are turned on. */
     fun temporaryGuestCreditsEnabled(): Boolean = false
 
@@ -75,6 +78,28 @@ interface VolunteerPortalHost {
 
     /** Deletes one temporary guest. */
     suspend fun deleteTemporaryGuest(guest: Guest): Boolean = false
+
+    /** Every guest form on this device, for decisions sent from the guest list page. */
+    suspend fun guestForms(): List<GuestForm> = emptyList()
+
+    /**
+     * Accepts a pending added request with the people, contact and notes sent from the portal.
+     * Returns once everything is saved.
+     */
+    suspend fun acceptGuestFormFromPortal(
+        form: GuestForm,
+        people: List<com.eventmanager.app.data.models.ManualTemporaryGuestEntry>,
+        contactEmail: String,
+        phone: String,
+        notes: String,
+        reviewedBy: String,
+    ): GuestReviewOutcome = GuestReviewOutcome.SAVE_FAILED
+
+    /** Accepts a pending removal request. Returns once everything is saved. */
+    suspend fun acceptGuestFormRemovalFromPortal(form: GuestForm, reviewedBy: String): GuestReviewOutcome = GuestReviewOutcome.SAVE_FAILED
+
+    /** Refuses a pending request. Returns once it is saved. */
+    suspend fun rejectGuestFormFromPortal(form: GuestForm, reviewedBy: String): GuestReviewOutcome = GuestReviewOutcome.SAVE_FAILED
 
     suspend fun volunteers(): List<Volunteer>
     /** Inserts a new volunteer through the normal save + sync pipeline (with its optional photo). */
@@ -722,6 +747,7 @@ class VolunteerPortalService(
                 edit,
                 host.volunteers().filter { it.firebaseOrgId.isBlank() || it.firebaseOrgId == orgId },
                 orgGuests(),
+                host.guestForms().filter { it.firebaseOrgId.isBlank() || it.firebaseOrgId == orgId },
             )
         }
         gateway.setPlainDocument(

@@ -401,6 +401,42 @@ export function guestListAddEdits({ people, listName, venueName = "", newList = 
   return { edits: persons.map((p) => ({ ...shared, ...p })) };
 }
 
+/** Most people one ACCEPT may carry, as the rules allow. */
+export const MAX_REVIEW_PEOPLE = 100;
+
+/** One row of the "requests to review" card (spec 2026-11-22 guest list review §6.1). */
+export function reviewSummary(review) {
+  const r = review || {};
+  const title = [r.listName, r.requestedBy, r.contactEmail].map((v) => String(v || "").trim()).find(Boolean) || "";
+  const items = r.kind === "REMOVE" ? r.removeGuests : r.people;
+  return { title, count: Array.isArray(items) ? items.length : 0, sourceKey: r.source === "PORTAL" ? "reviewFromPortal" : "reviewFromForm" };
+}
+
+/**
+ * The fields of a decision on [review]: REJECT, or ACCEPT with, for an addition, the corrected
+ * people (empty rows dropped, accesses deduplicated), contact and notes. Null when a name, the
+ * phone, the e-mail or the notes would be refused, or when an accepted addition has nobody left.
+ */
+export function guestListReviewEdit({ review, accept, people, contactEmail = "", phone = "", notes = "" }) {
+  const base = { action: accept ? "ACCEPT" : "REJECT", reviewKey: String(review?.reviewKey || "") };
+  if (!accept || review?.kind === "REMOVE") return base;
+  const filled = (Array.isArray(people) ? people : []).filter((p) => String(p?.name || "").trim());
+  if (!filled.length || filled.length > MAX_REVIEW_PEOPLE) return null;
+  const persons = [];
+  for (const p of filled) {
+    const name = cleanName(p.name);
+    if (name === null) return null;
+    persons.push({ name, accessIds: [...new Set(Array.isArray(p.accessIds) ? p.accessIds.map(String) : [])] });
+  }
+  const tel = String(phone || "").trim();
+  if (tel && cleanPhone(tel) === null) return null;
+  const mail = String(contactEmail || "").trim().toLowerCase();
+  if (mail && !(mail.length <= 254 && EMAIL_RE.test(mail))) return null;
+  const note = String(notes || "").trim();
+  if (note.length > MAX_GUEST_NOTES) return null;
+  return { ...base, people: persons, contactEmail: mail, phone: tel, notes: note };
+}
+
 /**
  * Past and upcoming shifts as of [now]. A shift is past once its event day ends: `pastFrom`, the
  * next midnight plus the app's synced day-change offset. Older pages without it use the date.

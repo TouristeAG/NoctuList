@@ -2556,6 +2556,7 @@
     <string name="sync_online_features_title">功能</string>
     <string name="sync_online_guest_forms">嘉宾名单表单</string>
     <string name="sync_online_billeterie_validates">售票处审核表单</string>
+    <string name="sync_online_portal_validates">平台审核表单</string>
     <string name="sync_online_portal_link">门户链接</string>
     <string name="sync_online_logo_hint">在“设置 > 协会”中设定的标志</string>
     <string name="sync_online_use_domain">使用 %1$s</string>

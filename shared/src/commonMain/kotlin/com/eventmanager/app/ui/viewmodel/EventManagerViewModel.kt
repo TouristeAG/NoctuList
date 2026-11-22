@@ -68,6 +68,7 @@ import com.eventmanager.app.portal.PortalAuthResult
 import com.eventmanager.app.portal.SignupFormState
 import com.eventmanager.app.portal.TemporaryGroupAccessResult
 import com.eventmanager.app.portal.TemporaryGuestPortalAccess
+import com.eventmanager.app.portal.GuestReviewOutcome
 import com.eventmanager.app.portal.VolunteerPortalHost
 import com.eventmanager.app.portal.VolunteerPortalService
 import com.eventmanager.app.portal.VolunteerSignupForm
@@ -1137,6 +1138,14 @@ class EventManagerViewModel(
     val guestFormsBilleterieValidateEnabled: StateFlow<Boolean> =
         _guestFormsBilleterieValidateEnabled.asStateFlow()
 
+    private val _guestFormsPortalValidateEnabled = MutableStateFlow(
+        settingsManagerCached?.isGuestFormsPortalValidateEnabled() == true,
+    )
+
+    /** When true, a portal user with guest list access may accept or refuse pending public forms. */
+    val guestFormsPortalValidateEnabled: StateFlow<Boolean> =
+        _guestFormsPortalValidateEnabled.asStateFlow()
+
     private val _institutionLogoPng = MutableStateFlow(
         settingsManagerCached?.getInstitutionLogoPng().orEmpty(),
     )
@@ -1153,6 +1162,8 @@ class EventManagerViewModel(
         _guestFormsEnabled.value = isGuestFormFeaturesEnabled()
         _guestFormsBilleterieValidateEnabled.value =
             settingsManagerCached?.isGuestFormsBilleterieValidateEnabled() == true
+        _guestFormsPortalValidateEnabled.value =
+            settingsManagerCached?.isGuestFormsPortalValidateEnabled() == true
         _institutionLogoPng.value = settingsManagerCached?.getInstitutionLogoPng().orEmpty()
     }
 
@@ -1169,6 +1180,16 @@ class EventManagerViewModel(
         if (getActiveBackendType() != BackendType.FIREBASE) return
         settings.setGuestFormsBilleterieValidateEnabled(enabled)
         publishGuestFormSettings()
+        backupInstitutionSettingsToSheets()
+    }
+
+    fun setGuestFormsPortalValidateEnabled(enabled: Boolean) {
+        val settings = settingsManagerCached ?: return
+        if (getActiveBackendType() != BackendType.FIREBASE) return
+        settings.setGuestFormsPortalValidateEnabled(enabled)
+        publishGuestFormSettings()
+        publishVolunteerPortalSettings()
+        republishVolunteerPortal()
         backupInstitutionSettingsToSheets()
     }
 
@@ -1458,29 +1479,42 @@ class EventManagerViewModel(
         reviewedBy: String = "",
     ): Boolean {
         if (!isGuestFormFeaturesEnabled()) return false
-        val entries = people.map { it.copy(name = it.name.trim()) }.filter { it.name.isNotEmpty() }
-        if (entries.isEmpty()) return false
-        val template = portalInviteTemplateOf(form)
-        if (template != null) {
-            val batch = portalInviteBatch(template)
-            val fits = PortalInvites.canAccept(
-                template, form, batch, emptyList(), entries.map { it.name to it.accessIds },
-            )
-            if (!fits) return false
-        }
-        addTemporaryGuestBatch(
-            ManualTemporaryGuestBatch(
-                eventDateMillis = form.eventDateMillis,
-                artistName = form.artistName,
-                emergencyContactPhone = (template?.prefillPhone ?: emergencyPhone).trim(),
-                comments = comments.trim(),
-                guests = entries,
-                venueName = form.venueName,
-                contactEmail = (template?.prefillEmail ?: contactEmail).trim(),
-            ),
-        )
+        val batch = guestFormAcceptBatch(form, people, contactEmail, emergencyPhone, comments, _guests.value) ?: return false
+        addTemporaryGuestBatch(batch)
         closeGuestForm(form, GuestFormStatus.ACCEPTED, reviewedBy)
         return true
+    }
+
+    /**
+     * The guests accepting [form] adds, or null when nobody is left or a portal answer would go
+     * past a limit of its invite. [guests] is the guest list the limits are counted on.
+     */
+    private fun guestFormAcceptBatch(
+        form: GuestForm,
+        people: List<ManualTemporaryGuestEntry>,
+        contactEmail: String,
+        emergencyPhone: String,
+        comments: String,
+        guests: List<Guest>,
+    ): ManualTemporaryGuestBatch? {
+        val entries = people.map { it.copy(name = it.name.trim()) }.filter { it.name.isNotEmpty() }
+        if (entries.isEmpty()) return null
+        val template = portalInviteTemplateOf(form)
+        if (template != null) {
+            val fits = PortalInvites.canAccept(
+                template, form, portalInviteBatch(template, guests), emptyList(), entries.map { it.name to it.accessIds },
+            )
+            if (!fits) return null
+        }
+        return ManualTemporaryGuestBatch(
+            eventDateMillis = form.eventDateMillis,
+            artistName = form.artistName,
+            emergencyContactPhone = (template?.prefillPhone ?: emergencyPhone).trim(),
+            comments = comments.trim(),
+            guests = entries,
+            venueName = form.venueName,
+            contactEmail = (template?.prefillEmail ?: contactEmail).trim(),
+        )
     }
 
     /** The portal invite template a portal answer belongs to, or null for any other form. */
@@ -1490,10 +1524,12 @@ class EventManagerViewModel(
     }
 
     /** Guests already on the list of [template] (same list key and contact address). */
-    fun portalInviteBatch(template: GuestForm): List<Guest> {
+    fun portalInviteBatch(template: GuestForm): List<Guest> = portalInviteBatch(template, _guests.value)
+
+    private fun portalInviteBatch(template: GuestForm, guests: List<Guest>): List<Guest> {
         val key = PortalInvites.listKey(template)
         val address = template.prefillEmail.trim().lowercase()
-        return _guests.value.filter {
+        return guests.filter {
             it.isTemporaryGuest && it.temporaryBatchKey() == key && it.temporaryContactEmail.trim().lowercase() == address
         }
     }
@@ -1693,22 +1729,27 @@ class EventManagerViewModel(
     private fun closeGuestForm(form: GuestForm, status: GuestFormStatus, reviewedBy: String) {
         viewModelScope.launch {
             try {
-                val now = System.currentTimeMillis()
-                val closed = form.copy(
-                    status = status.name,
-                    reviewedAt = now,
-                    reviewedBy = reviewedBy.trim(),
-                    institutionLogoDataUri = "",
-                    guestLogoDataUri = "",
-                    lastModified = now,
-                )
-                repository.updateGuestForm(closed)
-                syncCoordinator?.afterGuestFormSaved(closed)
+                saveGuestForm(closedGuestForm(form, status, reviewedBy, System.currentTimeMillis()))
             } catch (e: Exception) {
                 println("Failed to close guest form: ${e.message}")
                 _syncError.value = "Failed to update guest form: ${e.message}"
             }
         }
+    }
+
+    private fun closedGuestForm(form: GuestForm, status: GuestFormStatus, reviewedBy: String, now: Long): GuestForm =
+        form.copy(
+            status = status.name,
+            reviewedAt = now,
+            reviewedBy = reviewedBy.trim(),
+            institutionLogoDataUri = "",
+            guestLogoDataUri = "",
+            lastModified = now,
+        )
+
+    private suspend fun saveGuestForm(form: GuestForm) {
+        repository.updateGuestForm(form)
+        syncCoordinator?.afterGuestFormSaved(form)
     }
 
     fun deleteGuestForm(form: GuestForm) {
@@ -3450,6 +3491,7 @@ class EventManagerViewModel(
         override fun portalQrEnabled() = settingsManagerCached?.isVolunteerPortalQrEnabled() != false
         override fun guestPortalEnabled(): Boolean = settingsManagerCached?.isGuestPortalEnabled() == true
         override fun temporaryGuestPortalEnabled(): Boolean = settingsManagerCached?.isTemporaryGuestPortalEnabled() == true
+        override fun portalValidateEnabled(): Boolean = settingsManagerCached?.isGuestFormsPortalValidateEnabled() == true
         override fun temporaryGuestCreditsEnabled(): Boolean = settingsManagerCached?.isTemporaryGuestCreditsEnabled() == true
         override fun venueAccessNames(): Map<String, String> =
             settingsManagerCached?.getTemporaryGuestVenueAccesses().orEmpty().associate { it.id to it.name }
@@ -3484,6 +3526,82 @@ class EventManagerViewModel(
                 false
             }
         }
+        override suspend fun guestForms(): List<GuestForm> = _guestForms.value
+
+        /** The request as stored now, or null when it is gone or no longer awaits review. */
+        private suspend fun pendingGuestForm(form: GuestForm): GuestForm? =
+            (repository.getGuestFormByFormIdAndOrg(form.formId, form.firebaseOrgId) ?: repository.getGuestFormByFormId(form.formId))
+                ?.takeIf { it.statusValue == GuestFormStatus.PENDING_REVIEW }
+
+        /**
+         * Runs a portal decision on the request as stored now. Every write is awaited, and the
+         * request is closed before anything else so a second decision finds it no longer pending.
+         */
+        private suspend fun decideGuestForm(
+            form: GuestForm,
+            action: String,
+            decide: suspend (GuestForm) -> GuestReviewOutcome,
+        ): GuestReviewOutcome {
+            if (rejectIfCrudSoftLocked(action)) return GuestReviewOutcome.SAVE_FAILED
+            if (!isGuestFormFeaturesEnabled()) return GuestReviewOutcome.SAVE_FAILED
+            return try {
+                val current = pendingGuestForm(form) ?: return GuestReviewOutcome.NOT_PENDING
+                decide(current)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                println("Portal: guest request decision failed: ${e.message}")
+                GuestReviewOutcome.SAVE_FAILED
+            }
+        }
+
+        override suspend fun acceptGuestFormFromPortal(
+            form: GuestForm,
+            people: List<ManualTemporaryGuestEntry>,
+            contactEmail: String,
+            phone: String,
+            notes: String,
+            reviewedBy: String,
+        ): GuestReviewOutcome = decideGuestForm(form, "accepting a guest request from the portal") { current ->
+            // Limits are counted on the stored list, which may be ahead of the screen's.
+            val batch = guestFormAcceptBatch(current, people, contactEmail, phone, notes, repository.getAllGuestsOnce())
+                ?: return@decideGuestForm GuestReviewOutcome.OVER_LIMIT
+            val coordinator = syncCoordinator ?: return@decideGuestForm GuestReviewOutcome.SAVE_FAILED
+            val closedAt = System.currentTimeMillis()
+            saveGuestForm(closedGuestForm(current, GuestFormStatus.ACCEPTED, reviewedBy, closedAt))
+            try {
+                coordinator.afterTemporaryGuestBatch(batch)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // The batch failed: the request goes back to review. Guests inserted before the failure stay, so a retry may find some of them already on the list.
+                println("Portal: guest request accept failed: ${e.message}")
+                runCatching { saveGuestForm(current.copy(lastModified = maxOf(System.currentTimeMillis(), closedAt + 1))) }
+                return@decideGuestForm GuestReviewOutcome.SAVE_FAILED
+            }
+            GuestReviewOutcome.DONE
+        }
+
+        override suspend fun acceptGuestFormRemovalFromPortal(form: GuestForm, reviewedBy: String): GuestReviewOutcome =
+            decideGuestForm(form, "accepting a guest request from the portal") { current ->
+                val now = System.currentTimeMillis()
+                // Its list is gone: nothing to remove, the request is refused so it leaves the review.
+                val template = portalInviteTemplateOf(current) ?: run {
+                    saveGuestForm(closedGuestForm(current, GuestFormStatus.REJECTED, reviewedBy, now))
+                    return@decideGuestForm GuestReviewOutcome.DONE
+                }
+                val (remove, _) = PortalInvites.removalTargets(current, portalInviteBatch(template, repository.getAllGuestsOnce()))
+                saveGuestForm(closedGuestForm(current, GuestFormStatus.ACCEPTED, reviewedBy, now))
+                val allRemoved = remove.map { deleteTemporaryGuest(it) }.all { it }
+                if (allRemoved) GuestReviewOutcome.DONE else GuestReviewOutcome.SAVE_FAILED
+            }
+
+        override suspend fun rejectGuestFormFromPortal(form: GuestForm, reviewedBy: String): GuestReviewOutcome =
+            decideGuestForm(form, "refusing a guest request from the portal") { current ->
+                saveGuestForm(closedGuestForm(current, GuestFormStatus.REJECTED, reviewedBy, System.currentTimeMillis()))
+                GuestReviewOutcome.DONE
+            }
+
         override fun portalGoogleEnabled(): Boolean = settingsManagerCached?.isVolunteerPortalGoogleEnabled() == true
         override fun portalGoogleDomains(): List<String> = settingsManagerCached?.volunteerPortalGoogleDomains().orEmpty()
         override fun portalGoogleAnyAccount(): Boolean = settingsManagerCached?.isVolunteerPortalGoogleAnyAccount() == true
