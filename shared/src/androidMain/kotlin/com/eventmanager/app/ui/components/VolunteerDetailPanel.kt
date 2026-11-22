@@ -319,10 +319,7 @@ actual fun VolunteerDetailPanel(
                     }
 
                     item {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            VolunteerPortalAccessCard(viewModel = viewModel, volunteer = volunteer)
-                            com.eventmanager.app.ui.components.settings.certificate.VolunteerCertificateButton(viewModel = viewModel, volunteer = volunteer)
-                        }
+                        VolunteerPortalAccessCard(viewModel = viewModel, volunteer = volunteer)
                     }
 
                     if (onManualAccountAdjust != null && viewModel != null) {
@@ -385,6 +382,13 @@ actual fun VolunteerDetailPanel(
                             onUploadPhoto = { bytes -> viewModel?.uploadProfilePhotoForVolunteer(volunteer, bytes) },
                             onRemovePhoto = { viewModel?.removeProfilePhotoForVolunteer(volunteer) },
                             onRequestPhoto = rememberVolunteerPhotoRequestLauncher(viewModel, volunteer),
+                            extraActions = {
+                                com.eventmanager.app.ui.components.settings.certificate.VolunteerCertificateButton(
+                                    viewModel = viewModel,
+                                    volunteer = volunteer,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            },
                         )
                     }
                 }
@@ -1472,6 +1476,8 @@ private fun ActionButtonsSection(
     onUploadPhoto: (ByteArray) -> Unit = {},
     onRemovePhoto: () -> Unit = {},
     onRequestPhoto: (() -> Unit)? = null,
+    /** Shown after the photo buttons, before Edit (e.g. "Generate a certificate"). */
+    extraActions: @Composable () -> Unit = {},
 ) {
     val responsivePadding = if (isPhone) getPhonePortraitCardPadding() else getResponsiveCardPadding()
     val responsiveSpacing = if (isPhone) getPhonePortraitSpacing() else getResponsiveSpacing()
@@ -1538,6 +1544,8 @@ private fun ActionButtonsSection(
                     onRemove = onRemovePhoto,
                     onRequestFromPerson = onRequestPhoto,
                 )
+
+                extraActions()
 
                 OutlinedButton(
                     onClick = { onEdit(volunteer) },

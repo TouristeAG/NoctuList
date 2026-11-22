@@ -186,7 +186,6 @@ actual fun VolunteerDetailPanel(
             DesktopShiftHistorySection(sortedJobs, venues, jobTypeConfigs, platformContext)
 
             VolunteerPortalAccessCard(viewModel = viewModel, volunteer = volunteer)
-            com.eventmanager.app.ui.components.settings.certificate.VolunteerCertificateButton(viewModel = viewModel, volunteer = volunteer)
 
             if (viewModel != null) {
                 LocalAdminRightsSection(
@@ -220,6 +219,11 @@ actual fun VolunteerDetailPanel(
                         onAddOrChange = pickPhoto,
                         onRemove = { viewModel?.removeProfilePhotoForVolunteer(volunteer) },
                         onRequestFromPerson = rememberVolunteerPhotoRequestLauncher(viewModel, volunteer),
+                    )
+                    com.eventmanager.app.ui.components.settings.certificate.VolunteerCertificateButton(
+                        viewModel = viewModel,
+                        volunteer = volunteer,
+                        modifier = Modifier.fillMaxWidth(),
                     )
                     OutlinedButton(onClick = { onEdit(volunteer) }, modifier = Modifier.fillMaxWidth()) {
                         Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
