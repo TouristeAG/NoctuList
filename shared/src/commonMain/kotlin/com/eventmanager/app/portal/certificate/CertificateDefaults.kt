@@ -151,7 +151,8 @@ object CertificateDefaults {
         ),
     )
 
-    private val gender = Regex("""\{(\w+)}|\[([^\]|]*)\|([^\]|]*)\|([^\]|]*)]""")
+    // Every literal brace and bracket is escaped: Android's ICU regex engine rejects a bare "}" or "]".
+    private val gender = Regex("""\{(\w+)\}|\[([^\]|]*)\|([^\]|]*)\|([^\]|]*)\]""")
 
     private fun runs(template: String, bold: Boolean = false): List<CertRun> {
         val out = mutableListOf<CertRun>()
