@@ -47,9 +47,11 @@ import {
   defaultSelection,
   groupTypes,
   needsFullName,
+  periodValid,
+  profileFields,
   requestFields,
   typesInPeriod,
-} from "./portal-certificate.js?v=cert-1";
+} from "./portal-certificate.js?v=cert-2";
 import { cachedQrEntries, clearQr, closeQrDialog, isStaleFor, missingIsFinal, openQrDialog, readCachedQr, storeQr } from "./portal-qr.js?v=guest-3";
 import {
   EMAIL_RE,
@@ -2288,10 +2290,14 @@ function openCertificateSheet() {
 
   function drawName() {
     const nameInput = el("input", { maxlength: "60", autocomplete: "family-name" });
+    // A PROFILE request needs a phone: ask for it here when the page has none that passes the profile check.
+    const knownPhone = cleanPhone(projection?.phone);
+    const phoneInput = knownPhone ? null : el("input", { type: "tel", maxlength: "32", autocomplete: "tel" });
     nameMsg = el("p", { class: "hidden", role: "status" });
     const save = el("button", { type: "submit", class: "primary", text: t("save") });
     const form = el("form", { novalidate: true },
       el("label", {}, el("span", { text: t("certNameLabel") }), nameInput),
+      phoneInput ? el("label", {}, el("span", { text: t("phone") }), phoneInput) : null,
       el("p", { class: "small-note", text: t("certNameWhy") }),
       nameMsg,
       save);
@@ -2302,19 +2308,24 @@ function openCertificateSheet() {
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       nameInput.removeAttribute("aria-invalid");
+      phoneInput?.removeAttribute("aria-invalid");
       const lastName = cleanName(nameInput.value);
       if (!lastName || needsFullName(lastName)) {
         nameInput.setAttribute("aria-invalid", "true");
         return say("error", "errName");
       }
+      const phone = knownPhone ?? cleanPhone(phoneInput.value);
+      if (!phone) {
+        phoneInput.setAttribute("aria-invalid", "true");
+        return say("error", "errPhone");
+      }
       if (isWaiting(requests.PROFILE)) return say("error", "profilePending");
       if (requestCooldownMinutes("PROFILE") > 0) return say("error", "profileWait");
-      const firstName = cleanName(projection?.firstName);
-      const phone = cleanPhone(projection?.phone);
-      if (!firstName || !phone) return say("error", "errGeneric");
+      const fields = profileFields(cleanName(projection?.firstName), lastName, phone);
+      if (!fields) return say("error", "errGeneric");
       save.disabled = true;
       try {
-        await sendRequest("PROFILE", { firstName, lastName, phone });
+        await sendRequest("PROFILE", fields);
         nameSent = true;
         draw();
       } catch (error) {
@@ -2364,8 +2375,10 @@ function openCertificateSheet() {
       }
       if (failure) status.append(el("p", { class: "error", text: t(failure, { n: 10 }) }));
       if (cooldown > 0 && !waiting) status.append(el("p", { class: "small-note", text: t("certWait", { n: cooldown }) }));
+      const valid = periodValid(from.value, to.value, todayIso());
+      if (!valid) status.append(el("p", { class: "error", text: t("certReasonInvalid") }));
       const chosen = effective();
-      send.disabled = sending || waiting || cooldown > 0 || !canSend(chosen, inside) || chosen.size > 50;
+      send.disabled = sending || waiting || cooldown > 0 || !valid || !canSend(chosen, inside) || chosen.size > 50;
     };
 
     for (const group of groupTypes(types)) {
@@ -2392,7 +2405,7 @@ function openCertificateSheet() {
     to.addEventListener("change", update);
     send.addEventListener("click", async () => {
       const fields = requestFields(from.value, to.value, effective());
-      if (!canSend(effective(), inPeriod())) return;
+      if (!periodValid(from.value, to.value, todayIso()) || !canSend(effective(), inPeriod())) return;
       sending = true;
       failure = "";
       update();

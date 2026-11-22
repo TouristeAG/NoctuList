@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 const {
-  canSend, defaultPeriod, defaultSelection, groupTypes, needsFullName, requestFields, typesInPeriod,
+  canSend, defaultPeriod, defaultSelection, groupTypes, needsFullName, periodValid, profileFields, requestFields, typesInPeriod,
 } = await import("../site/portal-certificate.js");
 
 const TYPES = [
@@ -45,7 +45,9 @@ test("cannot send an empty selection", () => {
 
 test("needsFullName", () => {
   assert.equal(needsFullName("D."), true);
-  assert.equal(needsFullName("Du"), true);
+  assert.equal(needsFullName("D"), true);
+  assert.equal(needsFullName("Du"), false);
+  assert.equal(needsFullName("Li"), false);
   assert.equal(needsFullName("Dupont"), false);
   assert.equal(needsFullName("O'"), true);
   assert.equal(needsFullName(""), true);
@@ -55,4 +57,31 @@ test("needsFullName", () => {
 test("request fields are sorted and dated", () => {
   assert.deepEqual(requestFields("2026-01-01", "2026-02-28", new Set(["Bar", "Affiche"])),
     { from: "2026-01-01", to: "2026-02-28", jobTypes: ["Affiche", "Bar"] });
+});
+
+test("period validity", () => {
+  const today = "2026-11-22";
+  assert.equal(periodValid("2026-01-01", "2026-11-22", today), true);
+  assert.equal(periodValid("2026-01-01", "2026-01-01", today), true);
+  assert.equal(periodValid("", "2026-01-01", today), false);
+  assert.equal(periodValid("2026-01-01", "", today), false);
+  assert.equal(periodValid("1999-12-31", "2026-01-01", today), false);
+  assert.equal(periodValid("2026-02-01", "2026-01-01", today), false);
+  assert.equal(periodValid("2026-01-01", "2026-11-23", today), false);
+  assert.equal(periodValid("2026-1-1", "2026-01-01", today), false);
+});
+
+test("job types with a name over 80 characters are left out", () => {
+  const long = { name: "x".repeat(81), category: "SHIFT", days: [20260101] };
+  const ok = { name: "y".repeat(80), category: "SHIFT", days: [20260101] };
+  assert.deepEqual(groupTypes([long, ok])[0].types.map((x) => x.name), [ok.name]);
+  assert.equal(defaultSelection([long, ok]).has(long.name), false);
+  assert.equal(typesInPeriod([long, ok], "2026-01-01", "2026-01-02").has(long.name), false);
+});
+
+test("profile fields need a first name, a full last name and a phone", () => {
+  assert.deepEqual(profileFields("Anna", "Dupont", "+41 79 000 00 00"), { firstName: "Anna", lastName: "Dupont", phone: "+41 79 000 00 00" });
+  assert.equal(profileFields("Anna", "Dupont", null), null);
+  assert.equal(profileFields(null, "Dupont", "+41 79 000 00 00"), null);
+  assert.equal(profileFields("Anna", "D.", "+41 79 000 00 00"), null);
 });

@@ -6,8 +6,11 @@ export const CATEGORIES = ["MANDATE", "SHIFT", "PHOTO", "GRAPHIC_EVENT", "GRAPHI
 
 const byName = (a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
 
+/** The request rules refuse job type names over 80 characters, so such types stay out of the sheet. */
+export const MAX_TYPE_NAME = 80;
+
 function listOf(types) {
-  return Array.isArray(types) ? types.filter((x) => x && typeof x.name === "string") : [];
+  return Array.isArray(types) ? types.filter((x) => x && typeof x.name === "string" && x.name.length <= MAX_TYPE_NAME) : [];
 }
 
 function daysOf(type) {
@@ -54,9 +57,25 @@ export function canSend(selection, inPeriod) {
   return [...selection].some((name) => inPeriod.has(name));
 }
 
-/** A last name that is only an initial (or too short) cannot go on a certificate. */
+/** A last name that is only an initial (fewer than 2 letters, or ending with a dot) cannot go on a certificate. */
 export function needsFullName(lastName) {
-  return String(lastName ?? "").replace(/[^\p{L}]/gu, "").length < 3;
+  const name = String(lastName ?? "").trim();
+  return name.replace(/[^\p{L}]/gu, "").length < 2 || name.endsWith(".");
+}
+
+/**
+ * Fields of the PROFILE request sent from the name step (all three already cleaned), or null when
+ * one is missing. The phone comes from the page, or from the field shown when the page has none.
+ */
+export function profileFields(firstName, lastName, phone) {
+  return firstName && lastName && phone && !needsFullName(lastName) ? { firstName, lastName, phone } : null;
+}
+
+const PERIOD_DATE_RE = /^20\d{2}-\d{2}-\d{2}$/;
+
+/** Both dates are YYYY-MM-DD from 2000 on, from is not after to, and to is not after today. */
+export function periodValid(from, to, todayIso) {
+  return PERIOD_DATE_RE.test(String(from)) && PERIOD_DATE_RE.test(String(to)) && from <= to && to <= todayIso;
 }
 
 /** Fields of the CERTIFICATE_EMAIL request. */
