@@ -91,9 +91,9 @@ object CertificateTextActions {
 
     fun toggleBullets(state: RichTextState) = state.toggleUnorderedList()
 
-    fun insertVariable(state: RichTextState, key: String) {
+    fun insertVariable(state: RichTextState, key: String, label: String = CertificateDocHtml.keyLabel(key)) {
         if (!state.selection.collapsed) state.removeSelectedText()
-        state.addLink("{$key}", "var:$key")
+        state.addLink(label, "var:$key")
     }
 
     /** The selected word when the selection is exactly one word outside any variable, else null. */

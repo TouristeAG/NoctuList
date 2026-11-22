@@ -115,4 +115,43 @@ class CertificateEditorModelTest {
         assertTrue(items[7] is PreviewItem.Signature)
         assertEquals(44f, items[7].gapBefore)
     }
+
+    private val french = mapOf(
+        "firstName" to "prénom", "lastName" to "nom", "association" to "association", "period" to "période",
+        "start" to "début", "end" to "fin", "date" to "date", "count" to "nombre", "role" to "rôle",
+        "description" to "description", "roles" to "rôles", "place" to "lieu", "today" to "date du jour",
+    )
+    private val frenchLabel: (String) -> String = { "{" + (french[it] ?: it) + "}" }
+
+    @Test
+    fun frenchLabelsShowInTheEditorAndTheTemplateKeepsTheKeys() {
+        val model = CertificateEditorModel(defaults, "Noctua", frenchLabel)
+        val dateLine = model.editor("dateLine", CertVariant.ONE)
+        assertEquals("Fait à {lieu}, le {date du jour}", dateLine.annotatedString.text)
+        dateLine.selection = TextRange(dateLine.annotatedString.text.length)
+        CertificateTextActions.insertVariable(dateLine, "firstName", frenchLabel("firstName"))
+        val back = model.toTemplate()
+        assertEquals(listOf("place", "today", "firstName"), back.blocks.getValue("dateLine").one.single().runs.map { it.variable }.filter { it.isNotEmpty() })
+        val expected = defaults.blocks.filterKeys { it != "footer" && it != "dateLine" }
+        assertEquals(expected, back.blocks.filterKeys { it != "footer" && it != "dateLine" })
+    }
+
+    @Test
+    fun docHtmlRoundTripsWithFrenchLabels() {
+        for ((_, block) in defaults.blocks) for (doc in listOf(block.one, block.many, block.manyOneRole, block.line)) {
+            val kept = doc.filter { p -> p.runs.any { it.text.isNotEmpty() || it.variable.isNotEmpty() || it.gender.isNotEmpty() } }
+            val state = com.mohamedrejeb.richeditor.model.RichTextState()
+            state.setHtml(com.eventmanager.app.ui.components.settings.certificate.CertificateDocHtml.toHtml(doc, frenchLabel))
+            assertEquals(kept, com.eventmanager.app.ui.components.settings.certificate.CertificateDocHtml.fromHtml(state.toHtml(), frenchLabel))
+        }
+    }
+
+    @Test
+    fun theShownVariantIsKeptByTheModel() {
+        val model = CertificateEditorModel(defaults, "Noctua")
+        assertEquals(CertVariant.ONE, model.variantOf("SHIFT"))
+        model.showVariant("SHIFT", CertVariant.MANY)
+        assertEquals(CertVariant.MANY, model.variantOf("SHIFT"))
+        assertEquals("SHIFT" to CertVariant.MANY, model.activeKey)
+    }
 }

@@ -5,8 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -131,8 +129,10 @@ fun CertificateEditorDialog(
     onDismiss: () -> Unit,
     onOpenLogoSettings: (() -> Unit)? = null,
 ) {
+    var closeRequests by remember { mutableIntStateOf(0) }
     Dialog(
-        onDismissRequest = onDismiss,
+        // Esc and Android back go through the same "leave without saving?" check as Cancel.
+        onDismissRequest = { closeRequests++ },
         properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = false),
     ) {
         DialogWindowFollowsScreenSize()
@@ -149,14 +149,13 @@ fun CertificateEditorDialog(
             ) {
                 CertificateEditorContent(
                     initial, association, logoBase64, volunteers, jobTypes, jobsOf, gmailAddress,
-                    onSave, onDismiss, onOpenLogoSettings,
+                    onSave, onDismiss, onOpenLogoSettings, closeRequests,
                 )
             }
         }
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun CertificateEditorContent(
     initial: CertificateTemplate,
@@ -169,8 +168,13 @@ internal fun CertificateEditorContent(
     onSave: (CertificateTemplate) -> Unit,
     onDismiss: () -> Unit,
     onOpenLogoSettings: (() -> Unit)?,
+    /** Bumped by the window (Esc, back): asks to close like Cancel does. */
+    closeRequests: Int = 0,
 ) {
-    val model = remember(initial) { CertificateEditorModel(initial, association) }
+    val labels = variableLabels()
+    val model = remember(initial, labels) {
+        CertificateEditorModel(initial, association) { key -> labels[key] ?: CertificateDocHtml.keyLabel(key) }
+    }
     val linkColor = MaterialTheme.colorScheme.primary
     LaunchedEffect(model, linkColor) { model.styleLinks(linkColor) }
     val baseline = remember(model) { model.toTemplate() }
@@ -197,7 +201,17 @@ internal fun CertificateEditorContent(
 
     var languageChanged by remember { mutableStateOf<String?>(null) }
     var confirmReset by remember { mutableStateOf(false) }
-    var confirmLeave by remember { mutableStateOf(false) }
+    // What to do after closing once the admin agrees to drop the changes; null when nothing is asked.
+    var leaveThen by remember { mutableStateOf<(() -> Unit)?>(null) }
+    fun close(then: () -> Unit = {}) {
+        if (model.toTemplate() == baseline) {
+            onDismiss()
+            then()
+        } else {
+            leaveThen = then
+        }
+    }
+    LaunchedEffect(closeRequests) { if (closeRequests > 0) close() }
     var saveError by remember { mutableStateOf<String?>(null) }
     val tooLarge = stringResource(Res.string.certificate_too_large)
 
@@ -249,14 +263,7 @@ internal fun CertificateEditorContent(
 
                 val editor: @Composable (Modifier) -> Unit = { modifier ->
                     CertificateEditorColumn(model, family, logoBase64, gmailAddress, wide, modifier) {
-                        if (onOpenLogoSettings != null) {
-                            if (model.toTemplate() == baseline) {
-                                onDismiss()
-                                onOpenLogoSettings()
-                            } else {
-                                confirmLeave = true
-                            }
-                        }
+                        if (onOpenLogoSettings != null) close(onOpenLogoSettings)
                     }
                 }
                 val preview: @Composable (Modifier) -> Unit = { modifier ->
@@ -288,14 +295,16 @@ internal fun CertificateEditorContent(
                         modifier = Modifier.padding(horizontal = pad, vertical = 6.dp),
                     )
                 }
-                FlowRow(
+                Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = pad, vertical = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    TextButton(onClick = { confirmReset = true }) { Text(stringResource(Res.string.certificate_reset)) }
-                    Spacer(Modifier.weight(1f))
-                    TextButton(onClick = onDismiss) { Text(stringResource(Res.string.cancel)) }
+                    // On a phone the reset label wraps rather than pushing Save onto its own line.
+                    Box(Modifier.weight(1f)) {
+                        TextButton(onClick = { confirmReset = true }) { Text(stringResource(Res.string.certificate_reset)) }
+                    }
+                    TextButton(onClick = { close() }) { Text(stringResource(Res.string.cancel)) }
                     Button(
                         onClick = {
                             val template = model.toTemplate()
@@ -342,20 +351,41 @@ internal fun CertificateEditorContent(
             dismissButton = { TextButton(onClick = { confirmReset = false }) { Text(stringResource(Res.string.cancel)) } },
         )
     }
-    if (confirmLeave) {
+    leaveThen?.let { then ->
         AlertDialog(
-            onDismissRequest = { confirmLeave = false },
+            onDismissRequest = { leaveThen = null },
             text = { Text(stringResource(Res.string.certificate_leave_unsaved)) },
             confirmButton = {
                 TextButton(onClick = {
-                    confirmLeave = false
+                    leaveThen = null
                     onDismiss()
-                    onOpenLogoSettings?.invoke()
+                    then()
                 }) { Text(stringResource(Res.string.certificate_leave)) }
             },
-            dismissButton = { TextButton(onClick = { confirmLeave = false }) { Text(stringResource(Res.string.cancel)) } },
+            dismissButton = { TextButton(onClick = { leaveThen = null }) { Text(stringResource(Res.string.cancel)) } },
         )
     }
+}
+
+/** Labels of the variables in the editor, in the app language: "{prénom}", "{date du jour}"... */
+@Composable
+internal fun variableLabels(): Map<String, String> {
+    val pairs = listOf(
+        "firstName" to stringResource(Res.string.certificate_label_firstName),
+        "lastName" to stringResource(Res.string.certificate_label_lastName),
+        "association" to stringResource(Res.string.certificate_label_association),
+        "period" to stringResource(Res.string.certificate_label_period),
+        "start" to stringResource(Res.string.certificate_label_start),
+        "end" to stringResource(Res.string.certificate_label_end),
+        "date" to stringResource(Res.string.certificate_label_date),
+        "count" to stringResource(Res.string.certificate_label_count),
+        "role" to stringResource(Res.string.certificate_label_role),
+        "description" to stringResource(Res.string.certificate_label_description),
+        "roles" to stringResource(Res.string.certificate_label_roles),
+        "place" to stringResource(Res.string.certificate_label_place),
+        "today" to stringResource(Res.string.certificate_label_today),
+    )
+    return remember(pairs) { pairs.associate { (k, v) -> k to "{$v}" } }
 }
 
 @Composable

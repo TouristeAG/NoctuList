@@ -53,7 +53,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -165,7 +164,7 @@ internal fun CertificateToolbar(model: CertificateEditorModel, wrap: Boolean, mo
                 state?.let(CertificateTextActions::toggleBullets)
             }
             ToolDivider()
-            VariableMenu(state, key?.let { (k, v) -> CertificateBlocks.all.first { it.key == k }.variables(v) }.orEmpty())
+            VariableMenu(state, labelOf = model.labelOf, variables = key?.let { (k, v) -> CertificateBlocks.all.first { it.key == k }.variables(v) }.orEmpty())
             val word = state?.let(CertificateTextActions::selectedWord)
             val genderLabel = stringResource(Res.string.certificate_gender)
             Tooltip(if (word == null) stringResource(Res.string.certificate_gender_hint) else genderLabel) {
@@ -259,7 +258,7 @@ private fun SizeMenu(state: RichTextState?) {
 }
 
 @Composable
-private fun VariableMenu(state: RichTextState?, variables: List<String>) {
+private fun VariableMenu(state: RichTextState?, variables: List<String>, labelOf: (String) -> String) {
     var open by remember { mutableStateOf(false) }
     Box {
         TextButton(
@@ -280,7 +279,7 @@ private fun VariableMenu(state: RichTextState?, variables: List<String>) {
                             Text(stringResource(variableLabel(key)), modifier = Modifier.weight(1f, fill = false))
                             Spacer(Modifier.width(16.dp))
                             Text(
-                                "{$key}",
+                                labelOf(key),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -288,7 +287,7 @@ private fun VariableMenu(state: RichTextState?, variables: List<String>) {
                     },
                     onClick = {
                         open = false
-                        state?.let { CertificateTextActions.insertVariable(it, key) }
+                        state?.let { CertificateTextActions.insertVariable(it, key, labelOf(key)) }
                     },
                 )
             }
@@ -330,7 +329,7 @@ internal fun CertificateBlockCard(
     placeholder: String? = null,
     extra: @Composable (() -> Unit)? = null,
 ) {
-    var variant by rememberSaveable(spec.key) { mutableStateOf(spec.variants.first()) }
+    val variant = model.variantOf(spec.key)
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -348,10 +347,7 @@ internal fun CertificateBlockCard(
                 for (v in spec.variants) {
                     FilterChip(
                         selected = v == variant,
-                        onClick = {
-                            variant = v
-                            model.activeKey = spec.key to v
-                        },
+                        onClick = { model.showVariant(spec.key, v) },
                         label = { Text(stringResource(variantLabel(v))) },
                     )
                 }

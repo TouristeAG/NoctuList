@@ -30,7 +30,11 @@ object CertificateDocHtml {
         else -> CertSize.TITLE
     }
 
-    fun toHtml(doc: List<CertParagraph>): String {
+    /** The text a variable shows in the editor when no translated label is given. */
+    fun keyLabel(key: String) = "{$key}"
+
+    /** [labelOf] gives the text shown for a variable (for example "{prénom}"); only the href is read back. */
+    fun toHtml(doc: List<CertParagraph>, labelOf: (String) -> String = ::keyLabel): String {
         val out = StringBuilder()
         var inList = false
         for (p in doc) {
@@ -52,7 +56,7 @@ object CertificateDocHtml {
                     next.text.isNotEmpty() && next.text.isBlank()
                 ) next.text else ""
                 if (carried.isNotEmpty()) skip = index + 1
-                out.append(runHtml(run, p.size, carried))
+                out.append(runHtml(run, p.size, carried, labelOf))
             }
             out.append("</$tag>")
         }
@@ -60,10 +64,10 @@ object CertificateDocHtml {
         return out.toString()
     }
 
-    private fun runHtml(run: CertRun, size: CertSize, carried: String): String {
+    private fun runHtml(run: CertRun, size: CertSize, carried: String, labelOf: (String) -> String): String {
         val inner = when {
             run.variable.isNotEmpty() ->
-                "<a href=\"$VAR_PREFIX${escape(run.variable)}\">${escape("{${run.variable}}")}$carried</a>"
+                "<a href=\"$VAR_PREFIX${escape(run.variable)}\">${escape(labelOf(run.variable))}$carried</a>"
             run.gender.isNotEmpty() -> {
                 val href = run.gender.joinToString("|") { it.replace("%", "%25").replace("|", "%7C") }
                 "<a href=\"$GENDER_PREFIX${escape(href)}\">${escape(run.gender.joinToString("/"))}$carried</a>"
@@ -92,7 +96,7 @@ object CertificateDocHtml {
 
     private class Frame(val tag: String, val style: Style)
 
-    private class Builder {
+    private class Builder(val labelOf: (String) -> String) {
         val paragraphs = mutableListOf<CertParagraph>()
         var open = false
         var bullet = false
@@ -149,12 +153,14 @@ object CertificateDocHtml {
                 emptyList()
             }
             val link: CertRun?
-            val label: String
+            var label: String
             when {
                 href.startsWith(VAR_PREFIX) && href.length > VAR_PREFIX.length -> {
                     val key = href.removePrefix(VAR_PREFIX)
                     link = base.copy(variable = key)
-                    label = "{$key}"
+                    label = labelOf(key)
+                    // A text written with another label set (or none) is still recognised.
+                    if (label !in shown && keyLabel(key) in shown) label = keyLabel(key)
                 }
                 href.startsWith(GENDER_PREFIX) && forms.size == 3 -> {
                     link = base.copy(gender = forms)
@@ -246,8 +252,8 @@ object CertificateDocHtml {
         else -> CertAlign.LEFT
     }
 
-    fun fromHtml(html: String): List<CertParagraph> {
-        val builder = Builder()
+    fun fromHtml(html: String, labelOf: (String) -> String = ::keyLabel): List<CertParagraph> {
+        val builder = Builder(labelOf)
         val stack = ArrayList<Frame>()
         var listDepth = 0
         var skipDepth = 0

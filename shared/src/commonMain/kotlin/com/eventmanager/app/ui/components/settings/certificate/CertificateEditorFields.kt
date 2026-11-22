@@ -26,7 +26,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -176,10 +175,10 @@ internal fun CertificateSignatureSection(model: CertificateEditorModel) {
 /** Sender, reply-to, subject and body of the e-mail that carries the PDF. Folded by default. */
 @Composable
 internal fun CertificateMailSection(model: CertificateEditorModel, gmailAddress: String) {
-    var open by rememberSaveable { mutableStateOf(false) }
+    val open = model.mailOpen
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
-            modifier = Modifier.fillMaxWidth().clickable { open = !open }.padding(vertical = 6.dp),
+            modifier = Modifier.fillMaxWidth().clickable { model.mailOpen = !open }.padding(vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(

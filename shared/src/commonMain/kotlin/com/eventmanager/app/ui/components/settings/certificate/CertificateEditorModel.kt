@@ -1,7 +1,9 @@
 package com.eventmanager.app.ui.components.settings.certificate
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextDecoration
@@ -79,7 +81,12 @@ object CertificateBlocks {
  * Everything the certificate dialog edits. Rich texts live in one [RichTextState] per block variant;
  * [toTemplate] reads them back into the model. Variants the editor does not show are kept as loaded.
  */
-class CertificateEditorModel(initial: CertificateTemplate, private val association: String) {
+class CertificateEditorModel(
+    initial: CertificateTemplate,
+    private val association: String,
+    /** Text a variable shows in the editor, for example "{prénom}". The template keeps the key. */
+    val labelOf: (String) -> String = CertificateDocHtml::keyLabel,
+) {
     var language by mutableStateOf(initial.language.takeIf { it in CertificateDefaults.LANGUAGES } ?: "fr")
     var place by mutableStateOf(initial.place)
     var signerName by mutableStateOf(initial.signer.name)
@@ -95,6 +102,20 @@ class CertificateEditorModel(initial: CertificateTemplate, private val associati
     var activeKey by mutableStateOf<Pair<String, CertVariant>?>(null)
 
     val active: RichTextState? get() = activeKey?.let { editors[it] }
+
+    /** The variant shown in each block. Kept here so it survives the editor leaving the screen (tabs). */
+    val shownVariant: SnapshotStateMap<String, CertVariant> = mutableStateMapOf()
+
+    fun variantOf(key: String): CertVariant =
+        shownVariant[key] ?: CertificateBlocks.all.first { it.key == key }.variants.first()
+
+    fun showVariant(key: String, variant: CertVariant) {
+        shownVariant[key] = variant
+        activeKey = key to variant
+    }
+
+    /** The e-mail section is unfolded. */
+    var mailOpen by mutableStateOf(false)
 
     private val version = initial.version
     private var baseBlocks: Map<String, CertBlock> = initial.blocks
@@ -121,7 +142,7 @@ class CertificateEditorModel(initial: CertificateTemplate, private val associati
     private fun loadBlocks(blocks: Map<String, CertBlock>) {
         baseBlocks = blocks
         for ((key, state) in editors) {
-            state.setHtml(CertificateDocHtml.toHtml(CertificateBlocks.paragraphs(blocks[key.first], key.second)))
+            state.setHtml(CertificateDocHtml.toHtml(CertificateBlocks.paragraphs(blocks[key.first], key.second), labelOf))
         }
     }
 
@@ -143,7 +164,7 @@ class CertificateEditorModel(initial: CertificateTemplate, private val associati
         val blocks = LinkedHashMap(baseBlocks)
         for ((key, state) in editors) {
             val (blockKey, variant) = key
-            val paragraphs = CertificateDocHtml.fromHtml(state.toHtml())
+            val paragraphs = CertificateDocHtml.fromHtml(state.toHtml(), labelOf)
             blocks[blockKey] = CertificateBlocks.with(blocks[blockKey] ?: CertBlock(), variant, paragraphs)
         }
         return CertificateTemplate(
