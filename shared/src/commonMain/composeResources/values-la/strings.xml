@@ -2749,10 +2749,10 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="portal_guest_create_access_toggle_desc">Tessera generatur et semel tantum ostenditur.</string>
     <string name="temp_group_portal_joined">Haec inscriptio iam rationem habet. Index in spatio eius apparet.</string>
     <string name="portal_access_address_conflict">Haec inscriptio iam alii rationi coniuncta est</string>
-    <string name="portal_invites_can_invite">Invitare potest</string>
+    <string name="portal_invites_can_invite">Hospites suos curare sinere</string>
     <string name="portal_invites_edit_limits">Fines mutare</string>
     <string name="portal_invites_list_name">Nomen indicis</string>
-    <string name="portal_invites_manage">Hospites curare</string>
+    <string name="portal_invites_manage">Paucos hospites curare</string>
     <string name="portal_invites_max_guests">Numerus maximus personarum</string>
     <string name="portal_invites_none">Nullus index futurus huic inscriptioni.</string>
     <string name="portal_invites_other_event">Invitationes alii eventui aperire</string>
@@ -2764,8 +2764,8 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="portal_invites_over_limit">Hoc fines eventus excedit. Nomina remove aut finem auge.</string>
     <string name="portal_invites_entry_used_stays">%1$s: introitus usus, in indice manet</string>
     <string name="portal_invites_list_gone">Index huius petitionis iam non exstat. Tantum recusari potest.</string>
-    <string name="guest_list_access_manage">Aditus ad indicem hospitum curare</string>
-    <string name="guest_list_access_title">Aditus ad indicem hospitum</string>
+    <string name="guest_list_access_manage">Totum indicem hospitum temporarium curare</string>
+    <string name="guest_list_access_title">Aditus ad totum indicem hospitum temporarium</string>
     <string name="guest_list_access_current">Aditus currentes</string>
     <string name="guest_list_access_history">Historia</string>
     <string name="guest_list_access_none">Nullus aditus currens.</string>
@@ -2774,6 +2774,7 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="guest_list_access_revoke">Removere</string>
     <string name="guest_list_access_given_by">Datus a %1$s die %2$s</string>
     <string name="guest_list_access_revoked_on">Remotus die %1$s</string>
+    <string name="guest_free_entry_venues">Introitus gratuitus in</string>
     <string name="sales_filter_status_label">Status</string>
     <string name="sales_filter_status_all">Omnia</string>
     <string name="sales_filter_status_active">Activa</string>

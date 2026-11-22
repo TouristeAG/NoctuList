@@ -2739,10 +2739,10 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="portal_guest_create_access_toggle_desc">A password is generated and shown once.</string>
     <string name="temp_group_portal_joined">This address already has an account. The list appears in its space.</string>
     <string name="portal_access_address_conflict">This address is already linked to another account</string>
-    <string name="portal_invites_can_invite">Can invite</string>
+    <string name="portal_invites_can_invite">Allow managing their guests</string>
     <string name="portal_invites_edit_limits">Edit limits</string>
     <string name="portal_invites_list_name">List name</string>
-    <string name="portal_invites_manage">Manage guests</string>
+    <string name="portal_invites_manage">Manage a few guests</string>
     <string name="portal_invites_max_guests">Maximum number of people</string>
     <string name="portal_invites_none">No upcoming list for this address.</string>
     <string name="portal_invites_other_event">Open invites for another event</string>
@@ -2754,8 +2754,8 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="portal_invites_over_limit">This goes past the limits of the event. Remove names or raise the limit.</string>
     <string name="portal_invites_entry_used_stays">%1$s: entry used, stays on the list</string>
     <string name="portal_invites_list_gone">The list of this request no longer exists. It can only be refused.</string>
-    <string name="guest_list_access_manage">Manage guest list access</string>
-    <string name="guest_list_access_title">Guest list access</string>
+    <string name="guest_list_access_manage">Manage the whole temporary guest list</string>
+    <string name="guest_list_access_title">Access to the whole temporary guest list</string>
     <string name="guest_list_access_current">Current access</string>
     <string name="guest_list_access_history">History</string>
     <string name="guest_list_access_none">No current access.</string>
@@ -2764,6 +2764,7 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="guest_list_access_revoke">Remove</string>
     <string name="guest_list_access_given_by">Given by %1$s on %2$s</string>
     <string name="guest_list_access_revoked_on">Removed on %1$s</string>
+    <string name="guest_free_entry_venues">Free entry at</string>
     <string name="sales_filter_status_label">Status</string>
     <string name="sales_filter_status_all">All</string>
     <string name="sales_filter_status_active">Active</string>

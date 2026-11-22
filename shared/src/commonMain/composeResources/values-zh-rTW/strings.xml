@@ -2744,10 +2744,10 @@
     <string name="portal_guest_create_access_toggle_desc">系統會產生一組僅顯示一次的密碼。</string>
     <string name="temp_group_portal_joined">此地址已有帳戶。名單會顯示在其空間中。</string>
     <string name="portal_access_address_conflict">此地址已連結到另一個帳戶</string>
-    <string name="portal_invites_can_invite">可邀請</string>
+    <string name="portal_invites_can_invite">允許管理自己的賓客</string>
     <string name="portal_invites_edit_limits">修改上限</string>
     <string name="portal_invites_list_name">名單名稱</string>
-    <string name="portal_invites_manage">管理賓客</string>
+    <string name="portal_invites_manage">管理部分賓客</string>
     <string name="portal_invites_max_guests">人數上限</string>
     <string name="portal_invites_none">此地址沒有即將到來的名單。</string>
     <string name="portal_invites_other_event">為其他活動開放邀請</string>
@@ -2759,8 +2759,8 @@
     <string name="portal_invites_over_limit">超出活動上限。請移除名字或提高上限。</string>
     <string name="portal_invites_entry_used_stays">%1$s：已入場，仍留在名單上</string>
     <string name="portal_invites_list_gone">此申請的名單已不存在，只能拒絕。</string>
-    <string name="guest_list_access_manage">管理賓客名單存取</string>
-    <string name="guest_list_access_title">賓客名單存取</string>
+    <string name="guest_list_access_manage">管理全部臨時賓客名單</string>
+    <string name="guest_list_access_title">全部臨時賓客名單的存取</string>
     <string name="guest_list_access_current">目前的存取</string>
     <string name="guest_list_access_history">記錄</string>
     <string name="guest_list_access_none">目前沒有存取。</string>
@@ -2769,6 +2769,7 @@
     <string name="guest_list_access_revoke">移除</string>
     <string name="guest_list_access_given_by">由 %1$s 於 %2$s 給予</string>
     <string name="guest_list_access_revoked_on">已於 %1$s 移除</string>
+    <string name="guest_free_entry_venues">免費入場場地</string>
     <string name="sales_filter_status_label">狀態</string>
     <string name="sales_filter_status_all">全部</string>
     <string name="sales_filter_status_active">已啟用</string>

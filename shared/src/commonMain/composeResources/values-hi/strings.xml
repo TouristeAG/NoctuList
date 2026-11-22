@@ -2749,10 +2749,10 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="portal_guest_create_access_toggle_desc">एक पासवर्ड बनाया जाता है और सिर्फ़ एक बार दिखाया जाता है।</string>
     <string name="temp_group_portal_joined">इस पते का खाता पहले से है। सूची उसके स्पेस में दिखती है।</string>
     <string name="portal_access_address_conflict">यह पता पहले से दूसरे खाते से जुड़ा है</string>
-    <string name="portal_invites_can_invite">आमंत्रित कर सकते हैं</string>
+    <string name="portal_invites_can_invite">अपने मेहमान प्रबंधित करने दें</string>
     <string name="portal_invites_edit_limits">सीमाएँ बदलें</string>
     <string name="portal_invites_list_name">सूची का नाम</string>
-    <string name="portal_invites_manage">मेहमान प्रबंधित करें</string>
+    <string name="portal_invites_manage">कुछ मेहमान प्रबंधित करें</string>
     <string name="portal_invites_max_guests">अधिकतम लोग</string>
     <string name="portal_invites_none">इस पते के लिए कोई आगामी सूची नहीं।</string>
     <string name="portal_invites_other_event">दूसरे कार्यक्रम के लिए आमंत्रण खोलें</string>
@@ -2764,8 +2764,8 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="portal_invites_over_limit">यह कार्यक्रम की सीमा से अधिक है। नाम हटाएँ या सीमा बढ़ाएँ।</string>
     <string name="portal_invites_entry_used_stays">%1$s: प्रवेश हो चुका, सूची में रहेंगे</string>
     <string name="portal_invites_list_gone">इस अनुरोध की सूची अब मौजूद नहीं है। इसे केवल अस्वीकार किया जा सकता है।</string>
-    <string name="guest_list_access_manage">मेहमान सूची की पहुँच प्रबंधित करें</string>
-    <string name="guest_list_access_title">मेहमान सूची की पहुँच</string>
+    <string name="guest_list_access_manage">पूरी अस्थायी मेहमान सूची प्रबंधित करें</string>
+    <string name="guest_list_access_title">पूरी अस्थायी मेहमान सूची की पहुँच</string>
     <string name="guest_list_access_current">वर्तमान पहुँच</string>
     <string name="guest_list_access_history">इतिहास</string>
     <string name="guest_list_access_none">कोई वर्तमान पहुँच नहीं।</string>
@@ -2774,6 +2774,7 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="guest_list_access_revoke">हटाएँ</string>
     <string name="guest_list_access_given_by">%1$s द्वारा %2$s को दिया गया</string>
     <string name="guest_list_access_revoked_on">%1$s को हटाया गया</string>
+    <string name="guest_free_entry_venues">निःशुल्क प्रवेश यहाँ</string>
     <string name="sales_filter_status_label">स्थिति</string>
     <string name="sales_filter_status_all">सभी</string>
     <string name="sales_filter_status_active">सक्रिय</string>

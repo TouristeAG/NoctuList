@@ -40,8 +40,8 @@ import {
   uploadBytes,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 import { EMULATOR_PORTS, isLocalDev, loadConfig, parseOrgPath } from "./firebase-env.js?v=portal-2";
-import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=guest-4";
-import { cachedQrEntries, clearQr, closeQrDialog, isStaleFor, missingIsFinal, openQrDialog, readCachedQr, storeQr } from "./portal-qr.js?v=guest-4";
+import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=guest-5";
+import { cachedQrEntries, clearQr, closeQrDialog, isStaleFor, missingIsFinal, openQrDialog, readCachedQr, storeQr } from "./portal-qr.js?v=guest-5";
 import {
   EMAIL_RE,
   authErrorKey,
@@ -72,7 +72,7 @@ import {
   profileStoreKey,
   profilesSettled,
   toJpeg,
-} from "./portal-common.js?v=guest-4";
+} from "./portal-common.js?v=guest-5";
 
 const $ = (id) => document.getElementById(id);
 const VIEWS = ["view-loading", "view-disabled", "view-signin", "view-reset", "view-verify", "view-pending", "view-google", "view-dash", "view-offline"];
@@ -191,6 +191,12 @@ function setError(id, key, vars) {
 }
 
 // ---------- Formatting ----------
+
+/** A venue as people read it: the technical "BOTH" (every venue) reads "All venues". */
+function venueText(v) {
+  const s = String(v || "").trim();
+  return s.toLowerCase() === "both" ? t("allVenues") : s;
+}
 
 function fmtDate(millis, opts = { day: "2-digit", month: "2-digit", year: "numeric" }) {
   if (!millis) return "-";
@@ -1379,7 +1385,7 @@ function walletTile() {
     ul.append(el("li", {},
       el("div", { class: "grow" },
         el("div", { class: "title", text: label || kind }),
-        el("div", { class: "meta-line", text: [label ? kind : "", fmtDate(tr.at), tr.venue].filter(Boolean).join(" · ") })),
+        el("div", { class: "meta-line", text: [label ? kind : "", fmtDate(tr.at), venueText(tr.venue)].filter(Boolean).join(" · ") })),
       el("span", { class: `amount ${Number(tr.amount) >= 0 ? "plus" : "minus"}`, text: fmtMoney(tr.amount, w.currency, true) })));
   });
   card.append(ul);
@@ -1395,10 +1401,10 @@ function guestBenefitsTile() {
   const perks = [];
   const discount = Number(p.barDiscountPercent) || 0;
   const invites = Number(p.invitations) || 0;
-  const venue = String(p.venueName || "").trim();
+  const venue = venueText(p.venueName);
   if (discount > 0) perks.push(perkRow(t("perkBarDiscount"), `${discount} %`));
   if (invites > 0) perks.push(perkRow(t("perkInvites"), String(invites)));
-  if (venue) perks.push(perkRow(t("venue"), venue));
+  if (venue) perks.push(perkRow(t("freeEntryAt"), venue));
   if (perks.length) card.append(el("ul", { class: "perk-list" }, perks));
   else card.append(el("p", { class: "empty", text: t("noBenefits") }));
   return card;
@@ -1484,7 +1490,7 @@ function guestCard(g, group, ctx) {
   const modules = el("div", { class: "guest-modules" },
     guestModule(t("access"),
       date ? fmtDate(date, { weekday: "short", day: "numeric", month: "long" }) : "",
-      [String(group.venueName || "").trim(), ...accessNames].filter(Boolean).join(" · ")),
+      [venueText(group.venueName), ...accessNames].filter(Boolean).join(" · ")),
     g.wallet ? guestModule(t("balance"), el("div", { class: "module-value big", text: fmtMoney(g.wallet.balance, g.wallet.currency) })) : null,
     phone ? guestModule(t("emergencyContactLabel"), phone) : null,
     qrModule);
@@ -1526,7 +1532,7 @@ function inviteBlock(group) {
 function listCard(group, association, items) {
   const date = Number(group.eventDate) || 0;
   const artist = String(group.artistName || "").trim();
-  const venue = String(group.venueName || "").trim();
+  const venue = venueText(group.venueName);
   const card = tile("group", artist || venue || fmtDate(date), "calendar");
   const when = date ? fmtDate(date, { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : "";
   card.querySelector(".tile-head").after(el("p", {
@@ -1839,7 +1845,7 @@ async function sendGuestListEdit(grant, fields) {
 
 function grantTitle(grant) {
   const date = fmtDate(Number(grant.eventDate), { weekday: "long", day: "numeric", month: "long" });
-  return t("guestListTitle", { date }) + (grant.venueName ? ` · ${grant.venueName}` : "");
+  return t("guestListTitle", { date }) + (grant.venueName ? ` · ${venueText(grant.venueName)}` : "");
 }
 
 function guestListRow(g, grant) {
@@ -1870,7 +1876,7 @@ function guestListSection(grant) {
     const groups = guestListGroups(guests, search.value);
     if (!groups.length) body.append(el("p", { class: "empty", text: t("noGuestsYet") }));
     groups.forEach((grp) => body.append(
-      el("h3", { class: "gl-list", text: [grp.listName || "-", grant.venueName ? "" : grp.venueName].filter(Boolean).join(" · ") }),
+      el("h3", { class: "gl-list", text: [grp.listName || "-", grant.venueName ? "" : venueText(grp.venueName)].filter(Boolean).join(" · ") }),
       el("ul", { class: "gl-rows" }, ...grp.guests.map((g) => guestListRow(g, grant)))));
   };
   search.addEventListener("input", () => {
@@ -2143,7 +2149,7 @@ function shiftMeta(s) {
   const year = date.getFullYear() !== new Date().getFullYear() ? String(date.getFullYear()) : "";
   return [
     [weekday, year].filter(Boolean).join(" "),
-    s.venueName,
+    venueText(s.venueName),
     s.shiftTime ? t(`shift${s.shiftTime}`) : "",
   ].filter(Boolean).join(" · ");
 }

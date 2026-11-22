@@ -15,7 +15,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.eventmanager.app.data.models.VenueEntity
 import com.eventmanager.app.resources.Res
-import com.eventmanager.app.resources.venue
+import com.eventmanager.app.resources.guest_free_entry_venues
 import com.eventmanager.app.resources.venue_all
 import com.eventmanager.app.ui.utils.getVenueDisplayString
 import org.jetbrains.compose.resources.stringResource
@@ -31,7 +31,7 @@ fun GuestVenueDropdownField(
     val activeVenues = remember(venues) { venues.filter { it.isActive } }
     var expanded by remember { mutableStateOf(false) }
     val displayValue = getVenueDisplayString(selectedVenueName, venues).ifBlank {
-        stringResource(Res.string.venue)
+        stringResource(Res.string.guest_free_entry_venues)
     }
     val allOptionText = stringResource(Res.string.venue_all)
 
@@ -44,7 +44,7 @@ fun GuestVenueDropdownField(
             value = displayValue,
             onValueChange = {},
             readOnly = true,
-            label = { Text(stringResource(Res.string.venue)) },
+            label = { Text(stringResource(Res.string.guest_free_entry_venues)) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
                 .menuAnchor()

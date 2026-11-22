@@ -2736,10 +2736,10 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="portal_guest_create_access_toggle_desc">Un mot de passe est généré et affiché une seule fois.</string>
     <string name="temp_group_portal_joined">Cette adresse a déjà un compte. La liste apparaît dans son espace.</string>
     <string name="portal_access_address_conflict">Cette adresse est déjà liée à un autre compte</string>
-    <string name="portal_invites_can_invite">Peut inviter</string>
+    <string name="portal_invites_can_invite">Autoriser la gestion de ses invités</string>
     <string name="portal_invites_edit_limits">Modifier les limites</string>
     <string name="portal_invites_list_name">Nom de la liste</string>
-    <string name="portal_invites_manage">Gérer des invités</string>
+    <string name="portal_invites_manage">Gérer quelques invités</string>
     <string name="portal_invites_max_guests">Nombre maximum de personnes</string>
     <string name="portal_invites_none">Aucune liste à venir pour cette adresse.</string>
     <string name="portal_invites_other_event">Ouvrir les invitations pour un autre événement</string>
@@ -2751,8 +2751,8 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="portal_invites_over_limit">Cela dépasse les limites de l'événement. Retirez des noms ou relevez la limite.</string>
     <string name="portal_invites_entry_used_stays">%1$s : entrée utilisée, reste sur la liste</string>
     <string name="portal_invites_list_gone">La liste de cette demande n'existe plus. Elle peut seulement être refusée.</string>
-    <string name="guest_list_access_manage">Gérer les accès à la guestlist</string>
-    <string name="guest_list_access_title">Accès à la guestlist</string>
+    <string name="guest_list_access_manage">Gérer toute la guestlist temporaire</string>
+    <string name="guest_list_access_title">Accès à toute la guestlist temporaire</string>
     <string name="guest_list_access_current">Accès en cours</string>
     <string name="guest_list_access_history">Historique</string>
     <string name="guest_list_access_none">Aucun accès en cours.</string>
@@ -2761,6 +2761,7 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="guest_list_access_revoke">Retirer</string>
     <string name="guest_list_access_given_by">Donné par %1$s le %2$s</string>
     <string name="guest_list_access_revoked_on">Retiré le %1$s</string>
+    <string name="guest_free_entry_venues">Entrée gratuite dans</string>
     <string name="sales_filter_status_label">Statut</string>
     <string name="sales_filter_status_all">Tous</string>
     <string name="sales_filter_status_active">Activés</string>
