@@ -2756,7 +2756,7 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="portal_invites_max_guests">Numerus maximus personarum</string>
     <string name="portal_invites_none">Nullus index futurus huic inscriptioni.</string>
     <string name="portal_invites_other_event">Invitationes alii eventui aperire</string>
-    <string name="portal_invites_places">Loca: %1$d ex %2$d</string>
+    <string name="portal_invites_places">Loca occupata: %1$d ex %2$d</string>
     <string name="portal_invites_venue">Locus</string>
     <string name="portal_invites_access_max">Max</string>
     <string name="portal_invites_review_remove">Remotio pro %1$s</string>

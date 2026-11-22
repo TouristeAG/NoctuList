@@ -125,7 +125,7 @@ fun PortalInvitesPanel(
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            stringResource(Res.string.portal_invites_places, allowance.remaining, allowance.maxGuests),
+                            stringResource(Res.string.portal_invites_places, allowance.maxGuests - allowance.remaining, allowance.maxGuests),
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.weight(1f),
                         )
@@ -159,7 +159,8 @@ fun PortalInvitesPanel(
                         portalUid = portalUid,
                         eventDateMillis = d.eventDateMillis ?: return@launch,
                         venueName = d.venueName,
-                        artistName = d.artistName.ifBlank { address },
+                        // An existing list keeps its exact name, or the template would not join it.
+                        artistName = if (list != null) list.artistName else d.artistName.ifBlank { address },
                         maxGuests = d.maxGuests.toIntOrNull() ?: GuestForm.DEFAULT_MAX_GUESTS,
                         accessLimits = d.accessMax.mapValues { it.value.toIntOrNull() ?: 0 },
                         emergencyPhone = list?.members?.firstOrNull()?.temporaryContactPhone ?: emergencyPhone,
@@ -192,7 +193,8 @@ private fun InviteLimitsDialog(
     var draft by remember { mutableStateOf(start) }
     val venues by viewModel.venues.collectAsState()
     val accesses = remember(draft.venueName) { viewModel.portalInviteAccessesFor(draft.venueName) }
-    val valid = draft.eventDateMillis != null && draft.venueName.isNotBlank() && (draft.maxGuests.toIntOrNull() ?: 0) > 0
+    // An existing list may have no venue (lists added by the admin); only a new event needs one.
+    val valid = draft.eventDateMillis != null && (fixedEvent || draft.venueName.isNotBlank()) && (draft.maxGuests.toIntOrNull() ?: 0) > 0
 
     AlertDialog(
         onDismissRequest = onDismiss,

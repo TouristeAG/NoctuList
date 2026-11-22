@@ -64,7 +64,7 @@ object TemporaryGuestPortalProjectionBuilder {
             .sortedWith(compareBy({ it.first.first().temporaryEventDate }, { it.first.first().temporaryArtistName.lowercase() }))
 
     private fun templateKey(form: GuestForm): String =
-        listOf(form.artistName.trim().lowercase(), form.eventDateMillis.toString(), form.venueName.trim().lowercase())
+        listOf(form.artistName.trim().lowercase(), form.eventDateMillis.toString(), com.eventmanager.app.data.models.listVenueKey(form.venueName))
             .joinToString("|")
 
     private fun isOpenTemplate(form: GuestForm, now: Long): Boolean =
@@ -101,11 +101,13 @@ object TemporaryGuestPortalProjectionBuilder {
             val first = group.firstOrNull()
             val view = if (first != null) {
                 ListView(
-                    first.temporaryEventDate!!, first.temporaryVenueName.ifBlank { first.venueName }, first.temporaryArtistName,
+                    first.temporaryEventDate!!,
+                    com.eventmanager.app.data.models.listVenueLabel(first.temporaryVenueName.ifBlank { first.venueName }),
+                    first.temporaryArtistName,
                     group, open, responsesByKey[key].orEmpty(),
                 )
             } else {
-                ListView(open!!.eventDateMillis, open.venueName, open.artistName, group, open, responsesByKey[key].orEmpty())
+                ListView(open!!.eventDateMillis, com.eventmanager.app.data.models.listVenueLabel(open.venueName), open.artistName, group, open, responsesByKey[key].orEmpty())
             }
             view.takeIf { it.until > input.now }
         }.sortedWith(compareBy({ it.eventDate }, { it.artistName.lowercase() }))

@@ -110,6 +110,34 @@ class PortalInvitesTest {
         assertEquals("TPL", lists.single().template?.formId)
     }
 
+    @Test
+    fun aListWithoutVenueKeepsOneRowOnceInvitesAreOpen() {
+        // Admin list with no venue: the guests carry the technical "BOTH" as their own venue.
+        val guest = member("A").copy(venueName = "BOTH", temporaryVenueName = "")
+        val before = PortalInvites.upcomingLists(listOf(guest), emptyList(), "lea@example.org", event).single()
+        assertEquals("", before.venueName, "BOTH is no venue to show or to key a template on")
+        val opened = PortalInvites.template(
+            existing = null, formId = "TPL", contactEmail = "lea@example.org", portalUid = "U1",
+            eventDateMillis = before.eventDateMillis, venueName = before.venueName, artistName = before.artistName,
+            maxGuests = 3, accessLimits = emptyMap(), accesses = accesses, emergencyPhone = "", now = 5L,
+        )
+        val after = PortalInvites.upcomingLists(listOf(guest), listOf(opened), "lea@example.org", event)
+        assertEquals(1, after.size)
+        assertEquals("TPL", after.single().template?.formId)
+    }
+
+    @Test
+    fun aTemplateKeyedOnBothJoinsTheListWithoutVenue() {
+        // Data written before the fix: the template and the guest it added carry "BOTH".
+        val admin = member("A").copy(venueName = "BOTH", temporaryVenueName = "")
+        val added = member("B").copy(venueName = "BOTH", temporaryVenueName = "BOTH")
+        val old = template().copy(venueName = "BOTH")
+        val lists = PortalInvites.upcomingLists(listOf(admin, added), listOf(old), "lea@example.org", event)
+        assertEquals(1, lists.size)
+        assertEquals(listOf("A", "B"), lists.single().members.map { it.nanoId }.sorted())
+        assertEquals("TPL", lists.single().template?.formId)
+    }
+
     private fun GuestForm.people() =
         GuestFormSubmissionCodec.decode(submissionJson)!!.people.map { it.name to it.requestedAccessIds }
 }

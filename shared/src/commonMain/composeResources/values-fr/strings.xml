@@ -2743,7 +2743,7 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="portal_invites_max_guests">Nombre maximum de personnes</string>
     <string name="portal_invites_none">Aucune liste à venir pour cette adresse.</string>
     <string name="portal_invites_other_event">Ouvrir les invitations pour un autre événement</string>
-    <string name="portal_invites_places">Places : %1$d sur %2$d</string>
+    <string name="portal_invites_places">Places prises : %1$d sur %2$d</string>
     <string name="portal_invites_venue">Lieu</string>
     <string name="portal_invites_access_max">Max</string>
     <string name="portal_invites_review_remove">Retrait pour %1$s</string>

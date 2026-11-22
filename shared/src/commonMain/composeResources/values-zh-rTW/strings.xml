@@ -2751,7 +2751,7 @@
     <string name="portal_invites_max_guests">人數上限</string>
     <string name="portal_invites_none">此地址沒有即將到來的名單。</string>
     <string name="portal_invites_other_event">為其他活動開放邀請</string>
-    <string name="portal_invites_places">名額：%1$d / %2$d</string>
+    <string name="portal_invites_places">已用名額：%1$d / %2$d</string>
     <string name="portal_invites_venue">場地</string>
     <string name="portal_invites_access_max">上限</string>
     <string name="portal_invites_review_remove">%1$s 的移除申請</string>

@@ -204,6 +204,17 @@ class TemporaryGuestPortalProjectionBuilderTest {
         assertEquals("Main", g.getValue("venueName").jsonPrimitive.content)
     }
 
+    @Test
+    fun aListWithoutVenueAndItsBothTemplateAreOneGroup() {
+        // Admin list with no venue; template and added guest written with "BOTH" before the fix.
+        val admin = guest("A1", venue = "").copy(venueName = "BOTH")
+        val added = guest("B1", name = "Bisous", venue = "BOTH").copy(venueName = "BOTH")
+        val p = TemporaryGuestPortalProjectionBuilder.build(input2(listOf(admin, added), event1, listOf(tpl().copy(venueName = "BOTH"))))!!
+        val g = groups(p).single()
+        assertEquals(2, g.getValue("guests").jsonArray.size)
+        assertEquals("", g.getValue("venueName").jsonPrimitive.content, "BOTH is never shown as a venue")
+    }
+
     private fun tpl(open: Boolean = true, artist: String = "Band", event: Long = event1, max: Int = 4) = com.eventmanager.app.data.models.GuestForm(
         formId = "TPL-$artist",
         portalUid = "U1",

@@ -2756,7 +2756,7 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="portal_invites_max_guests">अधिकतम लोग</string>
     <string name="portal_invites_none">इस पते के लिए कोई आगामी सूची नहीं।</string>
     <string name="portal_invites_other_event">दूसरे कार्यक्रम के लिए आमंत्रण खोलें</string>
-    <string name="portal_invites_places">स्थान: %2$d में से %1$d</string>
+    <string name="portal_invites_places">भरे हुए स्थान: %2$d में से %1$d</string>
     <string name="portal_invites_venue">स्थान</string>
     <string name="portal_invites_access_max">अधिकतम</string>
     <string name="portal_invites_review_remove">%1$s के लिए हटाना</string>

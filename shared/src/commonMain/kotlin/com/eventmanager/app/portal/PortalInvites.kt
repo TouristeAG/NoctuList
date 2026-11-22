@@ -7,6 +7,7 @@ import com.eventmanager.app.data.models.GuestFormOfferedAccessCodec
 import com.eventmanager.app.data.models.GuestFormStatus
 import com.eventmanager.app.data.models.VenueAccess
 import com.eventmanager.app.data.models.isPortalInvite
+import com.eventmanager.app.data.models.listVenueLabel
 import com.eventmanager.app.data.models.removeGuestKeyList
 import com.eventmanager.app.data.models.statusValue
 import com.eventmanager.app.data.models.temporaryBatchKey
@@ -29,7 +30,7 @@ object PortalInvites {
 
     /** Same key as [temporaryBatchKey], so accepted people join the list the template belongs to. */
     fun listKey(form: GuestForm): String =
-        listOf(form.artistName.trim().lowercase(), form.eventDateMillis.toString(), form.venueName.trim().lowercase())
+        listOf(form.artistName.trim().lowercase(), form.eventDateMillis.toString(), com.eventmanager.app.data.models.listVenueKey(form.venueName))
             .joinToString("|")
 
     /** A new template, or [existing] with new limits (its id and creation time stay). */
@@ -106,11 +107,13 @@ object PortalInvites {
             val template = byKey[k].orEmpty().maxByOrNull { if (it.statusValue == GuestFormStatus.OPEN) 1 else 0 }
             val first = group.firstOrNull()
             val list = if (first != null) {
-                PortalInviteList(first.temporaryEventDate!!, first.temporaryVenueName.ifBlank { first.venueName }, first.temporaryArtistName, group, template)
+                // The list's own venue, as in temporaryBatchKey: a guest's venueName ("BOTH" for
+                // admin lists) is not the list's, and keying a template on it splits the list in two.
+                PortalInviteList(first.temporaryEventDate!!, listVenueLabel(first.temporaryVenueName), first.temporaryArtistName, group, template)
             } else {
                 // A closed template alone is no list any more.
                 template?.takeIf { it.statusValue == GuestFormStatus.OPEN }
-                    ?.let { PortalInviteList(it.eventDateMillis, it.venueName, it.artistName, group, it) }
+                    ?.let { PortalInviteList(it.eventDateMillis, listVenueLabel(it.venueName), it.artistName, group, it) }
             }
             list?.takeIf { TemporaryGuestPortalProjectionBuilder.visibleUntil(it.eventDateMillis) > now }
         }.sortedWith(compareBy({ it.eventDateMillis }, { it.artistName.lowercase() }))

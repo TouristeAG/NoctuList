@@ -107,8 +107,17 @@ fun Guest.temporaryBatchKey(): String =
     listOf(
         temporaryArtistName.trim().lowercase(),
         (temporaryEventDate ?: 0L).toString(),
-        temporaryVenueName.trim().lowercase(),
+        listVenueKey(temporaryVenueName),
     ).joinToString("|")
+
+/**
+ * The venue part of a temporary list key. "BOTH" is the technical "every venue" value of a guest's
+ * own venue, not a list venue: a list or invite template keyed on it is the list without venue.
+ */
+fun listVenueKey(venue: String): String = venue.trim().lowercase().let { if (it == "both") "" else it }
+
+/** The venue to show for a temporary list, never the technical "BOTH". */
+fun listVenueLabel(venue: String): String = venue.trim().takeUnless { it.equals("BOTH", ignoreCase = true) }.orEmpty()
 
 /**
  * One person on a manually added temporary guest batch. [accessIds] are [VenueAccess] IDs and stay

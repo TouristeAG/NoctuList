@@ -2751,7 +2751,7 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="portal_invites_max_guests">Número máximo de personas</string>
     <string name="portal_invites_none">Ninguna lista próxima para esta dirección.</string>
     <string name="portal_invites_other_event">Abrir invitaciones para otro evento</string>
-    <string name="portal_invites_places">Plazas: %1$d de %2$d</string>
+    <string name="portal_invites_places">Plazas ocupadas: %1$d de %2$d</string>
     <string name="portal_invites_venue">Lugar</string>
     <string name="portal_invites_access_max">Máx.</string>
     <string name="portal_invites_review_remove">Retirada para %1$s</string>
