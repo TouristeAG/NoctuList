@@ -47,6 +47,7 @@ object GuestFormSiteBundle {
         "portal-common.js",
         // Offline QR code in the volunteer space and the service worker that keeps it.
         "portal-qr.js",
+        "portal-certificate.js",
         "portal-sw.js",
         "vendor/qrcode.js",
         "manifest.webmanifest",
