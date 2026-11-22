@@ -428,7 +428,11 @@ function para(template: string, align: Align = "LEFT", size: Size = "NORMAL", bo
   return { align, size, bullet: false, runs: runsOf(template, bold) };
 }
 
-const only = (variable: string) => para(`{${variable}}`);
+const only = (variable: string): CertParagraph => {
+  const paragraph = para(`{${variable}}`);
+  // A description stands apart from the sentence above it.
+  return variable === "description" ? { ...paragraph, runs: paragraph.runs.map((r) => ({ ...r, i: true })) } : paragraph;
+};
 const emptyBlock = (): CertBlock => ({ one: [], many: [], manyOneRole: [], line: [] });
 const fixed = (paragraph: CertParagraph): CertBlock => ({ ...emptyBlock(), one: [paragraph] });
 

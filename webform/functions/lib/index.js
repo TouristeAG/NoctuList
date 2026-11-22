@@ -1958,7 +1958,10 @@ function runsOf(template, bold = false) {
 function para(template, align = "LEFT", size = "NORMAL", bold = false) {
   return { align, size, bullet: false, runs: runsOf(template, bold) };
 }
-var only = (variable) => para(`{${variable}}`);
+var only = (variable) => {
+  const paragraph = para(`{${variable}}`);
+  return variable === "description" ? { ...paragraph, runs: paragraph.runs.map((r) => ({ ...r, i: true })) } : paragraph;
+};
 var emptyBlock = () => ({ one: [], many: [], manyOneRole: [], line: [] });
 var fixed = (paragraph) => ({ ...emptyBlock(), one: [paragraph] });
 var roleLine = () => [
@@ -2184,8 +2187,13 @@ import { fileURLToPath } from "node:url";
 import fontkit from "@pdf-lib/fontkit";
 import { PDFDocument, rgb } from "pdf-lib";
 var SIZE_PT = { SMALL: 9, NORMAL: 11, LARGE: 14, TITLE: 22 };
-var LEADING = 1.4;
-var PARAGRAPH_GAP = 0.6;
+var LEADING = 1.5;
+var PARAGRAPH_GAP = 1.1;
+var TITLE_GAP_AFTER = 28;
+var DATE_GAP_BEFORE = 24;
+var LOGO_GAP = 14;
+var RULE_HEIGHT = 50;
+var SIGNATURE_GAP = 44;
 var BULLET_INDENT = 14;
 function tokenize(p) {
   const out = [];
@@ -2202,6 +2210,7 @@ function layoutParagraphs(paragraphs, width, measure) {
   const lines = [];
   paragraphs.forEach((p, index) => {
     const size = SIZE_PT[p.size];
+    const prevTitle = index > 0 && paragraphs[index - 1].size === "TITLE";
     const indent = p.bullet ? BULLET_INDENT : 0;
     const avail = width - indent;
     const rows = [];
@@ -2274,7 +2283,7 @@ function layoutParagraphs(paragraphs, width, measure) {
       lines.push({
         x,
         size,
-        gapBefore: r === 0 && index > 0 ? size * PARAGRAPH_GAP : 0,
+        gapBefore: r === 0 && index > 0 ? Math.max(size * PARAGRAPH_GAP, prevTitle ? TITLE_GAP_AFTER : 0) : 0,
         bullet: p.bullet && r === 0,
         justify: p.align === "JUSTIFY" && !isLast,
         last: isLast,
@@ -2389,15 +2398,19 @@ async function renderCertificatePdf(input) {
     const x = align === "CENTER" ? (textW - w) / 2 : align === "RIGHT" ? textW - w : 0;
     items.push({ kind: "image", image: logo, w, h, x, gapBefore: 0 });
   }
-  const logoGap = logo ? 10 : 0;
+  const logoGap = logo ? LOGO_GAP : 0;
   const headerLines = layoutParagraphs(paragraphs.slice(0, headerCount), textW, measure);
   headerLines.forEach((line, k) => {
     items.push({ kind: "line", line: k === 0 && logo ? { ...line, gapBefore: logoGap } : line });
   });
-  if (headerCount > 0) items.push({ kind: "rule", height: 22 });
-  for (const line of layoutParagraphs(paragraphs.slice(headerCount), textW, measure)) {
-    items.push({ kind: "line", line });
-  }
+  if (headerCount > 0) items.push({ kind: "rule", height: RULE_HEIGHT });
+  const bodyLines = layoutParagraphs(paragraphs.slice(headerCount), textW, measure);
+  let dateIdx = bodyLines.length - 1;
+  while (dateIdx > 0 && bodyLines[dateIdx].gapBefore === 0) dateIdx--;
+  bodyLines.forEach((line, k) => {
+    const gap = k === dateIdx && k > 0 ? Math.max(line.gapBefore, DATE_GAP_BEFORE) : line.gapBefore;
+    items.push({ kind: "line", line: { ...line, gapBefore: gap } });
+  });
   const sig = await embedImage(doc, input.signatureImage);
   const signerLines = [];
   const signerName = clean(input.signer.name, faces).trim();
@@ -2418,7 +2431,7 @@ async function renderCertificatePdf(input) {
       imgItem = { kind: "image", image: sig, w, h: sig.height * scale, x: textW - w, gapBefore: 0 };
     }
     if (imgItem) items.push(imgItem);
-    items.push({ kind: "signer", lines: signerLines, gapBefore: 30, afterImage: imgItem !== null });
+    items.push({ kind: "signer", lines: signerLines, gapBefore: SIGNATURE_GAP, afterImage: imgItem !== null });
   }
   const footerLines = layoutParagraphs(
     prep(input.footer).map((p) => ({ ...p, size: "SMALL" })),
@@ -2496,8 +2509,8 @@ async function renderCertificatePdf(input) {
     } else if (item.kind === "image") {
       const next = items[items.indexOf(item) + 1];
       const follow = next && next.kind === "signer" ? next.gapBefore + next.lines.reduce((s, l) => s + lineHeight(l), 0) : 0;
-      if (y - item.h - follow - (item.gapBefore + 30) < bottomLimit && y < top && next?.kind === "signer") newPage();
-      const gap = next?.kind === "signer" && y !== top ? 30 : item.gapBefore;
+      if (y - item.h - follow - (item.gapBefore + SIGNATURE_GAP) < bottomLimit && y < top && next?.kind === "signer") newPage();
+      const gap = next?.kind === "signer" && y !== top ? SIGNATURE_GAP : item.gapBefore;
       page.drawImage(item.image, { x: MARGIN + item.x, y: y - gap - item.h, width: item.w, height: item.h });
       y -= gap + item.h + 4;
     } else {

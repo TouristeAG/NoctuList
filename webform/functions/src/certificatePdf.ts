@@ -32,8 +32,13 @@ export interface LaidLine {
 export type Measure = (text: string, bold: boolean, italic: boolean, size: number) => number;
 
 const SIZE_PT = { SMALL: 9, NORMAL: 11, LARGE: 14, TITLE: 22 } as const;
-const LEADING = 1.4;
-const PARAGRAPH_GAP = 0.6; // of the font size
+const LEADING = 1.5;
+const PARAGRAPH_GAP = 1.1; // of the font size
+const TITLE_GAP_AFTER = 28;
+const DATE_GAP_BEFORE = 24;
+const LOGO_GAP = 14;
+const RULE_HEIGHT = 50; // the rule sits about 24 pt above the title
+const SIGNATURE_GAP = 44;
 const BULLET_INDENT = 14;
 
 type Token = { text: string; b: boolean; i: boolean; u: boolean; space: boolean } | { br: true };
@@ -55,6 +60,7 @@ export function layoutParagraphs(paragraphs: ResolvedParagraph[], width: number,
   const lines: LaidLine[] = [];
   paragraphs.forEach((p, index) => {
     const size = SIZE_PT[p.size];
+    const prevTitle = index > 0 && paragraphs[index - 1].size === "TITLE";
     const indent = p.bullet ? BULLET_INDENT : 0;
     const avail = width - indent;
     const rows: LaidSegment[][] = [];
@@ -131,7 +137,7 @@ export function layoutParagraphs(paragraphs: ResolvedParagraph[], width: number,
       lines.push({
         x,
         size,
-        gapBefore: r === 0 && index > 0 ? size * PARAGRAPH_GAP : 0,
+        gapBefore: r === 0 && index > 0 ? Math.max(size * PARAGRAPH_GAP, prevTitle ? TITLE_GAP_AFTER : 0) : 0,
         bullet: p.bullet && r === 0,
         justify: p.align === "JUSTIFY" && !isLast,
         last: isLast,
@@ -290,16 +296,21 @@ export async function renderCertificatePdf(input: CertificatePdfInput): Promise<
     const x = align === "CENTER" ? (textW - w) / 2 : align === "RIGHT" ? textW - w : 0;
     items.push({ kind: "image", image: logo, w, h, x, gapBefore: 0 });
   }
-  const logoGap = logo ? 10 : 0;
+  const logoGap = logo ? LOGO_GAP : 0;
 
   const headerLines = layoutParagraphs(paragraphs.slice(0, headerCount), textW, measure);
   headerLines.forEach((line, k) => {
     items.push({ kind: "line", line: k === 0 && logo ? { ...line, gapBefore: logoGap } : line });
   });
-  if (headerCount > 0) items.push({ kind: "rule", height: 22 });
-  for (const line of layoutParagraphs(paragraphs.slice(headerCount), textW, measure)) {
-    items.push({ kind: "line", line });
-  }
+  if (headerCount > 0) items.push({ kind: "rule", height: RULE_HEIGHT });
+  const bodyLines = layoutParagraphs(paragraphs.slice(headerCount), textW, measure);
+  // The last paragraph (the date line) is set apart from the text above it.
+  let dateIdx = bodyLines.length - 1;
+  while (dateIdx > 0 && bodyLines[dateIdx].gapBefore === 0) dateIdx--;
+  bodyLines.forEach((line, k) => {
+    const gap = k === dateIdx && k > 0 ? Math.max(line.gapBefore, DATE_GAP_BEFORE) : line.gapBefore;
+    items.push({ kind: "line", line: { ...line, gapBefore: gap } });
+  });
 
   // Signature, right after the last line of the body.
   const sig = await embedImage(doc, input.signatureImage);
@@ -322,7 +333,7 @@ export async function renderCertificatePdf(input: CertificatePdfInput): Promise<
       imgItem = { kind: "image", image: sig, w, h: sig.height * scale, x: textW - w, gapBefore: 0 };
     }
     if (imgItem) items.push(imgItem);
-    items.push({ kind: "signer", lines: signerLines, gapBefore: 30, afterImage: imgItem !== null });
+    items.push({ kind: "signer", lines: signerLines, gapBefore: SIGNATURE_GAP, afterImage: imgItem !== null });
   }
 
   const footerLines = layoutParagraphs(
@@ -407,8 +418,8 @@ export async function renderCertificatePdf(input: CertificatePdfInput): Promise<
       // Keep the signature image with the signer lines that follow it.
       const next = items[items.indexOf(item) + 1];
       const follow = next && next.kind === "signer" ? next.gapBefore + next.lines.reduce((s, l) => s + lineHeight(l), 0) : 0;
-      if (y - item.h - follow - (item.gapBefore + 30) < bottomLimit && y < top && next?.kind === "signer") newPage();
-      const gap = next?.kind === "signer" && y !== top ? 30 : item.gapBefore;
+      if (y - item.h - follow - (item.gapBefore + SIGNATURE_GAP) < bottomLimit && y < top && next?.kind === "signer") newPage();
+      const gap = next?.kind === "signer" && y !== top ? SIGNATURE_GAP : item.gapBefore;
       page.drawImage(item.image, { x: MARGIN + item.x, y: y - gap - item.h, width: item.w, height: item.h });
       y -= gap + item.h + 4;
     } else {

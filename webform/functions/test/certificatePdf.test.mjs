@@ -77,3 +77,32 @@ test("embeds the logo and the signature", async () => {
   }
   assert.equal(images, 2);
 });
+
+const pageCount = async (over) => (await PDFDocument.load(await renderCertificatePdf(base(over)))).getPageCount();
+const styled = (text, extra, over = {}) => ({
+  align: "LEFT",
+  size: "NORMAL",
+  bullet: false,
+  ...over,
+  runs: [{ text, b: false, i: false, u: false, ...extra }],
+});
+
+test("renders italic, underlined, bullet and justified paragraphs", async () => {
+  const long = "Un texte assez long pour passer sur plusieurs lignes et être justifié. ".repeat(8);
+  const paragraphs = [
+    styled("Titre", {}, { size: "TITLE", align: "CENTER" }),
+    styled("Description en italique", { i: true }),
+    styled("Texte souligné", { u: true }),
+    styled("Puce", {}, { bullet: true }),
+    styled(long, {}, { align: "JUSTIFY" }),
+    styled("Gras italique", { b: true, i: true }),
+  ];
+  assert.equal(await pageCount({ paragraphs }), 1);
+});
+
+test("justified paragraph: last line is not justified", () => {
+  const lines = layoutParagraphs([para("aaaa bbbb cccc dddd eeee", { align: "JUSTIFY" })], 50, measure);
+  assert.ok(lines.length >= 3);
+  assert.equal(lines[lines.length - 1].justify, false);
+  assert.ok(lines.slice(0, -1).every((l) => l.justify));
+});

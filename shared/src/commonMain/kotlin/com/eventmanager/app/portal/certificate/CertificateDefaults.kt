@@ -179,7 +179,11 @@ object CertificateDefaults {
     ) = CertParagraph(align, size, bullet, runs(template, bold))
 
     /** A paragraph holding only one variable. */
-    private fun only(variable: String) = para("{$variable}")
+    private fun only(variable: String): CertParagraph {
+        val paragraph = para("{$variable}")
+        // A description stands apart from the sentence above it.
+        return if (variable == "description") paragraph.copy(runs = paragraph.runs.map { it.copy(i = true) }) else paragraph
+    }
 
     private fun fixed(paragraph: CertParagraph) = CertBlock(one = listOf(paragraph))
 
