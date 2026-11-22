@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 const {
-  canSend, certificateState, refusalNote, defaultPeriod, defaultSelection, groupTypes, needsFullName, periodValid, profileFields, requestFields, typesInPeriod,
+  canSend, certificateNotice, certificateState, refusalNote, defaultPeriod, defaultSelection, groupTypes, needsFullName, periodValid, profileFields, requestFields, typesInPeriod,
 } = await import("../site/portal-certificate.js");
 
 const TYPES = [
@@ -109,4 +109,16 @@ test("refusal note is plain trimmed text, empty when missing", () => {
   assert.equal(refusalNote({ note: "" }), "");
   assert.equal(refusalNote({}), "");
   assert.equal(refusalNote({ note: 3 }), "");
+});
+
+test("sent and refused notices outlast the first minutes", () => {
+  const now = Date.parse("2026-11-22T12:00:00Z");
+  const ago = (h) => now - h * 3_600_000;
+  const refused = { status: "REJECTED", reason: "REFUSED", note: "Non", requestedAt: ago(48) };
+  assert.equal(certificateNotice(refused, now), "refused");
+  assert.equal(refusalNote(refused), "Non");
+  assert.equal(certificateNotice({ status: "DONE", requestedAt: ago(3), processedAt: ago(0.1) }, now), "sent");
+  assert.equal(certificateNotice({ status: "DONE", requestedAt: ago(3) }, now), "sent");
+  assert.equal(certificateNotice({ status: "DONE", requestedAt: ago(500), processedAt: ago(200) }, now), "none");
+  assert.equal(certificateNotice({ status: "REJECTED", reason: "NO_EMAIL", requestedAt: ago(30) }, now), "none");
 });

@@ -43,6 +43,7 @@ import { EMULATOR_PORTS, isLocalDev, loadConfig, parseOrgPath } from "./firebase
 import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=cert-2";
 import {
   canSend,
+  certificateNotice,
   certificateState,
   defaultPeriod,
   defaultSelection,
@@ -53,7 +54,7 @@ import {
   refusalNote,
   requestFields,
   typesInPeriod,
-} from "./portal-certificate.js?v=cert-3";
+} from "./portal-certificate.js?v=cert-4";
 import { cachedQrEntries, clearQr, closeQrDialog, isStaleFor, missingIsFinal, openQrDialog, readCachedQr, storeQr } from "./portal-qr.js?v=guest-3";
 import {
   EMAIL_RE,
@@ -2362,23 +2363,22 @@ function openCertificateSheet() {
         label.classList.toggle("off", !available);
       }
       const r = requests.CERTIFICATE_EMAIL;
-      const state = certificateState(r);
+      const state = certificateNotice(r);
       const waiting = state === "waiting" || state === "review";
       const cooldown = requestCooldownMinutes("CERTIFICATE_EMAIL");
       clear(status);
-      const recent = (ms) => millisOf(r?.requestedAt) > Date.now() - ms;
       if (state === "waiting") {
         status.append(el("p", { class: "notice", text: t("certPending") }));
       } else if (state === "review") {
         status.append(el("p", { class: "notice", text: t("certReview") }));
-      } else if (state === "sent" && recent(15 * 60_000)) {
+      } else if (state === "sent") {
         status.append(el("p", { class: "success", text: t("certSent", { email: projection?.email || user.email }) }));
-      } else if (state === "refused" && recent(86_400_000)) {
+      } else if (state === "refused") {
         // The note is typed by the team: plain text only.
         status.append(el("p", { class: "error", text: t("certRefused") }));
         const note = refusalNote(r);
         if (note) status.append(el("p", { class: "cert-note", text: note }));
-      } else if (state === "failed" && r.status === "REJECTED" && recent(86_400_000)) {
+      } else if (state === "failed" && r.status === "REJECTED") {
         status.append(el("p", { class: "error", text: t(CERTIFICATE_REASONS[r.reason] || "certReasonFailed") }));
       } else if (state === "failed" && r.status !== "REJECTED") {
         status.append(el("p", { class: "notice", text: t("certStale") }));

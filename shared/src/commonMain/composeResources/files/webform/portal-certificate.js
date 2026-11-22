@@ -1,7 +1,7 @@
 // Volunteer certificate request: the pure parts (grouping of job types, default period and
 // selection, request fields). No Firebase and no DOM here, so they can be unit tested in Node.
 
-import { isWaiting } from "./portal-common.js?v=guest-3";
+import { isWaiting, millisOf } from "./portal-common.js?v=guest-3";
 
 /** Categories in the order of the certificate, as published by the devices. */
 export const CATEGORIES = ["MANDATE", "SHIFT", "PHOTO", "GRAPHIC_EVENT", "GRAPHIC_ASSOCIATION", "OTHER", "MEETING"];
@@ -106,4 +106,25 @@ export function certificateState(request, now = Date.now()) {
 /** The note of a refusal, as plain text (empty when there is none). */
 export function refusalNote(request) {
   return typeof request?.note === "string" ? request.note.trim() : "";
+}
+
+const SENT_SHOWN_MS = 7 * 86_400_000;
+const FAILED_SHOWN_MS = 86_400_000;
+
+/**
+ * The state worth showing on the sheet: a refusal stays until a new request replaces it, a
+ * "sent" for 7 days after the server sent it (processedAt, else the request time), a rejection
+ * for 24 hours after the request. Anything older reads "none".
+ */
+export function certificateNotice(request, now = Date.now()) {
+  const state = certificateState(request, now);
+  if (state === "sent") {
+    const at = millisOf(request.processedAt) || millisOf(request.requestedAt);
+    return !at || now - at <= SENT_SHOWN_MS ? state : "none";
+  }
+  if (state === "failed" && request.status === "REJECTED") {
+    const at = millisOf(request.requestedAt);
+    return !at || now - at <= FAILED_SHOWN_MS ? state : "none";
+  }
+  return state;
 }
