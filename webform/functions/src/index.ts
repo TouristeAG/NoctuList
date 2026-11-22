@@ -17,6 +17,8 @@ export { buildQrMail, parseMailTemplate, safeRecipient, sendMail, sendRawMail, s
 export type { MailMode, MailTemplate, MailTransport, SendResult, OutgoingMail, QrMail, RawOutgoingMail, SmtpClient } from "./mail";
 export { parseOutbox, rewriteHeaders, onOutboxDocument, MAX_RAW_LENGTH } from "./outbox";
 export { delegatedToken, gmailSendRaw, MailSendError } from "./workspace";
+export { categoryOf, parseTemplate, defaultTemplate, dayOf, longDate, monthYear, period, displayName, assemble as assembleCertificate } from "./certificate";
+export type { Category, CertificateTemplate, CertAssembly, ResolvedParagraph, ResolvedRun, CertJob, CertJobType, CertPerson, CertSelection } from "./certificate";
 export { domainAllowed, parseDomains } from "./google";
 
 const REGION = defineString("REGION", { default: "europe-west1" });

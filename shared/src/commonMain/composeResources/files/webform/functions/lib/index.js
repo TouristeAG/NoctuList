@@ -76,7 +76,7 @@ function parseSignup(formId, data, orgId = "") {
   if (data.consent !== true) return null;
   const photoPath = str(data.photoPath) ?? "";
   const ownPhoto = `orgs/${orgId.trim()}/portalSignupPhotos/${formId.trim()}.jpg`;
-  const lang = str(data.lang);
+  const lang2 = str(data.lang);
   return {
     formId,
     uid,
@@ -87,7 +87,7 @@ function parseSignup(formId, data, orgId = "") {
     dateOfBirth,
     gender,
     photoPath: photoPath === ownPhoto && orgId !== "" ? ownPhoto : "",
-    lang: lang !== void 0 && LANGS.has(lang) ? lang : "fr",
+    lang: lang2 !== void 0 && LANGS.has(lang2) ? lang2 : "fr",
     holderType,
     venueName: guest ? kotlinTrim(str(data.venueName) ?? "") : ""
   };
@@ -1634,6 +1634,550 @@ async function sendClaimed(mail, claimed) {
   return result.sent ? { reason: "", failure: "" } : { reason: "SEND_FAILED", failure: result.failure };
 }
 
+// src/certificate.ts
+var CATEGORIES = ["MANDATE", "SHIFT", "PHOTO", "GRAPHIC_EVENT", "GRAPHIC_ASSOCIATION", "OTHER", "MEETING"];
+function categoryOf(config) {
+  if (!config) return "OTHER";
+  if (config.isOrionJob === true) return "MANDATE";
+  switch (config.novaJobType) {
+    case "MEETING":
+      return "MEETING";
+    case "PHOTOGRAPHER_VIDEOGRAPHER":
+      return "PHOTO";
+    case "GRAPHIC_DESIGNER_EVENT":
+      return "GRAPHIC_EVENT";
+    case "GRAPHIC_DESIGNER_ASSOCIATION":
+      return "GRAPHIC_ASSOCIATION";
+    default:
+      return config.isShiftJob === false ? "OTHER" : "SHIFT";
+  }
+}
+var ALIGNS = ["LEFT", "CENTER", "RIGHT", "JUSTIFY"];
+var SIZES = ["SMALL", "NORMAL", "LARGE", "TITLE"];
+var isObj = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var Unreadable = class extends Error {
+};
+function field(o, key, fallback, ok) {
+  const v = o[key];
+  if (v === void 0) return fallback;
+  if (!ok(v)) throw new Unreadable(key);
+  return v;
+}
+var isStr = (v) => typeof v === "string";
+var isBool = (v) => typeof v === "boolean";
+var isInt = (v) => typeof v === "number" && Number.isInteger(v);
+function objOf(v) {
+  if (!isObj(v)) throw new Unreadable("object");
+  return v;
+}
+function listOf(o, key, read) {
+  const v = o[key];
+  if (v === void 0) return [];
+  if (!Array.isArray(v)) throw new Unreadable(key);
+  return v.map(read);
+}
+function readRun(raw) {
+  const o = objOf(raw);
+  return {
+    text: field(o, "text", "", isStr),
+    var: field(o, "var", "", isStr),
+    gender: listOf(o, "gender", (g) => {
+      if (typeof g !== "string") throw new Unreadable("gender");
+      return g;
+    }),
+    b: field(o, "b", false, isBool),
+    i: field(o, "i", false, isBool),
+    u: field(o, "u", false, isBool)
+  };
+}
+function readParagraph(raw) {
+  const o = objOf(raw);
+  return {
+    align: field(o, "align", "LEFT", (v) => ALIGNS.includes(v)),
+    size: field(o, "size", "NORMAL", (v) => SIZES.includes(v)),
+    bullet: field(o, "bullet", false, isBool),
+    runs: listOf(o, "runs", readRun)
+  };
+}
+function readBlock(raw) {
+  const o = objOf(raw);
+  return {
+    one: listOf(o, "one", readParagraph),
+    many: listOf(o, "many", readParagraph),
+    manyOneRole: listOf(o, "manyOneRole", readParagraph),
+    line: listOf(o, "line", readParagraph)
+  };
+}
+function strings(raw, keys) {
+  const o = raw === void 0 ? {} : objOf(raw);
+  const out = {};
+  for (const k of keys) out[k] = field(o, k, "", isStr);
+  return out;
+}
+function parseTemplate(raw) {
+  try {
+    const value = typeof raw === "string" ? JSON.parse(raw) : raw;
+    const o = objOf(value);
+    const blocks = {};
+    if (o.blocks !== void 0) {
+      for (const [key, block] of Object.entries(objOf(o.blocks))) blocks[key] = readBlock(block);
+    }
+    return {
+      version: field(o, "version", 1, isInt),
+      language: field(o, "language", "fr", isStr),
+      place: field(o, "place", "", isStr),
+      signer: strings(o.signer, ["name", "title", "imageBase64"]),
+      mail: strings(o.mail, ["fromName", "fromAddress", "replyTo", "subject", "body"]),
+      blocks
+    };
+  } catch {
+    return null;
+  }
+}
+var MONTHS = {
+  fr: ["janvier", "f\xE9vrier", "mars", "avril", "mai", "juin", "juillet", "ao\xFBt", "septembre", "octobre", "novembre", "d\xE9cembre"],
+  en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+  de: ["Januar", "Februar", "M\xE4rz", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"],
+  it: ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"],
+  es: ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+};
+var zurich = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Europe/Zurich",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit"
+});
+function dayOf(millis) {
+  const parts = zurich.formatToParts(new Date(millis));
+  const get = (type) => Number(parts.find((p) => p.type === type)?.value);
+  return get("year") * 1e4 + get("month") * 100 + get("day");
+}
+var lang = (l) => Object.prototype.hasOwnProperty.call(MONTHS, l) ? l : "en";
+var yearOf = (day) => Math.trunc(day / 1e4);
+var monthIndex = (day) => Math.trunc(day / 100) % 100;
+var monthName = (day, l) => MONTHS[l][monthIndex(day) - 1];
+var withYear = (l, month, year) => l === "es" ? `${month} de ${year}` : `${month} ${year}`;
+function longDate(day, language) {
+  const l = lang(language);
+  const d = day % 100;
+  const m = monthName(day, l);
+  const y = yearOf(day);
+  switch (l) {
+    case "fr":
+      return `${d === 1 ? "1er" : d} ${m} ${y}`;
+    case "de":
+      return `${d}. ${m} ${y}`;
+    case "es":
+      return `${d} de ${m} de ${y}`;
+    case "it":
+      return `${d === 1 ? "1\xB0" : d} ${m} ${y}`;
+    default:
+      return `${d} ${m} ${y}`;
+  }
+}
+function monthYear(day, language) {
+  const l = lang(language);
+  return withYear(l, monthName(day, l), yearOf(day));
+}
+function period(firstDay, lastDay, language) {
+  const l = lang(language);
+  const sameYear = yearOf(firstDay) === yearOf(lastDay);
+  const sameMonth = sameYear && monthIndex(firstDay) === monthIndex(lastDay);
+  const first = monthName(firstDay, l);
+  const last = monthName(lastDay, l);
+  if (sameMonth) {
+    const my = withYear(l, first, yearOf(firstDay));
+    switch (l) {
+      case "fr":
+      case "es":
+        return `en ${my}`;
+      case "en":
+        return `in ${my}`;
+      case "de":
+        return `im ${my}`;
+      default:
+        return `a ${my}`;
+    }
+  }
+  let between;
+  let and;
+  switch (l) {
+    case "fr":
+      [between, and] = ["entre", "et"];
+      break;
+    case "en":
+      [between, and] = ["between", "and"];
+      break;
+    case "de":
+      [between, and] = ["zwischen", "und"];
+      break;
+    case "it":
+      [between, and] = ["tra", "e"];
+      break;
+    default:
+      [between, and] = ["entre", "y"];
+  }
+  return sameYear ? `${between} ${first} ${and} ${withYear(l, last, yearOf(lastDay))}` : `${between} ${withYear(l, first, yearOf(firstDay))} ${and} ${withYear(l, last, yearOf(lastDay))}`;
+}
+var LANGUAGES = ["fr", "en", "de", "it", "es"];
+var TEXTS = {
+  fr: {
+    title: "Attestation de b\xE9n\xE9volat",
+    introOne: "{association} atteste que {firstName} {lastName} s'est [engag\xE9|engag\xE9e|engag\xE9x] b\xE9n\xE9volement au sein de l'association.",
+    introMany: "{association} atteste que {firstName} {lastName} s'est [engag\xE9|engag\xE9e|engag\xE9x] b\xE9n\xE9volement au sein de l'association {period}.",
+    mandate: "{firstName} a exerc\xE9 le mandat de {role} {period}.",
+    shiftOne: "Le {date}, {firstName} a particip\xE9 b\xE9n\xE9volement \xE0 un \xE9v\xE9nement de {association} en tant que {role}.",
+    shiftMany: "{firstName} a particip\xE9 b\xE9n\xE9volement \xE0 {count} \xE9v\xE9nements de {association} {period}, dans les r\xF4les suivants :",
+    shiftManyOneRole: "{firstName} a particip\xE9 b\xE9n\xE9volement \xE0 {count} \xE9v\xE9nements de {association} {period}, en tant que {role}.",
+    photoOne: "Le {date}, {firstName} a assur\xE9 la couverture photo et vid\xE9o d'un \xE9v\xE9nement de {association}.",
+    photoMany: "{firstName} a assur\xE9 la couverture photo et vid\xE9o de {count} \xE9v\xE9nements de {association} {period}.",
+    graphicEventOne: "Le {date}, {firstName} a r\xE9alis\xE9 les visuels d'un \xE9v\xE9nement de {association}.",
+    graphicEventMany: "{firstName} a r\xE9alis\xE9 les visuels de {count} \xE9v\xE9nements de {association} {period}.",
+    graphicAssociation: "{firstName} a contribu\xE9 \xE0 l'identit\xE9 graphique de {association} {period}.",
+    otherOne: "Le {date}, {firstName} a men\xE9 une mission pour {association} en tant que {role}.",
+    otherMany: "{firstName} a men\xE9 {count} missions pour {association} {period}, dans les r\xF4les suivants :",
+    otherManyOneRole: "{firstName} a men\xE9 {count} missions pour {association} {period}, en tant que {role}.",
+    meetingOne: "Le {date}, {firstName} a particip\xE9 \xE0 une r\xE9union de {association}.",
+    meetingMany: "{firstName} a particip\xE9 \xE0 {count} r\xE9unions de {association} {period}.",
+    closing: "Nous remercions chaleureusement {firstName} pour son engagement.",
+    dateLine: "Fait \xE0 {place}, le {today}",
+    mailSubject: "Ton attestation de b\xE9n\xE9volat",
+    mailBody: "Bonjour {firstName}, voici ton attestation de b\xE9n\xE9volat pour {association}. Elle est jointe \xE0 cet e-mail."
+  },
+  en: {
+    title: "Volunteer certificate",
+    introOne: "{association} certifies that {firstName} {lastName} has volunteered with the association.",
+    introMany: "{association} certifies that {firstName} {lastName} has volunteered with the association {period}.",
+    mandate: "{firstName} held the role of {role} {period}.",
+    shiftOne: "On {date}, {firstName} volunteered at an event of {association} as {role}.",
+    shiftMany: "{firstName} volunteered at {count} events of {association} {period}, in the following roles:",
+    shiftManyOneRole: "{firstName} volunteered at {count} events of {association} {period}, as {role}.",
+    photoOne: "On {date}, {firstName} provided photo and video coverage of an event of {association}.",
+    photoMany: "{firstName} provided photo and video coverage of {count} events of {association} {period}.",
+    graphicEventOne: "On {date}, {firstName} designed the visuals for an event of {association}.",
+    graphicEventMany: "{firstName} designed the visuals for {count} events of {association} {period}.",
+    graphicAssociation: "{firstName} contributed to the graphic identity of {association} {period}.",
+    otherOne: "On {date}, {firstName} carried out a task for {association} as {role}.",
+    otherMany: "{firstName} carried out {count} tasks for {association} {period}, in the following roles:",
+    otherManyOneRole: "{firstName} carried out {count} tasks for {association} {period}, as {role}.",
+    meetingOne: "On {date}, {firstName} took part in a meeting of {association}.",
+    meetingMany: "{firstName} took part in {count} meetings of {association} {period}.",
+    closing: "We warmly thank {firstName} for their commitment.",
+    dateLine: "Issued in {place}, on {today}",
+    mailSubject: "Your volunteer certificate",
+    mailBody: "Hello {firstName}, here is your volunteer certificate for {association}. It is attached to this e-mail."
+  },
+  de: {
+    title: "Best\xE4tigung \xFCber ehrenamtliches Engagement",
+    introOne: "{association} best\xE4tigt, dass sich {firstName} {lastName} ehrenamtlich im Verein engagiert hat.",
+    introMany: "{association} best\xE4tigt, dass sich {firstName} {lastName} {period} ehrenamtlich im Verein engagiert hat.",
+    mandate: "{firstName} hat {period} das Amt als {role} ausge\xFCbt.",
+    shiftOne: "Am {date} hat sich {firstName} ehrenamtlich bei einer Veranstaltung von {association} als {role} engagiert.",
+    shiftMany: "{firstName} hat sich {period} ehrenamtlich bei {count} Veranstaltungen von {association} engagiert, und zwar in folgenden Funktionen:",
+    shiftManyOneRole: "{firstName} hat sich {period} ehrenamtlich bei {count} Veranstaltungen von {association} engagiert, und zwar als {role}.",
+    photoOne: "Am {date} hat {firstName} eine Veranstaltung von {association} fotografisch und filmisch begleitet.",
+    photoMany: "{firstName} hat {period} {count} Veranstaltungen von {association} fotografisch und filmisch begleitet.",
+    graphicEventOne: "Am {date} hat {firstName} die Grafiken f\xFCr eine Veranstaltung von {association} gestaltet.",
+    graphicEventMany: "{firstName} hat {period} die Grafiken f\xFCr {count} Veranstaltungen von {association} gestaltet.",
+    graphicAssociation: "{firstName} hat {period} zum grafischen Auftritt von {association} beigetragen.",
+    otherOne: "Am {date} hat {firstName} f\xFCr {association} eine Aufgabe als {role} \xFCbernommen.",
+    otherMany: "{firstName} hat {period} f\xFCr {association} {count} Aufgaben \xFCbernommen, und zwar in folgenden Funktionen:",
+    otherManyOneRole: "{firstName} hat {period} f\xFCr {association} {count} Aufgaben \xFCbernommen, und zwar als {role}.",
+    meetingOne: "Am {date} hat {firstName} an einer Sitzung von {association} teilgenommen.",
+    meetingMany: "{firstName} hat {period} an {count} Sitzungen von {association} teilgenommen.",
+    closing: "Wir danken {firstName} herzlich f\xFCr das Engagement.",
+    dateLine: "Ausgestellt in {place}, am {today}",
+    mailSubject: "Deine Best\xE4tigung \xFCber ehrenamtliches Engagement",
+    mailBody: "Hallo {firstName}, hier ist deine Best\xE4tigung \xFCber dein ehrenamtliches Engagement bei {association}. Sie ist dieser E-Mail angeh\xE4ngt."
+  },
+  it: {
+    title: "Attestazione di volontariato",
+    introOne: "{association} attesta che {firstName} {lastName} ha svolto attivit\xE0 di volontariato nell'associazione.",
+    introMany: "{association} attesta che {firstName} {lastName} ha svolto attivit\xE0 di volontariato nell'associazione {period}.",
+    mandate: "{firstName} ha ricoperto l'incarico di {role} {period}.",
+    shiftOne: "In data {date}, {firstName} ha svolto attivit\xE0 di volontariato a un evento di {association} come {role}.",
+    shiftMany: "{firstName} ha svolto attivit\xE0 di volontariato a {count} eventi di {association} {period}, con i seguenti ruoli:",
+    shiftManyOneRole: "{firstName} ha svolto attivit\xE0 di volontariato a {count} eventi di {association} {period}, come {role}.",
+    photoOne: "In data {date}, {firstName} ha curato la copertura fotografica e video di un evento di {association}.",
+    photoMany: "{firstName} ha curato la copertura fotografica e video di {count} eventi di {association} {period}.",
+    graphicEventOne: "In data {date}, {firstName} ha realizzato la grafica di un evento di {association}.",
+    graphicEventMany: "{firstName} ha realizzato la grafica di {count} eventi di {association} {period}.",
+    graphicAssociation: "{firstName} ha contribuito all'identit\xE0 grafica di {association} {period}.",
+    otherOne: "In data {date}, {firstName} ha svolto un incarico per {association} come {role}.",
+    otherMany: "{firstName} ha svolto {count} incarichi per {association} {period}, con i seguenti ruoli:",
+    otherManyOneRole: "{firstName} ha svolto {count} incarichi per {association} {period}, come {role}.",
+    meetingOne: "In data {date}, {firstName} ha partecipato a una riunione di {association}.",
+    meetingMany: "{firstName} ha partecipato a {count} riunioni di {association} {period}.",
+    closing: "Ringraziamo calorosamente {firstName} per il suo impegno.",
+    dateLine: "Fatto a {place}, il {today}",
+    mailSubject: "La tua attestazione di volontariato",
+    mailBody: "Ciao {firstName}, ecco la tua attestazione di volontariato per {association}. La trovi in allegato a questa e-mail."
+  },
+  es: {
+    title: "Certificado de voluntariado",
+    introOne: "{association} certifica que {firstName} {lastName} ha realizado tareas de voluntariado en la asociaci\xF3n.",
+    introMany: "{association} certifica que {firstName} {lastName} ha realizado tareas de voluntariado en la asociaci\xF3n {period}.",
+    mandate: "{firstName} ejerci\xF3 el cargo de {role} {period}.",
+    shiftOne: "El {date}, {firstName} realiz\xF3 tareas de voluntariado en un evento de {association}, en calidad de {role}.",
+    shiftMany: "{firstName} realiz\xF3 tareas de voluntariado en {count} eventos de {association} {period}, con las siguientes funciones:",
+    shiftManyOneRole: "{firstName} realiz\xF3 tareas de voluntariado en {count} eventos de {association} {period}, en calidad de {role}.",
+    photoOne: "El {date}, {firstName} se encarg\xF3 de la cobertura fotogr\xE1fica y de v\xEDdeo de un evento de {association}.",
+    photoMany: "{firstName} se encarg\xF3 de la cobertura fotogr\xE1fica y de v\xEDdeo de {count} eventos de {association} {period}.",
+    graphicEventOne: "El {date}, {firstName} dise\xF1\xF3 los elementos gr\xE1ficos de un evento de {association}.",
+    graphicEventMany: "{firstName} dise\xF1\xF3 los elementos gr\xE1ficos de {count} eventos de {association} {period}.",
+    graphicAssociation: "{firstName} contribuy\xF3 a la identidad gr\xE1fica de {association} {period}.",
+    otherOne: "El {date}, {firstName} llev\xF3 a cabo una misi\xF3n para {association} como {role}.",
+    otherMany: "{firstName} llev\xF3 a cabo {count} misiones para {association} {period}, con las siguientes funciones:",
+    otherManyOneRole: "{firstName} llev\xF3 a cabo {count} misiones para {association} {period}, como {role}.",
+    meetingOne: "El {date}, {firstName} particip\xF3 en una reuni\xF3n de {association}.",
+    meetingMany: "{firstName} particip\xF3 en {count} reuniones de {association} {period}.",
+    closing: "Agradecemos sinceramente a {firstName} su compromiso.",
+    dateLine: "Expedido en {place}, a {today}",
+    mailSubject: "Tu certificado de voluntariado",
+    mailBody: "Hola {firstName}, aqu\xED tienes tu certificado de voluntariado para {association}. Va adjunto a este correo."
+  }
+};
+var PLACEHOLDER = /\{(\w+)\}|\[([^\]|]*)\|([^\]|]*)\|([^\]|]*)\]/g;
+function runsOf(template, bold = false) {
+  const out = [];
+  const plain = (text) => ({ text, var: "", gender: [], b: bold, i: false, u: false });
+  let last = 0;
+  for (const m of template.matchAll(PLACEHOLDER)) {
+    const start = m.index ?? 0;
+    if (start > last) out.push(plain(template.substring(last, start)));
+    if (m[1] !== void 0) {
+      out.push({ text: "", var: m[1], gender: [], b: bold, i: false, u: false });
+    } else {
+      out.push({ text: "", var: "", gender: [m[2], m[3], m[4]], b: bold, i: false, u: false });
+    }
+    last = start + m[0].length;
+  }
+  if (last < template.length) out.push(plain(template.substring(last)));
+  return out;
+}
+function para(template, align = "LEFT", size = "NORMAL", bold = false) {
+  return { align, size, bullet: false, runs: runsOf(template, bold) };
+}
+var only = (variable) => para(`{${variable}}`);
+var emptyBlock = () => ({ one: [], many: [], manyOneRole: [], line: [] });
+var fixed = (paragraph) => ({ ...emptyBlock(), one: [paragraph] });
+var roleLine = () => [
+  {
+    align: "LEFT",
+    size: "NORMAL",
+    bullet: true,
+    runs: [
+      { text: "", var: "role", gender: [], b: true, i: false, u: false },
+      { text: ": ", var: "", gender: [], b: false, i: false, u: false },
+      { text: "", var: "description", gender: [], b: false, i: false, u: false }
+    ]
+  }
+];
+function defaultTemplate(language, associationName2) {
+  const l = LANGUAGES.includes(language) ? language : "en";
+  const t = TEXTS[l];
+  const blocks = {
+    header: fixed(para("{association}", "CENTER", "LARGE", true)),
+    title: fixed(para(t.title, "CENTER", "TITLE", true)),
+    intro: { ...emptyBlock(), one: [para(t.introOne)], many: [para(t.introMany)], manyOneRole: [para(t.introMany)] },
+    MANDATE: { ...emptyBlock(), one: [para(t.mandate), only("description")] },
+    SHIFT: {
+      one: [para(t.shiftOne), only("description")],
+      many: [para(t.shiftMany), only("roles")],
+      manyOneRole: [para(t.shiftManyOneRole), only("description")],
+      line: roleLine()
+    },
+    PHOTO: { ...emptyBlock(), one: [para(t.photoOne)], many: [para(t.photoMany)] },
+    GRAPHIC_EVENT: { ...emptyBlock(), one: [para(t.graphicEventOne)], many: [para(t.graphicEventMany)] },
+    GRAPHIC_ASSOCIATION: { ...emptyBlock(), one: [para(t.graphicAssociation)], many: [para(t.graphicAssociation)] },
+    OTHER: {
+      one: [para(t.otherOne), only("description")],
+      many: [para(t.otherMany), only("roles")],
+      manyOneRole: [para(t.otherManyOneRole), only("description")],
+      line: roleLine()
+    },
+    MEETING: { ...emptyBlock(), one: [para(t.meetingOne)], many: [para(t.meetingMany)] },
+    closing: fixed(para(t.closing)),
+    dateLine: fixed(para(t.dateLine)),
+    // Optional: one empty paragraph, dropped when rendering.
+    footer: fixed({
+      align: "CENTER",
+      size: "SMALL",
+      bullet: false,
+      runs: [{ text: "", var: "", gender: [], b: false, i: false, u: false }]
+    })
+  };
+  return {
+    version: 1,
+    language: l,
+    place: "",
+    signer: { name: "", title: "", imageBase64: "" },
+    mail: { fromName: associationName2, fromAddress: "", replyTo: "", subject: t.mailSubject, body: t.mailBody },
+    blocks
+  };
+}
+function isWhitespace(c) {
+  const code2 = c.charCodeAt(0);
+  return code2 >= 9 && code2 <= 13 || code2 >= 28 && code2 <= 31 || new RegExp("^\\p{Z}$", "u").test(c);
+}
+function trimWhile(s, drop, start, end) {
+  let from = 0;
+  let to = s.length;
+  if (start) while (from < to && drop(s[from])) from++;
+  if (end) while (to > from && drop(s[to - 1])) to--;
+  return s.substring(from, to);
+}
+var trim = (s) => trimWhile(s, isWhitespace, true, true);
+var isBlank3 = (s) => trim(s) === "";
+function genderIndex(gender) {
+  return gender === "MALE" ? 0 : gender === "FEMALE" ? 1 : 2;
+}
+function upper(c) {
+  const u = c.toUpperCase();
+  return [...u].length === 1 ? u : c;
+}
+function lower(c) {
+  if (c === "\u0130") return "i";
+  const l = c.toLowerCase();
+  return [...l].length === 1 ? l : c;
+}
+function displayName2(raw) {
+  const name = trim(raw);
+  if (new RegExp("\\p{Lowercase}", "u").test(name)) return name;
+  let out = "";
+  let startOfWord = true;
+  for (const c of name) {
+    out += startOfWord ? upper(c) : lower(c);
+    startOfWord = c === " " || c === "-" || c === "'";
+  }
+  return out;
+}
+var SEPARATORS = ":;,.-\u2013\u2014";
+function assemble(template, association, person, types, jobs, selection) {
+  const wanted = new Set(selection.jobTypes);
+  const kept = jobs.filter((j) => j.day >= selection.fromDay && j.day <= selection.toDay && j.day <= selection.todayDay && wanted.has(j.jobTypeName)).sort((a, b) => a.day - b.day);
+  if (kept.length === 0) return null;
+  const language = template.language;
+  const byName = /* @__PURE__ */ new Map();
+  for (const t of types) if (!byName.has(t.name)) byName.set(t.name, t);
+  const typeOf = (job) => byName.get(job.jobTypeName) ?? { name: job.jobTypeName, category: "OTHER", description: "" };
+  const gIndex = genderIndex(person.gender);
+  const first = kept[0].day;
+  const last = kept[kept.length - 1].day;
+  const global = /* @__PURE__ */ new Map([
+    ["firstName", displayName2(person.firstName)],
+    ["lastName", displayName2(person.lastName)],
+    ["association", association],
+    ["place", trim(template.place)],
+    ["today", longDate(selection.todayDay, language)],
+    ["period", period(first, last, language)],
+    ["start", monthYear(first, language)],
+    ["end", monthYear(last, language)],
+    ["date", kept.length === 1 ? longDate(first, language) : ""]
+  ]);
+  function resolve(paragraph, vars) {
+    const runs = paragraph.runs.map((run) => {
+      let text;
+      if (run.var !== "") text = vars.get(run.var) ?? "";
+      else if (run.gender.length > 0) text = run.gender[gIndex] ?? "";
+      else text = run.text;
+      return { text, b: run.b, i: run.i, u: run.u };
+    }).filter((r) => r.text !== "");
+    if (runs.every((r) => isBlank3(r.text))) return null;
+    const merged = [];
+    for (const run of runs) {
+      const prev = merged[merged.length - 1];
+      if (prev && prev.b === run.b && prev.i === run.i && prev.u === run.u) {
+        merged[merged.length - 1] = { ...prev, text: prev.text + run.text };
+      } else {
+        merged.push(run);
+      }
+    }
+    return { align: paragraph.align, size: paragraph.size, bullet: paragraph.bullet, runs: merged };
+  }
+  const resolveAll = (paragraphs, vars) => paragraphs.flatMap((p) => resolve(p, vars) ?? []);
+  const block = (key, variant, vars) => {
+    const b = template.blocks[key];
+    return b ? resolveAll(variant(b), vars) : [];
+  };
+  const isRolesParagraph = (p) => p.runs.some((r) => r.var === "roles") && p.runs.every((r) => r.var === "roles" || r.var === "" && r.gender.length === 0 && isBlank3(r.text));
+  function withoutDescription(p) {
+    const runs = [...p.runs];
+    for (let i = runs.length - 1; i >= 0; i--) {
+      if (runs[i].var === "description") {
+        runs.splice(i, 1);
+        const before = runs[i - 1];
+        if (before && before.var === "" && before.gender.length === 0) {
+          runs[i - 1] = { ...before, text: trimWhile(before.text, (c) => isWhitespace(c) || SEPARATORS.includes(c), false, true) };
+        }
+      }
+    }
+    return { ...p, runs };
+  }
+  const body = [];
+  body.push(...block("header", (b) => b.one, global));
+  body.push(...block("title", (b) => b.one, global));
+  body.push(...block("intro", (b) => kept.length === 1 ? b.one : b.many, global));
+  for (const category of CATEGORIES) {
+    const ofCategory = kept.filter((j) => typeOf(j).category === category);
+    if (ofCategory.length === 0) continue;
+    const local = (group, withType) => {
+      const vars = new Map(global);
+      if (category !== "MANDATE" && category !== "GRAPHIC_ASSOCIATION") vars.set("count", String(group.length));
+      vars.set("period", period(group[0].day, group[group.length - 1].day, language));
+      if (category === "MANDATE") vars.set("date", "");
+      else if (group.length === 1) vars.set("date", longDate(group[0].day, language));
+      if (withType) {
+        vars.set("role", withType.name);
+        vars.set("description", withType.description);
+      }
+      return vars;
+    };
+    const byType = /* @__PURE__ */ new Map();
+    for (const job of ofCategory) {
+      const group = byType.get(job.jobTypeName);
+      if (group) group.push(job);
+      else byType.set(job.jobTypeName, [job]);
+    }
+    switch (category) {
+      case "MANDATE":
+        for (const group of byType.values()) body.push(...block(category, (b) => b.one, local(group, typeOf(group[0]))));
+        break;
+      case "GRAPHIC_ASSOCIATION":
+        body.push(...block(category, (b) => b.one, local(ofCategory, null)));
+        break;
+      case "SHIFT":
+      case "OTHER":
+        if (ofCategory.length === 1) {
+          body.push(...block(category, (b) => b.one, local(ofCategory, typeOf(ofCategory[0]))));
+        } else if (byType.size === 1) {
+          body.push(...block(category, (b) => b.manyOneRole, local(ofCategory, typeOf(ofCategory[0]))));
+        } else {
+          const vars = local(ofCategory, null);
+          const lineParagraphs = template.blocks[category]?.line ?? [];
+          const lines = [...byType.values()].sort((a, b) => b.length - a.length || (a[0].jobTypeName < b[0].jobTypeName ? -1 : a[0].jobTypeName > b[0].jobTypeName ? 1 : 0)).flatMap((group) => {
+            const type = typeOf(group[0]);
+            const lineVars = local(group, type);
+            return lineParagraphs.flatMap((p) => resolve(isBlank3(type.description) ? withoutDescription(p) : p, lineVars) ?? []);
+          });
+          for (const p of template.blocks[category]?.many ?? []) {
+            if (isRolesParagraph(p)) body.push(...lines);
+            else {
+              const r = resolve(p, vars);
+              if (r) body.push(r);
+            }
+          }
+        }
+        break;
+      default:
+        body.push(...block(category, (b) => ofCategory.length === 1 ? b.one : b.many, local(ofCategory, null)));
+    }
+  }
+  body.push(...block("closing", (b) => b.one, global));
+  if (!isBlank3(template.place)) body.push(...block("dateLine", (b) => b.one, global));
+  return { body, footer: block("footer", (b) => b.one, global) };
+}
+
 // src/index.ts
 var REGION = defineString("REGION", { default: "europe-west1" });
 var GMAIL_USER = defineString("GMAIL_USER");
@@ -1715,13 +2259,20 @@ var onPortalGoogleClaimWritten = onDocumentWritten(
 export {
   MAX_RAW_LENGTH,
   MailSendError,
+  assemble as assembleCertificate,
   buildQrMail,
+  categoryOf,
   cleanEmail,
   cleanName,
   cleanPhone,
+  dayOf,
+  defaultTemplate,
   delegatedToken,
+  displayName2 as displayName,
   domainAllowed,
   gmailSendRaw,
+  longDate,
+  monthYear,
   onMailOutboxWritten,
   onOutboxDocument,
   onPortalGoogleClaimWritten,
@@ -1733,6 +2284,8 @@ export {
   parseOutbox,
   parseRequest,
   parseSignup,
+  parseTemplate,
+  period,
   rewriteHeaders,
   safeRecipient,
   sendMail,
