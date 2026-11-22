@@ -140,7 +140,7 @@ fun VolunteerScreen(
     val itemSpacing = if (isCompact) 6.dp else 8.dp
     
     // Extracted header content as a composable lambda to avoid duplication
-    val headerContent: @Composable () -> Unit = {
+    val headerTitleRow: @Composable () -> Unit = {
         if (isCompact) {
             Column(verticalArrangement = Arrangement.spacedBy(responsiveSpacing)) {
                 Text(
@@ -180,6 +180,16 @@ fun VolunteerScreen(
         }
     }
     
+    // The certificate card sits under the title in every layout; it shows nothing when there is nothing to review.
+    val headerContent: @Composable () -> Unit = {
+        Column {
+            headerTitleRow()
+            if (viewModel != null) {
+                com.eventmanager.app.ui.components.settings.certificate.CertificateReviewCard(viewModel, isPhone = isCompact)
+            }
+        }
+    }
+
     // Extracted filter/search content as a composable lambda
     val filterContent: @Composable () -> Unit = {
         SearchBarWithFilter(

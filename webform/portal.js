@@ -40,7 +40,20 @@ import {
   uploadBytes,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 import { EMULATOR_PORTS, isLocalDev, loadConfig, parseOrgPath } from "./firebase-env.js?v=portal-2";
-import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=guest-8";
+import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=merge-1";
+import {
+  canSend,
+  certificateNotice,
+  defaultPeriod,
+  defaultSelection,
+  groupTypes,
+  needsFullName,
+  periodValid,
+  profileFields,
+  refusalNote,
+  requestFields,
+  typesInPeriod,
+} from "./portal-certificate.js?v=cert-4";
 import { cachedQrEntries, clearQr, closeQrDialog, isStaleFor, missingIsFinal, openQrDialog, readCachedQr, storeQr } from "./portal-qr.js?v=guest-8";
 import {
   EMAIL_RE,
@@ -83,8 +96,8 @@ const VIEWS = ["view-loading", "view-disabled", "view-signin", "view-reset", "vi
 const REMEMBER_KEY = "nl-portal-remember";
 const LAST_ORG_KEY = "nl-portal-org";
 const IDLE_LIMIT_MS = 30 * 60 * 1000;
-const DELAYS_MIN = { PROFILE: 1, QR_EMAIL: 10, GUEST_PROFILE: 1, GUEST_QR_EMAIL: 10, CLAIM: 1, GOOGLE_LINK: 1, GOOGLE_UNLINK: 1, TEMP_GUEST_NAME: 1 };
-const REQUEST_TYPES = ["PROFILE", "QR_EMAIL", "GUEST_PROFILE", "GUEST_QR_EMAIL", "CLAIM", "GOOGLE_LINK", "GOOGLE_UNLINK", "TEMP_GUEST_NAME"];
+const DELAYS_MIN = { PROFILE: 1, QR_EMAIL: 10, GUEST_PROFILE: 1, GUEST_QR_EMAIL: 10, CLAIM: 1, GOOGLE_LINK: 1, GOOGLE_UNLINK: 1, TEMP_GUEST_NAME: 1, CERTIFICATE_EMAIL: 10 };
+const REQUEST_TYPES = ["PROFILE", "QR_EMAIL", "GUEST_PROFILE", "GUEST_QR_EMAIL", "CLAIM", "GOOGLE_LINK", "GOOGLE_UNLINK", "TEMP_GUEST_NAME", "CERTIFICATE_EMAIL"];
 /** The only request an unverified session of a list account may send (rules v18). */
 const UNVERIFIED_REQUEST_TYPES = ["TEMP_GUEST_NAME"];
 /** The published page and QR document of each profile an account may have. */
@@ -2462,6 +2475,224 @@ function profileForm(onDone) {
   return form;
 }
 
+// ---------- Volunteer certificate (spec 2026-11-22 §4) ----------
+
+/** Redraws the open certificate sheet when the page or one of the requests changes. */
+let certificateRefresh = null;
+const CERTIFICATE_REASONS = {
+  NOT_ALLOWED: "certReasonNotAllowed",
+  NO_TEMPLATE: "certReasonNoTemplate",
+  NO_ACCESS: "certReasonNoAccess",
+  NO_EMAIL: "certReasonNoEmail",
+  NOTHING_TO_CERTIFY: "certReasonNothing",
+  SEND_FAILED: "certReasonSendFailed",
+  INVALID: "certReasonInvalid",
+};
+
+function todayIso() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/**
+ * Request sheet: a full last name first when the page only has an initial (a PROFILE request,
+ * then the sheet waits for the page to publish it), then the period and the job types.
+ * Devices never take CERTIFICATE_EMAIL, so a request stuck in PROCESSING is sent again from here
+ * once the rules allow it (5 minutes, and the 10 minutes between two requests).
+ */
+function openCertificateSheet() {
+  const body = el("div", { class: "cert-sheet" });
+  openSheet(t("certTitle"), body);
+  const types = Array.isArray(projection?.certificate?.types) ? projection.certificate.types : [];
+  let selection = defaultSelection(types);
+  const period = defaultPeriod(types, todayIso());
+  let step = "";
+  let nameSent = false;
+  let nameMsg = null;
+  let refreshPeriod = () => {};
+
+  const dialog = body.closest("dialog");
+  const draw = () => {
+    if (!dialog?.isConnected) {
+      certificateRefresh = null;
+      return;
+    }
+    const profile = requests.PROFILE;
+    const wantName = needsFullName(projection?.lastName);
+    // After sending the name, wait for the page to publish it (like the profile form does).
+    const waitingName = wantName && nameSent && profile?.status !== "REJECTED";
+    const wanted = !wantName ? "period" : waitingName ? "name-wait" : "name";
+    if (wanted === step) {
+      if (wanted === "period") refreshPeriod();
+      return;
+    }
+    step = wanted;
+    clear(body);
+    if (wanted === "period") drawPeriod();
+    else if (wanted === "name-wait") body.append(el("p", { class: "notice", role: "status", text: t("certNamePending") }));
+    else drawName();
+  };
+  certificateRefresh = draw;
+  dialog?.addEventListener("close", () => {
+    if (certificateRefresh === draw) certificateRefresh = null;
+  });
+
+  function drawName() {
+    const nameInput = el("input", { maxlength: "60", autocomplete: "family-name" });
+    // A PROFILE request needs a phone: ask for it here when the page has none that passes the profile check.
+    const knownPhone = cleanPhone(projection?.phone);
+    const phoneInput = knownPhone ? null : el("input", { type: "tel", maxlength: "32", autocomplete: "tel" });
+    nameMsg = el("p", { class: "hidden", role: "status" });
+    const save = el("button", { type: "submit", class: "primary", text: t("save") });
+    const form = el("form", { novalidate: true },
+      el("label", {}, el("span", { text: t("certNameLabel") }), nameInput),
+      phoneInput ? el("label", {}, el("span", { text: t("phone") }), phoneInput) : null,
+      el("p", { class: "small-note", text: t("certNameWhy") }),
+      nameMsg,
+      save);
+    const say = (cls, key) => {
+      nameMsg.className = cls;
+      nameMsg.textContent = t(key);
+    };
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      nameInput.removeAttribute("aria-invalid");
+      phoneInput?.removeAttribute("aria-invalid");
+      const lastName = cleanName(nameInput.value);
+      if (!lastName || needsFullName(lastName)) {
+        nameInput.setAttribute("aria-invalid", "true");
+        return say("error", "errName");
+      }
+      const phone = knownPhone ?? cleanPhone(phoneInput.value);
+      if (!phone) {
+        phoneInput.setAttribute("aria-invalid", "true");
+        return say("error", "errPhone");
+      }
+      if (isWaiting(requests.PROFILE)) return say("error", "profilePending");
+      if (requestCooldownMinutes("PROFILE") > 0) return say("error", "profileWait");
+      const fields = profileFields(cleanName(projection?.firstName), lastName, phone);
+      if (!fields) return say("error", "errGeneric");
+      save.disabled = true;
+      try {
+        await sendRequest("PROFILE", fields);
+        nameSent = true;
+        draw();
+      } catch (error) {
+        console.warn("profile request failed", error?.code);
+        say("error", String(error?.code).includes("permission-denied") ? "profileWait" : "errGeneric");
+        save.disabled = false;
+      }
+    });
+    body.append(form);
+    if (requests.PROFILE?.status === "REJECTED" && millisOf(requests.PROFILE.requestedAt) > Date.now() - 86_400_000) say("error", "profileRejected");
+  }
+
+  function drawPeriod() {
+    const today = todayIso();
+    const from = el("input", { type: "date", value: period.from, max: today });
+    const to = el("input", { type: "date", value: period.to, max: today });
+    const groups = el("div", { class: "cert-groups" });
+    const send = el("button", { type: "button", class: "primary", text: t("certSend") });
+    const status = el("div", { role: "status" });
+    let sending = false;
+    let failure = "";
+    const boxes = new Map();
+    const inPeriod = () => typesInPeriod(types, from.value, to.value);
+    const effective = () => new Set([...selection].filter((name) => inPeriod().has(name)));
+
+    const update = () => {
+      const inside = inPeriod();
+      for (const [name, { input, label }] of boxes) {
+        const available = inside.has(name);
+        input.disabled = !available;
+        input.checked = available && selection.has(name);
+        label.classList.toggle("off", !available);
+      }
+      const r = requests.CERTIFICATE_EMAIL;
+      const state = certificateNotice(r);
+      const waiting = state === "waiting" || state === "review";
+      const cooldown = requestCooldownMinutes("CERTIFICATE_EMAIL");
+      clear(status);
+      if (state === "waiting") {
+        status.append(el("p", { class: "notice", text: t("certPending") }));
+      } else if (state === "review") {
+        status.append(el("p", { class: "notice", text: t("certReview") }));
+      } else if (state === "sent") {
+        status.append(el("p", { class: "success", text: t("certSent", { email: projection?.email || user.email }) }));
+      } else if (state === "refused") {
+        // The note is typed by the team: plain text only.
+        status.append(el("p", { class: "error", text: t("certRefused") }));
+        const note = refusalNote(r);
+        if (note) status.append(el("p", { class: "cert-note", text: note }));
+      } else if (state === "failed" && r.status === "REJECTED") {
+        status.append(el("p", { class: "error", text: t(CERTIFICATE_REASONS[r.reason] || "certReasonFailed") }));
+      } else if (state === "failed" && r.status !== "REJECTED") {
+        status.append(el("p", { class: "notice", text: t("certStale") }));
+      }
+      if (failure) status.append(el("p", { class: "error", text: t(failure, { n: 10 }) }));
+      if (cooldown > 0 && !waiting) status.append(el("p", { class: "small-note", text: t("certWait", { n: cooldown }) }));
+      const valid = periodValid(from.value, to.value, todayIso());
+      if (!valid) status.append(el("p", { class: "error", text: t("certReasonInvalid") }));
+      const chosen = effective();
+      send.disabled = sending || waiting || cooldown > 0 || !valid || !canSend(chosen, inside) || chosen.size > 50;
+    };
+
+    for (const group of groupTypes(types)) {
+      const list = el("div", { class: "cert-types" });
+      for (const type of group.types) {
+        const input = el("input", { type: "checkbox" });
+        input.addEventListener("change", () => {
+          if (input.checked) selection.add(type.name);
+          else selection.delete(type.name);
+          update();
+        });
+        const label = el("label", { class: "check-chip" }, input, el("span", { text: type.name }));
+        boxes.set(type.name, { input, label });
+        list.append(label);
+      }
+      groups.append(el("div", { class: "cert-group" },
+        el("h3", { text: t(`certCat${group.category}`) }), list));
+    }
+    const setAll = (on) => {
+      selection = on ? new Set(types.map((x) => x.name)) : new Set();
+      update();
+    };
+    from.addEventListener("change", update);
+    to.addEventListener("change", update);
+    send.addEventListener("click", async () => {
+      const fields = requestFields(from.value, to.value, effective());
+      if (!periodValid(from.value, to.value, todayIso()) || !canSend(effective(), inPeriod())) return;
+      sending = true;
+      failure = "";
+      update();
+      try {
+        await sendRequest("CERTIFICATE_EMAIL", fields);
+      } catch (error) {
+        console.warn("certificate request failed", error?.code);
+        failure = String(error?.code).includes("permission-denied") ? "certWait" : "errGeneric";
+      } finally {
+        sending = false;
+        update();
+      }
+    });
+    body.append(
+      el("div", { class: "row-2" },
+        el("label", {}, el("span", { text: t("certFrom") }), from),
+        el("label", {}, el("span", { text: t("certTo") }), to)),
+      el("div", { class: "cert-bulk" },
+        el("button", { type: "button", class: "link-btn", onclick: () => setAll(true), text: t("certAll") }),
+        el("button", { type: "button", class: "link-btn", onclick: () => setAll(false), text: t("certNone") })),
+      groups,
+      status,
+      send);
+    refreshPeriod = update;
+    update();
+  }
+
+  draw();
+}
+
 function passwordForm() {
   const current = el("input", { type: "password", autocomplete: "current-password", maxlength: "128" });
   const next = el("input", { type: "password", autocomplete: "new-password", maxlength: "128" });
@@ -2532,6 +2763,9 @@ function openAccountDialog() {
       passwordForm()),
     googleBox,
     el("section", { class: "dialog-section quiet" },
+      activeKind === "volunteer" && projection?.certificate?.types?.length
+        ? el("button", { type: "button", class: "link-btn", onclick: openCertificateSheet }, t("certLink"))
+        : null,
       el("button", { type: "button", class: "link-btn", onclick: exportData }, t("exportData")),
       el("p", { class: "small-note", text: t("exportHint") }),
       el("p", { class: "small-note", text: t("signedInAs", { email: user.email }) })),
@@ -2562,6 +2796,8 @@ function exportData() {
 
 function renderDashboard() {
   if (!user || !activeKind) return;
+  // The certificate sheet, when open, follows the page (name published) and its requests.
+  certificateRefresh?.();
   renderSwitch();
   // "My account" has its own button only on the groups page: elsewhere "Edit" opens it.
   $("account-btn").classList.toggle("hidden", activeKind !== "temporary" && activeKind !== "guestList");

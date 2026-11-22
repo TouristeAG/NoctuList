@@ -319,7 +319,10 @@ actual fun VolunteerDetailPanel(
                     }
 
                     item {
-                        VolunteerPortalAccessCard(viewModel = viewModel, volunteer = volunteer)
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            VolunteerPortalAccessCard(viewModel = viewModel, volunteer = volunteer)
+                            com.eventmanager.app.ui.components.settings.certificate.VolunteerCertificateButton(viewModel = viewModel, volunteer = volunteer)
+                        }
                     }
 
                     if (onManualAccountAdjust != null && viewModel != null) {

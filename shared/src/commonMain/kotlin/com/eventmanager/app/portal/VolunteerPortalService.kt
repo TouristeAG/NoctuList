@@ -21,13 +21,30 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
+import com.eventmanager.app.portal.certificate.CertSigner
+import com.eventmanager.app.portal.certificate.CertificateReview
+import com.eventmanager.app.portal.certificate.CertificateReviewRequest
+import com.eventmanager.app.portal.certificate.ResolvedParagraph
+import com.eventmanager.app.portal.certificate.certificateCategoryOf
+import com.eventmanager.app.portal.certificate.certificateReviewRequests
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.longOrNull
 import kotlin.coroutines.cancellation.CancellationException
 
 /** What the portal service needs from the app (persistence, sync, photos, e-mail). */
@@ -51,6 +68,12 @@ interface VolunteerPortalHost {
 
     /** Non-admin volunteers get their own QR code in the portal. */
     fun portalQrEnabled(): Boolean = true
+    /** The volunteer certificate is switched on; the server renders and mails it, never a device. */
+    fun certificateEnabled(): Boolean = false
+    /** The saved certificate template, or null when none was ever saved. */
+    fun certificateTemplate(): com.eventmanager.app.portal.certificate.CertificateTemplate? = null
+    /** Institution logo (PNG, base64) for the certificate letterhead; empty when there is none. */
+    fun certificateLogoPng(): String = ""
 
     /** Permanent guests have their own space in the portal. */
     fun guestPortalEnabled(): Boolean = false
@@ -208,7 +231,13 @@ class VolunteerPortalService(
         }?.let { listeners += it }
         gateway.listenCollection(orgId, PortalRequest.COLLECTION) { docs ->
             latestRequestDocs = docs
+            refreshCertificateRequests()
             processRequests(docs)
+        }?.let { listeners += it }
+        gateway.listenCollection(orgId, CERTIFICATE_APPROVALS) { docs ->
+            seenApprovalIds.addAll(docs.map { it.first })
+            approvalDocs.value = docs.toMap()
+            refreshFailedDirectSends()
         }?.let { listeners += it }
         gateway.listenCollection(orgId, PortalGoogleClaim.COLLECTION) { docs ->
             latestClaimDocs = docs
@@ -232,6 +261,9 @@ class VolunteerPortalService(
         scope.launch {
             while (started) {
                 delay(retryIntervalMs)
+                refreshCertificateRequests()
+                refreshFailedDirectSends()
+                staleTick.update { it + 1 }
                 runCatchingLogged("retry") {
                     processSignups(latestSignupDocs)
                     processRequests(latestRequestDocs)
@@ -469,6 +501,8 @@ class VolunteerPortalService(
             val type = data["type"]?.toString()
             // A GOOGLE_LINK request only waits for the Google claim that carries its code.
             if (type == PortalRequestType.GOOGLE_LINK.name) continue
+            // A CERTIFICATE_EMAIL request is the server's: devices have no PDF engine.
+            if (type == PortalRequestType.CERTIFICATE_EMAIL.name) continue
             // Only a device that can actually send mail takes a QR request; others leave it waiting.
             if ((type == PortalRequestType.QR_EMAIL.name || type == PortalRequestType.GUEST_QR_EMAIL.name) && !host.canSendQrEmail()) continue
             // Guest space off: guest requests wait, like Google claims while that option is off.
@@ -492,6 +526,7 @@ class VolunteerPortalService(
             claimable = {
                 (it["status"] == PortalRequest.STATUS_PENDING || isStaleProcessing(it)) &&
                     it["type"] != PortalRequestType.GOOGLE_LINK.name &&
+                    it["type"] != PortalRequestType.CERTIFICATE_EMAIL.name &&
                     (!isGuestRequestType(it["type"]?.toString()) || host.guestPortalEnabled()) &&
                     (it["type"] != PortalRequestType.TEMP_GUEST_NAME.name || host.temporaryGuestPortalEnabled())
             },
@@ -565,6 +600,8 @@ class VolunteerPortalService(
             PortalRequestType.TEMP_GUEST_NAME -> renameTemporaryGuest(request, guests, now)
             // Never claimed (see processRequests): it is answered through its Google claim.
             PortalRequestType.GOOGLE_LINK -> Unit
+            // Never claimed either: only the server renders the certificate PDF.
+            PortalRequestType.CERTIFICATE_EMAIL -> Unit
         }
     }
 
@@ -1384,12 +1421,13 @@ class VolunteerPortalService(
         runCatching { gateway.deleteDocument(orgId, BRANDING_COLLECTION, BRANDING_DOC) }
         runCatching { gateway.deleteDocument(orgId, MAIL_COLLECTION, MAIL_DOC) }
         runCatching { gateway.deleteDocument(orgId, MAIL_COLLECTION, GUEST_MAIL_DOC) }
+        runCatching { gateway.deleteDocument(orgId, MAIL_COLLECTION, CERTIFICATE_DOC) }
         // Failed QR deletes stay so the next publish retries them.
         host.savePublishedHashes(
             host.loadPublishedHashes().filterKeys {
                 (!it.startsWith("$orgId/") || it.endsWith(QR_SUFFIX) || it.endsWith(GuestPortalPublisher.GUEST_QR_SUFFIX) ||
                     it.endsWith(GuestPortalPublisher.TEMP_QR_SUFFIX)) && it != brandingKey && it != mailKey &&
-                    it != guestMailKey
+                    it != guestMailKey && it != certificateKey
             },
         )
     }
@@ -1445,7 +1483,9 @@ class VolunteerPortalService(
         val hashes = host.loadPublishedHashes().toMutableMap()
         publishBranding(hashes)
         publishMailTemplate(hashes)
+        publishCertificate(hashes, snapshot.configs)
         val googleLinkAllowed = googleLoginOn()
+        val certificateOn = certificateActive()
         val linked = snapshot.volunteers.filter {
             it.portalEnabled && it.portalUid.isNotBlank() &&
                 (it.firebaseOrgId.isBlank() || it.firebaseOrgId == orgId)
@@ -1477,6 +1517,7 @@ class VolunteerPortalService(
                     photoVersion = hashes[photoKey] ?: "",
                     mustSetPassword = false,
                     googleLinkAllowed = googleLinkAllowed,
+                    certificateEnabled = certificateOn,
                     now = now,
                     offsetHours = host.dateOffsetHours(),
                 ),
@@ -1648,6 +1689,70 @@ class VolunteerPortalService(
         }
     }
 
+    private val certificateKey get() = "$orgId#certificate"
+
+    /**
+     * The certificate is offered only when the option is on and a template was saved: without one the
+     * server would render a certificate with no date line and no signer, and a device that lacks the
+     * template could overwrite a good published one.
+     */
+    private fun certificateActive(): Boolean = host.certificateEnabled() && host.certificateTemplate() != null
+
+    /**
+     * The certificate template and job types for the server, which renders and mails the PDF. Removed
+     * (once) when the option is off or no template was saved. Same hash rule as the mail templates.
+     */
+    private suspend fun publishCertificate(hashes: MutableMap<String, String>, configs: List<JobTypeConfig>) {
+        val template = host.certificateTemplate()
+        if (!host.certificateEnabled() || template == null) {
+            if (hashes[certificateKey] == null) return
+            try {
+                gateway.deleteDocument(orgId, MAIL_COLLECTION, CERTIFICATE_DOC)
+                hashes.remove(certificateKey)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                println("Portal: certificate template delete failed: ${e.message}")
+            }
+            return
+        }
+        val association = host.associationName().trim()
+        val logo = host.certificateLogoPng().trim().let { if (it.length <= MAX_CERTIFICATE_LOGO_CHARS) it else "" }
+        val data: Map<String, Any?> = mapOf(
+            "template" to jsonToPlain(Json.parseToJsonElement(template.toJson())),
+            "association" to association.take(80),
+            "logoBase64" to logo,
+            "jobTypes" to configs
+                .map { Triple(it.name.trim(), certificateCategoryOf(it).name, it.description.trim()) }
+                .filter { it.first.isNotEmpty() }
+                .distinctBy { it.first }
+                .sortedBy { it.first }
+                .map { (name, category, description) -> mapOf("name" to name, "category" to category, "description" to description) },
+        )
+        val hash = PortalProjectionBuilder.sha256(data.toString())
+        if (hashes[certificateKey] == hash) return
+        try {
+            gateway.setPlainDocument(orgId, MAIL_COLLECTION, CERTIFICATE_DOC, data + ("updatedAt" to clock()), merge = false)
+            hashes[certificateKey] = hash
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            println("Portal: certificate template publish failed: ${e.message}")
+        }
+    }
+
+    private fun jsonToPlain(element: JsonElement): Any? = when (element) {
+        is JsonNull -> null
+        is JsonObject -> element.mapValues { jsonToPlain(it.value) }
+        is JsonArray -> element.map { jsonToPlain(it) }
+        is JsonPrimitive -> when {
+            element.isString -> element.content
+            element.booleanOrNull != null -> element.booleanOrNull
+            element.longOrNull != null -> element.longOrNull
+            else -> element.doubleOrNull
+        }
+    }
+
     private fun photoVersionOf(volunteer: Volunteer): String =
         photoVersion(host.profilePhotosEnabled(), volunteer.profilePhotoUrl, volunteer.profilePhotoPath)
 
@@ -1678,6 +1783,297 @@ class VolunteerPortalService(
 
     /** A new photo picked in the portal, announced by a PROFILE request with `photo: true`. */
     fun portalUploadPath(uid: String): String = "orgs/$orgId/portalPhotoUploads/$uid.jpg"
+
+    // endregion
+
+    // region Certificate review
+
+    private val _certificateRequests = MutableStateFlow<List<CertificateReviewRequest>>(emptyList())
+
+    /** Certificate requests waiting for a team member, oldest first, including approved ones whose send is stuck. */
+    val certificateRequests: StateFlow<List<CertificateReviewRequest>> = _certificateRequests.asStateFlow()
+
+    /** Null until the first snapshot of `certificateApprovals` arrived. */
+    private val approvalDocs = MutableStateFlow<Map<String, Map<String, Any?>>?>(null)
+    /** Approval ids a snapshot has listed: only one of these disappearing means the server sent it. */
+    private val seenApprovalIds: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+    private val _failedDirectSends = MutableStateFlow<List<FailedDirectSend>>(emptyList())
+    /** Bumped by the periodic loop so a send that gets stuck turns into Failed without any snapshot. */
+    private val staleTick = MutableStateFlow(0)
+
+    /** Direct sends the server could not finish (or never finished), until dismissed. */
+    val failedDirectSends: StateFlow<List<FailedDirectSend>> = _failedDirectSends.asStateFlow()
+
+    private fun refreshCertificateRequests() {
+        _certificateRequests.value = certificateReviewRequests(latestRequestDocs, clock())
+    }
+
+    private fun refreshFailedDirectSends() {
+        val docs = approvalDocs.value ?: return
+        val now = clock()
+        _failedDirectSends.value = docs.entries
+            .filter { it.value["kind"] == "DIRECT" }
+            .mapNotNull { (id, data) ->
+                val reason = directFailureReason(data, now) ?: return@mapNotNull null
+                FailedDirectSend(id, "${data["firstName"] ?: ""} ${data["lastName"] ?: ""}".trim(), reason)
+            }
+            .sortedBy { it.approvalId }
+    }
+
+    /**
+     * Why a direct approval counts as failed, or null while it is still on its way: the server marked it
+     * FAILED, or it has been PROCESSING (or never picked up, no status at all) for over 5 minutes.
+     */
+    private fun directFailureReason(data: Map<String, Any?>, now: Long): String? {
+        val status = data["status"]?.toString().orEmpty()
+        return when {
+            status == "FAILED" -> data["reason"]?.toString().orEmpty().ifBlank { CertificateReview.REASON_SEND_FAILED }
+            status == "PROCESSING" && isOldTime(data["processingAt"], now) -> CertificateReview.REASON_SEND_FAILED
+            status.isBlank() && firestoreMillisOf(data["approvedAt"])?.let { now - it > CertificateReview.STUCK_MILLIS } == true ->
+                CertificateReview.REASON_SEND_FAILED
+            else -> null
+        }
+    }
+
+    private fun isOldTime(value: Any?, now: Long): Boolean {
+        val at = firestoreMillisOf(value) ?: return true
+        return now - at > CertificateReview.STUCK_MILLIS
+    }
+
+    /**
+     * Approves a request in two steps: claim it (`PENDING_REVIEW` to `APPROVED`, so only one device wins),
+     * then write the final text. A write that fails after the claim leaves the request `APPROVED`, which
+     * shows as stuck after a few minutes and can be retried.
+     */
+    suspend fun approveCertificate(
+        requestId: String,
+        body: List<ResolvedParagraph>,
+        footer: List<ResolvedParagraph>,
+        title: String,
+        signer: CertSigner,
+        approvedBy: String,
+    ): ApproveResult {
+        val text = approvalTextOrNull(body, footer, signer) ?: return ApproveResult.TOO_LARGE
+        val approvalId = randomApprovalId()
+        val now = clock()
+        return mutex.withLock {
+            var claimed = false
+            try {
+                gateway.claimDocument(
+                    orgId,
+                    PortalRequest.COLLECTION,
+                    requestId,
+                    claimable = {
+                        it["type"] == PortalRequestType.CERTIFICATE_EMAIL.name &&
+                            it["status"] == PortalRequest.STATUS_PENDING_REVIEW
+                    },
+                    claimFields = mapOf(
+                        "status" to PortalRequest.STATUS_APPROVED,
+                        "approvalId" to approvalId,
+                        "approvedAt" to now,
+                    ),
+                ) ?: return@withLock ApproveResult.ALREADY_HANDLED
+                claimed = true
+                gateway.setPlainDocument(
+                    orgId,
+                    CERTIFICATE_APPROVALS,
+                    approvalId,
+                    mapOf("kind" to "REQUEST", "requestId" to requestId) + approvalCommon(text, title, signer, approvedBy, now),
+                    merge = false,
+                )
+                ApproveResult.SENT_TO_SERVER
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                println("Portal: certificate approval failed: ${e.message}")
+                if (claimed) undoClaim(requestId, approvalId)
+                ApproveResult.FAILED
+            }
+        }
+    }
+
+    /** Best effort: gives the request back for review after its approval could not be written, so the team can retry at once. */
+    private suspend fun undoClaim(requestId: String, approvalId: String) {
+        try {
+            gateway.claimDocument(
+                orgId,
+                PortalRequest.COLLECTION,
+                requestId,
+                claimable = {
+                    it["status"] == PortalRequest.STATUS_APPROVED && it["approvalId"] == approvalId
+                },
+                claimFields = mapOf(
+                    "status" to PortalRequest.STATUS_PENDING_REVIEW,
+                    "approvalId" to "",
+                    "approvedAt" to null,
+                ),
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            println("Portal: certificate claim undo failed: ${e.message}")
+        }
+    }
+
+    /** Refuses a request waiting for review. No e-mail goes to the volunteer. False when someone else already handled it. */
+    suspend fun refuseCertificate(requestId: String, note: String): Boolean = mutex.withLock {
+        try {
+            gateway.claimDocument(
+                orgId,
+                PortalRequest.COLLECTION,
+                requestId,
+                claimable = {
+                    it["type"] == PortalRequestType.CERTIFICATE_EMAIL.name &&
+                        it["status"] == PortalRequest.STATUS_PENDING_REVIEW
+                },
+                claimFields = mapOf(
+                    "status" to PortalRequest.STATUS_REJECTED,
+                    "reason" to CertificateReview.REASON_REFUSED,
+                    "note" to note.trim().take(CertificateReview.MAX_NOTE),
+                    "processedAt" to clock(),
+                ),
+            ) != null
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            println("Portal: certificate refusal failed: ${e.message}")
+            false
+        }
+    }
+
+    /** Puts a request whose send is stuck back in review. False when it is not stuck (any more). */
+    suspend fun retryCertificate(requestId: String): Boolean = mutex.withLock {
+        try {
+            val now = clock()
+            val claimed = gateway.claimDocument(
+                orgId,
+                PortalRequest.COLLECTION,
+                requestId,
+                claimable = {
+                    it["type"] == PortalRequestType.CERTIFICATE_EMAIL.name && when (it["status"]) {
+                        PortalRequest.STATUS_APPROVED -> isOldTime(it["approvedAt"], now)
+                        PortalRequest.STATUS_PROCESSING -> isOldTime(it["processingAt"], now)
+                        else -> false
+                    }
+                },
+                claimFields = mapOf("status" to PortalRequest.STATUS_PENDING_REVIEW),
+            ) ?: return@withLock false
+            // The text approved before is useless now: a new approval gets a new id.
+            (claimed["approvalId"] as? String)?.takeIf { it.isNotBlank() }?.let {
+                runCatching { gateway.deleteDocument(orgId, CERTIFICATE_APPROVALS, it) }
+            }
+            true
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            println("Portal: certificate retry failed: ${e.message}")
+            false
+        }
+    }
+
+    /** Writes a `DIRECT` approval for [volunteer]; the server mails it. Returns its id, or null when it could not be written. */
+    suspend fun sendDirectCertificate(
+        volunteer: Volunteer,
+        body: List<ResolvedParagraph>,
+        footer: List<ResolvedParagraph>,
+        title: String,
+        signer: CertSigner,
+        approvedBy: String,
+    ): String? {
+        val text = approvalTextOrNull(body, footer, signer) ?: return null
+        val approvalId = randomApprovalId()
+        return mutex.withLock {
+            try {
+                gateway.setPlainDocument(
+                    orgId,
+                    CERTIFICATE_APPROVALS,
+                    approvalId,
+                    mapOf(
+                        "kind" to "DIRECT",
+                        "email" to volunteer.email.trim(),
+                        "firstName" to volunteer.name.trim().take(100),
+                        "lastName" to volunteer.lastNameAbbreviation.trim().take(100),
+                    ) + approvalCommon(text, title, signer, approvedBy, clock()),
+                    merge = false,
+                )
+                // From here a snapshot without the approval means the server sent it.
+                seenApprovalIds.add(approvalId)
+                approvalId
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                println("Portal: direct certificate failed: ${e.message}")
+                null
+            }
+        }
+    }
+
+    /** Follows a direct send: the server deletes the approval once the mail left. */
+    fun directSendStatus(approvalId: String): Flow<DirectSendStatus> = combine(approvalDocs, staleTick) { docs, _ ->
+        val data = docs?.get(approvalId)
+        when {
+            docs == null -> DirectSendStatus.Pending
+            data == null -> if (approvalId in seenApprovalIds) DirectSendStatus.Sent else DirectSendStatus.Pending
+            else -> directFailureReason(data, clock())?.let { DirectSendStatus.Failed(it) } ?: DirectSendStatus.Pending
+        }
+    }.distinctUntilChanged()
+
+    /** Removes a failed direct send from the list (deletes its approval). */
+    suspend fun dismissDirectSend(approvalId: String) {
+        runCatchingLogged("dismiss direct send") { gateway.deleteDocument(orgId, CERTIFICATE_APPROVALS, approvalId) }
+        approvalDocs.value = approvalDocs.value?.minus(approvalId)
+        refreshFailedDirectSends()
+    }
+
+    private class ApprovalText(val body: JsonElement, val footer: JsonElement)
+
+    /** The paragraphs as the server reads them, or null when the text or the signature image is over the limits. */
+    private fun approvalTextOrNull(body: List<ResolvedParagraph>, footer: List<ResolvedParagraph>, signer: CertSigner): ApprovalText? {
+        if (signer.imageBase64.length > CertificateReview.MAX_SIGNER_IMAGE) return null
+        val b = paragraphsJson(body)
+        val f = paragraphsJson(footer)
+        if (b.toString().length + f.toString().length > CertificateReview.MAX_TEXT_JSON) return null
+        return ApprovalText(b, f)
+    }
+
+    private fun paragraphsJson(paragraphs: List<ResolvedParagraph>): JsonArray = JsonArray(
+        paragraphs.map { p ->
+            JsonObject(
+                mapOf(
+                    "align" to JsonPrimitive(p.align.name),
+                    "size" to JsonPrimitive(p.size.name),
+                    "bullet" to JsonPrimitive(p.bullet),
+                    "runs" to JsonArray(
+                        p.runs.map { r ->
+                            JsonObject(
+                                mapOf(
+                                    "text" to JsonPrimitive(r.text),
+                                    "b" to JsonPrimitive(r.b),
+                                    "i" to JsonPrimitive(r.i),
+                                    "u" to JsonPrimitive(r.u),
+                                ),
+                            )
+                        },
+                    ),
+                ),
+            )
+        },
+    )
+
+    private fun approvalCommon(text: ApprovalText, title: String, signer: CertSigner, approvedBy: String, now: Long): Map<String, Any?> = mapOf(
+        "body" to jsonToPlain(text.body),
+        "footer" to jsonToPlain(text.footer),
+        "title" to title.take(500),
+        "signer" to mapOf(
+            "name" to signer.name.take(200),
+            "title" to signer.title.take(200),
+            "imageBase64" to signer.imageBase64,
+        ),
+        "approvedBy" to approvedBy.take(254),
+        "approvedAt" to now,
+    )
+
+    private fun randomApprovalId(): String = java.util.UUID.randomUUID().toString().replace("-", "")
 
     // endregion
 
@@ -1712,6 +2108,10 @@ class VolunteerPortalService(
         const val MAIL_COLLECTION = "portalMail"
         const val MAIL_DOC = "default"
         const val GUEST_MAIL_DOC = "guest"
+        const val CERTIFICATE_DOC = "certificate"
+        const val CERTIFICATE_APPROVALS = "certificateApprovals"
+        /** Template limit (the logo is the bulk of it). */
+        private const val MAX_CERTIFICATE_LOGO_CHARS = 400_000
         private const val QR_SUFFIX = "#qr"
         /** QR hash value meaning "this device deleted the QR doc". */
         internal const val QR_TOMBSTONE = "-"
@@ -1747,3 +2147,14 @@ class VolunteerPortalService(
 }
 
 enum class SignupFormState { Waiting, Submitted, Completed, Expired }
+
+/** What happened to a request approved on a device. */
+enum class ApproveResult { SENT_TO_SERVER, ALREADY_HANDLED, TOO_LARGE, FAILED }
+
+sealed interface DirectSendStatus {
+    data object Pending : DirectSendStatus
+    data object Sent : DirectSendStatus
+    data class Failed(val reason: String) : DirectSendStatus
+}
+
+data class FailedDirectSend(val approvalId: String, val name: String, val reason: String)

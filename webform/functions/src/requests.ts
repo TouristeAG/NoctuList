@@ -1,6 +1,6 @@
 // Requests written by signed-in portal accounts: PROFILE and GUEST_PROFILE (edit name, phone and
 // photo), CLAIM (link the open profiles of a verified address), QR_EMAIL and GUEST_QR_EMAIL (mail the
-// wallet QR code) and GOOGLE_UNLINK (remove a Google account the holder linked; GOOGLE_LINK is
+// wallet QR code), CERTIFICATE_EMAIL (validated here, then put in review: an admin device writes and mails the certificate) and GOOGLE_UNLINK (remove a Google account the holder linked; GOOGLE_LINK is
 // answered by google.ts). Mirrors
 // VolunteerPortalService.processRequest, handleClaim and complete (Kotlin); devices only step in
 // after their 2 minute grace period, or when a claim of ours is older than 5 minutes.
@@ -13,6 +13,7 @@ import {
   claim,
   guestOwnerOf,
   guestPortalEnabled,
+  institutionSetting,
   isBlankValue as isBlank,
   millisOf,
   patchedProjection,
@@ -24,7 +25,8 @@ import {
   type Fields,
 } from "./common";
 import { unlinkGoogle } from "./google";
-import { buildQrMail, parseMailTemplate, safeRecipient, sendMail, type MailTransport } from "./mail";
+import { parseTemplate } from "./certificate";
+import { safeRecipient, parseMailTemplate, sendMail, buildQrMail, type MailTransport } from "./mail";
 import { kotlinTrim, parseRequest, type PortalRequest } from "./validate";
 import { randomUUID } from "node:crypto";
 import {
@@ -45,6 +47,8 @@ export type RequestReason =
   | "NO_ACCESS"
   | "NOT_ALLOWED"
   | "NO_EMAIL"
+  | "NO_TEMPLATE"
+  | "NOTHING_TO_CERTIFY"
   | "SEND_FAILED"
   | "SAVE_FAILED"
   | "LINKED_ELSEWHERE"
@@ -53,13 +57,14 @@ export type RequestReason =
   | "ENTRY_USED";
 
 export interface RequestResult {
-  status: "DONE" | "REJECTED";
+  status: "DONE" | "REJECTED" | "PENDING_REVIEW";
   reason: RequestReason;
 }
 
 const STATUS_PENDING = "PENDING";
 const MAX_LABEL = 80;
 const DONE: RequestResult = { status: "DONE", reason: "" };
+const REVIEW: RequestResult = { status: "PENDING_REVIEW", reason: "" };
 const rejected = (reason: Exclude<RequestReason, "">): RequestResult => ({ status: "REJECTED", reason });
 
 /**
@@ -78,7 +83,7 @@ class Deferred extends Error {
 }
 
 /** The owner of a portal account, as on devices: `portalEnabled && portalUid == uid`. */
-const isOwner = (d: Fields, uid: string): boolean =>
+export const isOwner = (d: Fields, uid: string): boolean =>
   boolOf(d.get("portalEnabled")) && stringOf(d.get("portalUid")) === uid;
 
 const errorCode = (e: unknown): string => {
@@ -188,6 +193,8 @@ async function processClaimed(
     case "GUEST_QR_EMAIL":
       await checkGuestSpace(db, orgId);
       return sendGuestQr(db, mail, orgId, request);
+    case "CERTIFICATE_EMAIL":
+      return reviewCertificate(db, orgId, request);
     case "GOOGLE_UNLINK": {
       const reason = await unlinkGoogle(db, orgId, requestId, request.uid);
       return reason === "" ? DONE : rejected(reason);
@@ -278,7 +285,8 @@ function renamedPage(data: Data | undefined, request: PortalRequest, now: number
 
 /** `complete` (Kotlin): the answer the portal page waits for. */
 async function complete(ref: DocumentReference, result: RequestResult): Promise<void> {
-  await ref.set({ status: result.status, reason: result.reason, processedAt: Date.now() }, { merge: true });
+  const review = result.status === "PENDING_REVIEW" ? { reviewAt: FieldValue.serverTimestamp() } : {};
+  await ref.set({ status: result.status, reason: result.reason, processedAt: Date.now(), ...review }, { merge: true });
 }
 
 /** The guest space was turned off after the claim: the request waits again. */
@@ -571,4 +579,49 @@ async function sendGuestQr(db: Firestore, mail: MailTransport, orgId: string, re
   const message = await buildQrMail(template, stringOf(owner.get("name")), owner.id);
   const result = await sendMail({ ...message, to, fromName: association.trim().slice(0, MAX_LABEL) }, mail);
   return result.sent ? DONE : rejected("SEND_FAILED");
+}
+
+/** Day as YYYYMMDD in the association time zone (Europe/Zurich). */
+const zurich = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Zurich", year: "numeric", month: "2-digit", day: "2-digit" });
+function dayOf(millis: number): number {
+  const parts = zurich.formatToParts(new Date(millis));
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  return get("year") * 10000 + get("month") * 100 + get("day");
+}
+
+/** True when at least one job of the volunteer falls in the period, is past and has a checked type. */
+function hasJobToCertify(docs: readonly Fields[], request: PortalRequest): boolean {
+  const fromDay = Number(request.from?.replace(/-/g, ""));
+  const toDay = Number(request.to?.replace(/-/g, ""));
+  const today = dayOf(Date.now());
+  const wanted = new Set(request.jobTypes ?? []);
+  return docs.some((d) => {
+    const jobTypeName = kotlinTrim(stringOf(d.get("jobTypeName")));
+    const millis = millisOf(d.get("date"));
+    if (jobTypeName === "" || millis === null || !Number.isFinite(new Date(millis).getTime())) return false;
+    const day = dayOf(millis);
+    return day >= fromDay && day <= toDay && day <= today && wanted.has(jobTypeName);
+  });
+}
+
+/**
+ * CERTIFICATE_EMAIL: checks the request and puts it in review (`PENDING_REVIEW`). Nothing is
+ * rendered or mailed here: an admin device writes the certificate, approves it and the server
+ * mails it. The volunteer's jobs are read only to check there is something to certify; their id
+ * goes nowhere. Admins are accepted: the certificate carries no identifier.
+ */
+async function reviewCertificate(db: Firestore, orgId: string, request: PortalRequest): Promise<RequestResult> {
+  if ((await institutionSetting(db, orgId, "volunteer_portal_certificate_enabled")) !== "true") return rejected("NOT_ALLOWED");
+  const published = (await db.doc(`orgs/${orgId}/portalMail/certificate`).get()).data();
+  const rawTemplate = published?.template;
+  const template = rawTemplate !== null && typeof rawTemplate === "object" ? parseTemplate(rawTemplate) : null;
+  if (published === undefined || template === null) return rejected("NO_TEMPLATE");
+  const linked = await volunteers(db, orgId).where("portalUid", "==", request.uid).get();
+  const owner = linked.docs.find((d) => isOwner(d, request.uid));
+  if (owner === undefined) return rejected("NO_ACCESS");
+  if (safeRecipient(kotlinTrim(stringOf(owner.get("email")))) === null) return rejected("NO_EMAIL");
+
+  // Volunteer.id is the document id; it only filters the jobs query.
+  const jobDocs = await db.collection(`orgs/${orgId}/jobs`).where("volunteerId", "==", owner.id).get();
+  return hasJobToCertify(jobDocs.docs, request) ? REVIEW : rejected("NOTHING_TO_CERTIFY");
 }

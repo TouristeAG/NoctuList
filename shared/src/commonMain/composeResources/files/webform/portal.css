@@ -473,6 +473,19 @@ details.fold summary::after { content: "+"; margin-left: auto; font-size: 1.1rem
 details.fold[open] summary::after { content: "−"; }
 details.fold[open] summary { color: var(--on); }
 .dialog-section.quiet .link-btn { font-size: 0.9rem; }
+.dialog-section.quiet > .link-btn { display: block; }
+.dialog-section.quiet > .link-btn + .link-btn { margin-top: 8px; }
+
+/* Certificate request sheet */
+.cert-sheet { padding-top: 12px; }
+.cert-note { margin: -6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--muted); }
+.cert-bulk { display: flex; gap: 16px; margin: 14px 0 2px; }
+.cert-bulk .link-btn { font-size: 0.88rem; }
+.cert-group { margin-top: 14px; }
+.cert-group h3 { margin: 0 0 8px; font-size: 0.88rem; font-weight: 800; color: var(--muted); }
+.cert-types { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.cert-sheet .primary { margin-top: 18px; width: 100%; }
+.cert-sheet .check-chip:has(input:disabled) { cursor: not-allowed; }
 @media (max-width: 520px) {
   dialog.sheet { margin: auto auto 0; width: 100vw; max-width: 100vw; border-radius: var(--radius) var(--radius) 0 0; }
 }

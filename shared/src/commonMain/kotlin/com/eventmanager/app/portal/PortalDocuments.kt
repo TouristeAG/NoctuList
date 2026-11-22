@@ -76,7 +76,7 @@ data class SignupSubmission(
     val venueName: String = "",
 )
 
-enum class PortalRequestType { PROFILE, QR_EMAIL, CLAIM, GOOGLE_LINK, GOOGLE_UNLINK, GUEST_PROFILE, GUEST_QR_EMAIL, TEMP_GUEST_NAME }
+enum class PortalRequestType { PROFILE, QR_EMAIL, CLAIM, GOOGLE_LINK, GOOGLE_UNLINK, GUEST_PROFILE, GUEST_QR_EMAIL, TEMP_GUEST_NAME, CERTIFICATE_EMAIL }
 
 enum class PortalGoogleClaimType { ADMIN_MATCH, LINK_CODE }
 
@@ -128,6 +128,10 @@ data class PortalRequest(
     val codeHash: String = "",
     /** TEMP_GUEST_NAME only: the guest's key on the account's temporary page, never its id. */
     val guestKey: String = "",
+    /** CERTIFICATE_EMAIL only: the period (yyyy-MM-dd, from <= to) and the job type names to certify. */
+    val from: String = "",
+    val to: String = "",
+    val jobTypes: List<String> = emptyList(),
 ) {
     companion object {
         const val COLLECTION = "portalRequests"
@@ -135,6 +139,8 @@ data class PortalRequest(
         const val STATUS_PROCESSING = "PROCESSING"
         const val STATUS_DONE = "DONE"
         const val STATUS_REJECTED = "REJECTED"
+        const val STATUS_PENDING_REVIEW = "PENDING_REVIEW"
+        const val STATUS_APPROVED = "APPROVED"
 
         /** A device that claimed a request and vanished frees it after this long. */
         const val PROCESSING_STALE_MILLIS: Long = 5L * 60 * 1000
@@ -155,6 +161,15 @@ object PortalInputValidator {
     private val GUEST_KEY = Regex("^[0-9a-f]{16}$")
     private val LINK_CODE = Regex("^[A-Za-z0-9_-]{32,64}$")
     private val LANGS = setOf("fr", "en", "es", "de", "it")
+
+    /** What a CERTIFICATE_EMAIL request may carry: the portal's fields and the ones a claim adds. */
+    private val CERTIFICATE_FIELDS = setOf(
+        "uid", "type", "status", "requestedAt", "email", "from", "to", "jobTypes",
+        "processingAt", "processingDevice", "processedAt", "reason",
+        "approvalId", "approvedAt", "note", "reviewAt",
+    )
+    private const val MAX_CERTIFICATE_TYPES = 50
+    private const val MAX_CERTIFICATE_TYPE_NAME = 80
 
     fun cleanName(raw: Any?): String? {
         val value = (raw as? String)?.trim()?.replace(Regex("\\s+"), " ") ?: return null
@@ -242,6 +257,20 @@ object PortalInputValidator {
                     lastName = last,
                     guestKey = (data["guestKey"] as? String)?.takeIf { GUEST_KEY.matches(it) } ?: return null,
                 )
+            }
+            PortalRequestType.CERTIFICATE_EMAIL -> {
+                if (!CERTIFICATE_FIELDS.containsAll(data.keys)) return null
+                val from = (data["from"] as? String)?.takeIf { DATE.matches(it) } ?: return null
+                val to = (data["to"] as? String)?.takeIf { DATE.matches(it) } ?: return null
+                if (from > to) return null
+                val raw = data["jobTypes"] as? List<*> ?: return null
+                if (raw.size !in 1..MAX_CERTIFICATE_TYPES) return null
+                val names = raw.map { name ->
+                    val trimmed = (name as? String)?.trim() ?: return null
+                    if (trimmed.length !in 1..MAX_CERTIFICATE_TYPE_NAME) return null
+                    trimmed
+                }
+                PortalRequest(requestId = requestId, uid = uid, type = type, status = status, email = email, from = from, to = to, jobTypes = names)
             }
             PortalRequestType.GOOGLE_LINK -> PortalRequest(
                 requestId = requestId,

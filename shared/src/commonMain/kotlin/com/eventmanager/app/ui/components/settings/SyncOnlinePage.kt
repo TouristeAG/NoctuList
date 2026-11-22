@@ -15,6 +15,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,6 +29,7 @@ import com.eventmanager.app.portal.TemplateCheck
 import com.eventmanager.app.resources.*
 import com.eventmanager.app.ui.components.domainCheckMessages
 import com.eventmanager.app.ui.components.portalServerLastRun
+import com.eventmanager.app.ui.components.settings.certificate.CertificateEditorDialog
 import kotlinx.coroutines.launch
 import kotlin.coroutines.cancellation.CancellationException
 import org.jetbrains.compose.resources.stringResource
@@ -216,6 +218,7 @@ private fun PortalOptions(b: SyncSettingsBindings, canEdit: Boolean) {
         enabled = canEdit,
         onCheckedChange = b.onVolunteerPortalQrEnabledChange,
     )
+    CertificateOptions(b, canEdit)
     SettingsSwitchRow(
         title = stringResource(Res.string.portal_auto_access_title),
         subtitle = null,
@@ -240,6 +243,55 @@ private fun PortalOptions(b: SyncSettingsBindings, canEdit: Boolean) {
         )
     }
     PortalGoogleOptions(b, canEdit)
+}
+
+/**
+ * The volunteer certificate: one switch, and a button that opens the editor (usable while the switch is off).
+ * Turning the switch on before any template was saved opens the editor.
+ */
+@Composable
+private fun CertificateOptions(b: SyncSettingsBindings, canEdit: Boolean) {
+    var editing by remember { mutableStateOf(false) }
+    SettingsSwitchRow(
+        title = stringResource(Res.string.certificate_enabled),
+        subtitle = null,
+        checked = b.volunteerPortalCertificateEnabled,
+        enabled = canEdit,
+        onCheckedChange = { on ->
+            b.onVolunteerPortalCertificateEnabledChange(on)
+            // Volunteers only get the certificate once a template is saved: ask for it right away.
+            if (on && !b.certificateEditor.hasSavedTemplate()) editing = true
+        },
+    )
+    TextButton(
+        onClick = { editing = true },
+        enabled = canEdit,
+        modifier = Modifier.padding(horizontal = SettingsKitDefaults.RowHorizontalPadding - 12.dp),
+    ) { Text(stringResource(Res.string.certificate_edit)) }
+    if (editing) {
+        val host = b.certificateEditor
+        val initial = remember { host.template() }
+        val volunteers by host.volunteers.collectAsState()
+        val jobs by host.jobs.collectAsState()
+        val jobTypes by host.jobTypes.collectAsState()
+        val logo by host.logo.collectAsState()
+        val jobsByVolunteer = remember(jobs) { jobs.groupBy { it.volunteerId } }
+        CertificateEditorDialog(
+            initial = initial,
+            association = remember { host.associationName() },
+            logoBase64 = logo,
+            volunteers = volunteers,
+            jobTypes = jobTypes,
+            jobsOf = { jobsByVolunteer[it.id].orEmpty() },
+            gmailAddress = remember { host.gmailAddress() },
+            onSave = {
+                host.save(it)
+                editing = false
+            },
+            onDismiss = { editing = false },
+            onOpenLogoSettings = host.onOpenLogoSettings,
+        )
+    }
 }
 
 /**

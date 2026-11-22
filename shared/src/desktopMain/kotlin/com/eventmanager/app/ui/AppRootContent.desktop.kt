@@ -728,6 +728,9 @@ actual fun AppRootContent(
                             ) {
                                 Icon(Icons.Default.QrCodeScanner, contentDescription = null)
                             }
+
+                            // Admin area only: certificate requests never show on welcome, ticketing or POS.
+                            com.eventmanager.app.ui.components.settings.certificate.CertificateRequestToastHost(viewModel)
                         }
                     }
                     }

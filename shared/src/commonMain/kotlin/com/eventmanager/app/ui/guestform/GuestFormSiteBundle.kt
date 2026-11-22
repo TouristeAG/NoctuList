@@ -47,6 +47,7 @@ object GuestFormSiteBundle {
         "portal-common.js",
         // Offline QR code in the volunteer space and the service worker that keeps it.
         "portal-qr.js",
+        "portal-certificate.js",
         "portal-sw.js",
         "vendor/qrcode.js",
         "manifest.webmanifest",
@@ -54,6 +55,13 @@ object GuestFormSiteBundle {
         "functions/package.json",
         "functions/package-lock.json",
         "functions/lib/index.js",
+        "functions/assets/OFL.txt",
+        "functions/assets/nunito-400.ttf",
+        "functions/assets/nunito-700.ttf",
+        "functions/assets/nunito-latin-400-italic.woff",
+        "functions/assets/nunito-latin-700-italic.woff",
+        "functions/assets/nunito-latin-ext-400-italic.woff",
+        "functions/assets/nunito-latin-ext-700-italic.woff",
     )
 
     @OptIn(ExperimentalResourceApi::class)

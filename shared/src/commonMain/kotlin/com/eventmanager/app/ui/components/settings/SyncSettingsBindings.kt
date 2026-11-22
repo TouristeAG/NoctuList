@@ -112,6 +112,10 @@ class SyncSettingsBindings(
     val onVolunteerPortalShowLogoChange: (Boolean) -> Unit,
     val volunteerPortalQrEnabled: Boolean,
     val onVolunteerPortalQrEnabledChange: (Boolean) -> Unit,
+    val volunteerPortalCertificateEnabled: Boolean,
+    val onVolunteerPortalCertificateEnabledChange: (Boolean) -> Unit,
+    /** Data and actions of the certificate editor, read only while it is open. */
+    val certificateEditor: CertificateEditorHost,
     val volunteerPortalGoogleAnyAccount: Boolean,
     val onVolunteerPortalGoogleAnyAccountChange: (Boolean) -> Unit,
     val volunteerPortalGoogleDomains: List<String>,
@@ -156,6 +160,7 @@ class SyncSettingsBindings(
  * - [onSignInOverride]: replaces the shared sign-in flow. Android passes its activity-result
  *   launcher flow here; desktop uses the shared flow.
  * - [onSyncNowOverride]: replaces the Sheets "sync now" action (Android keeps its own call).
+ * - [onOpenLogoSettings]: shows the association logo setting (the certificate editor links to it).
  *
  * The org-admin role is only checked on the Firebase backend; in Sheets mode [SyncSettingsBindings.isOrgAdmin]
  * stays false, [SyncSettingsBindings.adminChecked] is true at once, and no Firebase call runs.
@@ -175,6 +180,7 @@ fun rememberSyncSettingsBindings(
     onSignInOverride: (() -> Unit)? = null,
     scope: CoroutineScope = rememberCoroutineScope(),
     onSyncNowOverride: (() -> Unit)? = null,
+    onOpenLogoSettings: (() -> Unit)? = null,
 ): SyncSettingsBindings {
     var authEmail by authEmailState
     var signInFeedback by signInFeedbackState
@@ -204,6 +210,7 @@ fun rememberSyncSettingsBindings(
     val volunteerPortalGoogleEnabled by viewModel.volunteerPortalGoogleEnabled.collectAsState()
     val volunteerPortalShowLogo by viewModel.volunteerPortalShowLogo.collectAsState()
     val volunteerPortalQrEnabled by viewModel.volunteerPortalQrEnabled.collectAsState()
+    val volunteerPortalCertificateEnabled by viewModel.volunteerPortalCertificateEnabled.collectAsState()
     val volunteerPortalGoogleAnyAccount by viewModel.volunteerPortalGoogleAnyAccount.collectAsState()
     val volunteerPortalGoogleDomains by viewModel.volunteerPortalGoogleDomains.collectAsState()
     val guestPortalEnabled by viewModel.guestPortalEnabled.collectAsState()
@@ -411,6 +418,9 @@ fun rememberSyncSettingsBindings(
         onVolunteerPortalShowLogoChange = { viewModel.setVolunteerPortalShowLogo(it) },
         volunteerPortalQrEnabled = volunteerPortalQrEnabled,
         onVolunteerPortalQrEnabledChange = { viewModel.setVolunteerPortalQrEnabled(it) },
+        volunteerPortalCertificateEnabled = volunteerPortalCertificateEnabled,
+        onVolunteerPortalCertificateEnabledChange = { viewModel.setVolunteerPortalCertificateEnabled(it) },
+        certificateEditor = remember(viewModel, onOpenLogoSettings) { CertificateEditorHost(viewModel, onOpenLogoSettings) },
         volunteerPortalGoogleAnyAccount = volunteerPortalGoogleAnyAccount,
         onVolunteerPortalGoogleAnyAccountChange = { viewModel.setVolunteerPortalGoogleAnyAccount(it) },
         volunteerPortalGoogleDomains = volunteerPortalGoogleDomains,
@@ -476,4 +486,21 @@ internal fun orgShareNotice(
     FirebaseOrgInvitationActions.ShareResult.NoAccessToTarget -> texts.noAccess.replace("%1\$s", targetLabel)
     is FirebaseOrgInvitationActions.ShareResult.Failed ->
         texts.failed.replace("%1\$s", targetLabel).replace("%2\$s", result.message)
+}
+
+/** What the certificate editor reads and writes; the lists are collected only while it is open. */
+class CertificateEditorHost(
+    private val viewModel: EventManagerViewModel,
+    val onOpenLogoSettings: (() -> Unit)?,
+) {
+    val volunteers get() = viewModel.volunteers
+    val jobs get() = viewModel.jobs
+    val jobTypes get() = viewModel.jobTypeConfigs
+    val logo get() = viewModel.institutionLogoPng
+    fun template() = viewModel.volunteerPortalCertificateTemplate()
+    fun hasSavedTemplate() = viewModel.hasSavedCertificateTemplate()
+    fun associationName() = viewModel.certificateAssociationName()
+    fun gmailAddress() = viewModel.certificateGmailAddress()
+    fun save(template: com.eventmanager.app.portal.certificate.CertificateTemplate) =
+        viewModel.saveVolunteerPortalCertificateTemplate(template)
 }

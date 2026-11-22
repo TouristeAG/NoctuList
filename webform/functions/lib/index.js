@@ -3,8 +3,8 @@ import { getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
-import * as logger6 from "firebase-functions/logger";
-import { onDocumentWritten } from "firebase-functions/v2/firestore";
+import * as logger7 from "firebase-functions/logger";
+import { onDocumentCreated, onDocumentWritten } from "firebase-functions/v2/firestore";
 import { defineSecret, defineString } from "firebase-functions/params";
 
 // src/requests.ts
@@ -32,8 +32,25 @@ var TYPES = [
   "GOOGLE_UNLINK",
   "GUEST_PROFILE",
   "GUEST_QR_EMAIL",
-  "TEMP_GUEST_NAME"
+  "TEMP_GUEST_NAME",
+  "CERTIFICATE_EMAIL"
 ];
+var CERTIFICATE_FIELDS = /* @__PURE__ */ new Set([
+  "uid",
+  "type",
+  "status",
+  "requestedAt",
+  "email",
+  "from",
+  "to",
+  "jobTypes",
+  "processingAt",
+  "processingDevice",
+  "processedAt",
+  "reason"
+]);
+var MAX_CERT_TYPES = 50;
+var MAX_CERT_TYPE_NAME = 80;
 var CLAIM_TYPES = ["ADMIN_MATCH", "LINK_CODE"];
 var GENDERS = /* @__PURE__ */ new Set(["FEMALE", "MALE", "NON_BINARY", "OTHER", "PREFER_NOT_TO_DISCLOSE"]);
 var WS = "\\t-\\r\\u001C-\\u0020\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000";
@@ -118,6 +135,22 @@ function parseRequest(requestId, data) {
     const lastName = optional(data.lastName);
     if (firstName === null || lastName === null || firstName === "" && lastName === "") return null;
     return { requestId, uid, type, status, email, firstName, lastName, phone: "", photo: false, guestKey };
+  }
+  if (type === "CERTIFICATE_EMAIL") {
+    if (Object.keys(data).some((k) => !CERTIFICATE_FIELDS.has(k))) return null;
+    const from = str(data.from);
+    const to = str(data.to);
+    if (from === void 0 || to === void 0 || !DATE.test(from) || !DATE.test(to) || from > to) return null;
+    const raw = data.jobTypes;
+    if (!Array.isArray(raw) || raw.length < 1 || raw.length > MAX_CERT_TYPES) return null;
+    const jobTypes = [];
+    for (const name of raw) {
+      if (typeof name !== "string") return null;
+      const trimmed = kotlinTrim(name);
+      if (trimmed.length < 1 || trimmed.length > MAX_CERT_TYPE_NAME) return null;
+      jobTypes.push(trimmed);
+    }
+    return { requestId, uid, type, status, email, firstName: "", lastName: "", phone: "", photo: false, from, to, jobTypes };
   }
   if (type === "GOOGLE_LINK") {
     const codeHash = str(data.codeHash);
@@ -317,14 +350,14 @@ function parseDomains(raw) {
 }
 function accountAllowed(email, domains, anyAccount) {
   if (!anyAccount) return domainAllowed(email, domains);
-  const clean = kotlinTrim(email);
-  const at = clean.lastIndexOf("@");
-  return at >= 0 && clean.slice(at + 1) !== "";
+  const clean2 = kotlinTrim(email);
+  const at = clean2.lastIndexOf("@");
+  return at >= 0 && clean2.slice(at + 1) !== "";
 }
 function domainAllowed(email, domains) {
-  const clean = kotlinTrim(email).toLowerCase();
-  const at = clean.lastIndexOf("@");
-  const domain = at < 0 ? "" : clean.slice(at + 1);
+  const clean2 = kotlinTrim(email).toLowerCase();
+  const at = clean2.lastIndexOf("@");
+  const domain = at < 0 ? "" : clean2.slice(at + 1);
   return domain !== "" && !CONSUMER_DOMAINS.includes(domain) && domains.some((d) => kotlinTrim(d).toLowerCase() === domain);
 }
 function sameAddress(a, b) {
@@ -623,6 +656,90 @@ async function unlinkGoogle(db, orgId, requestId, uid) {
   }
 }
 
+// src/certificate.ts
+var ALIGNS = ["LEFT", "CENTER", "RIGHT", "JUSTIFY"];
+var SIZES = ["SMALL", "NORMAL", "LARGE", "TITLE"];
+var isObj = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var Unreadable = class extends Error {
+};
+function field(o, key, fallback, ok) {
+  const v = o[key];
+  if (v === void 0) return fallback;
+  if (!ok(v)) throw new Unreadable(key);
+  return v;
+}
+var isStr = (v) => typeof v === "string";
+var isBool = (v) => typeof v === "boolean";
+var isInt = (v) => typeof v === "number" && Number.isInteger(v);
+function objOf(v) {
+  if (!isObj(v)) throw new Unreadable("object");
+  return v;
+}
+function listOf(o, key, read) {
+  const v = o[key];
+  if (v === void 0) return [];
+  if (!Array.isArray(v)) throw new Unreadable(key);
+  return v.map(read);
+}
+function readRun(raw) {
+  const o = objOf(raw);
+  return {
+    text: field(o, "text", "", isStr),
+    var: field(o, "var", "", isStr),
+    gender: listOf(o, "gender", (g) => {
+      if (typeof g !== "string") throw new Unreadable("gender");
+      return g;
+    }),
+    b: field(o, "b", false, isBool),
+    i: field(o, "i", false, isBool),
+    u: field(o, "u", false, isBool)
+  };
+}
+function readParagraph(raw) {
+  const o = objOf(raw);
+  return {
+    align: field(o, "align", "LEFT", (v) => ALIGNS.includes(v)),
+    size: field(o, "size", "NORMAL", (v) => SIZES.includes(v)),
+    bullet: field(o, "bullet", false, isBool),
+    runs: listOf(o, "runs", readRun)
+  };
+}
+function readBlock(raw) {
+  const o = objOf(raw);
+  return {
+    one: listOf(o, "one", readParagraph),
+    many: listOf(o, "many", readParagraph),
+    manyOneRole: listOf(o, "manyOneRole", readParagraph),
+    line: listOf(o, "line", readParagraph)
+  };
+}
+function strings(raw, keys) {
+  const o = raw === void 0 ? {} : objOf(raw);
+  const out = {};
+  for (const k of keys) out[k] = field(o, k, "", isStr);
+  return out;
+}
+function parseTemplate(raw) {
+  try {
+    const value = typeof raw === "string" ? JSON.parse(raw) : raw;
+    const o = objOf(value);
+    const blocks = {};
+    if (o.blocks !== void 0) {
+      for (const [key, block] of Object.entries(objOf(o.blocks))) blocks[key] = readBlock(block);
+    }
+    return {
+      version: field(o, "version", 1, isInt),
+      language: field(o, "language", "fr", isStr),
+      place: field(o, "place", "", isStr),
+      signer: strings(o.signer, ["name", "title", "imageBase64"]),
+      mail: strings(o.mail, ["fromName", "fromAddress", "replyTo", "subject", "body"]),
+      blocks
+    };
+  } catch {
+    return null;
+  }
+}
+
 // src/mail.ts
 import * as logger2 from "firebase-functions/logger";
 import nodemailer from "nodemailer";
@@ -646,8 +763,8 @@ var LIFETIME_SECONDS = 3600;
 var REFRESH_MARGIN_MS = 6e4;
 var MAX_CODE = 80;
 var safePart = (s, fallback) => {
-  const clean = typeof s === "string" ? s.replace(/[^A-Za-z0-9_.-]/g, "").slice(0, 40) : "";
-  return clean === "" ? fallback : clean;
+  const clean2 = typeof s === "string" ? s.replace(/[^A-Za-z0-9_.-]/g, "").slice(0, 40) : "";
+  return clean2 === "" ? fallback : clean2;
 };
 var code = (c) => c.slice(0, MAX_CODE);
 async function jsonOf(r) {
@@ -701,8 +818,8 @@ async function gmailSendRaw(token, user, raw, f, timeoutMs = DEFAULT_TIMEOUT_MS)
   });
   if (r.ok) return;
   const body = await jsonOf(r);
-  const error7 = body.error ?? {};
-  const reason = safePart(error7.errors?.[0]?.reason ?? error7.status, "unknown");
+  const error8 = body.error ?? {};
+  const reason = safePart(error8.errors?.[0]?.reason ?? error8.status, "unknown");
   throw new MailSendError(code(`gmail:${r.status}:${reason}`));
 }
 
@@ -771,6 +888,42 @@ async function buildQrMail(template, firstName, qrPayload) {
     // QrEmailHtmlBuilder puts the holder name in raw: escape it here.
     html: fill(html, escapeHtml(name)),
     text: fill(t.text, name),
+    attachments
+  };
+}
+var slug = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+var CERTIFICATE_FILE_PREFIX = {
+  fr: "attestation-benevolat",
+  en: "volunteer-certificate",
+  de: "freiwilligen-bestaetigung",
+  it: "attestato-volontariato",
+  es: "certificado-voluntariado"
+};
+function certificateFileName(firstName, lastName, language) {
+  const prefix = CERTIFICATE_FILE_PREFIX[language] ?? CERTIFICATE_FILE_PREFIX.fr;
+  const parts = [prefix, slug(firstName), slug(lastName)].filter((p) => p !== "");
+  return `${parts.join("-")}.pdf`;
+}
+function buildCertificateMail(args) {
+  const text = args.body.replace(/\r\n?/g, "\n");
+  const paragraphs2 = text.split(/\n{2,}/).map((p) => `<p>${escapeHtml(p).replace(/\n/g, "<br>")}</p>`).join("");
+  const hasLogo = args.logoPng !== null && args.logoPng.length > 0;
+  const html = '<!DOCTYPE html><html><body style="font-family: Arial, sans-serif; color: #222;">' + (hasLogo ? '<p><img src="cid:logo" alt="" style="max-width: 200px; max-height: 60px;"></p>' : "") + `${paragraphs2}</body></html>`;
+  const attachments = [
+    { filename: args.fileName, content: Buffer.from(args.pdf), contentType: "application/pdf", contentDisposition: "attachment" }
+  ];
+  if (hasLogo) {
+    attachments.push({ filename: "logo.png", content: Buffer.from(args.logoPng), contentType: "image/png", contentDisposition: "inline", cid: "logo" });
+  }
+  const replyTo = safeRecipient(args.replyTo);
+  return {
+    to: args.to,
+    fromName: args.fromName,
+    fromAddress: args.fromAddress,
+    ...replyTo === null ? {} : { replyTo },
+    subject: args.subject.replace(CONTROL, " ").trim().slice(0, MAX_SUBJECT),
+    html,
+    text,
     attachments
   };
 }
@@ -874,10 +1027,14 @@ async function sendMail(msg, transport2) {
       return failed("bad_address");
     }
     const fromName = msg.fromName.replace(CONTROL, " ").trim();
+    const header = msg.fromAddress === void 0 ? null : safeRecipient(msg.fromAddress);
+    const shown = header ?? from;
+    const replyTo = msg.replyTo === void 0 ? null : safeRecipient(msg.replyTo);
     if (isCapture()) {
       await transport2.db.collection("_testMail").add({
         to,
-        from: { name: fromName, address: from },
+        from: { name: fromName, address: shown },
+        ...replyTo === null ? {} : { replyTo },
         subject: msg.subject,
         html: msg.html,
         text: msg.text,
@@ -893,8 +1050,9 @@ async function sendMail(msg, transport2) {
       return SENT;
     }
     const message = {
-      from: fromName === "" ? from : { name: fromName, address: from },
+      from: fromName === "" ? shown : { name: fromName, address: shown },
       to: { name: "", address: to },
+      ...replyTo === null ? {} : { replyTo },
       subject: msg.subject,
       html: msg.html,
       text: msg.text,
@@ -1226,6 +1384,7 @@ async function finish(bucket, ref, orgId, formId) {
 var STATUS_PENDING2 = "PENDING";
 var MAX_LABEL2 = 80;
 var DONE2 = { status: "DONE", reason: "" };
+var REVIEW = { status: "PENDING_REVIEW", reason: "" };
 var rejected2 = (reason) => ({ status: "REJECTED", reason });
 var isClaimable3 = (d) => d.status === STATUS_PENDING2 && d.type !== "GOOGLE_LINK";
 var GUEST_TYPES = ["GUEST_PROFILE", "GUEST_QR_EMAIL"];
@@ -1304,6 +1463,8 @@ async function processClaimed2(db, bucket, mail, orgId, requestId, claimed) {
     case "GUEST_QR_EMAIL":
       await checkGuestSpace(db, orgId);
       return sendGuestQr(db, mail, orgId, request);
+    case "CERTIFICATE_EMAIL":
+      return reviewCertificate(db, orgId, request);
     case "GOOGLE_UNLINK": {
       const reason = await unlinkGoogle(db, orgId, requestId, request.uid);
       return reason === "" ? DONE2 : rejected2(reason);
@@ -1374,7 +1535,8 @@ function renamedPage(data, request, now) {
   return { payload: text, contentHash: sha256(text), updatedAt: now };
 }
 async function complete(ref, result) {
-  await ref.set({ status: result.status, reason: result.reason, processedAt: Date.now() }, { merge: true });
+  const review = result.status === "PENDING_REVIEW" ? { reviewAt: FieldValue.serverTimestamp() } : {};
+  await ref.set({ status: result.status, reason: result.reason, processedAt: Date.now(), ...review }, { merge: true });
 }
 async function checkGuestSpace(db, orgId) {
   if (!await guestPortalEnabled(db, orgId)) throw new Deferred("GUEST_SPACE_OFF");
@@ -1578,6 +1740,38 @@ async function sendGuestQr(db, mail, orgId, request) {
   const result = await sendMail({ ...message, to, fromName: association.trim().slice(0, MAX_LABEL2) }, mail);
   return result.sent ? DONE2 : rejected2("SEND_FAILED");
 }
+var zurich = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Zurich", year: "numeric", month: "2-digit", day: "2-digit" });
+function dayOf(millis) {
+  const parts = zurich.formatToParts(new Date(millis));
+  const get = (type) => Number(parts.find((p) => p.type === type)?.value);
+  return get("year") * 1e4 + get("month") * 100 + get("day");
+}
+function hasJobToCertify(docs, request) {
+  const fromDay = Number(request.from?.replace(/-/g, ""));
+  const toDay = Number(request.to?.replace(/-/g, ""));
+  const today = dayOf(Date.now());
+  const wanted = new Set(request.jobTypes ?? []);
+  return docs.some((d) => {
+    const jobTypeName = kotlinTrim(stringOf(d.get("jobTypeName")));
+    const millis = millisOf(d.get("date"));
+    if (jobTypeName === "" || millis === null || !Number.isFinite(new Date(millis).getTime())) return false;
+    const day = dayOf(millis);
+    return day >= fromDay && day <= toDay && day <= today && wanted.has(jobTypeName);
+  });
+}
+async function reviewCertificate(db, orgId, request) {
+  if (await institutionSetting(db, orgId, "volunteer_portal_certificate_enabled") !== "true") return rejected2("NOT_ALLOWED");
+  const published = (await db.doc(`orgs/${orgId}/portalMail/certificate`).get()).data();
+  const rawTemplate = published?.template;
+  const template = rawTemplate !== null && typeof rawTemplate === "object" ? parseTemplate(rawTemplate) : null;
+  if (published === void 0 || template === null) return rejected2("NO_TEMPLATE");
+  const linked = await volunteers(db, orgId).where("portalUid", "==", request.uid).get();
+  const owner = linked.docs.find((d) => isOwner(d, request.uid));
+  if (owner === void 0) return rejected2("NO_ACCESS");
+  if (safeRecipient(kotlinTrim(stringOf(owner.get("email")))) === null) return rejected2("NO_EMAIL");
+  const jobDocs = await db.collection(`orgs/${orgId}/jobs`).where("volunteerId", "==", owner.id).get();
+  return hasJobToCertify(jobDocs.docs, request) ? REVIEW : rejected2("NOTHING_TO_CERTIFY");
+}
 
 // src/outbox.ts
 import * as logger5 from "firebase-functions/logger";
@@ -1602,10 +1796,10 @@ function headerEnd(raw) {
 var REPLACED = /* @__PURE__ */ new Set(["from", "sender", "to", "cc", "bcc", "date", "message-id", "return-path"]);
 var CONTROL2 = /[\u0000-\u001F\u007F]+/g;
 function displayName(name) {
-  const clean = name.replace(CONTROL2, " ").trim();
-  if (clean === "") return "";
-  if (/^[\x20-\x7E]*$/.test(clean)) return `"${clean.replace(/["\\]/g, "\\$&")}"`;
-  return `=?UTF-8?B?${Buffer.from(clean, "utf8").toString("base64")}?=`;
+  const clean2 = name.replace(CONTROL2, " ").trim();
+  if (clean2 === "") return "";
+  if (/^[\x20-\x7E]*$/.test(clean2)) return `"${clean2.replace(/["\\]/g, "\\$&")}"`;
+  return `=?UTF-8?B?${Buffer.from(clean2, "utf8").toString("base64")}?=`;
 }
 function rewriteHeaders(raw, from, fromName, to, now) {
   const end = headerEnd(raw);
@@ -1674,6 +1868,547 @@ async function sendClaimed(mail, claimed) {
   return result.sent ? { reason: "", failure: "" } : { reason: "SEND_FAILED", failure: result.failure };
 }
 
+// src/approvals.ts
+import * as logger6 from "firebase-functions/logger";
+import { FieldValue as FieldValue3 } from "firebase-admin/firestore";
+
+// src/certificatePdf.ts
+import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+import fontkit from "@pdf-lib/fontkit";
+import { PDFDocument, rgb } from "pdf-lib";
+var SIZE_PT = { SMALL: 9, NORMAL: 11, LARGE: 14, TITLE: 22 };
+var LEADING = 1.5;
+var PARAGRAPH_GAP = 1.1;
+var TITLE_GAP_AFTER = 28;
+var DATE_GAP_BEFORE = 24;
+var LOGO_GAP = 14;
+var RULE_HEIGHT = 50;
+var SIGNATURE_GAP = 44;
+var BULLET_INDENT = 14;
+function tokenize(p) {
+  const out = [];
+  for (const r of p.runs) {
+    for (const part of r.text.split(/(\n|[^\S\n]+)/)) {
+      if (part === "") continue;
+      if (part === "\n") out.push({ br: true });
+      else out.push({ text: part, b: r.b, i: r.i, u: r.u, space: /^\s+$/.test(part) });
+    }
+  }
+  return out;
+}
+function layoutParagraphs(paragraphs2, width, measure) {
+  const lines = [];
+  paragraphs2.forEach((p, index) => {
+    const size = SIZE_PT[p.size];
+    const prevTitle = index > 0 && paragraphs2[index - 1].size === "TITLE";
+    const indent = p.bullet ? BULLET_INDENT : 0;
+    const avail = width - indent;
+    const rows = [];
+    const hardBreak = [];
+    let cur = [];
+    let curWidth = 0;
+    let pendingSpace = null;
+    const flush = (hard) => {
+      rows.push(cur);
+      hardBreak.push(hard);
+      cur = [];
+      curWidth = 0;
+      pendingSpace = null;
+    };
+    const add = (text, t) => {
+      const last = cur[cur.length - 1];
+      const merged = last && last.b === t.b && last.i === t.i && last.u === t.u ? last.text + text : null;
+      if (merged !== null) {
+        const w = measure(merged, t.b, t.i, size);
+        curWidth += w - last.width;
+        last.text = merged;
+        last.width = w;
+      } else {
+        const w = measure(text, t.b, t.i, size);
+        cur.push({ text, b: t.b, i: t.i, u: t.u, width: w });
+        curWidth += w;
+      }
+    };
+    for (const tok of tokenize(p)) {
+      if ("br" in tok) {
+        flush(true);
+        continue;
+      }
+      if (tok.space) {
+        if (cur.length > 0) pendingSpace = { text: tok.text, b: tok.b, i: tok.i, u: tok.u };
+        continue;
+      }
+      const spaceW = pendingSpace ? measure(pendingSpace.text, pendingSpace.b, pendingSpace.i, size) : 0;
+      const wordW = measure(tok.text, tok.b, tok.i, size);
+      if (curWidth + spaceW + wordW <= avail) {
+        if (pendingSpace) add(pendingSpace.text, pendingSpace);
+        pendingSpace = null;
+        add(tok.text, tok);
+        continue;
+      }
+      if (cur.length > 0) flush(false);
+      pendingSpace = null;
+      if (wordW <= avail) {
+        add(tok.text, tok);
+        continue;
+      }
+      let piece = "";
+      for (const ch of Array.from(tok.text)) {
+        if (piece !== "" && measure(piece + ch, tok.b, tok.i, size) > avail) {
+          add(piece, tok);
+          flush(false);
+          piece = "";
+        }
+        piece += ch;
+      }
+      if (piece !== "") add(piece, tok);
+    }
+    if (cur.length > 0 || rows.length === 0) flush(true);
+    rows.forEach((segs, r) => {
+      const isLast = r === rows.length - 1 || hardBreak[r];
+      const lineWidth = segs.reduce((s, x2) => s + x2.width, 0);
+      let x = indent;
+      if (p.align === "CENTER") x = indent + (avail - lineWidth) / 2;
+      else if (p.align === "RIGHT") x = indent + (avail - lineWidth);
+      lines.push({
+        x,
+        size,
+        gapBefore: r === 0 && index > 0 ? Math.max(size * PARAGRAPH_GAP, prevTitle ? TITLE_GAP_AFTER : 0) : 0,
+        bullet: p.bullet && r === 0,
+        justify: p.align === "JUSTIFY" && !isLast,
+        last: isLast,
+        segments: segs
+      });
+    });
+  });
+  return lines;
+}
+var FILES = {
+  "400": ["nunito-400.ttf"],
+  "700": ["nunito-700.ttf"],
+  "400i": ["nunito-latin-400-italic.woff", "nunito-latin-ext-400-italic.woff"],
+  "700i": ["nunito-latin-700-italic.woff", "nunito-latin-ext-700-italic.woff"]
+};
+var fontBytes = /* @__PURE__ */ new Map();
+function loadFile(name) {
+  let p = fontBytes.get(name);
+  if (!p) {
+    p = readFile(fileURLToPath(new URL(`../assets/${name}`, import.meta.url)));
+    fontBytes.set(name, p);
+    p.catch(() => {
+      if (fontBytes.get(name) === p) fontBytes.delete(name);
+    });
+  }
+  return p;
+}
+var faceKey = (b, i) => b ? i ? "700i" : "700" : i ? "400i" : "400";
+function pieces(face, text) {
+  const out = [];
+  for (const ch of Array.from(text)) {
+    const cp = ch.codePointAt(0);
+    let idx = face.has.findIndex((h) => h(cp));
+    if (idx < 0) idx = 0;
+    const last = out[out.length - 1];
+    if (last && last.font === face.fonts[idx]) last.text += ch;
+    else out.push({ font: face.fonts[idx], text: ch });
+  }
+  return out;
+}
+async function loadFaces(doc) {
+  doc.registerFontkit(fontkit);
+  const faces = {};
+  for (const key of Object.keys(FILES)) {
+    const fonts = [];
+    const has = [];
+    for (const name of FILES[key]) {
+      const bytes = await loadFile(name);
+      const kit = fontkit.create(bytes);
+      has.push((cp) => kit.hasGlyphForCodePoint(cp));
+      fonts.push(await doc.embedFont(bytes, { subset: true }));
+    }
+    faces[key] = { fonts, has };
+  }
+  return faces;
+}
+function clean(text, faces) {
+  let out = "";
+  for (const ch of Array.from(text)) {
+    const cp = ch.codePointAt(0);
+    if (ch === "\n" || /\s/.test(ch)) {
+      out += ch === "\n" ? "\n" : " ";
+    } else if (cp < 32 || cp >= 127 && cp < 160) {
+      continue;
+    } else if (faces["400"].has.some((h) => h(cp)) || faces["400i"].has.some((h) => h(cp))) {
+      out += ch;
+    } else {
+      out += "?";
+    }
+  }
+  return out;
+}
+var PAGE_W = 595.28;
+var PAGE_H = 841.89;
+var MARGIN = 70.87;
+var FOOTER_BASE = 38;
+var INK = rgb(0.1, 0.1, 0.12);
+var GREY = rgb(0.45, 0.45, 0.48);
+var RULE = rgb(0.75, 0.75, 0.78);
+var lineHeight = (l) => l.size * LEADING;
+async function embedImage(doc, bytes) {
+  if (!bytes || bytes.length === 0) return null;
+  try {
+    return await doc.embedPng(bytes);
+  } catch {
+    try {
+      return await doc.embedJpg(bytes);
+    } catch {
+      return null;
+    }
+  }
+}
+async function renderCertificatePdf(input) {
+  const doc = await PDFDocument.create();
+  doc.setTitle(input.title);
+  doc.setAuthor("");
+  doc.setProducer("");
+  doc.setCreator("");
+  doc.setSubject("");
+  doc.setKeywords([]);
+  const faces = await loadFaces(doc);
+  const measure = (text, b, i, size) => pieces(faces[faceKey(b, i)], text).reduce((s, p) => s + p.font.widthOfTextAtSize(p.text, size), 0);
+  const prep = (ps) => ps.map((p) => ({ ...p, runs: p.runs.map((r) => ({ ...r, text: clean(r.text, faces) })) }));
+  const textW = PAGE_W - 2 * MARGIN;
+  const paragraphs2 = prep(input.paragraphs);
+  const titleAt = paragraphs2.findIndex((p) => p.size === "TITLE");
+  const headerCount = titleAt > 0 ? titleAt : 0;
+  const items = [];
+  const logo = await embedImage(doc, input.logoPng);
+  if (logo) {
+    const scale = Math.min(48 / logo.height, 200 / logo.width);
+    const w = logo.width * scale;
+    const h = logo.height * scale;
+    const align = paragraphs2[0]?.align ?? "LEFT";
+    const x = align === "CENTER" ? (textW - w) / 2 : align === "RIGHT" ? textW - w : 0;
+    items.push({ kind: "image", image: logo, w, h, x, gapBefore: 0 });
+  }
+  const logoGap = logo ? LOGO_GAP : 0;
+  const headerLines = layoutParagraphs(paragraphs2.slice(0, headerCount), textW, measure);
+  headerLines.forEach((line, k) => {
+    items.push({ kind: "line", line: k === 0 && logo ? { ...line, gapBefore: logoGap } : line });
+  });
+  if (headerCount > 0) items.push({ kind: "rule", height: RULE_HEIGHT });
+  const bodyLines = layoutParagraphs(paragraphs2.slice(headerCount), textW, measure);
+  let dateIdx = bodyLines.length - 1;
+  while (dateIdx > 0 && bodyLines[dateIdx].gapBefore === 0) dateIdx--;
+  bodyLines.forEach((line, k) => {
+    const gap = k === dateIdx && k > 0 ? Math.max(line.gapBefore, DATE_GAP_BEFORE) : line.gapBefore;
+    items.push({ kind: "line", line: { ...line, gapBefore: gap } });
+  });
+  const sig = await embedImage(doc, input.signatureImage);
+  const signerLines = [];
+  const signerName = clean(input.signer.name, faces).trim();
+  const signerTitle = clean(input.signer.title, faces).trim();
+  const plain = (text, b) => ({
+    align: "RIGHT",
+    size: "NORMAL",
+    bullet: false,
+    runs: [{ text, b, i: false, u: false }]
+  });
+  if (signerName) signerLines.push(...layoutParagraphs([plain(signerName, true)], textW, measure));
+  if (signerTitle) signerLines.push(...layoutParagraphs([plain(signerTitle, false)], textW, measure));
+  if (sig || signerLines.length > 0) {
+    let imgItem = null;
+    if (sig) {
+      const scale = Math.min(120 / sig.width, 60 / sig.height);
+      const w = sig.width * scale;
+      imgItem = { kind: "image", image: sig, w, h: sig.height * scale, x: textW - w, gapBefore: 0 };
+    }
+    if (imgItem) items.push(imgItem);
+    items.push({ kind: "signer", lines: signerLines, gapBefore: SIGNATURE_GAP, afterImage: imgItem !== null });
+  }
+  const footerLines = layoutParagraphs(
+    prep(input.footer).map((p) => ({ ...p, size: "SMALL" })),
+    textW,
+    measure
+  );
+  const footerH = footerLines.reduce((s, l) => s + lineHeight(l), 0);
+  const bottomLimit = FOOTER_BASE + footerH + (footerLines.length > 0 ? 18 : 0);
+  const top = PAGE_H - MARGIN;
+  const drawLine = (page2, line, topY, left, color = INK) => {
+    const baseline = topY - line.size * 1.08;
+    if (line.bullet) {
+      const bullet = faces["400"].has[0]("\u2022".codePointAt(0)) ? "\u2022" : "-";
+      page2.drawText(bullet, { x: left, y: baseline, size: line.size, font: faces["400"].fonts[0], color });
+    }
+    let spaceExtra = 0;
+    if (line.justify) {
+      const spaces = line.segments.reduce((n, s) => n + (s.text.match(/ /g)?.length ?? 0), 0);
+      const used = line.segments.reduce((s, x2) => s + x2.width, 0);
+      const target = textW - line.x;
+      if (spaces > 0 && used < target) spaceExtra = (target - used) / spaces;
+    }
+    let x = left + line.x;
+    for (const seg of line.segments) {
+      const face = faces[faceKey(seg.b, seg.i)];
+      const start = x;
+      const words = spaceExtra > 0 ? seg.text.split(/( )/) : [seg.text];
+      for (const word of words) {
+        if (word === "") continue;
+        for (const piece of pieces(face, word)) {
+          if (piece.text.trim() !== "") {
+            page2.drawText(piece.text, { x, y: baseline, size: line.size, font: piece.font, color });
+          }
+          x += piece.font.widthOfTextAtSize(piece.text, line.size);
+        }
+        if (word === " ") x += spaceExtra;
+      }
+      if (seg.u) {
+        page2.drawLine({ start: { x: start, y: baseline - 1.6 }, end: { x, y: baseline - 1.6 }, thickness: 0.6, color });
+      }
+    }
+  };
+  const drawFooter = (page2) => {
+    let y2 = FOOTER_BASE + footerH;
+    for (const l of footerLines) {
+      drawLine(page2, l, y2, MARGIN, GREY);
+      y2 -= lineHeight(l);
+    }
+  };
+  let page = doc.addPage([PAGE_W, PAGE_H]);
+  drawFooter(page);
+  let y = top;
+  const newPage = () => {
+    page = doc.addPage([PAGE_W, PAGE_H]);
+    drawFooter(page);
+    y = top;
+  };
+  for (const item of items) {
+    if (item.kind === "line") {
+      const h = item.line.gapBefore + lineHeight(item.line);
+      if (y - h < bottomLimit && y < top) newPage();
+      const gap = y === top ? 0 : item.line.gapBefore;
+      drawLine(page, item.line, y - gap, MARGIN);
+      y -= gap + lineHeight(item.line);
+    } else if (item.kind === "rule") {
+      const mid = item.height / 2;
+      if (y - item.height < bottomLimit && y < top) newPage();
+      page.drawLine({
+        start: { x: MARGIN, y: y - mid },
+        end: { x: PAGE_W - MARGIN, y: y - mid },
+        thickness: 0.5,
+        color: RULE
+      });
+      y -= item.height;
+    } else if (item.kind === "image") {
+      const next = items[items.indexOf(item) + 1];
+      const follow = next && next.kind === "signer" ? next.gapBefore + next.lines.reduce((s, l) => s + lineHeight(l), 0) : 0;
+      if (y - item.h - follow - (item.gapBefore + SIGNATURE_GAP) < bottomLimit && y < top && next?.kind === "signer") newPage();
+      const gap = next?.kind === "signer" && y !== top ? SIGNATURE_GAP : item.gapBefore;
+      page.drawImage(item.image, { x: MARGIN + item.x, y: y - gap - item.h, width: item.w, height: item.h });
+      y -= gap + item.h + 4;
+    } else {
+      const afterImage = item.afterImage;
+      const h = item.lines.reduce((s, l) => s + lineHeight(l), 0);
+      if (!afterImage && y - h - item.gapBefore < bottomLimit && y < top) newPage();
+      if (!afterImage && y !== top) y -= item.gapBefore;
+      for (const l of item.lines) {
+        drawLine(page, l, y, MARGIN);
+        y -= lineHeight(l);
+      }
+    }
+  }
+  return doc.save();
+}
+
+// src/approvals.ts
+var MAX_TEXT_JSON = 2e5;
+var MAX_SIGNER_IMAGE = 2e5;
+var MAX_LABEL4 = 80;
+var isObj2 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var ALIGNS2 = ["LEFT", "CENTER", "RIGHT", "JUSTIFY"];
+var SIZES2 = ["SMALL", "NORMAL", "LARGE", "TITLE"];
+function paragraphs(raw) {
+  if (!Array.isArray(raw)) return null;
+  for (const p of raw) {
+    if (!isObj2(p) || !ALIGNS2.includes(p.align) || !SIZES2.includes(p.size) || typeof p.bullet !== "boolean") return null;
+    if (!Array.isArray(p.runs)) return null;
+    for (const r of p.runs) {
+      if (!isObj2(r) || typeof r.text !== "string") return null;
+      if (typeof r.b !== "boolean" || typeof r.i !== "boolean" || typeof r.u !== "boolean") return null;
+    }
+  }
+  return raw;
+}
+var isTime = (v) => typeof v === "number" && Number.isFinite(v) || v instanceof Date || isObj2(v) && typeof v.toMillis === "function";
+function parseApproval(raw) {
+  if (!isObj2(raw)) return null;
+  const body = paragraphs(raw.body);
+  const footer = paragraphs(raw.footer);
+  if (body === null || footer === null) return null;
+  if (JSON.stringify(body).length + JSON.stringify(footer).length > MAX_TEXT_JSON) return null;
+  const signer = raw.signer;
+  if (!isObj2(signer) || typeof signer.name !== "string" || typeof signer.title !== "string" || typeof signer.imageBase64 !== "string") return null;
+  if (signer.imageBase64.length > MAX_SIGNER_IMAGE) return null;
+  if (typeof raw.title !== "string" || typeof raw.approvedBy !== "string" || !isTime(raw.approvedAt)) return null;
+  const common = {
+    body,
+    footer,
+    title: raw.title,
+    signer: { name: signer.name, title: signer.title, imageBase64: signer.imageBase64 },
+    approvedBy: raw.approvedBy,
+    approvedAt: raw.approvedAt
+  };
+  if (raw.kind === "REQUEST") {
+    return typeof raw.requestId === "string" && raw.requestId !== "" ? { ...common, kind: "REQUEST", requestId: raw.requestId } : null;
+  }
+  if (raw.kind === "DIRECT") {
+    if (typeof raw.email !== "string" || typeof raw.firstName !== "string" || typeof raw.lastName !== "string") return null;
+    return { ...common, kind: "DIRECT", email: raw.email, firstName: raw.firstName, lastName: raw.lastName };
+  }
+  return null;
+}
+var DEFAULT_MAIL = {
+  fr: { subject: "Ton attestation de b\xE9n\xE9volat", body: "Bonjour {firstName}, voici ton attestation de b\xE9n\xE9volat pour {association}. Elle est jointe \xE0 cet e-mail." },
+  en: { subject: "Your volunteer certificate", body: "Hello {firstName}, here is your volunteer certificate for {association}. It is attached to this e-mail." },
+  de: { subject: "Deine Best\xE4tigung \xFCber ehrenamtliches Engagement", body: "Hallo {firstName}, hier ist deine Best\xE4tigung \xFCber dein ehrenamtliches Engagement bei {association}. Sie ist dieser E-Mail angeh\xE4ngt." },
+  it: { subject: "La tua attestazione di volontariato", body: "Ciao {firstName}, ecco la tua attestazione di volontariato per {association}. La trovi in allegato a questa e-mail." },
+  es: { subject: "Tu certificado de voluntariado", body: "Hola {firstName}, aqu\xED tienes tu certificado de voluntariado para {association}. Va adjunto a este correo." }
+};
+var fillMail = (text, firstName, association) => text.split("{firstName}").join(firstName).split("{association}").join(association);
+var errorCode5 = (e) => {
+  const code2 = e?.code;
+  return code2 === void 0 ? "" : String(code2);
+};
+async function renderAndSend(db, mail, orgId, approval, to, firstName, lastName) {
+  const published = (await db.doc(`orgs/${orgId}/portalMail/certificate`).get()).data();
+  const rawTemplate = published?.template;
+  const template = rawTemplate !== null && typeof rawTemplate === "object" ? parseTemplate(rawTemplate) : null;
+  const language = template?.language ?? "en";
+  const defaults = DEFAULT_MAIL[language] ?? DEFAULT_MAIL.en;
+  const publishedAssociation = stringOf(published?.association).trim();
+  const association = (publishedAssociation !== "" ? publishedAssociation : await associationName(db, orgId)).trim();
+  const logoPng = logoBytes(stringOf(published?.logoBase64));
+  const signature = approval.signer.imageBase64.trim();
+  let pdf;
+  try {
+    pdf = await renderCertificatePdf({
+      paragraphs: approval.body,
+      footer: approval.footer,
+      logoPng,
+      signatureImage: signature === "" ? null : Buffer.from(signature, "base64"),
+      signer: { name: approval.signer.name, title: approval.signer.title },
+      title: approval.title
+    });
+  } catch (e) {
+    logger6.error("certificate not rendered", { reason: "RENDER_FAILED", code: errorCode5(e) });
+    return false;
+  }
+  if (isCapture()) {
+    await db.collection("_testCertificate").add({ to, title: approval.title, body: approval.body, footer: approval.footer, capturedAt: Date.now() });
+  }
+  const m = template?.mail;
+  const name = firstName.trim();
+  const message = buildCertificateMail({
+    to,
+    fromName: ((m?.fromName.trim() ?? "") === "" ? association : m.fromName).trim().slice(0, MAX_LABEL4),
+    fromAddress: m?.fromAddress.trim() ?? "",
+    replyTo: m?.replyTo.trim() ?? "",
+    subject: fillMail((m?.subject.trim() ?? "") === "" ? defaults.subject : m.subject, name, association),
+    body: fillMail((m?.body.trim() ?? "") === "" ? defaults.body : m.body, name, association),
+    pdf,
+    fileName: certificateFileName(firstName, lastName, language),
+    logoPng
+  });
+  return (await sendMail(message, mail)).sent;
+}
+async function onApprovalCreated(db, mail, orgId, approvalId, raw) {
+  if (raw === void 0) return;
+  const ref = db.doc(`orgs/${orgId}/certificateApprovals/${approvalId}`);
+  try {
+    if (raw.kind === "DIRECT") await sendDirect(db, mail, orgId, ref, raw);
+    else await sendForRequest(db, mail, orgId, ref, approvalId, raw);
+  } catch (e) {
+    logger6.error("certificate approval failed", { orgId, reason: "FAILED", code: errorCode5(e) });
+  }
+}
+async function sendDirect(db, mail, orgId, ref, raw) {
+  const claimed = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists || snap.get("status") !== void 0) return null;
+    tx.update(ref, { status: STATUS_PROCESSING, processingAt: Date.now() });
+    return snap.data();
+  });
+  if (claimed === null) return;
+  const fail = async (reason) => {
+    logger6.info("certificate not sent", { orgId, type: "DIRECT", reason });
+    await ref.update({ status: "FAILED", reason, processedAt: Date.now() });
+  };
+  const approval = parseApproval(claimed);
+  if (approval === null || approval.kind !== "DIRECT") return fail("INVALID");
+  const to = safeRecipient(kotlinTrim(approval.email));
+  if (to === null) return fail("NO_EMAIL");
+  let sent = false;
+  try {
+    sent = await renderAndSend(db, mail, orgId, approval, to, approval.firstName, approval.lastName);
+  } catch (e) {
+    logger6.error("certificate not sent", { orgId, reason: "SEND_FAILED", code: errorCode5(e) });
+  }
+  if (!sent) return fail("SEND_FAILED");
+  await ref.delete();
+}
+async function sendForRequest(db, mail, orgId, ref, approvalId, raw) {
+  const requestId = typeof raw.requestId === "string" && raw.requestId !== "" ? raw.requestId : null;
+  if (requestId === null) {
+    await ref.delete();
+    return;
+  }
+  const requestRef = db.doc(`orgs/${orgId}/portalRequests/${requestId}`);
+  const approval = parseApproval(raw);
+  try {
+    const request = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(requestRef);
+      if (!snap.exists) return null;
+      const data = snap.data();
+      if (data.type !== "CERTIFICATE_EMAIL" || data.status !== "APPROVED" || data.approvalId !== approvalId) return null;
+      tx.update(requestRef, { status: STATUS_PROCESSING, processingAt: Date.now(), processingDevice: "server" });
+      return data;
+    });
+    if (request === null) {
+      logger6.info("approval ignored", { orgId, type: "REQUEST", reason: "NOT_APPROVED" });
+      return;
+    }
+    const back = async (reason) => {
+      logger6.info("certificate not sent", { orgId, uid: stringOf(request.uid), type: "REQUEST", reason });
+      await requestRef.update({
+        status: "PENDING_REVIEW",
+        reason,
+        processedAt: Date.now(),
+        reviewAt: FieldValue3.serverTimestamp(),
+        approvalId: FieldValue3.delete()
+      });
+    };
+    if (approval === null || approval.kind !== "REQUEST") return back("INVALID");
+    const uid = stringOf(request.uid);
+    const linked = await db.collection(`orgs/${orgId}/volunteers`).where("portalUid", "==", uid).get();
+    const owner = linked.docs.find((d) => isOwner(d, uid));
+    if (owner === void 0) return back("NO_ACCESS");
+    const to = safeRecipient(kotlinTrim(stringOf(owner.get("email"))));
+    if (to === null) return back("NO_EMAIL");
+    let sent = false;
+    try {
+      sent = await renderAndSend(db, mail, orgId, approval, to, stringOf(owner.get("name")), stringOf(owner.get("lastNameAbbreviation")));
+    } catch (e) {
+      logger6.error("certificate not sent", { orgId, uid, reason: "SEND_FAILED", code: errorCode5(e) });
+    }
+    if (!sent) return back("SEND_FAILED");
+    logger6.info("certificate sent", { orgId, uid, type: "REQUEST" });
+    await requestRef.update({ status: "DONE", reason: "", processedAt: Date.now(), approvalId: FieldValue3.delete() });
+  } finally {
+    await ref.delete().catch(() => void 0);
+  }
+}
+
 // src/index.ts
 var REGION = defineString("REGION", { default: "europe-west1" });
 var GMAIL_USER = defineString("GMAIL_USER");
@@ -1687,7 +2422,7 @@ function transport(db) {
     mode: () => {
       const mode = MAIL_MODE.value().trim().toLowerCase();
       if (mode === "workspace" || mode === "app_password") return mode;
-      logger6.warn("unknown MAIL_MODE, using app_password", { length: mode.length });
+      logger7.warn("unknown MAIL_MODE, using app_password", { length: mode.length });
       return "app_password";
     },
     user: () => GMAIL_USER.value(),
@@ -1707,7 +2442,7 @@ async function findEmailAccount(email) {
     return { uid: user.uid, password: user.providerData.some((p) => p.providerId === "password") };
   } catch (e) {
     const code2 = String(e?.code ?? "");
-    if (code2 !== "auth/user-not-found") logger6.error("account lookup failed", { code: code2 });
+    if (code2 !== "auth/user-not-found") logger7.error("account lookup failed", { code: code2 });
     return null;
   }
 }
@@ -1737,6 +2472,21 @@ var onPortalRequestWritten = onDocumentWritten(
     await onRequestDocument(db, bucket, mail, event.params.orgId, event.params.requestId, after.data());
   }
 );
+var onCertificateApprovalCreated = onDocumentCreated(
+  {
+    document: "orgs/{orgId}/certificateApprovals/{approvalId}",
+    region: REGION,
+    retry: false,
+    timeoutSeconds: 120,
+    secrets: [GMAIL_APP_PASSWORD]
+  },
+  async (event) => {
+    const snap = event.data;
+    if (!snap?.exists) return;
+    const { db } = admin();
+    await onApprovalCreated(db, transport(db), event.params.orgId, event.params.approvalId, snap.data());
+  }
+);
 var onMailOutboxWritten = onDocumentWritten(
   {
     document: "orgs/{orgId}/mailOutbox/{mailId}",
@@ -1764,25 +2514,35 @@ var onPortalGoogleClaimWritten = onDocumentWritten(
 );
 export {
   MAX_RAW_LENGTH,
+  MAX_SIGNER_IMAGE,
+  MAX_TEXT_JSON,
   MailSendError,
+  buildCertificateMail,
   buildQrMail,
+  certificateFileName,
   cleanEmail,
   cleanName,
   cleanPhone,
   delegatedToken,
   domainAllowed,
   gmailSendRaw,
+  layoutParagraphs,
+  onApprovalCreated,
+  onCertificateApprovalCreated,
   onMailOutboxWritten,
   onOutboxDocument,
   onPortalGoogleClaimWritten,
   onPortalRequestWritten,
   onSignupWritten,
+  parseApproval,
   parseDomains,
   parseGoogleClaim,
   parseMailTemplate,
   parseOutbox,
   parseRequest,
   parseSignup,
+  parseTemplate,
+  renderCertificatePdf,
   rewriteHeaders,
   safeRecipient,
   sendMail,

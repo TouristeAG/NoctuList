@@ -149,7 +149,7 @@ link** on the profile so the person can choose their own.
 own space on the portal.** It builds on the volunteer portal above.
 
 1. **Firestore, Rules:** publish the new [`firebase/firestore.rules`](firebase/firestore.rules)
-   (version 19). Storage rules are unchanged.
+   (version 20). Storage rules are unchanged.
 2. **Hosting and functions:** export the form site again and redeploy both
    (`firebase deploy --only hosting,functions` from the exported folder). Redeploy the functions
    with this version: the old ones drop guest signups.
@@ -166,6 +166,34 @@ after the event. Invitations from the portal are opened event by event in the gu
 and need guest forms to be on; their answers arrive with the other guest form answers for review.
 Full guest list access for a date is given from the profile's portal access card; the changes the
 person makes are applied by a NoctuList device that is online.
+
+### Optional: volunteer certificate
+
+**Skip this unless volunteers should be able to ask for a volunteer certificate from their space.**
+It builds on the volunteer portal above and on automatic processing (Cloud Functions) below: the
+PDF is made and mailed by the server, so without it nothing is sent.
+
+1. **Firestore, Rules:** publish the new [`firebase/firestore.rules`](firebase/firestore.rules)
+   (version 21). Storage rules are unchanged.
+2. **Hosting and functions, together:** export the form site again and run
+   `firebase deploy --only hosting,functions` from the exported folder. This also deploys the
+   `onCertificateApprovalCreated` function, which sends a certificate once the team approves it.
+   The functions now depend on `pdf-lib` and `@pdf-lib/fontkit` and ship their fonts under
+   `functions/assets`; Cloud Build installs the dependencies from the lock file during the deploy.
+   Deploying only one of the two leaves the portal button and the server out of step.
+3. In NoctuList **Settings, Firebase, Volunteer portal**, turn on **Volunteer certificate**, then
+   edit the texts, logo and signature in the certificate editor (five languages: fr, en, de, it,
+   es). Turning the switch on before any template was saved opens the editor. Volunteers see the
+   request in the portal only once a template is saved and the switch is on.
+4. Update every NoctuList device. Older versions reject the new request type, so the release is
+   mandatory.
+
+A volunteer asks from the portal. The team reviews the request in NoctuList, can edit the text, then
+approves it (the PDF is e-mailed to the volunteer) or refuses it with a note shown in the portal.
+Admins can also generate a certificate from a volunteer's panel. Two requests must be at least 10
+minutes apart. Nothing is sent without a request or an approval. The PDF is not stored; the
+approved text stays in Firestore until the server has sent it or, for a certificate generated from a
+volunteer's panel whose send failed, until an admin dismisses it (Dismiss) or sends it again.
 
 ### Optional: sign in with an association Google account
 

@@ -9,6 +9,9 @@ import { pathToFileURL } from "node:url";
 export const PROJECT_ID = "demo-noctulist";
 export const ORG = "demo-org";
 const HOST = "127.0.0.1";
+// Another preview may hold the default ports: AUTH_PORT and FIRESTORE_PORT point the seed elsewhere.
+const AUTH_PORT = process.env.AUTH_PORT || "9099";
+const FIRESTORE_PORT = Number(process.env.FIRESTORE_PORT || 8080);
 const DAY = 24 * 60 * 60 * 1000;
 
 const now = Date.now();
@@ -17,7 +20,7 @@ export const GOOGLE_DOMAIN = "asso.example";
 export const JEAN_GOOGLE = `jean@${GOOGLE_DOMAIN}`;
 
 async function createAuthUser(email, password, emailVerified) {
-  const base = `http://${HOST}:9099/identitytoolkit.googleapis.com/v1`;
+  const base = `http://${HOST}:${AUTH_PORT}/identitytoolkit.googleapis.com/v1`;
   let res = await fetch(`${base}/accounts:signUp?key=fake-api-key`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -34,13 +37,13 @@ async function createAuthUser(email, password, emailVerified) {
     body = await res.json();
   }
   if (emailVerified) {
-    await fetch(`http://${HOST}:9099/emulator/v1/projects/${PROJECT_ID}/accounts/${body.localId}`, {
+    await fetch(`http://${HOST}:${AUTH_PORT}/emulator/v1/projects/${PROJECT_ID}/accounts/${body.localId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Authorization: "Bearer owner" },
       body: JSON.stringify({ emailVerified: true }),
     }).catch(() => {});
     // The emulator's admin endpoint: projects/{p}/accounts:update with a fake owner token.
-    await fetch(`http://${HOST}:9099/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:update`, {
+    await fetch(`http://${HOST}:${AUTH_PORT}/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:update`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: "Bearer owner" },
       body: JSON.stringify({ localId: body.localId, emailVerified: true }),
@@ -52,7 +55,7 @@ async function createAuthUser(email, password, emailVerified) {
 export async function seed() {
   const env = await initializeTestEnvironment({
     projectId: PROJECT_ID,
-    firestore: { host: HOST, port: 8080 },
+    firestore: { host: HOST, port: FIRESTORE_PORT },
   });
   await env.clearFirestore();
   const portalUid = await createAuthUser("lea.demo@example.org", "Demo-Passw0rd!", true);
@@ -61,6 +64,8 @@ export async function seed() {
   // artist groups and, like an account the app creates, has never verified it.
   const ninaUid = await createAuthUser("nina.demo@example.org", "Demo-Passw0rd!", true);
   const managerUid = await createAuthUser("manager.demo@example.org", "Demo-Passw0rd!", false);
+  // A volunteer whose page only has an initial for the last name: the certificate asks for it in full.
+  const paulUid = await createAuthUser("paul.demo@example.org", "Demo-Passw0rd!", true);
 
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
@@ -70,6 +75,7 @@ export async function seed() {
     await setDoc(org("institutionSettings/profile_photos_enabled"), { value: "true", lastModified: now });
     await setDoc(org("institutionSettings/volunteer_portal_google_enabled"), { value: "true", lastModified: now });
     await setDoc(org("institutionSettings/volunteer_portal_google_domains"), { value: GOOGLE_DOMAIN, lastModified: now });
+    await setDoc(org("institutionSettings/volunteer_portal_certificate_enabled"), { value: "true", lastModified: now });
     await setDoc(org("institutionSettings/guest_portal_enabled"), { value: "true", lastModified: now });
     await setDoc(org("institutionSettings/temp_guest_portal_enabled"), { value: "true", lastModified: now });
 
@@ -167,7 +173,23 @@ export async function seed() {
         { at: now - 16 * DAY, type: "MANUAL_ADJUSTMENT", amount: 10, label: "Bonus montage", venue: "" },
       ],
     };
+    // Job types of the certificate, with their days (YYYYMMDD), as the devices publish them.
+    const dayInt = (daysAgo) => {
+      const d = new Date(now - daysAgo * DAY);
+      return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+    };
+    const certificate = {
+      types: [
+        { name: "Comité", category: "MANDATE", days: [dayInt(400)] },
+        { name: "Bar", category: "SHIFT", days: [dayInt(45), dayInt(16), dayInt(4)] },
+        { name: "Entrée", category: "SHIFT", days: [dayInt(9)] },
+        { name: "Montage", category: "SHIFT", days: [dayInt(23)] },
+        { name: "Affiches", category: "GRAPHIC_EVENT", days: [dayInt(100)] },
+        { name: "Assemblée", category: "MEETING", days: [dayInt(30)] },
+      ],
+    };
     const tail = {
+      certificate,
       wallet, qrEmailAllowed: true, mustSetPassword: false, association: "Association Démo",
       googleEmail: "", googleLinkedBy: "", googleLinkAvailable: true,
     };
@@ -250,6 +272,13 @@ export async function seed() {
     await setDoc(org(`volunteerPortal/${jeanUid}`), {
       schema: jean.timeline ? 2 : 1,
       payload: JSON.stringify(jean),
+      contentHash: "demo",
+      updatedAt: now - 3 * 60 * 1000,
+    });
+    const paul = { ...payload, firstName: "Paul", lastName: "D.", email: "paul.demo@example.org" };
+    await setDoc(org(`volunteerPortal/${paulUid}`), {
+      schema: paul.timeline ? 2 : 1,
+      payload: JSON.stringify(paul),
       contentHash: "demo",
       updatedAt: now - 3 * 60 * 1000,
     });
@@ -373,7 +402,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   seed()
     .then(({ portalUid }) => {
       console.log("Seeded demo-org. Portal login: lea.demo@example.org / Demo-Passw0rd!  uid", portalUid);
-      console.log(`Also jean.demo@example.org (same password). Google sign-in: ${JEAN_GOOGLE} is matched by the`);
+      console.log(`Also jean.demo@example.org and paul.demo@example.org (last name "D.", same password). Google sign-in: ${JEAN_GOOGLE} is matched by the`);
       console.log(`admin address; any other @${GOOGLE_DOMAIN} account can be linked from Léa's "My account".`);
       console.log("Guest form   http://127.0.0.1:5002/g/demo-org/demoGuestForm0001");
       console.log("Photo        http://127.0.0.1:5002/p/demo-org/demoPhotoReq0001");

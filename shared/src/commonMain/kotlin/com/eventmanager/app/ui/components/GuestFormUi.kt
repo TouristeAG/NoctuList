@@ -80,6 +80,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
@@ -118,7 +120,7 @@ import org.jetbrains.compose.resources.stringResource
 /** Amber used for spent temporary-guest entries and pending form reviews. */
 val GuestFormPendingAmber = Color(0xFF8D6E00)
 
-private data class GuestFormAttentionPalette(
+internal data class GuestFormAttentionPalette(
     val accent: Color,
     val container: Color,
     val onContainer: Color,
@@ -128,7 +130,7 @@ private data class GuestFormAttentionPalette(
 )
 
 @Composable
-private fun rememberGuestFormAttentionPalette(): GuestFormAttentionPalette {
+internal fun rememberGuestFormAttentionPalette(): GuestFormAttentionPalette {
     val scheme = MaterialTheme.colorScheme
     val isDark = scheme.background.luminance() < 0.45f
     return remember(scheme, isDark) {
@@ -165,12 +167,9 @@ fun GuestFormArrivalToastHost(
 ) {
     val enabled by viewModel.guestFormsEnabled.collectAsState()
     val pending by viewModel.pendingGuestForms.collectAsState()
-    val palette = rememberGuestFormAttentionPalette()
     var seenIds by remember { mutableStateOf<Set<String>?>(null) }
     var toastForm by remember { mutableStateOf<GuestForm?>(null) }
     var visible by remember { mutableStateOf(false) }
-    val density = LocalDensity.current
-    val slideClearancePx = with(density) { 48.dp.roundToPx() }
 
     LaunchedEffect(enabled) {
         if (!enabled) return@LaunchedEffect
@@ -210,13 +209,33 @@ fun GuestFormArrivalToastHost(
         }
     }
 
-    if (toastForm == null) return
+    val form = toastForm ?: return
+    AttentionToastPopup(
+        visible = visible,
+        title = stringResource(Res.string.guest_form_pending_title),
+        message = stringResource(Res.string.guest_form_pending_one, form.artistName),
+        modifier = modifier,
+    )
+}
 
+/** The amber toast sliding in at the top right; shared by the guest-form and certificate hosts. Click does nothing. */
+@Composable
+internal fun AttentionToastPopup(
+    visible: Boolean,
+    title: String,
+    message: String,
+    modifier: Modifier = Modifier,
+    icon: ImageVector = Icons.AutoMirrored.Filled.Assignment,
+    topOffset: Dp = 16.dp,
+) {
+    val palette = rememberGuestFormAttentionPalette()
+    val density = LocalDensity.current
+    val slideClearancePx = with(density) { 48.dp.roundToPx() }
     Popup(
         alignment = Alignment.TopEnd,
         offset = IntOffset(
             x = with(density) { (-16).dp.roundToPx() },
-            y = with(density) { 16.dp.roundToPx() },
+            y = with(density) { topOffset.roundToPx() },
         ),
         properties = PopupProperties(
             focusable = false,
@@ -226,7 +245,7 @@ fun GuestFormArrivalToastHost(
     ) {
         Box(Modifier.clipToBounds()) {
             AnimatedVisibility(
-                visible = visible && toastForm != null,
+                visible = visible,
                 enter = slideInHorizontally(
                     animationSpec = tween(320),
                     initialOffsetX = { full -> full + slideClearancePx },
@@ -237,7 +256,6 @@ fun GuestFormArrivalToastHost(
                 ) + fadeOut(animationSpec = tween(240)),
                 modifier = modifier,
             ) {
-                val form = toastForm ?: return@AnimatedVisibility
                 Surface(
                     shape = RoundedCornerShape(14.dp),
                     color = palette.container,
@@ -266,7 +284,7 @@ fun GuestFormArrivalToastHost(
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
-                                Icons.AutoMirrored.Filled.Assignment,
+                                icon,
                                 contentDescription = null,
                                 tint = palette.accent,
                                 modifier = Modifier.size(20.dp),
@@ -274,13 +292,13 @@ fun GuestFormArrivalToastHost(
                         }
                         Column(modifier = Modifier.weight(1f, fill = false)) {
                             Text(
-                                stringResource(Res.string.guest_form_pending_title),
+                                title,
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = palette.accent,
                             )
                             Text(
-                                stringResource(Res.string.guest_form_pending_one, form.artistName),
+                                message,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = palette.onContainer,
                                 maxLines = 2,
