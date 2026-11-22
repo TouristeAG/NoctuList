@@ -15,6 +15,8 @@ All notable changes to NoctuList are documented here. Version numbers follow [Se
 - **Full guest list access.** From a profile's portal access card, "Manage guest list access" gives a volunteer, a permanent guest or a list contact the whole temporary guest list of a date, for every venue or one. The person sees it in their space (who entered, accesses, contacts) and adds, edits or removes guests directly; a NoctuList device applies the changes. Current access and history are listed apart.
 - **Invitations from the portal.** The admin opens invitations event by event, with a maximum number of people and a maximum per access. Additions and removals are reviewed like guest form answers.
 
+- **Volunteer certificate.** Volunteers can ask for a certificate of their volunteer work from the portal and receive it as a PDF by e-mail. The association edits the texts, logo and signature in Settings, Firebase, in five languages, and switches the option on there. Update every device: older versions reject the new request type, so this release is mandatory.
+
 ### Fixes
 
 - The volunteer QR code read through a Google account in domain mode exceeded the Firestore document-access limit (12 of 10); the rules helpers now use get-only reads.
@@ -22,8 +24,8 @@ All notable changes to NoctuList are documented here. Version numbers follow [Se
 
 ### Upgrade notes
 
-- **Firestore rules:** version 19 (publish again). Storage rules unchanged.
-- **Hosting and functions:** export the form site again and run `firebase deploy --only hosting,functions`, at the same time as the rules. The old functions drop guest signups and name requests.
+- **Firestore rules:** version 20 (publish again). Storage rules unchanged.
+- **Hosting and functions:** export the form site again and run `firebase deploy --only hosting,functions`, at the same time as the rules. The functions add the `pdf-lib` and `@pdf-lib/fontkit` dependencies and their fonts, so run `npm install` in `functions` first. The old functions drop guest signups and name requests.
 - **Database:** Room migrations 53 to 57 (guest portal fields, `temporaryPortalEmail`, portal invite fields and `portalRevoked`, then guest list access grants).
 - **Guest list changes from the portal** are applied by a NoctuList device that is online; without one they wait.
 - **Portal accounts after the update:** temporary guest lists opened before keep their sign-in without a confirmed e-mail. A portal access cut before the update stays cut only if the profile kept an admin Google address; otherwise it can be joined again to the account of the same address, so check those profiles once.

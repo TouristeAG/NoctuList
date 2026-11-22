@@ -167,6 +167,29 @@ and need guest forms to be on; their answers arrive with the other guest form an
 Full guest list access for a date is given from the profile's portal access card; the changes the
 person makes are applied by a NoctuList device that is online.
 
+### Optional: volunteer certificate
+
+**Skip this unless volunteers should be able to ask for a volunteer certificate from their space.**
+It builds on the volunteer portal above and on automatic processing (Cloud Functions) below: the
+PDF is made and mailed by the server, so without it nothing is sent.
+
+1. **Firestore, Rules:** publish the new [`firebase/firestore.rules`](firebase/firestore.rules)
+   (version 20). Storage rules are unchanged.
+2. **Hosting and functions, together:** export the form site again and run
+   `firebase deploy --only hosting,functions` from the exported folder. The functions now depend on
+   `pdf-lib` and `@pdf-lib/fontkit` and ship their fonts under `functions/assets`, so run
+   `npm install` in `functions` first. Deploying only one of the two leaves the portal button
+   and the server out of step.
+3. In NoctuList **Settings, Firebase, Volunteer portal**, turn on **Volunteer certificate**, then
+   edit the texts, logo and signature in the certificate editor (five languages: fr, en, de, it,
+   es). Devices publish the template and the portal shows the request sheet.
+4. Update every NoctuList device. Older versions reject the new request type, so the release is
+   mandatory.
+
+A volunteer asks from the portal and receives the PDF by e-mail; two requests must be at least 10
+minutes apart. Nothing is sent without a request, and the certificate content is not stored in
+Firestore.
+
 ### Optional: sign in with an association Google account
 
 **Skip this unless the association has Google Workspace and wants volunteers to open their space
