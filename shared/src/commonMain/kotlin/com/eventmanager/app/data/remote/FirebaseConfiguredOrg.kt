@@ -139,6 +139,27 @@ object FirebaseConfiguredOrgCodec {
         return remote.any { it.orgId.trim() == source }
     }
 
+    /**
+     * The org list to write into `orgs/{targetOrgId}`, or null to leave it as it is.
+     *
+     * The org the admin acts from ([sourceOrgId]) gets this device's whole shared list: adds and
+     * removals are for its devices. Any other org keeps its own list: it only takes the new names
+     * of the orgs it already holds. Otherwise adding B "for every device of A" would also put A
+     * on the devices of B, which are not members of A and could not read it.
+     */
+    fun listForTarget(
+        targetOrgId: String,
+        sourceOrgId: String,
+        deviceShared: List<FirebaseConfiguredOrg>,
+        targetRemote: List<FirebaseConfiguredOrg>,
+    ): List<FirebaseConfiguredOrg>? {
+        if (targetOrgId.trim() == sourceOrgId.trim()) return deviceShared
+        if (targetRemote.isEmpty()) return null
+        val names = deviceShared.associate { it.orgId.trim() to it.displayName }
+        val updated = targetRemote.map { org -> names[org.orgId.trim()]?.let { org.copy(displayName = it) } ?: org }
+        return updated.takeIf { it != targetRemote }
+    }
+
     /** Sets the display name of [orgId]; a blank or ID-equal name clears it back to the ID. */
     fun rename(
         orgs: List<FirebaseConfiguredOrg>,

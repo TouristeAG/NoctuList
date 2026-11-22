@@ -612,7 +612,7 @@ class EventManagerViewModel(
             val auth = createFirebaseAuthService(platformContext)
             auth.restoreSession()
             syncCoordinator?.provisionFirebaseOrg(newOrgId.trim())
-            syncCoordinator?.replicateFirebaseConfiguredOrgs()
+            syncCoordinator?.replicateFirebaseConfiguredOrgs(sourceOrgId)
             val result = com.eventmanager.app.data.remote.FirebaseOrgInvitationActions.prepareInvitation(
                 gateway = createFirestoreGateway(platformContext, settings),
                 settings = settings,

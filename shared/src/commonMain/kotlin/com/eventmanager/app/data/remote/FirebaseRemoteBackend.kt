@@ -735,7 +735,7 @@ class FirebaseRemoteBackend(
      * Orgs added on this device only are neither in the list nor written to: their devices keep
      * their own list.
      */
-    suspend fun replicateConfiguredOrgsToAllOrgs() {
+    suspend fun replicateConfiguredOrgsToAllOrgs(sourceOrgId: String = resolveWriteOrgId()) {
         if (!firestoreGateway.isAvailable()) return
         val orgs = FirebaseConfiguredOrgCodec.sharedSubset(settingsManager.getFirebaseConfiguredOrgs())
         if (orgs.isEmpty()) return
@@ -757,17 +757,27 @@ class FirebaseRemoteBackend(
             return
         }
 
-        val payload = mapOf(
-            "value" to encoded,
-            "lastModified" to System.currentTimeMillis(),
-        )
+        val key = com.eventmanager.app.data.sync.InstitutionSettingsKeys.FIREBASE_CONFIGURED_ORGS
         adminOrgs.forEach { entry ->
+            val target = entry.orgId.trim()
             runCatching {
+                val value = if (target == sourceOrgId.trim()) {
+                    encoded
+                } else {
+                    // Another org keeps its own list; only the names of its orgs may change.
+                    val remote = FirebaseConfiguredOrgCodec.decode(
+                        firestoreGateway.getDocumentFromServer(target, "institutionSettings", key)
+                            ?.get("value")?.toString().orEmpty(),
+                    )
+                    FirebaseConfiguredOrgCodec.listForTarget(target, sourceOrgId, orgs, remote)
+                        ?.let { FirebaseConfiguredOrgCodec.encode(it) }
+                        ?: return@runCatching
+                }
                 firestoreGateway.upsertDocument(
-                    entry.orgId.trim(),
+                    target,
                     "institutionSettings",
-                    com.eventmanager.app.data.sync.InstitutionSettingsKeys.FIREBASE_CONFIGURED_ORGS,
-                    payload,
+                    key,
+                    mapOf("value" to value, "lastModified" to System.currentTimeMillis()),
                 )
             }
         }

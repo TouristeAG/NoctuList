@@ -117,5 +117,33 @@ class FirebaseConfiguredOrgCodecTest {
         assertEquals("club-a", decoded.single().label)
         assertEquals(false, decoded.single().localOnly)
     }
+
+    private val a = FirebaseConfiguredOrg("club-a", 0xFFE53935L, displayName = "Club A")
+    private val b = FirebaseConfiguredOrg("club-b", 0xFF1E88E5L, displayName = "Club B")
+
+    @Test
+    fun theSourceOrgGetsTheWholeSharedList() {
+        val written = FirebaseConfiguredOrgCodec.listForTarget(
+            targetOrgId = "club-a", sourceOrgId = "club-a", deviceShared = listOf(a, b), targetRemote = listOf(a),
+        )
+        assertEquals(listOf(a, b), written)
+    }
+
+    @Test
+    fun anotherOrgNeverGetsOrgsItDoesNotHold() {
+        // Adding B for every device of A must not put A on the devices of B: they are not members.
+        val bOwnList = listOf(b.copy(displayName = ""))
+        assertEquals(
+            null,
+            FirebaseConfiguredOrgCodec.listForTarget("club-b", "club-a", listOf(a, b.copy(displayName = "")), bOwnList),
+        )
+        // A rename still reaches the orgs that already hold the renamed org.
+        assertEquals(
+            listOf(b),
+            FirebaseConfiguredOrgCodec.listForTarget("club-b", "club-a", listOf(a, b), bOwnList),
+        )
+        // An org whose list cannot be read is left alone.
+        assertEquals(null, FirebaseConfiguredOrgCodec.listForTarget("club-b", "club-a", listOf(a, b), emptyList()))
+    }
 }
 

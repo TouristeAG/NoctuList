@@ -202,8 +202,11 @@ class SyncCoordinator(
         firebaseBackend?.flushPendingWritesForOrg(orgId)
     }
 
-    suspend fun replicateFirebaseConfiguredOrgs() {
-        firebaseBackend?.replicateConfiguredOrgsToAllOrgs()
+    /** [sourceOrgId]: the org the admin acts from; blank means the org this device writes to. */
+    suspend fun replicateFirebaseConfiguredOrgs(sourceOrgId: String = "") {
+        val backend = firebaseBackend ?: return
+        if (sourceOrgId.isBlank()) backend.replicateConfiguredOrgsToAllOrgs()
+        else backend.replicateConfiguredOrgsToAllOrgs(sourceOrgId.trim())
     }
 
     suspend fun ensureFirebaseOrgReady(orgId: String) {
