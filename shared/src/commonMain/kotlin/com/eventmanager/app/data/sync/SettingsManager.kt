@@ -1320,6 +1320,15 @@ class SettingsManager(private val storage: AppStorage) {
             storage.putLong(KEY_INSTITUTION_SETTING_PUSHED_LM_PREFIX + key, lastModified)
             return
         }
+        // A change made here and not pushed yet wins over an older server value. Without this, a
+        // pull or a snapshot that still held the previous value erased it (the association logo
+        // file was deleted) and marked it as pushed, so it never reached the other devices.
+        val localLastModified = getInstitutionSettingLastModified(key)
+        if (localLastModified != getPushedInstitutionSettingLastModified(key) &&
+            localLastModified > lastModified
+        ) {
+            return
+        }
         if (key == InstitutionSettingsKeys.FIREBASE_CONFIGURED_ORGS) {
             val codec = com.eventmanager.app.data.remote.FirebaseConfiguredOrgCodec
             val local = codec.decode(storage.getString(KEY_FIREBASE_CONFIGURED_ORGS, "").orEmpty())

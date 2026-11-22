@@ -214,7 +214,7 @@ class FirebaseRemoteBackend(
 
     override suspend fun performStartupSync(): SyncResult {
         flushQueue()
-        return pullAll()
+        return pullAll().also { pushPendingInstitutionSettings() }
     }
 
     override suspend fun performManualSync(): SyncResult {
@@ -222,7 +222,21 @@ class FirebaseRemoteBackend(
         // Firebase is the remote source of truth after migration/join. Never bulk-push the full
         // local Room snapshot here — that resurrects stale rows (e.g. Sheets-era data on a
         // device that just followed migration). Bulk push is reserved for migrateSheetsToFirebase().
-        return pullAll()
+        return pullAll().also { pushPendingInstitutionSettings() }
+    }
+
+    /**
+     * A settings push that was skipped (admin role not readable yet at startup, offline) used to
+     * wait for the next edit of any setting. Retry it after each full sync instead.
+     */
+    private suspend fun pushPendingInstitutionSettings() {
+        try {
+            afterInstitutionSettingsChanged()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            println("Pending institutionSettings push failed: ${e.message}")
+        }
     }
 
     suspend fun clearPendingWrites() {
@@ -431,6 +445,9 @@ class FirebaseRemoteBackend(
     override suspend fun afterInstitutionSettingsChanged() {
         val orgId = resolveWriteOrgId()
         if (orgId.isBlank()) return
+        // Checked first: the admin check reads the server, and this runs after every full sync.
+        val rows = settingsManager.getInstitutionSettingRowsPendingRemotePush()
+        if (rows.isEmpty()) return
         if (!FirebaseOrgAdminAccess.currentUserIsOrgAdmin(platformContext, settingsManager)) {
             println(
                 "Skipping institutionSettings push: signed-in user is not Firebase org admin " +
@@ -438,8 +455,6 @@ class FirebaseRemoteBackend(
             )
             return
         }
-        val rows = settingsManager.getInstitutionSettingRowsPendingRemotePush()
-        if (rows.isEmpty()) return
         val sharedOrgIds = FirebaseConfiguredOrgCodec
             .sharedSubset(settingsManager.getFirebaseConfiguredOrgs())
             .map { it.orgId.trim() }
