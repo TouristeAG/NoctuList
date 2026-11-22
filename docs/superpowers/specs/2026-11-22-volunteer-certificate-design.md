@@ -71,11 +71,16 @@ Le propriétaire a suivi les deux recommandations (1A + 2A).
     Graphisme, Autres missions), seulement les types que ce bénévole a déjà faits. Tous cochés
     sauf les réunions. Boutons « Tout » / « Aucun ». Un type dont aucun job ne tombe dans la
     période est grisé.
-  - Envoyer est désactivé si rien de coché ou rien dans la période.
-  - Nom complet : si le nom de famille de la fiche fait moins de 3 lettres (fiche créée à la main
-    avec une initiale), la feuille demande d'abord le nom complet et l'envoie par la modification
-    de profil existante (`PROFILE`) ; la demande d'attestation part une fois le nom appliqué.
-    Validé par le propriétaire le 2026-11-22.
+  - Envoyer est désactivé si rien de coché ou rien dans la période, ou si les dates sont
+    invalides (une date vide, avant 2000, « du » après « au », « au » dans le futur) ; un court
+    message demande alors de vérifier les dates.
+  - Les types dont le nom dépasse 80 caractères ne sont pas proposés (la demande serait refusée).
+  - Nom complet : si le nom de famille de la fiche fait moins de 2 lettres ou se termine par un
+    point (fiche créée à la main avec une initiale, « D. »), la feuille demande d'abord le nom
+    complet et l'envoie par la modification de profil existante (`PROFILE`) ; la demande
+    d'attestation part une fois le nom appliqué. Les vrais noms de 2 lettres (« Li », « Du »)
+    passent. Si la fiche n'a pas de téléphone valide, la même étape demande aussi le téléphone
+    (`PROFILE` en exige un). Validé par le propriétaire le 2026-11-22.
   - Le nom est écrit avec la casse corrigée (« DUPONT » → « Dupont », « VAN DER BERG » → « Van
     Der Berg »).
   - Message : « Ton attestation est envoyée à {email}. »
