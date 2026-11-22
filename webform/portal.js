@@ -44,7 +44,6 @@ import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./p
 import {
   canSend,
   certificateNotice,
-  certificateState,
   defaultPeriod,
   defaultSelection,
   groupTypes,

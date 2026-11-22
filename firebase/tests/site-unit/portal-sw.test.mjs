@@ -63,7 +63,7 @@ test("siteFilesNetworkFirstPinnedSdkCacheFirst", () => {
 });
 
 test("cacheNameBumped", () => {
-  assert.equal(vm.runInContext("CACHE", sw), "portal-v9");
+  assert.equal(vm.runInContext("CACHE", sw), "portal-v10");
 });
 
 test("i18nImportedWithOneSpecifier", () => {
