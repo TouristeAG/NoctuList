@@ -3139,7 +3139,11 @@ class EventManagerViewModel(
         _failedDirectSends.value = emptyList()
     }
 
-    private fun certificateApprover(): String = com.eventmanager.app.data.remote.FirebaseAuthBridge.currentUserEmail().orEmpty()
+    /** The Google account signed in on this device when known, else the device's name. */
+    private fun certificateApprover(): String =
+        com.eventmanager.app.data.remote.FirebaseAuthBridge.currentUserEmail()?.trim()?.takeIf { it.isNotEmpty() }
+            ?: certificateGmailAddress().takeIf { it.isNotEmpty() }
+            ?: com.eventmanager.app.platform.localDeviceName().trim().take(100)
 
     suspend fun approveCertificateRequest(
         requestId: String,

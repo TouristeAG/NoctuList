@@ -120,16 +120,59 @@ private fun sizeLabel(size: CertSize): StringResource = when (size) {
 }
 
 /** One toolbar for all blocks; it acts on the editor that last had the focus. */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun CertificateToolbar(model: CertificateEditorModel, wrap: Boolean, modifier: Modifier = Modifier) {
     val state = model.active
     val key = model.activeKey
+    var genderFor by remember { mutableStateOf<Pair<TextRange, String>?>(null) }
+
+    CertificateTextToolbar(state, wrap, modifier) {
+        ToolDivider()
+        VariableMenu(state, labelOf = model.labelOf, variables = key?.let { (k, v) -> CertificateBlocks.all.first { it.key == k }.variables(v) }.orEmpty())
+        val word = state?.let(CertificateTextActions::selectedWord)
+        val genderLabel = stringResource(Res.string.certificate_gender)
+        Tooltip(if (word == null) stringResource(Res.string.certificate_gender_hint) else genderLabel) {
+            TextButton(
+                onClick = { if (state != null && word != null) genderFor = state.selection to word },
+                enabled = word != null,
+                modifier = Modifier.focusProperties { canFocus = false },
+            ) {
+                Icon(Icons.Default.Wc, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(genderLabel)
+            }
+        }
+    }
+
+    val pending = genderFor
+    if (pending != null && state != null) {
+        GenderDialog(
+            word = pending.second,
+            onDismiss = { genderFor = null },
+            onApply = { forms ->
+                CertificateTextActions.makeAgreement(state, pending.first, forms)
+                genderFor = null
+            },
+        )
+    }
+}
+
+/**
+ * Text formatting only (bold, alignment, size, bullets) on [state]. The template editor adds its
+ * variable and agreement tools in [extra]; a certificate being reviewed has none, its text is resolved.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun CertificateTextToolbar(
+    state: RichTextState?,
+    wrap: Boolean,
+    modifier: Modifier = Modifier,
+    extra: @Composable () -> Unit = {},
+) {
     val enabled = state != null
     // Read so the buttons follow the caret.
     state?.selection
     state?.annotatedString
-    var genderFor by remember { mutableStateOf<Pair<TextRange, String>?>(null) }
 
     Surface(modifier = modifier.fillMaxWidth(), tonalElevation = 2.dp, shape = RoundedCornerShape(12.dp)) {
         // Wraps on wide screens; scrolls sideways on a phone, where several rows would hide the text.
@@ -163,34 +206,8 @@ internal fun CertificateToolbar(model: CertificateEditorModel, wrap: Boolean, mo
             ToolToggle(Icons.AutoMirrored.Filled.FormatListBulleted, Res.string.certificate_bullets, enabled, state?.isUnorderedList == true) {
                 state?.let(CertificateTextActions::toggleBullets)
             }
-            ToolDivider()
-            VariableMenu(state, labelOf = model.labelOf, variables = key?.let { (k, v) -> CertificateBlocks.all.first { it.key == k }.variables(v) }.orEmpty())
-            val word = state?.let(CertificateTextActions::selectedWord)
-            val genderLabel = stringResource(Res.string.certificate_gender)
-            Tooltip(if (word == null) stringResource(Res.string.certificate_gender_hint) else genderLabel) {
-                TextButton(
-                    onClick = { if (state != null && word != null) genderFor = state.selection to word },
-                    enabled = word != null,
-                    modifier = Modifier.focusProperties { canFocus = false },
-                ) {
-                    Icon(Icons.Default.Wc, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(genderLabel)
-                }
-            }
+            extra()
         }
-    }
-
-    val pending = genderFor
-    if (pending != null && state != null) {
-        GenderDialog(
-            word = pending.second,
-            onDismiss = { genderFor = null },
-            onApply = { forms ->
-                CertificateTextActions.makeAgreement(state, pending.first, forms)
-                genderFor = null
-            },
-        )
     }
 }
 
@@ -366,7 +383,7 @@ internal fun CertificateBlockCard(
 }
 
 @Composable
-private fun CertificateTextArea(
+internal fun CertificateTextArea(
     state: RichTextState,
     family: FontFamily,
     active: Boolean,

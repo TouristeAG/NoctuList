@@ -186,6 +186,7 @@ actual fun VolunteerDetailPanel(
             DesktopShiftHistorySection(sortedJobs, venues, jobTypeConfigs, platformContext)
 
             VolunteerPortalAccessCard(viewModel = viewModel, volunteer = volunteer)
+            com.eventmanager.app.ui.components.settings.certificate.VolunteerCertificateButton(viewModel = viewModel, volunteer = volunteer)
 
             if (viewModel != null) {
                 LocalAdminRightsSection(

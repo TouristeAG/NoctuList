@@ -83,8 +83,8 @@ internal val CERTIFICATE_LANGUAGE_NAMES = mapOf(
     "es" to "Español",
 )
 
-private const val PREVIEW_DELAY_MS = 250L
-private val TWO_COLUMNS_MIN_WIDTH = 900.dp
+internal const val PREVIEW_DELAY_MS = 250L
+internal val TWO_COLUMNS_MIN_WIDTH = 900.dp
 
 /** Builds the preview for the example volunteer (null) or a real one, on their whole history and all types. */
 internal fun certificatePreviewAssembly(
@@ -114,7 +114,7 @@ internal fun certificatePreviewAssembly(
 }
 
 /** Leaves `var:` and `gender:` links alone if anything tries to open them. */
-private val inertUriHandler = object : UriHandler {
+internal val inertUriHandler = object : UriHandler {
     override fun openUri(uri: String) = Unit
 }
 
@@ -217,11 +217,7 @@ internal fun CertificateEditorContent(
     var saveError by remember { mutableStateOf<String?>(null) }
     val tooLarge = stringResource(Res.string.certificate_too_large)
 
-    val family = FontFamily(
-        Font(Res.font.nunito_regular, FontWeight.Normal, FontStyle.Normal),
-        Font(Res.font.nunito_regular_italic, FontWeight.Normal, FontStyle.Italic),
-        Font(Res.font.nunito_bold, FontWeight.Bold, FontStyle.Normal),
-    )
+    val family = certificateFontFamily()
 
     CompositionLocalProvider(LocalUriHandler provides inertUriHandler) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -425,8 +421,16 @@ private fun CertificateEditorColumn(
     }
 }
 
+/** Nunito, the font of the PDF, so the editors look like the page. */
 @Composable
-private fun CertificatePreviewPane(
+internal fun certificateFontFamily(): FontFamily = FontFamily(
+    Font(Res.font.nunito_regular, FontWeight.Normal, FontStyle.Normal),
+    Font(Res.font.nunito_regular_italic, FontWeight.Normal, FontStyle.Italic),
+    Font(Res.font.nunito_bold, FontWeight.Bold, FontStyle.Normal),
+)
+
+@Composable
+internal fun CertificatePreviewPane(
     assembly: CertAssembly?,
     ready: Boolean,
     logoBase64: String,

@@ -1526,6 +1526,9 @@ if (pageAnimationsEnabled) {
                             .align(Alignment.BottomEnd)
                             .padding(bottom = 8.dp, end = 8.dp)
                     )
+
+                    // Admin area only: certificate requests never show on welcome, ticketing or POS.
+                    com.eventmanager.app.ui.components.settings.certificate.CertificateRequestToastHost(viewModel)
                 }
             }
         }
