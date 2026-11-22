@@ -75,7 +75,7 @@ Le propriétaire a suivi les deux recommandations (1A + 2A).
   - Nom complet : si le nom de famille de la fiche fait moins de 3 lettres (fiche créée à la main
     avec une initiale), la feuille demande d'abord le nom complet et l'envoie par la modification
     de profil existante (`PROFILE`) ; la demande d'attestation part une fois le nom appliqué.
-    Choix de Claude (le propriétaire n'a pas répondu à cette question).
+    Validé par le propriétaire le 2026-11-22.
   - Le nom est écrit avec la casse corrigée (« DUPONT » → « Dupont », « VAN DER BERG » → « Van
     Der Berg »).
   - Message : « Ton attestation est envoyée à {email}. »
