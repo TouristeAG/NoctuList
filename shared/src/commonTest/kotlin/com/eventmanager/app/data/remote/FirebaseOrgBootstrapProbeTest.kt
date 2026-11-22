@@ -15,6 +15,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 
@@ -89,27 +90,24 @@ class FirebaseOrgBootstrapProbeTest {
     }
 
     @Test
-    fun deniedWithoutInvitationCode_failsWithActionableMessageAndNoWrite() = runBlocking {
-        val gateway = FakeFirestoreGateway(MembershipProbe.Denied)
-        val settings = settingsWith(invitationCode = "")
-
-        val error = runCatching {
-            FirebaseOrgBootstrap.ensureOrgBootstrappedIfNeeded(
-                gateway = gateway,
-                settings = settings,
-                orgId = orgId,
-                signedInUid = uid,
-                signedInEmail = "a@b.ch",
-            )
-        }.exceptionOrNull()
-
-        assertNotNull(error)
-        assertTrue(
-            error.message.orEmpty().contains("firestore.rules"),
-            "a refused read must point at the rules, not leak Firestore's opaque message: " +
-                error.message,
-        )
-        assertTrue(gateway.writes.isEmpty())
+    fun deniedProbe_skipsWithoutWritingOrFailing() = runBlocking {
+        // A refused read of members/{uid} is almost always a token that has not reached the
+        // server yet. Nothing is written (joinOrgAsMember could demote an admin) and nothing is
+        // thrown (a member's device has no invitation code at startup); the next pass retries.
+        for (code in listOf("", "ABCD2345")) {
+            val gateway = FakeFirestoreGateway(MembershipProbe.Denied)
+            val error = runCatching {
+                FirebaseOrgBootstrap.ensureOrgBootstrappedIfNeeded(
+                    gateway = gateway,
+                    settings = settingsWith(invitationCode = code),
+                    orgId = orgId,
+                    signedInUid = uid,
+                    signedInEmail = "a@b.ch",
+                )
+            }.exceptionOrNull()
+            assertNull(error, "invitation code \"$code\"")
+            assertTrue(gateway.writes.isEmpty(), "invitation code \"$code\"")
+        }
     }
 
     @Test
