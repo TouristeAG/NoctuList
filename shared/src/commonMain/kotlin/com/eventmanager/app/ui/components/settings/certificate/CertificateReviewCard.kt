@@ -59,7 +59,6 @@ import com.eventmanager.app.portal.FailedDirectSend
 import com.eventmanager.app.portal.certificate.CertificateReview
 import com.eventmanager.app.portal.certificate.CertificateReviewRequest
 import com.eventmanager.app.resources.*
-import com.eventmanager.app.ui.components.rememberGuestFormAttentionPalette
 import com.eventmanager.app.ui.viewmodel.EventManagerViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -162,141 +161,113 @@ internal fun CertificateReviewCardContent(
     modifier: Modifier = Modifier,
 ) {
     if (requests.isEmpty() && failed.isEmpty()) return
-    val palette = rememberGuestFormAttentionPalette()
-    Card(
-        modifier = modifier.fillMaxWidth().padding(top = if (isPhone) 10.dp else 12.dp),
-        shape = RoundedCornerShape(if (isPhone) 14.dp else 16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = palette.container, contentColor = palette.onContainer),
-        border = BorderStroke(1.dp, palette.border),
+    val outline = MaterialTheme.colorScheme.outlineVariant
+    // A quiet strip: one thin line per request, no elevation; more than three scroll inside it.
+    Surface(
+        modifier = modifier.fillMaxWidth().padding(top = 8.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        border = BorderStroke(1.dp, outline),
     ) {
-        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-            Box(Modifier.width(4.dp).fillMaxHeight().background(palette.accent))
-            Column(Modifier.weight(1f).padding(vertical = if (isPhone) 10.dp else 12.dp)) {
-                Row(
-                    Modifier.padding(horizontal = if (isPhone) 12.dp else 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    Box(
-                        Modifier.size(if (isPhone) 34.dp else 38.dp).clip(CircleShape).background(palette.iconBg)
-                            .border(1.dp, palette.border.copy(alpha = 0.35f), CircleShape),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(Icons.Default.WorkspacePremium, contentDescription = null, tint = palette.accent, modifier = Modifier.size(20.dp))
-                    }
-                    Text(
-                        stringResource(Res.string.certificate_review_card_title, requests.size + failed.size),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = palette.accent,
-                    )
-                }
-                Spacer(Modifier.height(6.dp))
-                // A long list scrolls inside the card instead of pushing the volunteers away.
-                Column(Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
-                    var first = true
-                    for (request in requests) {
-                        if (!first) HorizontalDivider(color = palette.border.copy(alpha = 0.4f), modifier = Modifier.padding(horizontal = 14.dp))
-                        first = false
-                        RequestRow(request, volunteerOf(request.portalUid), isPhone, palette.accent, palette.muted, onOpen, onRetry)
-                    }
-                    for (send in failed) {
-                        if (!first) HorizontalDivider(color = palette.border.copy(alpha = 0.4f), modifier = Modifier.padding(horizontal = 14.dp))
-                        first = false
-                        FailedRow(send, isPhone, palette.muted, onDismissFailed)
-                    }
-                }
+        Column(Modifier.fillMaxWidth().heightIn(max = 150.dp).verticalScroll(rememberScrollState())) {
+            var first = true
+            for (request in requests) {
+                if (!first) HorizontalDivider(color = outline.copy(alpha = 0.6f))
+                first = false
+                RequestRow(request, volunteerOf(request.portalUid), isPhone, onOpen, onRetry)
+            }
+            for (send in failed) {
+                if (!first) HorizontalDivider(color = outline.copy(alpha = 0.6f))
+                first = false
+                FailedRow(send, onDismissFailed)
             }
         }
     }
 }
+
+private val RowPadding = Modifier.padding(start = 12.dp, end = 6.dp)
 
 @Composable
 private fun RequestRow(
     request: CertificateReviewRequest,
     volunteer: Volunteer?,
     isPhone: Boolean,
-    accent: androidx.compose.ui.graphics.Color,
-    muted: androidx.compose.ui.graphics.Color,
     onOpen: (CertificateReviewRequest) -> Unit,
     onRetry: (CertificateReviewRequest) -> Unit,
 ) {
     val reviewable = request.status == CertificateReview.STATUS_PENDING_REVIEW
-    val status: @Composable () -> Unit = {
-        if (request.stuck) {
-            Text(stringResource(Res.string.certificate_review_stuck), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
-            OutlinedButton(onClick = { onRetry(request) }) { Text(stringResource(Res.string.certificate_review_retry)) }
-        } else {
-            CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp, color = accent)
-            Text(stringResource(Res.string.certificate_review_sending), style = MaterialTheme.typography.labelMedium, color = muted)
-        }
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val name = volunteer?.let(::displayName) ?: request.email
+    val period = stringResource(Res.string.certificate_review_period_value, formatCertificateDay(request.fromDay), formatCertificateDay(request.toDay))
+    val note = when {
+        volunteer == null -> stringResource(Res.string.certificate_review_no_profile)
+        reviewable && request.lastReason.isNotEmpty() -> stringResource(Res.string.certificate_review_sent_back, reasonText(request.lastReason))
+        else -> null
     }
     Row(
-        Modifier.fillMaxWidth()
+        Modifier.fillMaxWidth().heightIn(min = 44.dp)
             .then(if (reviewable) Modifier.clickable { onOpen(request) } else Modifier)
-            .padding(horizontal = if (isPhone) 12.dp else 14.dp, vertical = 8.dp),
+            .then(RowPadding).padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        Icon(Icons.Default.WorkspacePremium, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
         Column(Modifier.weight(1f)) {
-            Text(
-                volunteer?.let(::displayName) ?: request.email,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            val requested = stringResource(Res.string.certificate_review_requested_on, formatCertificateMillis(request.requestedAt))
-            val period = stringResource(Res.string.certificate_review_period_value, formatCertificateDay(request.fromDay), formatCertificateDay(request.toDay))
-            if (isPhone) {
-                Text(requested, style = MaterialTheme.typography.labelSmall, color = muted)
-                Text(period.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.labelSmall, color = muted)
-            } else {
-                Text("$requested · $period", style = MaterialTheme.typography.labelSmall, color = muted)
-            }
-            if (volunteer == null) {
-                Text(stringResource(Res.string.certificate_review_no_profile), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
-            }
-            if (reviewable && request.lastReason.isNotEmpty()) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    stringResource(Res.string.certificate_review_sent_back, reasonText(request.lastReason)),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.error,
+                    stringResource(Res.string.certificate_toast_one, name),
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
                 )
+                if (!isPhone) {
+                    Text(
+                        "  ·  $period",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = muted,
+                        maxLines = 1,
+                    )
+                }
             }
-            if (isPhone && !reviewable) {
-                Row(
-                    Modifier.padding(top = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) { status() }
+            if (isPhone) {
+                Text(period.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.labelSmall, color = muted, maxLines = 1)
+            }
+            if (note != null) {
+                Text(note, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         when {
-            reviewable -> Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = accent.copy(alpha = 0.85f))
-            !isPhone -> status()
+            reviewable -> Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = muted, modifier = Modifier.size(20.dp))
+            request.stuck -> {
+                Text(stringResource(Res.string.certificate_review_stuck), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
+                TextButton(onClick = { onRetry(request) }) { Text(stringResource(Res.string.certificate_review_retry)) }
+            }
+            else -> {
+                CircularProgressIndicator(Modifier.size(12.dp), strokeWidth = 1.5.dp, color = muted)
+                if (!isPhone) Text(stringResource(Res.string.certificate_review_sending), style = MaterialTheme.typography.labelMedium, color = muted)
+                Spacer(Modifier.width(6.dp))
+            }
         }
     }
 }
 
 @Composable
-private fun FailedRow(send: FailedDirectSend, isPhone: Boolean, muted: androidx.compose.ui.graphics.Color, onDismiss: (FailedDirectSend) -> Unit) {
+private fun FailedRow(send: FailedDirectSend, onDismiss: (FailedDirectSend) -> Unit) {
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = if (isPhone) 12.dp else 14.dp, vertical = 8.dp),
+        Modifier.fillMaxWidth().heightIn(min = 44.dp).then(RowPadding).padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Icon(Icons.Default.ErrorOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+        Icon(Icons.Default.ErrorOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
         Column(Modifier.weight(1f)) {
             Text(
                 stringResource(Res.string.certificate_review_send_failed_to, send.name),
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(reasonText(send.reason), style = MaterialTheme.typography.labelSmall, color = muted)
+            Text(reasonText(send.reason), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         TextButton(onClick = { onDismiss(send) }) { Text(stringResource(Res.string.certificate_review_dismiss)) }
     }
