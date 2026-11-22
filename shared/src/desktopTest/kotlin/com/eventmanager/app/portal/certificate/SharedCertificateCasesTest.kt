@@ -1,6 +1,5 @@
 package com.eventmanager.app.portal.certificate
 
-import java.io.File
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -14,17 +13,11 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/** Runs the same cases as webform/functions/test/certificate.test.mjs against the Kotlin assembler. */
+/** Runs the shared certificate cases (test resource certificate-cases.json) against the Kotlin assembler. */
 class SharedCertificateCasesTest {
-    private fun casesFile(): File {
-        var dir: File? = File("").absoluteFile
-        while (dir != null) {
-            val candidate = File(dir, "webform/functions/test/certificate-cases.json")
-            if (candidate.isFile) return candidate
-            dir = dir.parentFile
-        }
-        error("certificate-cases.json not found above ${File("").absolutePath}")
-    }
+    private fun casesText(): String =
+        checkNotNull(javaClass.getResourceAsStream("/certificate-cases.json")) { "certificate-cases.json not on the test classpath" }
+            .use { it.readBytes().decodeToString() }
 
     private fun JsonElement.str(key: String): String = jsonObject.getValue(key).jsonPrimitive.content
     private fun JsonElement.int(key: String): Int = jsonObject.getValue(key).jsonPrimitive.int
@@ -33,7 +26,7 @@ class SharedCertificateCasesTest {
 
     @Test
     fun kotlinAssemblerAgreesWithSharedCases() {
-        val cases = Json.parseToJsonElement(casesFile().readText()).jsonArray
+        val cases = Json.parseToJsonElement(casesText()).jsonArray
         assertTrue(cases.size >= 20)
         for (case in cases) {
             val name = case.str("name")

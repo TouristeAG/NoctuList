@@ -23,7 +23,7 @@ data class CertAssembly(val body: List<ResolvedParagraph>, val footer: List<Reso
 
 /**
  * Turns the admin template and the jobs of one volunteer into the paragraphs of the certificate.
- * The TypeScript copy in webform/functions must stay in step with webform/functions/test/certificate-cases.json.
+ * Checked against the shared cases in shared/src/desktopTest/resources/certificate-cases.json.
  */
 object CertificateAssembler {
 

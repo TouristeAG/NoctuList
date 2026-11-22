@@ -1,6 +1,6 @@
 // Requests written by signed-in portal accounts: PROFILE and GUEST_PROFILE (edit name, phone and
 // photo), CLAIM (link the open profiles of a verified address), QR_EMAIL and GUEST_QR_EMAIL (mail the
-// wallet QR code), CERTIFICATE_EMAIL (mail the volunteer certificate PDF) and GOOGLE_UNLINK (remove a Google account the holder linked; GOOGLE_LINK is
+// wallet QR code), CERTIFICATE_EMAIL (validated here, then put in review: an admin device writes and mails the certificate) and GOOGLE_UNLINK (remove a Google account the holder linked; GOOGLE_LINK is
 // answered by google.ts). Mirrors
 // VolunteerPortalService.processRequest, handleClaim and complete (Kotlin); devices only step in
 // after their 2 minute grace period, or when a claim of ours is older than 5 minutes.
@@ -24,27 +24,8 @@ import {
   type Fields,
 } from "./common";
 import { unlinkGoogle } from "./google";
-import {
-  assemble,
-  dayOf,
-  defaultTemplate,
-  displayName,
-  parseTemplate,
-  type CertJob,
-  type CertJobType,
-  type Category,
-} from "./certificate";
-import { renderCertificatePdf } from "./certificatePdf";
-import {
-  buildCertificateMail,
-  buildQrMail,
-  certificateFileName,
-  logoBytes,
-  parseMailTemplate,
-  safeRecipient,
-  sendMail,
-  type MailTransport,
-} from "./mail";
+import { parseTemplate } from "./certificate";
+import { safeRecipient, parseMailTemplate, sendMail, buildQrMail, type MailTransport } from "./mail";
 import { kotlinTrim, parseRequest, type PortalRequest } from "./validate";
 import { randomUUID } from "node:crypto";
 import {
@@ -75,13 +56,14 @@ export type RequestReason =
   | "ENTRY_USED";
 
 export interface RequestResult {
-  status: "DONE" | "REJECTED";
+  status: "DONE" | "REJECTED" | "PENDING_REVIEW";
   reason: RequestReason;
 }
 
 const STATUS_PENDING = "PENDING";
 const MAX_LABEL = 80;
 const DONE: RequestResult = { status: "DONE", reason: "" };
+const REVIEW: RequestResult = { status: "PENDING_REVIEW", reason: "" };
 const rejected = (reason: Exclude<RequestReason, "">): RequestResult => ({ status: "REJECTED", reason });
 
 /**
@@ -211,7 +193,7 @@ async function processClaimed(
       await checkGuestSpace(db, orgId);
       return sendGuestQr(db, mail, orgId, request);
     case "CERTIFICATE_EMAIL":
-      return sendCertificate(db, mail, orgId, request);
+      return reviewCertificate(db, orgId, request);
     case "GOOGLE_UNLINK": {
       const reason = await unlinkGoogle(db, orgId, requestId, request.uid);
       return reason === "" ? DONE : rejected(reason);
@@ -301,7 +283,8 @@ function renamedPage(data: Data | undefined, request: PortalRequest, now: number
 
 /** `complete` (Kotlin): the answer the portal page waits for. */
 async function complete(ref: DocumentReference, result: RequestResult): Promise<void> {
-  await ref.set({ status: result.status, reason: result.reason, processedAt: Date.now() }, { merge: true });
+  const review = result.status === "PENDING_REVIEW" ? { reviewAt: FieldValue.serverTimestamp() } : {};
+  await ref.set({ status: result.status, reason: result.reason, processedAt: Date.now(), ...review }, { merge: true });
 }
 
 /** The guest space was turned off after the claim: the request waits again. */
@@ -594,47 +577,36 @@ async function sendGuestQr(db: Firestore, mail: MailTransport, orgId: string, re
   return result.sent ? DONE : rejected("SEND_FAILED");
 }
 
-const CERT_CATEGORIES: readonly string[] = [
-  "MANDATE", "SHIFT", "PHOTO", "GRAPHIC_EVENT", "GRAPHIC_ASSOCIATION", "OTHER", "MEETING",
-];
-const CERT_TITLE_FALLBACK: Record<string, string> = {
-  fr: "Attestation", en: "Certificate", de: "Bestätigung", it: "Attestazione", es: "Certificado",
-};
-
-/** The job types a device published with the certificate template; unreadable entries are left out. */
-function publishedJobTypes(raw: unknown): CertJobType[] {
-  if (!Array.isArray(raw)) return [];
-  const out: CertJobType[] = [];
-  for (const item of raw as Data[]) {
-    if (item === null || typeof item !== "object" || typeof item.name !== "string") continue;
-    const category = CERT_CATEGORIES.includes(item.category as string) ? (item.category as Category) : "OTHER";
-    out.push({ name: kotlinTrim(item.name), category, description: stringOf(item.description) });
-  }
-  return out;
+/** Day as YYYYMMDD in the association time zone (Europe/Zurich). */
+const zurich = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Zurich", year: "numeric", month: "2-digit", day: "2-digit" });
+function dayOf(millis: number): number {
+  const parts = zurich.formatToParts(new Date(millis));
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  return get("year") * 10000 + get("month") * 100 + get("day");
 }
 
-/** The volunteer's jobs as day and type; one without a usable date or type name is skipped. */
-function certificateJobs(docs: readonly Fields[]): CertJob[] {
-  const jobs: CertJob[] = [];
-  for (const d of docs) {
+/** True when at least one job of the volunteer falls in the period, is past and has a checked type. */
+function hasJobToCertify(docs: readonly Fields[], request: PortalRequest): boolean {
+  const fromDay = Number(request.from?.replace(/-/g, ""));
+  const toDay = Number(request.to?.replace(/-/g, ""));
+  const today = dayOf(Date.now());
+  const wanted = new Set(request.jobTypes ?? []);
+  return docs.some((d) => {
     const jobTypeName = kotlinTrim(stringOf(d.get("jobTypeName")));
     const millis = millisOf(d.get("date"));
-    if (jobTypeName === "" || millis === null || !Number.isFinite(new Date(millis).getTime())) continue;
-    jobs.push({ jobTypeName, day: dayOf(millis) });
-  }
-  return jobs;
+    if (jobTypeName === "" || millis === null || !Number.isFinite(new Date(millis).getTime())) return false;
+    const day = dayOf(millis);
+    return day >= fromDay && day <= toDay && day <= today && wanted.has(jobTypeName);
+  });
 }
 
-/** Plain replacement of the two mail variables: no `$` patterns, every occurrence. */
-const fillMail = (text: string, firstName: string, association: string): string =>
-  text.split("{firstName}").join(firstName).split("{association}").join(association);
-
 /**
- * CERTIFICATE_EMAIL: the volunteer's certificate as a PDF, mailed to the profile address. The
- * volunteer's jobs are read here only; their id and the certificate text go nowhere else (no
- * Firestore write, no log). Admins are accepted: the certificate carries no identifier.
+ * CERTIFICATE_EMAIL: checks the request and puts it in review (`PENDING_REVIEW`). Nothing is
+ * rendered or mailed here: an admin device writes the certificate, approves it and the server
+ * mails it. The volunteer's jobs are read only to check there is something to certify; their id
+ * goes nowhere. Admins are accepted: the certificate carries no identifier.
  */
-async function sendCertificate(db: Firestore, mail: MailTransport, orgId: string, request: PortalRequest): Promise<RequestResult> {
+async function reviewCertificate(db: Firestore, orgId: string, request: PortalRequest): Promise<RequestResult> {
   if ((await institutionSetting(db, orgId, "volunteer_portal_certificate_enabled")) !== "true") return rejected("NOT_ALLOWED");
   const published = (await db.doc(`orgs/${orgId}/portalMail/certificate`).get()).data();
   const rawTemplate = published?.template;
@@ -643,64 +615,9 @@ async function sendCertificate(db: Firestore, mail: MailTransport, orgId: string
   const linked = await volunteers(db, orgId).where("portalUid", "==", request.uid).get();
   const owner = linked.docs.find((d) => isOwner(d, request.uid));
   if (owner === undefined) return rejected("NO_ACCESS");
-  const to = safeRecipient(kotlinTrim(stringOf(owner.get("email"))));
-  if (to === null) return rejected("NO_EMAIL");
+  if (safeRecipient(kotlinTrim(stringOf(owner.get("email")))) === null) return rejected("NO_EMAIL");
 
   // Volunteer.id is the document id; it only filters the jobs query.
   const jobDocs = await db.collection(`orgs/${orgId}/jobs`).where("volunteerId", "==", owner.id).get();
-  const publishedAssociation = stringOf(published.association);
-  const association = (publishedAssociation.trim() !== "" ? publishedAssociation : await associationName(db, orgId)).trim();
-  const firstName = stringOf(owner.get("name"));
-  const lastName = stringOf(owner.get("lastNameAbbreviation"));
-  const assembly = assemble(
-    template,
-    association,
-    { firstName, lastName, gender: stringOf(owner.get("gender")) },
-    publishedJobTypes(published.jobTypes),
-    certificateJobs(jobDocs.docs),
-    {
-      fromDay: Number(request.from?.replace(/-/g, "")),
-      toDay: Number(request.to?.replace(/-/g, "")),
-      todayDay: dayOf(Date.now()),
-      jobTypes: request.jobTypes ?? [],
-    },
-  );
-  if (assembly === null) return rejected("NOTHING_TO_CERTIFY");
-
-  const titleParagraph = assembly.body.find((p) => p.size === "TITLE");
-  const title = titleParagraph?.runs.map((r) => r.text).join("").trim() || (CERT_TITLE_FALLBACK[template.language] ?? "Attestation");
-  const logoPng = logoBytes(stringOf(published.logoBase64));
-  const signature = template.signer.imageBase64.trim();
-  let pdf: Uint8Array;
-  try {
-    pdf = await renderCertificatePdf({
-      paragraphs: assembly.body,
-      footer: assembly.footer,
-      logoPng,
-      signatureImage: signature === "" ? null : Buffer.from(signature, "base64"),
-      signer: { name: template.signer.name, title: template.signer.title },
-      title,
-    });
-  } catch (e) {
-    logger.error("certificate not rendered", { reason: "RENDER_FAILED", code: errorCode(e) });
-    return rejected("SEND_FAILED");
-  }
-
-  const fallback = defaultTemplate(template.language, association).mail;
-  const name = displayName(firstName);
-  const subject = fillMail(template.mail.subject.trim() === "" ? fallback.subject : template.mail.subject, name, association);
-  const body = fillMail(template.mail.body.trim() === "" ? fallback.body : template.mail.body, name, association);
-  const message = buildCertificateMail({
-    to,
-    fromName: (template.mail.fromName.trim() === "" ? association : template.mail.fromName).trim().slice(0, MAX_LABEL),
-    fromAddress: template.mail.fromAddress.trim(),
-    replyTo: template.mail.replyTo.trim(),
-    subject,
-    body,
-    pdf,
-    fileName: certificateFileName(firstName, lastName, template.language),
-    logoPng,
-  });
-  const result = await sendMail(message, mail);
-  return result.sent ? DONE : rejected("SEND_FAILED");
+  return hasJobToCertify(jobDocs.docs, request) ? REVIEW : rejected("NOTHING_TO_CERTIFY");
 }

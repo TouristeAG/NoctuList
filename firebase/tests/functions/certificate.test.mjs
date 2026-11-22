@@ -1,17 +1,15 @@
-// Integration tests for the CERTIFICATE_EMAIL request (volunteer certificate PDF by e-mail). Run with
+// Integration tests for the CERTIFICATE_EMAIL request (volunteer certificate request: validated, then put in review). Run with
 // `npm run test:functions`: same setup as requests.test.mjs (emulators, mail captured to `_testMail`).
 import { after, before, describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { deleteApp, initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 
 const PROJECT = "demo-noctulist";
 // 1x1 PNG.
 const LOGO_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
-const TEMPLATE = JSON.parse(
-  readFileSync(new URL("../../../webform/functions/test/certificate-default-fr.json", import.meta.url), "utf8"),
-);
+// The server only reads the template to check it; the text is assembled on the admin device.
+const TEMPLATE = { version: 1, language: "fr", place: "Lausanne", blocks: {} };
 // 2024-03-10 and 2024-03-17 (noon UTC): well in the past.
 const DAY_1 = Date.UTC(2024, 2, 10, 12);
 const DAY_2 = Date.UTC(2024, 2, 17, 12);
@@ -113,7 +111,7 @@ async function sendCertificate(org, uid, fields = {}) {
 async function waitResult(ref) {
   return waitFor(`${ref.path} to be processed`, async () => {
     const d = (await ref.get()).data();
-    return d && (d.status === "DONE" || d.status === "REJECTED") ? d : null;
+    return d && (d.status === "PENDING_REVIEW" || d.status === "REJECTED") ? d : null;
   });
 }
 
@@ -147,39 +145,22 @@ after(async () => {
 });
 
 describe("onPortalRequestWritten: CERTIFICATE_EMAIL", () => {
-  test("sends a certificate", async () => {
+  test("puts a valid request in review without mail", async () => {
     const org = await newOrg();
     const uid = newUid("certOk");
     const email = `${uid.toLowerCase()}@profile.example`;
     const v = await addVolunteer(org, { portalUid: uid, email });
     await addJob(org, v.id, "Bar", DAY_1);
-    await addJob(org, v.id, "Bar", DAY_2);
-    await addJob(org, v.id, "Sécurité", DAY_1);
-    // Another volunteer's job and one outside the period never count.
-    const other = await addVolunteer(org, { portalUid: newUid("other") });
-    await addJob(org, other.id, "Bar", DAY_1);
-    await addJob(org, v.id, "Bar", Date.UTC(2023, 5, 1));
 
     const ref = await sendCertificate(org, uid);
     const result = await waitResult(ref);
-    assertResult(result, "DONE", "");
+    assertResult(result, "PENDING_REVIEW", "");
+    assert.ok(result.reviewAt, "reviewAt is set");
 
-    const mail = await waitMailTo(email);
-    assert.equal(mail.subject, "Ton attestation, Léa");
-    assert.deepEqual(mail.from, { name: "Comité", address: "test@example.org" });
-    assert.equal(mail.replyTo, "reponses@mail.example");
-    assert.equal(mail.text, "Bonjour Léa, voici ton attestation pour Asso Test.");
-    const pdf = mail.attachments.find((a) => a.contentType === "application/pdf");
-    assert.ok(pdf, "PDF attached");
-    assert.equal(pdf.filename, "attestation-benevolat-lea-martin.pdf");
-    assert.equal(pdf.disposition, "attachment");
-    assert.ok(pdf.size > 1000);
-    assert.ok(mail.attachments.some((a) => a.cid === "logo"));
-    assert.equal((await capturedMailsTo(`${uid.toLowerCase()}@auth.example`)).length, 0, "never to the request address");
-
-    assert.ok(!JSON.stringify(mail).includes(v.id), "volunteer id absent from the captured mail");
-    assert.ok(!JSON.stringify(result).includes(v.id), "volunteer id absent from the request");
-    assert.ok(!JSON.stringify((await ref.get()).data()).includes(v.id));
+    await sleep(1500);
+    assert.equal((await capturedMailsTo(email)).length, 0, "no mail to the profile address");
+    assert.equal((await capturedMailsTo(`${uid.toLowerCase()}@auth.example`)).length, 0);
+    assert.ok(!JSON.stringify((await ref.get()).data()).includes(v.id), "volunteer id absent from the request");
   });
 
   test("refuses when the option is off", async () => {
@@ -223,8 +204,7 @@ describe("onPortalRequestWritten: CERTIFICATE_EMAIL", () => {
     await addJob(org, v.id, "Bar", "not a date");
     await addJob(org, v.id, "  ", DAY_1);
     await addJob(org, v.id, "Bar", DAY_1);
-    assertResult(await waitResult(await sendCertificate(org, uid)), "DONE", "");
-    await waitMailTo(email);
+    assertResult(await waitResult(await sendCertificate(org, uid)), "PENDING_REVIEW", "");
   });
 
   test("accepts an admin volunteer", async () => {
@@ -233,8 +213,7 @@ describe("onPortalRequestWritten: CERTIFICATE_EMAIL", () => {
     const email = `${uid.toLowerCase()}@profile.example`;
     const v = await addVolunteer(org, { portalUid: uid, email, isAdmin: true });
     await addJob(org, v.id, "Bar", DAY_1);
-    assertResult(await waitResult(await sendCertificate(org, uid)), "DONE", "");
-    await waitMailTo(email);
+    assertResult(await waitResult(await sendCertificate(org, uid)), "PENDING_REVIEW", "");
   });
 
   test("refuses without access or without a usable address", async () => {
