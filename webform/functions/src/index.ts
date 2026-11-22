@@ -13,7 +13,7 @@ import { onGoogleClaimDocument } from "./google";
 
 export { cleanName, cleanPhone, cleanEmail, parseSignup, parseRequest, parseGoogleClaim } from "./validate";
 export type { SignupSubmission, PortalRequest, PortalRequestType, PortalGoogleClaim, PortalGoogleClaimType } from "./validate";
-export { buildQrMail, parseMailTemplate, safeRecipient, sendMail, sendRawMail, smtpOptions } from "./mail";
+export { buildQrMail, buildCertificateMail, certificateFileName, parseMailTemplate, safeRecipient, sendMail, sendRawMail, smtpOptions } from "./mail";
 export type { MailMode, MailTemplate, MailTransport, SendResult, OutgoingMail, QrMail, RawOutgoingMail, SmtpClient } from "./mail";
 export { parseOutbox, rewriteHeaders, onOutboxDocument, MAX_RAW_LENGTH } from "./outbox";
 export { delegatedToken, gmailSendRaw, MailSendError } from "./workspace";

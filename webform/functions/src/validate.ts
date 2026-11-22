@@ -9,7 +9,8 @@ export type PortalRequestType =
   | "GOOGLE_UNLINK"
   | "GUEST_PROFILE"
   | "GUEST_QR_EMAIL"
-  | "TEMP_GUEST_NAME";
+  | "TEMP_GUEST_NAME"
+  | "CERTIFICATE_EMAIL";
 /** Who a registration link registers (PortalHolderKind, Kotlin). */
 export type HolderType = "VOLUNTEER" | "GUEST";
 export type PortalGoogleClaimType = "ADMIN_MATCH" | "LINK_CODE";
@@ -47,6 +48,10 @@ export interface PortalRequest {
   codeHash?: string;
   /** TEMP_GUEST_NAME only: the guest's key on the account's temporary page (never its id). */
   guestKey?: string;
+  /** CERTIFICATE_EMAIL only: the period (AAAA-MM-JJ, from <= to) and the job type names to certify. */
+  from?: string;
+  to?: string;
+  jobTypes?: string[];
 }
 
 export interface PortalGoogleClaim {
@@ -70,8 +75,15 @@ const GUEST_KEY = /^[0-9a-f]{16}$/u;
 const LANGS = new Set(["fr", "en", "es", "de", "it"]);
 const TYPES: readonly string[] = [
   "PROFILE", "QR_EMAIL", "CLAIM", "GOOGLE_LINK", "GOOGLE_UNLINK", "GUEST_PROFILE", "GUEST_QR_EMAIL",
-  "TEMP_GUEST_NAME",
+  "TEMP_GUEST_NAME", "CERTIFICATE_EMAIL",
 ];
+/** What a CERTIFICATE_EMAIL request may carry: the portal's fields and the ones a claim adds. */
+const CERTIFICATE_FIELDS = new Set([
+  "uid", "type", "status", "requestedAt", "email", "from", "to", "jobTypes",
+  "processingAt", "processingDevice", "processedAt", "reason",
+]);
+const MAX_CERT_TYPES = 50;
+const MAX_CERT_TYPE_NAME = 80;
 const CLAIM_TYPES: readonly string[] = ["ADMIN_MATCH", "LINK_CODE"];
 const GENDERS = new Set(["FEMALE", "MALE", "NON_BINARY", "OTHER", "PREFER_NOT_TO_DISCLOSE"]);
 
@@ -175,6 +187,22 @@ export function parseRequest(requestId: string, data: Record<string, unknown>): 
     const lastName = optional(data.lastName);
     if (firstName === null || lastName === null || (firstName === "" && lastName === "")) return null;
     return { requestId, uid, type, status, email, firstName, lastName, phone: "", photo: false, guestKey };
+  }
+  if (type === "CERTIFICATE_EMAIL") {
+    if (Object.keys(data).some((k) => !CERTIFICATE_FIELDS.has(k))) return null;
+    const from = str(data.from);
+    const to = str(data.to);
+    if (from === undefined || to === undefined || !DATE.test(from) || !DATE.test(to) || from > to) return null;
+    const raw = data.jobTypes;
+    if (!Array.isArray(raw) || raw.length < 1 || raw.length > MAX_CERT_TYPES) return null;
+    const jobTypes: string[] = [];
+    for (const name of raw) {
+      if (typeof name !== "string") return null;
+      const trimmed = kotlinTrim(name);
+      if (trimmed.length < 1 || trimmed.length > MAX_CERT_TYPE_NAME) return null;
+      jobTypes.push(trimmed);
+    }
+    return { requestId, uid, type, status, email, firstName: "", lastName: "", phone: "", photo: false, from, to, jobTypes };
   }
   if (type === "GOOGLE_LINK") {
     const codeHash = str(data.codeHash);

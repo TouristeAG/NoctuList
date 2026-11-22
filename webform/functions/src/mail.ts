@@ -46,6 +46,13 @@ export interface OutgoingMail extends QrMail {
   to: string;
   /** Display name of the sender, "" for the bare address. */
   fromName: string;
+  /**
+   * Address shown in From, when it passes safeRecipient; else the Gmail account's. Gmail only keeps
+   * it for a "send as" alias of the account. The envelope always stays on the account.
+   */
+  fromAddress?: string;
+  /** Reply-To, only when it passes safeRecipient. */
+  replyTo?: string;
 }
 
 /** The part of a nodemailer transporter that sendMail uses. */
@@ -131,7 +138,7 @@ export function parseMailTemplate(data: Record<string, unknown> | undefined): Ma
 }
 
 /** The logo bytes when `logoBase64` holds a PNG of reasonable size, else null. */
-function logoBytes(logoBase64: string): Buffer | null {
+export function logoBytes(logoBase64: string): Buffer | null {
   const raw = logoBase64.trim();
   if (raw === "") return null;
   const bytes = Buffer.from(raw, "base64");
@@ -159,6 +166,69 @@ export async function buildQrMail(template: MailTemplate | null, firstName: stri
     // QrEmailHtmlBuilder puts the holder name in raw: escape it here.
     html: fill(html, escapeHtml(name)),
     text: fill(t.text, name),
+    attachments,
+  };
+}
+
+/** Lowercase ASCII file name part: accents stripped, anything else a single hyphen. */
+const slug = (s: string): string =>
+  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
+const CERTIFICATE_FILE_PREFIX: Record<string, string> = {
+  fr: "attestation-benevolat",
+  en: "volunteer-certificate",
+  de: "freiwilligen-bestaetigung",
+  it: "attestato-volontariato",
+  es: "certificado-voluntariado",
+};
+
+/** `attestation-benevolat-{first}-{last}.pdf` in the certificate language, ASCII only. */
+export function certificateFileName(firstName: string, lastName: string, language: string): string {
+  const prefix = CERTIFICATE_FILE_PREFIX[language] ?? CERTIFICATE_FILE_PREFIX.fr;
+  const parts = [prefix, slug(firstName), slug(lastName)].filter((p) => p !== "");
+  return `${parts.join("-")}.pdf`;
+}
+
+export interface CertificateMailArgs {
+  to: string;
+  fromName: string;
+  fromAddress: string;
+  replyTo: string;
+  subject: string;
+  /** Plain text. */
+  body: string;
+  pdf: Uint8Array;
+  fileName: string;
+  logoPng: Uint8Array | null;
+}
+
+/** The certificate e-mail: plain text body (also as html, with the logo on top) and the PDF attached. */
+export function buildCertificateMail(args: CertificateMailArgs): OutgoingMail {
+  const text = args.body.replace(/\r\n?/g, "\n");
+  const paragraphs = text
+    .split(/\n{2,}/)
+    .map((p) => `<p>${escapeHtml(p).replace(/\n/g, "<br>")}</p>`)
+    .join("");
+  const hasLogo = args.logoPng !== null && args.logoPng.length > 0;
+  const html =
+    "<!DOCTYPE html><html><body style=\"font-family: Arial, sans-serif; color: #222;\">" +
+    (hasLogo ? "<p><img src=\"cid:logo\" alt=\"\" style=\"max-width: 200px; max-height: 60px;\"></p>" : "") +
+    `${paragraphs}</body></html>`;
+  const attachments: MailAttachment[] = [
+    { filename: args.fileName, content: Buffer.from(args.pdf), contentType: "application/pdf", contentDisposition: "attachment" },
+  ];
+  if (hasLogo) {
+    attachments.push({ filename: "logo.png", content: Buffer.from(args.logoPng!), contentType: "image/png", contentDisposition: "inline", cid: "logo" });
+  }
+  const replyTo = safeRecipient(args.replyTo);
+  return {
+    to: args.to,
+    fromName: args.fromName,
+    fromAddress: args.fromAddress,
+    ...(replyTo === null ? {} : { replyTo }),
+    subject: args.subject.replace(CONTROL, " ").trim().slice(0, MAX_SUBJECT),
+    html,
+    text,
     attachments,
   };
 }
@@ -295,10 +365,15 @@ export async function sendMail(msg: OutgoingMail, transport: MailTransport): Pro
       return failed("bad_address");
     }
     const fromName = msg.fromName.replace(CONTROL, " ").trim();
+    // The header address is the message's own when it is a plain mailbox; the envelope stays on [user].
+    const header = msg.fromAddress === undefined ? null : safeRecipient(msg.fromAddress);
+    const shown = header ?? from;
+    const replyTo = msg.replyTo === undefined ? null : safeRecipient(msg.replyTo);
     if (isCapture()) {
       await transport.db.collection("_testMail").add({
         to,
-        from: { name: fromName, address: from },
+        from: { name: fromName, address: shown },
+        ...(replyTo === null ? {} : { replyTo }),
         subject: msg.subject,
         html: msg.html,
         text: msg.text,
@@ -314,8 +389,9 @@ export async function sendMail(msg: OutgoingMail, transport: MailTransport): Pro
       return SENT;
     }
     const message = {
-      from: fromName === "" ? from : { name: fromName, address: from },
+      from: fromName === "" ? shown : { name: fromName, address: shown },
       to: { name: "", address: to },
+      ...(replyTo === null ? {} : { replyTo }),
       subject: msg.subject,
       html: msg.html,
       text: msg.text,

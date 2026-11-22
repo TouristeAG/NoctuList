@@ -210,3 +210,76 @@ test("hung workspace calls are bounded and reported as network failures", async 
   assert.deepEqual(await lib.sendMail(outgoing(), t2), { sent: false, failure: "gmail:network" });
   clearInterval(keepAlive);
 });
+
+// ---- certificate e-mail -------------------------------------------------------------------------
+
+const certArgs = (over = {}) => ({
+  to: "lea@mail.example",
+  fromName: "Asso",
+  fromAddress: "",
+  replyTo: "",
+  subject: "Ton attestation",
+  body: "Bonjour Léa,\n\nVoici ton attestation <3.",
+  pdf: new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]),
+  fileName: "attestation-benevolat-lea-martin.pdf",
+  logoPng: null,
+  ...over,
+});
+
+const certTransport = (sent) => ({
+  db: null,
+  mode: () => "app_password", from: () => "", sa: () => "",
+  user: () => "asso@mail.example",
+  password: () => "secret",
+  smtp: () => ({ sendMail: async (message) => { sent.push(message); return {}; } }),
+});
+
+test("certificate mail carries the PDF", () => {
+  const mail = lib.buildCertificateMail(certArgs());
+  const pdfs = mail.attachments.filter((a) => a.contentType === "application/pdf");
+  assert.equal(pdfs.length, 1);
+  assert.equal(pdfs[0].filename, "attestation-benevolat-lea-martin.pdf");
+  assert.equal(pdfs[0].contentDisposition, "attachment");
+  assert.deepEqual([...pdfs[0].content], [0x25, 0x50, 0x44, 0x46, 0x2d]);
+  assert.equal(mail.subject, "Ton attestation");
+  assert.equal(mail.text, "Bonjour Léa,\n\nVoici ton attestation <3.");
+  assert.ok(mail.html.includes("&lt;3") && !mail.html.includes("<3"));
+  assert.ok(!mail.html.includes("cid:logo"));
+  const withLogo = lib.buildCertificateMail(certArgs({ logoPng: Buffer.from(PNG, "base64") }));
+  assert.ok(withLogo.attachments.some((a) => a.cid === "logo" && a.contentDisposition === "inline"));
+  assert.ok(withLogo.html.includes("cid:logo"));
+});
+
+test("uses the alias as From and keeps the envelope", async () => {
+  const sent = [];
+  const mail = lib.buildCertificateMail(certArgs({ fromAddress: "comite@mail.example", replyTo: "reponses@mail.example" }));
+  assert.deepEqual(await lib.sendMail(mail, certTransport(sent)), { sent: true, failure: "" });
+  assert.equal(sent.length, 1);
+  assert.deepEqual(sent[0].from, { name: "Asso", address: "comite@mail.example" });
+  assert.deepEqual(sent[0].envelope, { from: "asso@mail.example", to: ["lea@mail.example"] });
+  assert.equal(sent[0].replyTo, "reponses@mail.example");
+});
+
+test("an unsafe From alias falls back to the account", async () => {
+  const sent = [];
+  const mail = lib.buildCertificateMail(certArgs({ fromAddress: "a@b.c, d@e.f" }));
+  await lib.sendMail(mail, certTransport(sent));
+  assert.deepEqual(sent[0].from, { name: "Asso", address: "asso@mail.example" });
+});
+
+test("drops an unsafe reply-to", async () => {
+  const mail = lib.buildCertificateMail(certArgs({ replyTo: "a@b.c, d@e.f" }));
+  assert.equal(mail.replyTo, undefined);
+  const sent = [];
+  await lib.sendMail(mail, certTransport(sent));
+  assert.equal("replyTo" in sent[0], false);
+});
+
+test("file name is ascii", () => {
+  assert.equal(lib.certificateFileName("Zoé", "D'Été-Ñ", "fr"), "attestation-benevolat-zoe-d-ete-n.pdf");
+  assert.equal(lib.certificateFileName("Anna", "Rossi", "en"), "volunteer-certificate-anna-rossi.pdf");
+  assert.equal(lib.certificateFileName("Jörg", "Müller", "de"), "freiwilligen-bestaetigung-jorg-muller.pdf");
+  assert.equal(lib.certificateFileName("Anna", "Rossi", "it"), "attestato-volontariato-anna-rossi.pdf");
+  assert.equal(lib.certificateFileName("Ana", "Peña", "es"), "certificado-voluntariado-ana-pena.pdf");
+  assert.equal(lib.certificateFileName("", "", "fr"), "attestation-benevolat.pdf");
+});

@@ -444,6 +444,8 @@ class VolunteerPortalService(
             val type = data["type"]?.toString()
             // A GOOGLE_LINK request only waits for the Google claim that carries its code.
             if (type == PortalRequestType.GOOGLE_LINK.name) continue
+            // A CERTIFICATE_EMAIL request is the server's: devices have no PDF engine.
+            if (type == PortalRequestType.CERTIFICATE_EMAIL.name) continue
             // Only a device that can actually send mail takes a QR request; others leave it waiting.
             if ((type == PortalRequestType.QR_EMAIL.name || type == PortalRequestType.GUEST_QR_EMAIL.name) && !host.canSendQrEmail()) continue
             // Guest space off: guest requests wait, like Google claims while that option is off.
@@ -467,6 +469,7 @@ class VolunteerPortalService(
             claimable = {
                 (it["status"] == PortalRequest.STATUS_PENDING || isStaleProcessing(it)) &&
                     it["type"] != PortalRequestType.GOOGLE_LINK.name &&
+                    it["type"] != PortalRequestType.CERTIFICATE_EMAIL.name &&
                     (!isGuestRequestType(it["type"]?.toString()) || host.guestPortalEnabled()) &&
                     (it["type"] != PortalRequestType.TEMP_GUEST_NAME.name || host.temporaryGuestPortalEnabled())
             },
@@ -540,6 +543,8 @@ class VolunteerPortalService(
             PortalRequestType.TEMP_GUEST_NAME -> renameTemporaryGuest(request, guests, now)
             // Never claimed (see processRequests): it is answered through its Google claim.
             PortalRequestType.GOOGLE_LINK -> Unit
+            // Never claimed either: only the server renders the certificate PDF.
+            PortalRequestType.CERTIFICATE_EMAIL -> Unit
         }
     }
 
