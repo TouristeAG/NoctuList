@@ -31,6 +31,7 @@ google-gmail = { module = "com.google.apis:google-api-services-gmail", version =
 google-drive = { module = "com.google.apis:google-api-services-drive", version = "v3-rev20250511-2.0.0" }
 google-docs = { module = "com.google.apis:google-api-services-docs", version = "v1-rev20250325-2.0.0" }
 google-people = { module = "com.google.apis:google-api-services-people", version = "v1-rev20250513-2.0.0" }
+richeditor-compose = { module = "com.mohamedrejeb.richeditor:richeditor-compose", version = "1.0.0-rc10" }
 google-auth = { module = "com.google.auth:google-auth-library-oauth2-http", version = "1.28.0" }
 google-auth-credentials = { module = "com.google.auth:google-auth-library-credentials", version = "1.28.0" }
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }

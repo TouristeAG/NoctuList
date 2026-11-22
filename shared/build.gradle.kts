@@ -45,6 +45,7 @@ kotlin {
                 implementation(libs.google.drive)
                 implementation(libs.google.docs)
                 implementation(libs.google.people)
+                implementation(libs.richeditor.compose)
                 implementation(libs.google.auth)
                 implementation(libs.google.auth.credentials)
                 implementation(libs.room.runtime)
