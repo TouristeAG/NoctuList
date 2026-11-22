@@ -86,9 +86,11 @@ Anti-objectifs
 - Attestation validée : `orgs/{orgId}/certificateApprovals/{requestId}` écrite par un membre :
   `{ requestId, body: [ResolvedParagraph], footer: [ResolvedParagraph], title: string,
   approvedBy: string (adresse de l'admin connecté ou nom de l'appareil), approvedAt }`. Lisible
-  et modifiable par les membres seulement, jamais par le portail. La demande passe à
-  `status: "APPROVED"` dans la même écriture (batch) ; c'est ce qui empêche une deuxième
-  validation depuis un autre appareil.
+  et modifiable par les membres seulement, jamais par le portail. L'appareil réclame d'abord la
+  demande (`claimDocument` : `PENDING_REVIEW` → `APPROVED` + `approvalId`), ce qui empêche une
+  deuxième validation depuis un autre appareil, puis écrit l'attestation validée. Si cette
+  deuxième écriture échoue, la demande reste `APPROVED` et la carte propose « Réessayer » après
+  5 minutes (§11). (Le gateway n'a pas d'écriture groupée ; choix de Claude à la planification.)
 - Le serveur déclenche sur la création de `certificateApprovals/{id}` ; signature, logo,
   expéditeur et réponse viennent de `portalMail/certificate` au moment de l'envoi.
 - Taille : body + footer ≤ 200 000 caractères en JSON, sinon l'app refuse d'enregistrer.
@@ -116,9 +118,9 @@ Anti-objectifs
 - `portalRequests` : un compte du portail ne peut pas réécrire une demande `CERTIFICATE_EMAIL`
   en `PENDING_REVIEW` ou `APPROVED`. Les membres peuvent mettre une demande `PENDING_REVIEW` à
   `APPROVED` ou à `REJECTED` (+ `reason: "REFUSED"`, `note` ≤ 300 caractères).
-- `certificateApprovals/{id}` : création par un membre seulement si la demande liée est en
-  `PENDING_REVIEW` dans la même écriture ou déjà `APPROVED` par cette écriture (batch) ; lecture
-  et suppression par les membres ; jamais par le portail.
+- `certificateApprovals/{id}` : création par un membre seulement si la demande liée est
+  `APPROVED` avec `approvalId == id` ; lecture et suppression par les membres ; jamais par le
+  portail.
 
 ## 9. Laissé au constructeur
 
