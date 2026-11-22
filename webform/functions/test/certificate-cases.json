@@ -1,0 +1,1292 @@
+[
+  {
+    "name": "single-shift",
+    "language": "fr",
+    "association": "Nova Events",
+    "place": "Genève",
+    "person": {
+      "firstName": "Camille",
+      "lastName": "Martin",
+      "gender": "FEMALE"
+    },
+    "types": [
+      {
+        "name": "Bar",
+        "category": "SHIFT",
+        "description": "Service au comptoir"
+      }
+    ],
+    "jobs": [
+      {
+        "jobTypeName": "Bar",
+        "day": 20260312
+      }
+    ],
+    "selection": {
+      "fromDay": 20260101,
+      "toDay": 20261231,
+      "todayDay": 20260615,
+      "jobTypes": [
+        "Bar"
+      ]
+    },
+    "expect": {
+      "body": [
+        "Nova Events",
+        "Attestation de bénévolat",
+        "Nova Events atteste que Camille Martin s'est engagée bénévolement au sein de l'association.",
+        "Le 12 mars 2026, Camille a participé bénévolement à un événement de Nova Events en tant que Bar.",
+        "Service au comptoir",
+        "Nous remercions chaleureusement Camille pour son engagement.",
+        "Fait à Genève, le 15 juin 2026"
+      ],
+      "footer": []
+    }
+  },
+  {
+    "name": "many-shifts-one-role",
+    "language": "fr",
+    "association": "Nova Events",
+    "place": "Genève",
+    "person": {
+      "firstName": "Camille",
+      "lastName": "Martin",
+      "gender": "FEMALE"
+    },
+    "types": [
+      {
+        "name": "Bar",
+        "category": "SHIFT",
+        "description": "Service au comptoir"
+      }
+    ],
+    "jobs": [
+      {
+        "jobTypeName": "Bar",
+        "day": 20260110
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260117
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260124
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260131
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260207
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260214
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260221
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260228
+      }
+    ],
+    "selection": {
+      "fromDay": 20260101,
+      "toDay": 20261231,
+      "todayDay": 20260615,
+      "jobTypes": [
+        "Bar"
+      ]
+    },
+    "expect": {
+      "body": [
+        "Nova Events",
+        "Attestation de bénévolat",
+        "Nova Events atteste que Camille Martin s'est engagée bénévolement au sein de l'association entre janvier et février 2026.",
+        "Camille a participé bénévolement à 8 événements de Nova Events entre janvier et février 2026, en tant que Bar.",
+        "Service au comptoir",
+        "Nous remercions chaleureusement Camille pour son engagement.",
+        "Fait à Genève, le 15 juin 2026"
+      ],
+      "footer": []
+    }
+  },
+  {
+    "name": "many-shifts-many-roles",
+    "language": "fr",
+    "association": "Nova Events",
+    "place": "Genève",
+    "person": {
+      "firstName": "Camille",
+      "lastName": "Martin",
+      "gender": "FEMALE"
+    },
+    "types": [
+      {
+        "name": "Entrée",
+        "category": "SHIFT",
+        "description": "Accueil et contrôle des billets"
+      },
+      {
+        "name": "Bar",
+        "category": "SHIFT",
+        "description": "Service au comptoir"
+      }
+    ],
+    "jobs": [
+      {
+        "jobTypeName": "Entrée",
+        "day": 20260105
+      },
+      {
+        "jobTypeName": "Entrée",
+        "day": 20260112
+      },
+      {
+        "jobTypeName": "Entrée",
+        "day": 20260119
+      },
+      {
+        "jobTypeName": "Entrée",
+        "day": 20260126
+      },
+      {
+        "jobTypeName": "Entrée",
+        "day": 20260202
+      },
+      {
+        "jobTypeName": "Entrée",
+        "day": 20260209
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260110
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260117
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260124
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260131
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260207
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260214
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260221
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260228
+      }
+    ],
+    "selection": {
+      "fromDay": 20260101,
+      "toDay": 20261231,
+      "todayDay": 20260615,
+      "jobTypes": [
+        "Bar",
+        "Entrée"
+      ]
+    },
+    "expect": {
+      "body": [
+        "Nova Events",
+        "Attestation de bénévolat",
+        "Nova Events atteste que Camille Martin s'est engagée bénévolement au sein de l'association entre janvier et février 2026.",
+        "Camille a participé bénévolement à 14 événements de Nova Events entre janvier et février 2026, dans les rôles suivants :",
+        "Bar: Service au comptoir",
+        "Entrée: Accueil et contrôle des billets",
+        "Nous remercions chaleureusement Camille pour son engagement.",
+        "Fait à Genève, le 15 juin 2026"
+      ],
+      "footer": []
+    }
+  },
+  {
+    "name": "mandate-only",
+    "language": "fr",
+    "association": "Nova Events",
+    "place": "Genève",
+    "person": {
+      "firstName": "Camille",
+      "lastName": "Martin",
+      "gender": "FEMALE"
+    },
+    "types": [
+      {
+        "name": "Co-présidence",
+        "category": "MANDATE",
+        "description": "Direction de l'association"
+      }
+    ],
+    "jobs": [
+      {
+        "jobTypeName": "Co-présidence",
+        "day": 20240115
+      },
+      {
+        "jobTypeName": "Co-présidence",
+        "day": 20250110
+      }
+    ],
+    "selection": {
+      "fromDay": 20240101,
+      "toDay": 20251231,
+      "todayDay": 20260615,
+      "jobTypes": [
+        "Co-présidence"
+      ]
+    },
+    "expect": {
+      "body": [
+        "Nova Events",
+        "Attestation de bénévolat",
+        "Nova Events atteste que Camille Martin s'est engagée bénévolement au sein de l'association entre janvier 2024 et janvier 2025.",
+        "Camille a exercé le mandat de Co-présidence entre janvier 2024 et janvier 2025.",
+        "Direction de l'association",
+        "Nous remercions chaleureusement Camille pour son engagement.",
+        "Fait à Genève, le 15 juin 2026"
+      ],
+      "footer": []
+    }
+  },
+  {
+    "name": "mandate-one-month",
+    "language": "fr",
+    "association": "Nova Events",
+    "place": "Genève",
+    "person": {
+      "firstName": "Camille",
+      "lastName": "Martin",
+      "gender": "FEMALE"
+    },
+    "types": [
+      {
+        "name": "Co-présidence",
+        "category": "MANDATE",
+        "description": "Direction de l'association"
+      }
+    ],
+    "jobs": [
+      {
+        "jobTypeName": "Co-présidence",
+        "day": 20250105
+      },
+      {
+        "jobTypeName": "Co-présidence",
+        "day": 20250112
+      }
+    ],
+    "selection": {
+      "fromDay": 20250101,
+      "toDay": 20251231,
+      "todayDay": 20260615,
+      "jobTypes": [
+        "Co-présidence"
+      ]
+    },
+    "expect": {
+      "body": [
+        "Nova Events",
+        "Attestation de bénévolat",
+        "Nova Events atteste que Camille Martin s'est engagée bénévolement au sein de l'association en janvier 2025.",
+        "Camille a exercé le mandat de Co-présidence en janvier 2025.",
+        "Direction de l'association",
+        "Nous remercions chaleureusement Camille pour son engagement.",
+        "Fait à Genève, le 15 juin 2026"
+      ],
+      "footer": []
+    }
+  },
+  {
+    "name": "mandate-and-shifts",
+    "language": "fr",
+    "association": "Nova Events",
+    "place": "Genève",
+    "person": {
+      "firstName": "Camille",
+      "lastName": "Martin",
+      "gender": "FEMALE"
+    },
+    "types": [
+      {
+        "name": "Bar",
+        "category": "SHIFT",
+        "description": ""
+      },
+      {
+        "name": "Co-présidence",
+        "category": "MANDATE",
+        "description": "Direction de l'association"
+      }
+    ],
+    "jobs": [
+      {
+        "jobTypeName": "Bar",
+        "day": 20250315
+      },
+      {
+        "jobTypeName": "Co-présidence",
+        "day": 20250110
+      },
+      {
+        "jobTypeName": "Co-présidence",
+        "day": 20250210
+      }
+    ],
+    "selection": {
+      "fromDay": 20250101,
+      "toDay": 20251231,
+      "todayDay": 20260615,
+      "jobTypes": [
+        "Bar",
+        "Co-présidence"
+      ]
+    },
+    "expect": {
+      "body": [
+        "Nova Events",
+        "Attestation de bénévolat",
+        "Nova Events atteste que Camille Martin s'est engagée bénévolement au sein de l'association entre janvier et mars 2025.",
+        "Camille a exercé le mandat de Co-présidence entre janvier et février 2025.",
+        "Direction de l'association",
+        "Le 15 mars 2025, Camille a participé bénévolement à un événement de Nova Events en tant que Bar.",
+        "Nous remercions chaleureusement Camille pour son engagement.",
+        "Fait à Genève, le 15 juin 2026"
+      ],
+      "footer": []
+    }
+  },
+  {
+    "name": "meetings-only",
+    "language": "fr",
+    "association": "Nova Events",
+    "place": "Genève",
+    "person": {
+      "firstName": "Camille",
+      "lastName": "Martin",
+      "gender": "FEMALE"
+    },
+    "types": [
+      {
+        "name": "Réunion de comité",
+        "category": "MEETING",
+        "description": ""
+      }
+    ],
+    "jobs": [
+      {
+        "jobTypeName": "Réunion de comité",
+        "day": 20260110
+      },
+      {
+        "jobTypeName": "Réunion de comité",
+        "day": 20260210
+      },
+      {
+        "jobTypeName": "Réunion de comité",
+        "day": 20260310
+      }
+    ],
+    "selection": {
+      "fromDay": 20260101,
+      "toDay": 20261231,
+      "todayDay": 20260615,
+      "jobTypes": [
+        "Réunion de comité"
+      ]
+    },
+    "expect": {
+      "body": [
+        "Nova Events",
+        "Attestation de bénévolat",
+        "Nova Events atteste que Camille Martin s'est engagée bénévolement au sein de l'association entre janvier et mars 2026.",
+        "Camille a participé à 3 réunions de Nova Events entre janvier et mars 2026.",
+        "Nous remercions chaleureusement Camille pour son engagement.",
+        "Fait à Genève, le 15 juin 2026"
+      ],
+      "footer": []
+    }
+  },
+  {
+    "name": "meeting-excluded",
+    "language": "fr",
+    "association": "Nova Events",
+    "place": "Genève",
+    "person": {
+      "firstName": "Camille",
+      "lastName": "Martin",
+      "gender": "FEMALE"
+    },
+    "types": [
+      {
+        "name": "Bar",
+        "category": "SHIFT",
+        "description": ""
+      },
+      {
+        "name": "Réunion de comité",
+        "category": "MEETING",
+        "description": ""
+      }
+    ],
+    "jobs": [
+      {
+        "jobTypeName": "Bar",
+        "day": 20260312
+      },
+      {
+        "jobTypeName": "Réunion de comité",
+        "day": 20260301
+      },
+      {
+        "jobTypeName": "Réunion de comité",
+        "day": 20260401
+      }
+    ],
+    "selection": {
+      "fromDay": 20260101,
+      "toDay": 20261231,
+      "todayDay": 20260615,
+      "jobTypes": [
+        "Bar"
+      ]
+    },
+    "expect": {
+      "body": [
+        "Nova Events",
+        "Attestation de bénévolat",
+        "Nova Events atteste que Camille Martin s'est engagée bénévolement au sein de l'association.",
+        "Le 12 mars 2026, Camille a participé bénévolement à un événement de Nova Events en tant que Bar.",
+        "Nous remercions chaleureusement Camille pour son engagement.",
+        "Fait à Genève, le 15 juin 2026"
+      ],
+      "footer": []
+    }
+  },
+  {
+    "name": "deleted-type",
+    "language": "fr",
+    "association": "Nova Events",
+    "place": "Genève",
+    "person": {
+      "firstName": "Camille",
+      "lastName": "Martin",
+      "gender": "FEMALE"
+    },
+    "types": [],
+    "jobs": [
+      {
+        "jobTypeName": "Ancien rôle",
+        "day": 20260312
+      }
+    ],
+    "selection": {
+      "fromDay": 20260101,
+      "toDay": 20261231,
+      "todayDay": 20260615,
+      "jobTypes": [
+        "Ancien rôle"
+      ]
+    },
+    "expect": {
+      "body": [
+        "Nova Events",
+        "Attestation de bénévolat",
+        "Nova Events atteste que Camille Martin s'est engagée bénévolement au sein de l'association.",
+        "Le 12 mars 2026, Camille a mené une mission pour Nova Events en tant que Ancien rôle.",
+        "Nous remercions chaleureusement Camille pour son engagement.",
+        "Fait à Genève, le 15 juin 2026"
+      ],
+      "footer": []
+    }
+  },
+  {
+    "name": "empty-description",
+    "language": "fr",
+    "association": "Nova Events",
+    "place": "Genève",
+    "person": {
+      "firstName": "Camille",
+      "lastName": "Martin",
+      "gender": "FEMALE"
+    },
+    "types": [
+      {
+        "name": "Bar",
+        "category": "SHIFT",
+        "description": "Service au comptoir"
+      },
+      {
+        "name": "Entrée",
+        "category": "SHIFT",
+        "description": ""
+      }
+    ],
+    "jobs": [
+      {
+        "jobTypeName": "Bar",
+        "day": 20260110
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260117
+      },
+      {
+        "jobTypeName": "Entrée",
+        "day": 20260124
+      }
+    ],
+    "selection": {
+      "fromDay": 20260101,
+      "toDay": 20261231,
+      "todayDay": 20260615,
+      "jobTypes": [
+        "Bar",
+        "Entrée"
+      ]
+    },
+    "expect": {
+      "body": [
+        "Nova Events",
+        "Attestation de bénévolat",
+        "Nova Events atteste que Camille Martin s'est engagée bénévolement au sein de l'association en janvier 2026.",
+        "Camille a participé bénévolement à 3 événements de Nova Events en janvier 2026, dans les rôles suivants :",
+        "Bar: Service au comptoir",
+        "Entrée",
+        "Nous remercions chaleureusement Camille pour son engagement.",
+        "Fait à Genève, le 15 juin 2026"
+      ],
+      "footer": []
+    }
+  },
+  {
+    "name": "gender-male",
+    "language": "fr",
+    "association": "Nova Events",
+    "place": "Genève",
+    "person": {
+      "firstName": "Camille",
+      "lastName": "Martin",
+      "gender": "MALE"
+    },
+    "types": [
+      {
+        "name": "Bar",
+        "category": "SHIFT",
+        "description": ""
+      }
+    ],
+    "jobs": [
+      {
+        "jobTypeName": "Bar",
+        "day": 20260312
+      }
+    ],
+    "selection": {
+      "fromDay": 20260101,
+      "toDay": 20261231,
+      "todayDay": 20260615,
+      "jobTypes": [
+        "Bar"
+      ]
+    },
+    "expect": {
+      "body": [
+        "Nova Events",
+        "Attestation de bénévolat",
+        "Nova Events atteste que Camille Martin s'est engagé bénévolement au sein de l'association.",
+        "Le 12 mars 2026, Camille a participé bénévolement à un événement de Nova Events en tant que Bar.",
+        "Nous remercions chaleureusement Camille pour son engagement.",
+        "Fait à Genève, le 15 juin 2026"
+      ],
+      "footer": []
+    }
+  },
+  {
+    "name": "gender-nonbinary",
+    "language": "fr",
+    "association": "Nova Events",
+    "place": "Genève",
+    "person": {
+      "firstName": "Camille",
+      "lastName": "Martin",
+      "gender": "NON_BINARY"
+    },
+    "types": [
+      {
+        "name": "Bar",
+        "category": "SHIFT",
+        "description": ""
+      }
+    ],
+    "jobs": [
+      {
+        "jobTypeName": "Bar",
+        "day": 20260312
+      }
+    ],
+    "selection": {
+      "fromDay": 20260101,
+      "toDay": 20261231,
+      "todayDay": 20260615,
+      "jobTypes": [
+        "Bar"
+      ]
+    },
+    "expect": {
+      "body": [
+        "Nova Events",
+        "Attestation de bénévolat",
+        "Nova Events atteste que Camille Martin s'est engagéx bénévolement au sein de l'association.",
+        "Le 12 mars 2026, Camille a participé bénévolement à un événement de Nova Events en tant que Bar.",
+        "Nous remercions chaleureusement Camille pour son engagement.",
+        "Fait à Genève, le 15 juin 2026"
+      ],
+      "footer": []
+    }
+  },
+  {
+    "name": "gender-unknown",
+    "language": "fr",
+    "association": "Nova Events",
+    "place": "Genève",
+    "person": {
+      "firstName": "Camille",
+      "lastName": "Martin",
+      "gender": ""
+    },
+    "types": [
+      {
+        "name": "Bar",
+        "category": "SHIFT",
+        "description": ""
+      }
+    ],
+    "jobs": [
+      {
+        "jobTypeName": "Bar",
+        "day": 20260312
+      }
+    ],
+    "selection": {
+      "fromDay": 20260101,
+      "toDay": 20261231,
+      "todayDay": 20260615,
+      "jobTypes": [
+        "Bar"
+      ]
+    },
+    "expect": {
+      "body": [
+        "Nova Events",
+        "Attestation de bénévolat",
+        "Nova Events atteste que Camille Martin s'est engagéx bénévolement au sein de l'association.",
+        "Le 12 mars 2026, Camille a participé bénévolement à un événement de Nova Events en tant que Bar.",
+        "Nous remercions chaleureusement Camille pour son engagement.",
+        "Fait à Genève, le 15 juin 2026"
+      ],
+      "footer": []
+    }
+  },
+  {
+    "name": "period-trimmed",
+    "language": "fr",
+    "association": "Nova Events",
+    "place": "Genève",
+    "person": {
+      "firstName": "Camille",
+      "lastName": "Martin",
+      "gender": "FEMALE"
+    },
+    "types": [
+      {
+        "name": "Bar",
+        "category": "SHIFT",
+        "description": ""
+      }
+    ],
+    "jobs": [
+      {
+        "jobTypeName": "Bar",
+        "day": 20240310
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20250210
+      }
+    ],
+    "selection": {
+      "fromDay": 20190101,
+      "toDay": 20261231,
+      "todayDay": 20260615,
+      "jobTypes": [
+        "Bar"
+      ]
+    },
+    "expect": {
+      "body": [
+        "Nova Events",
+        "Attestation de bénévolat",
+        "Nova Events atteste que Camille Martin s'est engagée bénévolement au sein de l'association entre mars 2024 et février 2025.",
+        "Camille a participé bénévolement à 2 événements de Nova Events entre mars 2024 et février 2025, en tant que Bar.",
+        "Nous remercions chaleureusement Camille pour son engagement.",
+        "Fait à Genève, le 15 juin 2026"
+      ],
+      "footer": []
+    }
+  },
+  {
+    "name": "future-excluded",
+    "language": "fr",
+    "association": "Nova Events",
+    "place": "Genève",
+    "person": {
+      "firstName": "Camille",
+      "lastName": "Martin",
+      "gender": "FEMALE"
+    },
+    "types": [
+      {
+        "name": "Bar",
+        "category": "SHIFT",
+        "description": ""
+      }
+    ],
+    "jobs": [
+      {
+        "jobTypeName": "Bar",
+        "day": 20260312
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260901
+      }
+    ],
+    "selection": {
+      "fromDay": 20260101,
+      "toDay": 20261231,
+      "todayDay": 20260615,
+      "jobTypes": [
+        "Bar"
+      ]
+    },
+    "expect": {
+      "body": [
+        "Nova Events",
+        "Attestation de bénévolat",
+        "Nova Events atteste que Camille Martin s'est engagée bénévolement au sein de l'association.",
+        "Le 12 mars 2026, Camille a participé bénévolement à un événement de Nova Events en tant que Bar.",
+        "Nous remercions chaleureusement Camille pour son engagement.",
+        "Fait à Genève, le 15 juin 2026"
+      ],
+      "footer": []
+    }
+  },
+  {
+    "name": "nothing",
+    "language": "fr",
+    "association": "Nova Events",
+    "place": "Genève",
+    "person": {
+      "firstName": "Camille",
+      "lastName": "Martin",
+      "gender": "FEMALE"
+    },
+    "types": [
+      {
+        "name": "Bar",
+        "category": "SHIFT",
+        "description": ""
+      }
+    ],
+    "jobs": [
+      {
+        "jobTypeName": "Bar",
+        "day": 20260312
+      }
+    ],
+    "selection": {
+      "fromDay": 20260101,
+      "toDay": 20261231,
+      "todayDay": 20260615,
+      "jobTypes": [
+        "Réunion de comité"
+      ]
+    },
+    "expect": null
+  },
+  {
+    "name": "nothing-in-range",
+    "language": "fr",
+    "association": "Nova Events",
+    "place": "Genève",
+    "person": {
+      "firstName": "Camille",
+      "lastName": "Martin",
+      "gender": "FEMALE"
+    },
+    "types": [
+      {
+        "name": "Bar",
+        "category": "SHIFT",
+        "description": ""
+      }
+    ],
+    "jobs": [
+      {
+        "jobTypeName": "Bar",
+        "day": 20250312
+      }
+    ],
+    "selection": {
+      "fromDay": 20260101,
+      "toDay": 20261231,
+      "todayDay": 20260615,
+      "jobTypes": [
+        "Bar"
+      ]
+    },
+    "expect": null
+  },
+  {
+    "name": "no-place",
+    "language": "fr",
+    "association": "Nova Events",
+    "place": "",
+    "person": {
+      "firstName": "Camille",
+      "lastName": "Martin",
+      "gender": "FEMALE"
+    },
+    "types": [
+      {
+        "name": "Bar",
+        "category": "SHIFT",
+        "description": ""
+      }
+    ],
+    "jobs": [
+      {
+        "jobTypeName": "Bar",
+        "day": 20260312
+      }
+    ],
+    "selection": {
+      "fromDay": 20260101,
+      "toDay": 20261231,
+      "todayDay": 20260615,
+      "jobTypes": [
+        "Bar"
+      ]
+    },
+    "expect": {
+      "body": [
+        "Nova Events",
+        "Attestation de bénévolat",
+        "Nova Events atteste que Camille Martin s'est engagée bénévolement au sein de l'association.",
+        "Le 12 mars 2026, Camille a participé bénévolement à un événement de Nova Events en tant que Bar.",
+        "Nous remercions chaleureusement Camille pour son engagement."
+      ],
+      "footer": []
+    }
+  },
+  {
+    "name": "caps-name",
+    "language": "fr",
+    "association": "Nova Events",
+    "place": "Genève",
+    "person": {
+      "firstName": "MARIE-CLAIRE",
+      "lastName": "DUPONT",
+      "gender": "FEMALE"
+    },
+    "types": [
+      {
+        "name": "Bar",
+        "category": "SHIFT",
+        "description": ""
+      }
+    ],
+    "jobs": [
+      {
+        "jobTypeName": "Bar",
+        "day": 20260312
+      }
+    ],
+    "selection": {
+      "fromDay": 20260101,
+      "toDay": 20261231,
+      "todayDay": 20260615,
+      "jobTypes": [
+        "Bar"
+      ]
+    },
+    "expect": {
+      "body": [
+        "Nova Events",
+        "Attestation de bénévolat",
+        "Nova Events atteste que Marie-Claire Dupont s'est engagée bénévolement au sein de l'association.",
+        "Le 12 mars 2026, Marie-Claire a participé bénévolement à un événement de Nova Events en tant que Bar.",
+        "Nous remercions chaleureusement Marie-Claire pour son engagement.",
+        "Fait à Genève, le 15 juin 2026"
+      ],
+      "footer": []
+    }
+  },
+  {
+    "name": "name-mixed-case-kept",
+    "language": "fr",
+    "association": "Nova Events",
+    "place": "Genève",
+    "person": {
+      "firstName": "Anna",
+      "lastName": "van der Berg",
+      "gender": "FEMALE"
+    },
+    "types": [
+      {
+        "name": "Bar",
+        "category": "SHIFT",
+        "description": ""
+      }
+    ],
+    "jobs": [
+      {
+        "jobTypeName": "Bar",
+        "day": 20260312
+      }
+    ],
+    "selection": {
+      "fromDay": 20260101,
+      "toDay": 20261231,
+      "todayDay": 20260615,
+      "jobTypes": [
+        "Bar"
+      ]
+    },
+    "expect": {
+      "body": [
+        "Nova Events",
+        "Attestation de bénévolat",
+        "Nova Events atteste que Anna van der Berg s'est engagée bénévolement au sein de l'association.",
+        "Le 12 mars 2026, Anna a participé bénévolement à un événement de Nova Events en tant que Bar.",
+        "Nous remercions chaleureusement Anna pour son engagement.",
+        "Fait à Genève, le 15 juin 2026"
+      ],
+      "footer": []
+    }
+  },
+  {
+    "name": "english",
+    "language": "en",
+    "association": "Nova Events",
+    "place": "Geneva",
+    "person": {
+      "firstName": "Camille",
+      "lastName": "Martin",
+      "gender": ""
+    },
+    "types": [
+      {
+        "name": "Bar",
+        "category": "SHIFT",
+        "description": ""
+      }
+    ],
+    "jobs": [
+      {
+        "jobTypeName": "Bar",
+        "day": 20260312
+      }
+    ],
+    "selection": {
+      "fromDay": 20260101,
+      "toDay": 20261231,
+      "todayDay": 20260615,
+      "jobTypes": [
+        "Bar"
+      ]
+    },
+    "expect": {
+      "body": [
+        "Nova Events",
+        "Volunteer certificate",
+        "Nova Events certifies that Camille Martin has volunteered with the association.",
+        "On 12 March 2026, Camille volunteered at an event of Nova Events as Bar.",
+        "We warmly thank Camille for their commitment.",
+        "Issued in Geneva, on 15 June 2026"
+      ],
+      "footer": []
+    }
+  },
+  {
+    "name": "runs",
+    "language": "fr",
+    "association": "Nova Events",
+    "place": "Genève",
+    "person": {
+      "firstName": "Camille",
+      "lastName": "Martin",
+      "gender": "FEMALE"
+    },
+    "types": [
+      {
+        "name": "Entrée",
+        "category": "SHIFT",
+        "description": "Accueil et contrôle des billets"
+      },
+      {
+        "name": "Bar",
+        "category": "SHIFT",
+        "description": "Service au comptoir"
+      }
+    ],
+    "jobs": [
+      {
+        "jobTypeName": "Entrée",
+        "day": 20260105
+      },
+      {
+        "jobTypeName": "Entrée",
+        "day": 20260112
+      },
+      {
+        "jobTypeName": "Entrée",
+        "day": 20260119
+      },
+      {
+        "jobTypeName": "Entrée",
+        "day": 20260126
+      },
+      {
+        "jobTypeName": "Entrée",
+        "day": 20260202
+      },
+      {
+        "jobTypeName": "Entrée",
+        "day": 20260209
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260110
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260117
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260124
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260131
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260207
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260214
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260221
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260228
+      }
+    ],
+    "selection": {
+      "fromDay": 20260101,
+      "toDay": 20261231,
+      "todayDay": 20260615,
+      "jobTypes": [
+        "Bar",
+        "Entrée"
+      ]
+    },
+    "expect": {
+      "body": [
+        "Nova Events",
+        "Attestation de bénévolat",
+        "Nova Events atteste que Camille Martin s'est engagée bénévolement au sein de l'association entre janvier et février 2026.",
+        "Camille a participé bénévolement à 14 événements de Nova Events entre janvier et février 2026, dans les rôles suivants :",
+        "Bar: Service au comptoir",
+        "Entrée: Accueil et contrôle des billets",
+        "Nous remercions chaleureusement Camille pour son engagement.",
+        "Fait à Genève, le 15 juin 2026"
+      ],
+      "footer": [],
+      "bodyRuns": {
+        "0": [
+          {
+            "text": "Nova Events",
+            "b": true,
+            "i": false,
+            "u": false
+          }
+        ],
+        "4": [
+          {
+            "text": "Bar",
+            "b": true,
+            "i": false,
+            "u": false
+          },
+          {
+            "text": ": Service au comptoir",
+            "b": false,
+            "i": false,
+            "u": false
+          }
+        ],
+        "5": [
+          {
+            "text": "Entrée",
+            "b": true,
+            "i": false,
+            "u": false
+          },
+          {
+            "text": ": Accueil et contrôle des billets",
+            "b": false,
+            "i": false,
+            "u": false
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "template-override",
+    "language": "fr",
+    "association": "Nova Events",
+    "place": "Genève",
+    "person": {
+      "firstName": "Camille",
+      "lastName": "Martin",
+      "gender": "FEMALE"
+    },
+    "types": [
+      {
+        "name": "Bar",
+        "category": "SHIFT",
+        "description": ""
+      }
+    ],
+    "jobs": [
+      {
+        "jobTypeName": "Bar",
+        "day": 20260312
+      }
+    ],
+    "selection": {
+      "fromDay": 20260101,
+      "toDay": 20261231,
+      "todayDay": 20260615,
+      "jobTypes": [
+        "Bar"
+      ]
+    },
+    "expect": {
+      "body": [
+        "Le 12 mars 2026 : Bar"
+      ],
+      "footer": [
+        "Nova Events - "
+      ],
+      "bodyRuns": {
+        "0": [
+          {
+            "text": "Le 12 mars 2026 : ",
+            "b": false,
+            "i": false,
+            "u": false
+          },
+          {
+            "text": "Bar",
+            "b": true,
+            "i": true,
+            "u": true
+          }
+        ]
+      }
+    },
+    "template": {
+      "version": 1,
+      "language": "fr",
+      "place": "Genève",
+      "blocks": {
+        "SHIFT": {
+          "one": [
+            {
+              "runs": [
+                {
+                  "text": "Le "
+                },
+                {
+                  "var": "date"
+                },
+                {
+                  "text": " : "
+                },
+                {
+                  "var": "role",
+                  "b": true,
+                  "i": true,
+                  "u": true
+                }
+              ]
+            }
+          ]
+        },
+        "footer": {
+          "one": [
+            {
+              "align": "CENTER",
+              "size": "SMALL",
+              "runs": [
+                {
+                  "var": "association"
+                },
+                {
+                  "text": " - "
+                },
+                {
+                  "var": "unknown"
+                }
+              ]
+            },
+            {
+              "runs": [
+                {
+                  "text": "  "
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+]
