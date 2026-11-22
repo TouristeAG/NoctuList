@@ -12,7 +12,8 @@ l'attestation, peut corriger son texte, puis la valide (le serveur l'envoie) ou 
 ## 2. Objectifs, non-objectifs, anti-objectifs
 
 Objectifs
-- Notification dans l'app à l'arrivée d'une demande, comme les guestlists.
+- Notification à l'arrivée d'une demande, **uniquement dans la partie admin** (jamais sur l'accueil,
+  la billetterie, la caisse ni aucun écran visible du public).
 - Carte « Attestations à valider » en haut de la liste Bénévoles (pas dans la guestlist).
 - Fenêtre de relecture : la demande (bénévole, période, types cochés), le texte de cette
   attestation dans l'éditeur riche, l'aperçu A4, « Refuser » (motif facultatif) et « Valider et
@@ -25,7 +26,7 @@ Non-objectifs
 - Pas de modification de la période ni des types par l'admin (il corrige le texte).
 - Aucun e-mail au bénévole en cas de refus (règle du projet : aucun e-mail automatique hors envoi
   demandé ; le refus se lit dans le portail).
-- Pas de notification système (OS) : un toast dans l'app, comme les guestlists.
+- Pas de notification système (OS) : un toast dans la partie admin seulement.
 
 Anti-objectifs
 - Une attestation envoyée sans validation d'un admin, par n'importe quel chemin.
@@ -52,8 +53,10 @@ Anti-objectifs
    **n'envoie rien**.
 3. Les appareils écoutent déjà `portalRequests`. Toute demande `CERTIFICATE_EMAIL` en
    `PENDING_REVIEW` apparaît :
-   - en toast global à son arrivée (« {prénom nom} demande une attestation »), sur le modèle de
-     `GuestFormArrivalToastHost` (même emplacement, mêmes conditions d'affichage) ;
+   - en toast à son arrivée (« {prénom nom} demande une attestation »), sur le modèle visuel de
+     `GuestFormArrivalToastHost`, mais affiché **seulement dans les écrans admin** (après
+     l'authentification admin). Rien n'apparaît hors de l'admin, même si une demande arrive
+     pendant qu'on est sur l'accueil, la billetterie ou la caisse : elle reste dans la carte ;
    - dans une carte « Attestations à valider » en haut de la liste Bénévoles (Android et
      desktop, toutes les mises en page où `GuestFormPendingCard` existe pour la guestlist), sur
      le modèle de `GuestFormPendingCard` : une ligne par demande, plus ancienne en premier.
@@ -164,8 +167,9 @@ Anti-objectifs
 - **Demande sans fiche** : si aucun bénévole n'a ce `portalUid`, la ligne affiche « Fiche
   introuvable » et seul « Refuser » est proposé.
 - **Écrans** : la carte va partout où la liste Bénévoles s'affiche (vérifier chaque mise en page
-  de `VolunteerScreen` sur Android et desktop). Le toast est un second hôte monté à côté de
-  `GuestFormArrivalToastHost`, ou une généralisation de celui-ci (au choix du constructeur).
+  de `VolunteerScreen` sur Android et desktop). Le toast est un hôte à part, monté uniquement
+  dans la partie admin (pas à côté de `GuestFormArrivalToastHost`, qui est global). Une demande
+  arrivée pendant qu'on était hors de l'admin ne déclenche pas de toast plus tard ; la carte suffit.
 - **Lecteur Kotlin des demandes** (`PortalDocuments.kt`) : il accepte les champs `note`,
   `reason`, `processedAt` et les nouveaux états ; les filtres « les appareils ne traitent pas
   CERTIFICATE_EMAIL » restent.
