@@ -64,3 +64,54 @@ test("guestListAddEdits: errors", () => {
   assert.equal(guestListAddEdits({ ...base, contactEmail: "nope" }).error, "errEmail");
   assert.equal(guestListAddEdits({ ...base, notes: "x".repeat(501) }).error, "notesTooLong");
 });
+
+const { reviewSummary, guestListReviewEdit } = await import("../site/portal-common.js");
+
+const addReview = {
+  reviewKey: "0123456789abcdef", source: "FORM", kind: "ADD", listName: "Groove Collective", venueName: "Groove",
+  contactEmail: "band@mail.example", emergencyPhone: "+41 79 1", notes: "", requestedBy: "",
+  people: [{ name: "Ann Doe", accessIds: ["acc-bs"] }, { name: "Bob", accessIds: [] }],
+};
+const removeReview = {
+  reviewKey: "fedcba9876543210", source: "PORTAL", kind: "REMOVE", listName: "Les Amis", venueName: "Groove",
+  contactEmail: "", requestedBy: "Marie Dupont", removeGuests: [{ guestKey: "a1b2c3d4e5f60007", name: "Hugo L" }],
+};
+
+test("reviewSummary: title, count, source", () => {
+  assert.deepEqual(reviewSummary(addReview), { title: "Groove Collective", count: 2, sourceKey: "reviewFromForm" });
+  assert.deepEqual(reviewSummary(removeReview), { title: "Les Amis", count: 1, sourceKey: "reviewFromPortal" });
+  assert.equal(reviewSummary({ ...removeReview, listName: " " }).title, "Marie Dupont");
+  assert.equal(reviewSummary({ ...addReview, listName: "", requestedBy: "" }).title, "band@mail.example");
+  assert.deepEqual(reviewSummary({}), { title: "", count: 0, sourceKey: "reviewFromForm" });
+});
+
+test("guestListReviewEdit: ACCEPT cleans the people", () => {
+  const r = guestListReviewEdit({
+    review: addReview, accept: true,
+    people: [{ name: "  Ann   Doe ", accessIds: ["acc-bs", "acc-bs", "acc-vip"] }, { name: "  ", accessIds: ["acc-vip"] }, { name: "Bob" }],
+    contactEmail: " Band@Mail.example ", phone: " +41 79 555 44 33 ", notes: " Late ",
+  });
+  assert.deepEqual(r, {
+    action: "ACCEPT", reviewKey: "0123456789abcdef",
+    people: [{ name: "Ann Doe", accessIds: ["acc-bs", "acc-vip"] }, { name: "Bob", accessIds: [] }],
+    contactEmail: "band@mail.example", phone: "+41 79 555 44 33", notes: "Late",
+  });
+  assert.deepEqual(guestListReviewEdit({ review: removeReview, accept: true, people: [{ name: "x" }] }), { action: "ACCEPT", reviewKey: "fedcba9876543210" });
+});
+
+test("guestListReviewEdit: REJECT carries only action and reviewKey", () => {
+  assert.deepEqual(guestListReviewEdit({ review: addReview, accept: false, people: [{ name: "<b>" }], contactEmail: "nope" }),
+    { action: "REJECT", reviewKey: "0123456789abcdef" });
+  assert.deepEqual(guestListReviewEdit({ review: removeReview, accept: false }), { action: "REJECT", reviewKey: "fedcba9876543210" });
+});
+
+test("guestListReviewEdit: invalid name or nobody left gives null", () => {
+  assert.equal(guestListReviewEdit({ review: addReview, accept: true, people: [{ name: "<b>" }] }), null);
+  assert.equal(guestListReviewEdit({ review: addReview, accept: true, people: [{ name: "x".repeat(61) }] }), null);
+  assert.equal(guestListReviewEdit({ review: addReview, accept: true, people: [{ name: " " }] }), null);
+  assert.equal(guestListReviewEdit({ review: addReview, accept: true, people: [] }), null);
+  assert.equal(guestListReviewEdit({ review: addReview, accept: true, people: Array.from({ length: 101 }, () => ({ name: "A" })) }), null);
+  assert.equal(guestListReviewEdit({ review: addReview, accept: true, people: [{ name: "Ann" }], phone: "call me" }), null);
+  assert.equal(guestListReviewEdit({ review: addReview, accept: true, people: [{ name: "Ann" }], contactEmail: "nope" }), null);
+  assert.equal(guestListReviewEdit({ review: addReview, accept: true, people: [{ name: "Ann" }], notes: "x".repeat(501) }), null);
+});
