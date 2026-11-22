@@ -244,6 +244,8 @@ Lisible par le serveur seulement (pas par les comptes du portail).
 
 ## 8. Serveur
 
+Amendé par la validation par l'équipe avant envoi : voir `2026-11-22-volunteer-certificate-review-design.md`.
+
 Nouveau type de demande `CERTIFICATE_EMAIL` dans `portalRequests` (même flux que
 `QR_EMAIL` : PENDING → claim → DONE/REJECTED) :
 `{ type, uid, from: "AAAA-MM-JJ", to: "AAAA-MM-JJ", jobTypes: [noms, ≤ 50, ≤ 80 caractères] }`.
