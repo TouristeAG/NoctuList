@@ -84,7 +84,7 @@ interface VolunteerPortalHost {
 
     /**
      * Accepts a pending added request with the people, contact and notes sent from the portal.
-     * False when it would go past a limit or is no longer pending.
+     * Returns once everything is saved.
      */
     suspend fun acceptGuestFormFromPortal(
         form: GuestForm,
@@ -93,13 +93,13 @@ interface VolunteerPortalHost {
         phone: String,
         notes: String,
         reviewedBy: String,
-    ): Boolean = false
+    ): GuestReviewOutcome = GuestReviewOutcome.SAVE_FAILED
 
-    /** Accepts a pending removal request. False when it is no longer pending. */
-    suspend fun acceptGuestFormRemovalFromPortal(form: GuestForm, reviewedBy: String): Boolean = false
+    /** Accepts a pending removal request. Returns once everything is saved. */
+    suspend fun acceptGuestFormRemovalFromPortal(form: GuestForm, reviewedBy: String): GuestReviewOutcome = GuestReviewOutcome.SAVE_FAILED
 
-    /** Refuses a pending request. False when it is no longer pending. */
-    suspend fun rejectGuestFormFromPortal(form: GuestForm, reviewedBy: String): Boolean = false
+    /** Refuses a pending request. Returns once it is saved. */
+    suspend fun rejectGuestFormFromPortal(form: GuestForm, reviewedBy: String): GuestReviewOutcome = GuestReviewOutcome.SAVE_FAILED
 
     suspend fun volunteers(): List<Volunteer>
     /** Inserts a new volunteer through the normal save + sync pipeline (with its optional photo). */

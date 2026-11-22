@@ -120,7 +120,9 @@ internal class FakeHost(initial: List<Volunteer>) : VolunteerPortalHost {
     val acceptedReviews = mutableListOf<AcceptedReview>()
     val rejectedReviews = mutableListOf<Pair<com.eventmanager.app.data.models.GuestForm, String>>()
     val removedReviews = mutableListOf<Pair<com.eventmanager.app.data.models.GuestForm, String>>()
-    var acceptResult = true
+    var acceptResult = GuestReviewOutcome.DONE
+    var removeResult = GuestReviewOutcome.DONE
+    var rejectResult = GuestReviewOutcome.DONE
     override suspend fun acceptGuestFormFromPortal(
         form: com.eventmanager.app.data.models.GuestForm,
         people: List<com.eventmanager.app.data.models.ManualTemporaryGuestEntry>,
@@ -128,18 +130,17 @@ internal class FakeHost(initial: List<Volunteer>) : VolunteerPortalHost {
         phone: String,
         notes: String,
         reviewedBy: String,
-    ): Boolean {
-        if (!acceptResult) return false
-        acceptedReviews += AcceptedReview(form, people, contactEmail, phone, notes, reviewedBy)
-        return true
+    ): GuestReviewOutcome {
+        if (acceptResult == GuestReviewOutcome.DONE) acceptedReviews += AcceptedReview(form, people, contactEmail, phone, notes, reviewedBy)
+        return acceptResult
     }
-    override suspend fun acceptGuestFormRemovalFromPortal(form: com.eventmanager.app.data.models.GuestForm, reviewedBy: String): Boolean {
-        removedReviews += form to reviewedBy
-        return true
+    override suspend fun acceptGuestFormRemovalFromPortal(form: com.eventmanager.app.data.models.GuestForm, reviewedBy: String): GuestReviewOutcome {
+        if (removeResult == GuestReviewOutcome.DONE) removedReviews += form to reviewedBy
+        return removeResult
     }
-    override suspend fun rejectGuestFormFromPortal(form: com.eventmanager.app.data.models.GuestForm, reviewedBy: String): Boolean {
-        rejectedReviews += form to reviewedBy
-        return true
+    override suspend fun rejectGuestFormFromPortal(form: com.eventmanager.app.data.models.GuestForm, reviewedBy: String): GuestReviewOutcome {
+        if (rejectResult == GuestReviewOutcome.DONE) rejectedReviews += form to reviewedBy
+        return rejectResult
     }
     override fun institutionLogoPng() = ""
     override fun profilePhotosEnabled() = true

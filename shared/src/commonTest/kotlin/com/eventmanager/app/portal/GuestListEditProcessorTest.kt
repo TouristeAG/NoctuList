@@ -284,10 +284,38 @@ class GuestListEditProcessorTest {
     @Test
     fun overLimitKeepsPending() {
         reviewing()
-        host.acceptResult = false
+        host.acceptResult = GuestReviewOutcome.OVER_LIMIT
         val form = request("F10")
         assertEquals("REJECTED" to "OVER_LIMIT", run(review("ACCEPT", form, listOf(ManualTemporaryGuestEntry("Ann"))), forms = listOf(form)))
         assertTrue(host.rejectedReviews.isEmpty())
+    }
+
+    @Test
+    fun acceptSaveFailureIsNotALimit() {
+        reviewing()
+        host.acceptResult = GuestReviewOutcome.SAVE_FAILED
+        val form = request("F11")
+        assertEquals("REJECTED" to "SAVE_FAILED", run(review("ACCEPT", form, listOf(ManualTemporaryGuestEntry("Ann"))), forms = listOf(form)))
+    }
+
+    @Test
+    fun removalAndRejectSaveFailure() {
+        reviewing()
+        host.removeResult = GuestReviewOutcome.SAVE_FAILED
+        host.rejectResult = GuestReviewOutcome.SAVE_FAILED
+        val removal = request("F12", kind = GuestFormRequestKind.REMOVE)
+        assertEquals("REJECTED" to "SAVE_FAILED", run(review("ACCEPT", removal), forms = listOf(removal)))
+        val add = request("F13")
+        assertEquals("REJECTED" to "SAVE_FAILED", run(review("REJECT", add), forms = listOf(add)))
+    }
+
+    @Test
+    fun decidedMeanwhileNotPending() {
+        // The device rereads the request and finds it already decided (another decision got there first).
+        reviewing()
+        host.rejectResult = GuestReviewOutcome.NOT_PENDING
+        val form = request("F14")
+        assertEquals("REJECTED" to "NOT_PENDING", run(review("REJECT", form), forms = listOf(form)))
     }
 
     @Test

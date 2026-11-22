@@ -98,6 +98,9 @@ data class GuestListEdit(
     }
 }
 
+/** What a device did with a portal decision on a guest request; any other than [DONE] is the refusal reason. */
+enum class GuestReviewOutcome { DONE, NOT_PENDING, OVER_LIMIT, SAVE_FAILED }
+
 /**
  * Applies a portal edit to the temporary guest list, after checking again that the account holds
  * an active grant for that date (and venue). Returns (status, reason) for the edit document.
@@ -139,18 +142,18 @@ class GuestListEditProcessor(
         val form = GuestListReviews.covered(grant, forms, "").firstOrNull { GuestListReviews.reviewKey(it) == edit.reviewKey }
             ?: return REJECTED to "NOT_PENDING"
         val reviewedBy = "$REVIEWED_BY_PREFIX$holderName"
-        if (edit.action == GuestListEdit.REJECT) {
-            return if (host.rejectGuestFormFromPortal(form, reviewedBy)) DONE to "" else REJECTED to "SAVE_FAILED"
+        val outcome = when {
+            edit.action == GuestListEdit.REJECT -> host.rejectGuestFormFromPortal(form, reviewedBy)
+            form.requestKindValue == GuestFormRequestKind.REMOVE -> host.acceptGuestFormRemovalFromPortal(form, reviewedBy)
+            else -> {
+                val people = edit.people
+                    .map { ManualTemporaryGuestEntry(it.name.trim(), accessesFor(form.venueName, it.accessIds.toList())) }
+                    .filter { it.name.isNotEmpty() }
+                if (people.isEmpty()) return REJECTED to "INVALID"
+                host.acceptGuestFormFromPortal(form, people, edit.contactEmail, edit.phone, edit.notes, reviewedBy)
+            }
         }
-        if (form.requestKindValue == GuestFormRequestKind.REMOVE) {
-            return if (host.acceptGuestFormRemovalFromPortal(form, reviewedBy)) DONE to "" else REJECTED to "SAVE_FAILED"
-        }
-        val people = edit.people
-            .map { ManualTemporaryGuestEntry(it.name.trim(), accessesFor(form.venueName, it.accessIds.toList())) }
-            .filter { it.name.isNotEmpty() }
-        if (people.isEmpty()) return REJECTED to "INVALID"
-        val ok = host.acceptGuestFormFromPortal(form, people, edit.contactEmail, edit.phone, edit.notes, reviewedBy)
-        return if (ok) DONE to "" else REJECTED to "OVER_LIMIT"
+        return if (outcome == GuestReviewOutcome.DONE) DONE to "" else REJECTED to outcome.name
     }
 
     /** Accesses of [venue] among [ids]; a list without venue ("" or "BOTH") takes those of every venue. */
