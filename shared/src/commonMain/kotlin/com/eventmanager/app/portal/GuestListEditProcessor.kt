@@ -147,7 +147,7 @@ class GuestListEditProcessor(
             form.requestKindValue == GuestFormRequestKind.REMOVE -> host.acceptGuestFormRemovalFromPortal(form, reviewedBy)
             else -> {
                 val people = edit.people
-                    .map { ManualTemporaryGuestEntry(it.name.trim(), accessesFor(form.venueName, it.accessIds.toList())) }
+                    .map { ManualTemporaryGuestEntry(it.name.trim(), accessesFor(listVenueLabel(form.venueName).ifEmpty { grant.venueName.trim() }, it.accessIds.toList())) }
                     .filter { it.name.isNotEmpty() }
                 if (people.isEmpty()) return REJECTED to "INVALID"
                 host.acceptGuestFormFromPortal(form, people, edit.contactEmail, edit.phone, edit.notes, reviewedBy)

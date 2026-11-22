@@ -27,7 +27,7 @@ import {
   uploadBytes,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 import { EMULATOR_PORTS, isLocalDev, loadConfig, parseOrgPath } from "./firebase-env.js?v=portal-1";
-import { applyStaticI18n, bindLanguageSelect, currentLang, t } from "./portal-i18n.js?v=guest-7";
+import { applyStaticI18n, bindLanguageSelect, currentLang, t } from "./portal-i18n.js?v=guest-8";
 import {
   DATE_RE,
   EMAIL_RE,
@@ -40,7 +40,7 @@ import {
   passwordProblem,
   passwordStrength,
   toJpeg,
-} from "./portal-common.js?v=guest-7";
+} from "./portal-common.js?v=guest-8";
 
 const $ = (id) => document.getElementById(id);
 const states = ["state-loading", "state-closed", "state-done", "form"].map($);

@@ -282,6 +282,24 @@ class GuestListEditProcessorTest {
     }
 
     @Test
+    fun acceptWithoutVenueIsBoundedByTheGrantVenue() {
+        reviewing()
+        val form = request("F10", venue = "")
+        val people = listOf(ManualTemporaryGuestEntry("Ann", setOf("bs", "vip")))
+        assertEquals("DONE" to "", run(review("ACCEPT", form, people), listOf(grant.copy(venueName = "Groove")), listOf(form)))
+        assertEquals(setOf("bs"), host.acceptedReviews.single().people.single().accessIds, "the Terreau access is dropped")
+    }
+
+    @Test
+    fun acceptWithoutVenueOnAnEveryVenueGrantKeepsAllAccesses() {
+        reviewing()
+        val form = request("F11", venue = "")
+        val people = listOf(ManualTemporaryGuestEntry("Ann", setOf("bs", "vip")))
+        assertEquals("DONE" to "", run(review("ACCEPT", form, people), forms = listOf(form)))
+        assertEquals(setOf("bs", "vip"), host.acceptedReviews.single().people.single().accessIds)
+    }
+
+    @Test
     fun overLimitKeepsPending() {
         reviewing()
         host.acceptResult = GuestReviewOutcome.OVER_LIMIT

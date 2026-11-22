@@ -40,8 +40,8 @@ import {
   uploadBytes,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 import { EMULATOR_PORTS, isLocalDev, loadConfig, parseOrgPath } from "./firebase-env.js?v=portal-2";
-import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=guest-7";
-import { cachedQrEntries, clearQr, closeQrDialog, isStaleFor, missingIsFinal, openQrDialog, readCachedQr, storeQr } from "./portal-qr.js?v=guest-7";
+import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=guest-8";
+import { cachedQrEntries, clearQr, closeQrDialog, isStaleFor, missingIsFinal, openQrDialog, readCachedQr, storeQr } from "./portal-qr.js?v=guest-8";
 import {
   EMAIL_RE,
   authErrorKey,
@@ -76,7 +76,7 @@ import {
   profileStoreKey,
   profilesSettled,
   toJpeg,
-} from "./portal-common.js?v=guest-7";
+} from "./portal-common.js?v=guest-8";
 
 const $ = (id) => document.getElementById(id);
 const VIEWS = ["view-loading", "view-disabled", "view-signin", "view-reset", "view-verify", "view-pending", "view-google", "view-dash", "view-offline"];
@@ -1971,8 +1971,10 @@ function openGuestListReview(review, grant) {
     const list = Array.isArray(review.people) && review.people.length ? review.people : [{ name: "", accessIds: [] }];
     list.forEach(add);
     renumber();
-    phone = el("input", { type: "tel", maxlength: "32", autocomplete: "off", value: String(review.emergencyPhone || ""), placeholder: t("optional") });
-    email = el("input", { type: "email", maxlength: "254", autocomplete: "off", value: String(review.contactEmail || ""), placeholder: t("optional") });
+    // A portal request takes the contact of its invite on the device, so it is shown but not editable.
+    const locked = review.source === "PORTAL";
+    phone = el("input", { type: "tel", maxlength: "32", autocomplete: "off", readonly: locked, value: String(review.emergencyPhone || ""), placeholder: locked ? "" : t("optional") });
+    email = el("input", { type: "email", maxlength: "254", autocomplete: "off", readonly: locked, value: String(review.contactEmail || ""), placeholder: locked ? "" : t("optional") });
     notes = el("textarea", { rows: "3", maxlength: String(MAX_GUEST_NOTES), placeholder: t("guestNotesHint") });
     notes.value = String(review.notes || "");
     blocks.push(
@@ -2010,8 +2012,8 @@ function openGuestListReview(review, grant) {
     if (isAdd) {
       const tel = phone.value.trim();
       const mail = email.value.trim();
-      if (tel && cleanPhone(tel) === null) return say("error", "errPhone");
-      if (mail && !(mail.length <= 254 && EMAIL_RE.test(mail.toLowerCase()))) return say("error", "errEmail");
+      if (!phone.readOnly && tel && cleanPhone(tel) === null) return say("error", "errPhone");
+      if (!email.readOnly && mail && !(mail.length <= 254 && EMAIL_RE.test(mail.toLowerCase()))) return say("error", "errEmail");
       if (notes.value.trim().length > MAX_GUEST_NOTES) return say("error", "notesTooLong");
       fields = guestListReviewEdit({
         review, accept: true,

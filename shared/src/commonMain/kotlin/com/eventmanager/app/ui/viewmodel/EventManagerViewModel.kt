@@ -3574,7 +3574,7 @@ class EventManagerViewModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                // Nobody was added: the request goes back to review.
+                // The batch failed: the request goes back to review. Guests inserted before the failure stay, so a retry may find some of them already on the list.
                 println("Portal: guest request accept failed: ${e.message}")
                 runCatching { saveGuestForm(current.copy(lastModified = maxOf(System.currentTimeMillis(), closedAt + 1))) }
                 return@decideGuestForm GuestReviewOutcome.SAVE_FAILED
