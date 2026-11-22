@@ -13,6 +13,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
@@ -22,6 +23,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -1985,4 +1987,182 @@ class VolunteerPortalServiceTest {
         assertEquals("REJECTED", gateway.docs[key]!!["status"])
         assertEquals("NOT_FOUND", gateway.docs[key]!!["reason"])
     }
+
+    // region Certificate review
+
+    private val reviewId = "${UID}_CERTIFICATE_EMAIL"
+    private val reviewKey = "portalRequests/$reviewId"
+    private val signer = com.eventmanager.app.portal.certificate.CertSigner("Chef", "Président", "")
+    private val paragraph = com.eventmanager.app.portal.certificate.ResolvedParagraph(
+        com.eventmanager.app.portal.certificate.CertAlign.LEFT,
+        com.eventmanager.app.portal.certificate.CertSize.NORMAL,
+        false,
+        listOf(com.eventmanager.app.portal.certificate.ResolvedRun("Hello", true, false, false)),
+    )
+
+    private fun reviewDoc(status: String, extra: Map<String, Any?> = emptyMap()): Map<String, Any?> = mapOf(
+        "uid" to UID, "type" to "CERTIFICATE_EMAIL", "status" to status, "email" to "lea@example.org",
+        "from" to "2026-01-01", "to" to "2026-12-31", "jobTypes" to listOf("Bar"),
+        "requestedAt" to System.currentTimeMillis() - 600_000,
+    ) + extra
+
+    private fun reviewService(gateway: FakeGateway) =
+        startedService(gateway, FakeHost(listOf(volunteer("SECRETID123", "lea@example.org", enabled = true, uid = UID))))
+
+    private fun approvals(gateway: FakeGateway) = gateway.docs.filterKeys { it.startsWith("certificateApprovals/") }
+
+    @Test
+    fun staleApprovalIsRetryableAndDeletesTheOldApproval() = runBlocking {
+        val gateway = FakeGateway()
+        val service = reviewService(gateway)
+        gateway.docs[reviewKey] = reviewDoc("APPROVED", mapOf("approvalId" to "old", "approvedAt" to System.currentTimeMillis() - 6 * 60_000L))
+        gateway.docs["certificateApprovals/old"] = mapOf("kind" to "REQUEST")
+        gateway.push("portalRequests")
+        assertTrue(service.certificateRequests.value.single().stuck)
+        assertTrue(service.retryCertificate(reviewId))
+        assertEquals("PENDING_REVIEW", gateway.docs[reviewKey]!!["status"])
+        assertTrue("certificateApprovals/old" in gateway.deleted)
+    }
+
+    @Test
+    fun freshApprovalIsNotRetryable() = runBlocking {
+        val gateway = FakeGateway()
+        val service = reviewService(gateway)
+        gateway.docs[reviewKey] = reviewDoc("APPROVED", mapOf("approvalId" to "a", "approvedAt" to System.currentTimeMillis() - 60_000L))
+        gateway.push("portalRequests")
+        assertFalse(service.certificateRequests.value.single().stuck)
+        assertFalse(service.retryCertificate(reviewId))
+        assertEquals("APPROVED", gateway.docs[reviewKey]!!["status"])
+        assertTrue(gateway.deleted.isEmpty())
+    }
+
+    @Test
+    fun approveWritesClaimThenApproval() = runBlocking {
+        val gateway = FakeGateway()
+        val service = reviewService(gateway)
+        gateway.docs[reviewKey] = reviewDoc("PENDING_REVIEW")
+        val result = service.approveCertificate(reviewId, listOf(paragraph), emptyList(), "Title", signer, "admin@asso.ch")
+        assertEquals(ApproveResult.SENT_TO_SERVER, result)
+        val request = gateway.docs[reviewKey]!!
+        assertEquals("APPROVED", request["status"])
+        assertNotNull(request["approvedAt"])
+        val approvalId = request["approvalId"] as String
+        val approval = gateway.docs["certificateApprovals/$approvalId"]!!
+        assertEquals(
+            setOf("kind", "requestId", "body", "footer", "title", "signer", "approvedBy", "approvedAt"),
+            approval.keys,
+        )
+        assertEquals("REQUEST", approval["kind"])
+        assertEquals(reviewId, approval["requestId"])
+        assertEquals("admin@asso.ch", approval["approvedBy"])
+        assertEquals(setOf("name", "title", "imageBase64"), (approval["signer"] as Map<*, *>).keys)
+        assertTrue("SECRETID123" !in approval.toString() && "SECRETID123" !in request.toString())
+        val body = (approval["body"] as List<*>).single() as Map<*, *>
+        assertEquals("LEFT", body["align"])
+        assertEquals("Hello", ((body["runs"] as List<*>).single() as Map<*, *>)["text"])
+    }
+
+    @Test
+    fun secondApprovalLoses() = runBlocking {
+        val gateway = FakeGateway()
+        val service = reviewService(gateway)
+        gateway.docs[reviewKey] = reviewDoc("APPROVED", mapOf("approvalId" to "first", "approvedAt" to System.currentTimeMillis()))
+        val result = service.approveCertificate(reviewId, listOf(paragraph), emptyList(), "T", signer, "b@asso.ch")
+        assertEquals(ApproveResult.ALREADY_HANDLED, result)
+        assertTrue(approvals(gateway).isEmpty())
+        assertEquals("first", gateway.docs[reviewKey]!!["approvalId"])
+    }
+
+    @Test
+    fun approvalWriteFailureLeavesRequestApproved() = runBlocking {
+        val gateway = FakeGateway().apply { failApprovalWrites = true }
+        val service = reviewService(gateway)
+        gateway.docs[reviewKey] = reviewDoc("PENDING_REVIEW")
+        assertEquals(ApproveResult.FAILED, service.approveCertificate(reviewId, listOf(paragraph), emptyList(), "T", signer, "a"))
+        assertEquals("APPROVED", gateway.docs[reviewKey]!!["status"])
+        assertTrue(approvals(gateway).isEmpty())
+    }
+
+    @Test
+    fun tooLargeIsRefusedLocally() = runBlocking {
+        val gateway = FakeGateway()
+        val service = reviewService(gateway)
+        gateway.docs[reviewKey] = reviewDoc("PENDING_REVIEW")
+        val big = paragraph.copy(runs = listOf(com.eventmanager.app.portal.certificate.ResolvedRun("x".repeat(200_001), false, false, false)))
+        assertEquals(ApproveResult.TOO_LARGE, service.approveCertificate(reviewId, listOf(big), emptyList(), "T", signer, "a"))
+        val bigImage = signer.copy(imageBase64 = "x".repeat(200_001))
+        assertEquals(ApproveResult.TOO_LARGE, service.approveCertificate(reviewId, listOf(paragraph), emptyList(), "T", bigImage, "a"))
+        assertEquals("PENDING_REVIEW", gateway.docs[reviewKey]!!["status"])
+        assertTrue(approvals(gateway).isEmpty())
+    }
+
+    @Test
+    fun refuseWritesReasonAndNote() = runBlocking {
+        val gateway = FakeGateway()
+        val service = reviewService(gateway)
+        gateway.docs[reviewKey] = reviewDoc("PENDING_REVIEW")
+        assertTrue(service.refuseCertificate(reviewId, "  " + "n".repeat(400)))
+        val request = gateway.docs[reviewKey]!!
+        assertEquals("REJECTED", request["status"])
+        assertEquals("REFUSED", request["reason"])
+        assertEquals("n".repeat(300), request["note"])
+        assertNotNull(request["processedAt"])
+        assertFalse(service.refuseCertificate(reviewId, "again"))
+    }
+
+    @Test
+    fun directSendWritesNoVolunteerId() = runBlocking {
+        val gateway = FakeGateway()
+        val service = reviewService(gateway)
+        val id = assertNotNull(service.sendDirectCertificate(
+            volunteer("SECRETID123", "lea@example.org"), listOf(paragraph), emptyList(), "Title", signer, "admin@asso.ch",
+        ))
+        val approval = gateway.docs["certificateApprovals/$id"]!!
+        assertEquals(
+            setOf("kind", "email", "firstName", "lastName", "body", "footer", "title", "signer", "approvedBy", "approvedAt"),
+            approval.keys,
+        )
+        assertEquals("DIRECT", approval["kind"])
+        assertEquals("lea@example.org", approval["email"])
+        assertEquals("Léa", approval["firstName"])
+        assertEquals("MARTIN", approval["lastName"])
+        assertTrue("SECRETID123" !in approval.toString())
+    }
+
+    @Test
+    fun directSendStatusFollowsTheApproval() = runBlocking {
+        val gateway = FakeGateway()
+        val service = reviewService(gateway)
+        val id = assertNotNull(service.sendDirectCertificate(
+            volunteer("V9", "lea@example.org"), listOf(paragraph), emptyList(), "T", signer, "a",
+        ))
+        // A snapshot that does not list the new approval yet is not "sent".
+        gateway.listeners["certificateApprovals"]!!.invoke(emptyList())
+        assertEquals(DirectSendStatus.Pending, service.directSendStatus(id).first())
+        gateway.push("certificateApprovals")
+        assertEquals(DirectSendStatus.Pending, service.directSendStatus(id).first())
+        gateway.docs["certificateApprovals/$id"] = gateway.docs["certificateApprovals/$id"]!! + mapOf("status" to "FAILED", "reason" to "SEND_FAILED")
+        gateway.push("certificateApprovals")
+        assertEquals(DirectSendStatus.Failed("SEND_FAILED"), service.directSendStatus(id).first())
+        assertEquals(listOf("SEND_FAILED"), service.failedDirectSends.value.map { it.reason })
+        gateway.docs.remove("certificateApprovals/$id")
+        gateway.push("certificateApprovals")
+        assertEquals(DirectSendStatus.Sent, service.directSendStatus(id).first())
+        assertTrue(service.failedDirectSends.value.isEmpty())
+    }
+
+    @Test
+    fun failedDirectSendsIncludeStaleProcessing() = runBlocking {
+        val gateway = FakeGateway()
+        val service = reviewService(gateway)
+        val base = mapOf<String, Any?>("kind" to "DIRECT", "firstName" to "Léa", "lastName" to "M", "status" to "PROCESSING")
+        gateway.docs["certificateApprovals/old"] = base + ("processingAt" to System.currentTimeMillis() - 6 * 60_000L)
+        gateway.docs["certificateApprovals/fresh"] = base + ("processingAt" to System.currentTimeMillis() - 60_000L)
+        gateway.push("certificateApprovals")
+        val failed = service.failedDirectSends.value.single()
+        assertEquals("old", failed.approvalId)
+        assertEquals("SEND_FAILED", failed.reason)
+    }
+
+    // endregion
 }

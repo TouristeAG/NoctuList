@@ -15,6 +15,7 @@ internal class FakeGateway : NoOpFirestoreGateway() {
     val deleted: MutableList<String> = CopyOnWriteArrayList()
     val listeners: MutableMap<String, suspend (List<Pair<String, Map<String, Any?>>>) -> Unit> = ConcurrentHashMap()
     var claimsRefused = false
+    var failApprovalWrites = false
     var qrWrites = 0
     var qrDeleteFailures = 0
     /** Every write, as "collection/id", in order. */
@@ -24,6 +25,7 @@ internal class FakeGateway : NoOpFirestoreGateway() {
 
     override suspend fun setPlainDocument(orgId: String, collection: String, docId: String, data: Map<String, Any?>, merge: Boolean) {
         val key = "$collection/$docId"
+        if (collection == "certificateApprovals" && failApprovalWrites) throw IllegalStateException("offline")
         if (collection == "volunteerPortalQr") qrWrites++
         writes += key
         synchronized(docs) { docs[key] = if (merge) (docs[key].orEmpty() + data) else data }

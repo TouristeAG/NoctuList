@@ -209,6 +209,7 @@ class VolunteerPortalService(
             processRequests(docs)
         }?.let { listeners += it }
         gateway.listenCollection(orgId, CERTIFICATE_APPROVALS) { docs ->
+            seenApprovalIds.addAll(docs.map { it.first })
             approvalDocs.value = docs.toMap()
             refreshFailedDirectSends()
         }?.let { listeners += it }
@@ -1765,6 +1766,8 @@ class VolunteerPortalService(
 
     /** Null until the first snapshot of `certificateApprovals` arrived. */
     private val approvalDocs = MutableStateFlow<Map<String, Map<String, Any?>>?>(null)
+    /** Approval ids a snapshot has listed: only one of these disappearing means the server sent it. */
+    private val seenApprovalIds: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
     private val _failedDirectSends = MutableStateFlow<List<FailedDirectSend>>(emptyList())
 
     /** Direct sends the server could not finish (or never finished), until dismissed. */
@@ -1940,7 +1943,7 @@ class VolunteerPortalService(
     fun directSendStatus(approvalId: String): Flow<DirectSendStatus> = approvalDocs.map { docs ->
         when {
             docs == null -> DirectSendStatus.Pending
-            docs[approvalId] == null -> DirectSendStatus.Sent
+            docs[approvalId] == null -> if (approvalId in seenApprovalIds) DirectSendStatus.Sent else DirectSendStatus.Pending
             docs[approvalId]?.get("status") == "FAILED" ->
                 DirectSendStatus.Failed(docs[approvalId]?.get("reason")?.toString().orEmpty().ifBlank { CertificateReview.REASON_SEND_FAILED })
             else -> DirectSendStatus.Pending
