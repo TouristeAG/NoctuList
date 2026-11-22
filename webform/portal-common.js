@@ -370,3 +370,33 @@ export function guestListCounts(guests) {
 export function guestListOnly(available, grants, now = Date.now()) {
   return !(Array.isArray(available) ? available : []).length && visibleLists(grants, now).length > 0;
 }
+
+export const MAX_GUEST_NOTES = 500;
+
+/**
+ * The ADD edits of the "Add guests" form of a guest list (spec guest list access §6.2): one per
+ * person, with the list, the notes and, for a new list only, its contact. A first name is needed,
+ * the last name is optional; empty person boxes are skipped. Returns { edits } or { error }.
+ */
+export function guestListAddEdits({ people, listName, venueName = "", newList = false, phone = "", contactEmail = "", notes = "" }) {
+  const filled = (Array.isArray(people) ? people : [])
+    .filter((p) => String(p?.firstName || "").trim() || String(p?.lastName || "").trim());
+  if (!filled.length) return { error: "errName" };
+  const persons = [];
+  for (const p of filled) {
+    const firstName = cleanName(p.firstName);
+    const lastName = String(p.lastName || "").trim() ? cleanName(p.lastName) : "";
+    if (firstName === null || lastName === null) return { error: "errName" };
+    persons.push({ firstName, lastName, accessIds: [...new Set(Array.isArray(p.accessIds) ? p.accessIds : [])] });
+  }
+  const list = String(listName || "").trim();
+  if (!list) return { error: "guestListNeedsName" };
+  const tel = String(phone || "").trim();
+  if (tel && cleanPhone(tel) === null) return { error: "errPhone" };
+  const mail = String(contactEmail || "").trim().toLowerCase();
+  if (mail && !(mail.length <= 254 && EMAIL_RE.test(mail))) return { error: "errEmail" };
+  const note = String(notes || "").trim();
+  if (note.length > MAX_GUEST_NOTES) return { error: "notesTooLong" };
+  const shared = { action: "ADD", listName: list, venueName: String(venueName || "").trim(), notes: note, ...(newList ? { phone: tel, contactEmail: mail } : {}) };
+  return { edits: persons.map((p) => ({ ...shared, ...p })) };
+}

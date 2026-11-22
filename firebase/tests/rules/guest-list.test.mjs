@@ -104,6 +104,17 @@ describe("guestListEdits", () => {
     await assertFails(setDoc(doc(anon().firestore(), path("guestListEdits/x9")), edit("v1")));
   });
 
+  test("an ADD may carry an optional phone, contact address and notes", async () => {
+    const db = portal("v1").firestore();
+    const add = (over) => edit("v1", { action: "ADD", guestKey: "", listName: "Friends", venueName: "Groove", ...over });
+    await assertSucceeds(setDoc(doc(db, path("guestListEdits/c1")), add({ phone: "+41 79 555 44 33", contactEmail: "me@mail.example", notes: "After midnight" })));
+    await assertSucceeds(setDoc(doc(db, path("guestListEdits/c2")), add({ phone: "", contactEmail: "", notes: "" })));
+    await assertFails(setDoc(doc(db, path("guestListEdits/c3")), add({ phone: "call me" })));
+    await assertFails(setDoc(doc(db, path("guestListEdits/c4")), add({ contactEmail: "not-an-address" })));
+    await assertFails(setDoc(doc(db, path("guestListEdits/c5")), add({ notes: "x".repeat(501) })));
+    await assertFails(setDoc(doc(db, path("guestListEdits/c6")), add({ notes: 5 })));
+  });
+
   test("a linked Google session edits for its account", async () => {
     await setSetting("volunteer_portal_google_enabled", "true");
     await setSetting("volunteer_portal_google_domains", "asso.example");

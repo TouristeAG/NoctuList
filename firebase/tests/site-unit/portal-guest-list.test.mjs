@@ -28,3 +28,39 @@ test("guestListOnly: the guest list shows even without another profile", async (
   assert.equal(guestListOnly(["volunteer"], [{ eventDate: 1, visibleUntil: 2000 }], now), false);
   assert.equal(guestListOnly([], undefined, now), false);
 });
+
+const { guestListAddEdits } = await import("../site/portal-common.js");
+
+test("guestListAddEdits: one ADD per person, list, contact and notes shared", () => {
+  const r = guestListAddEdits({
+    people: [
+      { firstName: " Ann ", lastName: "Doe", accessIds: ["bs", "bs"] },
+      { firstName: "", lastName: "", accessIds: ["vip"] },
+      { firstName: "Bob", lastName: "", accessIds: [] },
+    ],
+    listName: " Friends ", venueName: "", newList: true,
+    phone: " +41 79 555 44 33 ", contactEmail: " Me@Mail.example ", notes: " After midnight ",
+  });
+  assert.equal(r.error, undefined);
+  assert.deepEqual(r.edits, [
+    { action: "ADD", listName: "Friends", venueName: "", notes: "After midnight", phone: "+41 79 555 44 33", contactEmail: "me@mail.example", firstName: "Ann", lastName: "Doe", accessIds: ["bs"] },
+    { action: "ADD", listName: "Friends", venueName: "", notes: "After midnight", phone: "+41 79 555 44 33", contactEmail: "me@mail.example", firstName: "Bob", lastName: "", accessIds: [] },
+  ]);
+});
+
+test("guestListAddEdits: an existing list sends no contact", () => {
+  const r = guestListAddEdits({ people: [{ firstName: "Ann" }], listName: "Band", venueName: "Groove", newList: false, phone: "+41 79 1", contactEmail: "me@mail.example" });
+  assert.equal("phone" in r.edits[0], false);
+  assert.equal("contactEmail" in r.edits[0], false);
+});
+
+test("guestListAddEdits: errors", () => {
+  const base = { people: [{ firstName: "Ann" }], listName: "Band", newList: true };
+  assert.equal(guestListAddEdits({ ...base, people: [{ firstName: "", lastName: "" }] }).error, "errName");
+  assert.equal(guestListAddEdits({ ...base, people: [{ firstName: "", lastName: "Doe" }] }).error, "errName");
+  assert.equal(guestListAddEdits({ ...base, people: [{ firstName: "<b>" }] }).error, "errName");
+  assert.equal(guestListAddEdits({ ...base, listName: " " }).error, "guestListNeedsName");
+  assert.equal(guestListAddEdits({ ...base, phone: "call me" }).error, "errPhone");
+  assert.equal(guestListAddEdits({ ...base, contactEmail: "nope" }).error, "errEmail");
+  assert.equal(guestListAddEdits({ ...base, notes: "x".repeat(501) }).error, "notesTooLong");
+});

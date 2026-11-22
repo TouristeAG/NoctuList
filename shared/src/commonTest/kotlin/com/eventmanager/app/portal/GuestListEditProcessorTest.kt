@@ -68,6 +68,55 @@ class GuestListEditProcessorTest {
     }
 
     @Test
+    fun addToNewListCarriesContactAndNotes() {
+        val e = edit("ADD", first = "Cy", list = "Friends", venue = "Terreau")
+            .copy(phone = "+41 79 555 44 33", contactEmail = "me@example.org", notes = "Arrives after midnight")
+        assertEquals("DONE" to "", run(e))
+        val added = host.addedBatches.single()
+        assertEquals("+41 79 555 44 33", added.emergencyContactPhone)
+        assertEquals("me@example.org", added.contactEmail)
+        assertEquals("Arrives after midnight", added.comments)
+    }
+
+    @Test
+    fun addToExistingListKeepsItsContactAndTakesTheNotes() {
+        host.guests += temp("A1", "Ann")
+        val e = edit("ADD", first = "Cy", list = "Band", venue = "Groove")
+            .copy(phone = "+41 79 000 00 00", contactEmail = "me@example.org", notes = "Plus one")
+        assertEquals("DONE" to "", run(e))
+        val added = host.addedBatches.single()
+        assertEquals("band@example.org", added.contactEmail, "the list's contact stays")
+        assertEquals("+41 79 1", added.emergencyContactPhone)
+        assertEquals("Plus one", added.comments)
+    }
+
+    @Test
+    fun addToAListWithoutVenue() {
+        // Admin list with no venue: its guests carry "BOTH", and the portal sends that as the venue.
+        host.guests += temp("A1", "Ann", venue = "").copy(venueName = "BOTH")
+        assertEquals("DONE" to "", run(edit("ADD", first = "Cy", list = "Band", venue = "BOTH", access = listOf("bs", "vip", "gone"))))
+        val added = host.addedBatches.single()
+        assertEquals("", added.venueName, "the list keeps no venue")
+        assertEquals("band@example.org", added.contactEmail, "joined the existing list")
+        assertEquals(setOf("bs", "vip"), added.guests.single().accessIds, "a list without venue takes the accesses of every venue")
+    }
+
+    @Test
+    fun newListWithoutVenue() {
+        assertEquals("DONE" to "", run(edit("ADD", first = "Cy", list = "Friends", venue = "")))
+        assertEquals("", host.addedBatches.single().venueName)
+    }
+
+    @Test
+    fun updateOnAListWithoutVenueKeepsItsAccesses() {
+        val a = temp("A1", "Ann", venue = "").copy(venueName = "BOTH")
+        host.guests += a
+        val key = TemporaryGuestPortalQrDocument.guestKey(a)
+        assertEquals("DONE" to "", run(edit("UPDATE", guestKey = key, first = "Anna", access = listOf("bs", "vip"))))
+        assertEquals("bs,vip", host.guests.single { it.nanoId == "A1" }.temporaryAccessIds)
+    }
+
+    @Test
     fun addNeedsAnActiveVenue() {
         assertEquals("REJECTED" to "INVALID", run(edit("ADD", first = "Cy", list = "Friends", venue = "Nowhere")))
         assertEquals("REJECTED" to "INVALID", run(edit("ADD", first = "Cy", list = "", venue = "Groove")))
@@ -140,5 +189,12 @@ class GuestListEditProcessorTest {
         assertNull(GuestListEdit.parse("E9", ok + ("action" to "WIPE")))
         assertNull(GuestListEdit.parse("E9", ok + ("guestKey" to "raw-nano-id")))
         assertNull(GuestListEdit.parse("E9", ok + ("firstName" to "<b>")))
+        val contact = GuestListEdit.parse("E9", ok + mapOf("phone" to " +41 79 1 ", "contactEmail" to " Me@Example.org ", "notes" to " Late "))!!
+        assertEquals("+41 79 1", contact.phone)
+        assertEquals("me@example.org", contact.contactEmail)
+        assertEquals("Late", contact.notes)
+        assertNull(GuestListEdit.parse("E9", ok + ("phone" to "call me")))
+        assertNull(GuestListEdit.parse("E9", ok + ("contactEmail" to "not-an-address")))
+        assertNull(GuestListEdit.parse("E9", ok + ("notes" to "x".repeat(501))))
     }
 }

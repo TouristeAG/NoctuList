@@ -4,6 +4,8 @@ import com.eventmanager.app.data.models.Guest
 import com.eventmanager.app.data.models.ManualTemporaryGuestBatch
 import com.eventmanager.app.data.models.ManualTemporaryGuestEntry
 import com.eventmanager.app.data.models.Volunteer
+import com.eventmanager.app.data.models.listVenueKey
+import com.eventmanager.app.data.models.listVenueLabel
 import com.eventmanager.app.data.models.temporaryEntryValidated
 import com.eventmanager.app.data.utils.DateTimeUtils
 
@@ -20,6 +22,10 @@ data class GuestListEdit(
     val listName: String = "",
     val venueName: String = "",
     val accessIds: List<String> = emptyList(),
+    /** ADD only: contact of a new list (an existing list keeps its own), and notes on the added guests. */
+    val phone: String = "",
+    val contactEmail: String = "",
+    val notes: String = "",
 ) {
     companion object {
         const val COLLECTION = "guestListEdits"
@@ -28,6 +34,10 @@ data class GuestListEdit(
         const val DELETE = "DELETE"
         private val UID = Regex("^[A-Za-z0-9]{6,128}$")
         private val GUEST_KEY = Regex("^[0-9a-f]{16}$")
+
+        const val MAX_NOTES = 500
+
+        private fun blank(v: Any?): Boolean = (v as? String).orEmpty().trim().isEmpty()
 
         private fun optionalName(v: Any?): String? =
             if ((v as? String).orEmpty().trim().isEmpty()) "" else PortalInputValidator.cleanName(v)
@@ -43,12 +53,16 @@ data class GuestListEdit(
             val last = optionalName(data["lastName"]) ?: return null
             val access = (data["accessIds"] as? List<*>).orEmpty().mapNotNull { (it as? String)?.trim()?.takeIf { s -> s.isNotEmpty() } }
             if (access.size > 20) return null
+            val phone = if (blank(data["phone"])) "" else PortalInputValidator.cleanPhone(data["phone"]) ?: return null
+            val contactEmail = if (blank(data["contactEmail"])) "" else PortalInputValidator.cleanEmail(data["contactEmail"]) ?: return null
+            val notes = (data["notes"] as? String).orEmpty().trim()
+            if (notes.length > MAX_NOTES) return null
             return GuestListEdit(
                 id = id, uid = uid, grantId = (data["grantId"] as? String).orEmpty().trim(), eventDateMillis = date,
                 action = action, guestKey = key, firstName = first, lastName = last,
                 listName = (data["listName"] as? String).orEmpty().trim().take(80),
                 venueName = (data["venueName"] as? String).orEmpty().trim().take(80),
-                accessIds = access,
+                accessIds = access, phone = phone, contactEmail = contactEmail, notes = notes,
             )
         }
     }
@@ -77,30 +91,36 @@ class GuestListEditProcessor(
         }
     }
 
+    /** Accesses of [venue] among [ids]; a list without venue ("" or "BOTH") takes those of every venue. */
     private fun accessesFor(venue: String, ids: List<String>): Set<String> {
-        val allowed = host.venueAccessCatalog().filter { it.venueName.trim().equals(venue, ignoreCase = true) }.map { it.id }.toSet()
+        val listVenue = listVenueLabel(venue)
+        val allowed = host.venueAccessCatalog()
+            .filter { listVenue.isEmpty() || it.venueName.trim().equals(listVenue, ignoreCase = true) }
+            .map { it.id }.toSet()
         return ids.filter { it in allowed }.toSet()
     }
 
     private suspend fun add(edit: GuestListEdit, grant: GuestListGrant, guests: List<Guest>): Pair<String, String> {
-        val venue = grant.venueName.trim().ifEmpty { edit.venueName.trim() }
-        val activeVenue = host.activeVenueNames().firstOrNull { it.trim().equals(venue, ignoreCase = true) }
+        // No venue ("" or the "BOTH" the portal shows for admin lists) is a list for every venue.
+        val venue = listVenueLabel(grant.venueName.trim().ifEmpty { edit.venueName.trim() })
+        val activeVenue = if (venue.isEmpty()) "" else host.activeVenueNames().firstOrNull { it.trim().equals(venue, ignoreCase = true) }
         val name = "${edit.firstName} ${edit.lastName.uppercase()}".trim()
         if (activeVenue == null || edit.listName.isBlank() || name.isEmpty()) return REJECTED to "INVALID"
         val sameList = guests.firstOrNull {
             GuestListPortalProjectionBuilder.covers(grant, it) &&
                 it.temporaryArtistName.trim().equals(edit.listName, ignoreCase = true) &&
-                GuestListPortalProjectionBuilder.venueOf(it).equals(activeVenue, ignoreCase = true)
+                listVenueKey(it.temporaryVenueName) == listVenueKey(activeVenue)
         }
         val ok = host.addTemporaryGuests(
             ManualTemporaryGuestBatch(
                 eventDateMillis = sameList?.temporaryEventDate ?: grant.eventDateMillis,
                 artistName = sameList?.temporaryArtistName ?: edit.listName,
-                emergencyContactPhone = sameList?.temporaryContactPhone.orEmpty(),
-                comments = "",
+                // A new list takes the contact typed on the portal; an existing one keeps its own.
+                emergencyContactPhone = if (sameList != null) sameList.temporaryContactPhone else edit.phone,
+                comments = edit.notes,
                 guests = listOf(ManualTemporaryGuestEntry(name, accessesFor(activeVenue, edit.accessIds))),
-                venueName = activeVenue,
-                contactEmail = sameList?.temporaryContactEmail.orEmpty(),
+                venueName = sameList?.temporaryVenueName ?: activeVenue,
+                contactEmail = if (sameList != null) sameList.temporaryContactEmail else edit.contactEmail,
                 barDiscountPercent = sameList?.barDiscountPercent ?: 0,
             ),
         )

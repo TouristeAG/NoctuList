@@ -329,13 +329,15 @@ export async function seed() {
     });
     const glPayload = { association: "Association Démo", grants: [{
       grantId: "demoGrant0001", eventDate: now, venueName: "", visibleUntil: visibleUntil(now),
-      lists: [{ name: "Collège Rousseau", venueName: "Groove" }, { name: "Les Amis", venueName: "Groove" }],
-      accesses: [{ id: "acc-bs", name: "Backstage", venueName: "Groove" }, { id: "acc-vip", name: "VIP", venueName: "Groove" }],
+      lists: [{ name: "Collège Rousseau", venueName: "Groove" }, { name: "Les Amis", venueName: "Groove" }, { name: "Marco", venueName: "" }],
+      accesses: [{ id: "acc-bs", name: "Backstage", venueName: "Groove" }, { id: "acc-vip", name: "VIP", venueName: "Groove" },
+        { id: "acc-loge", name: "Loges", venueName: "Le Terreau" }],
       guests: [
         glGuest("a1b2c3d4e5f60005", "Ada", "LEROY", "Collège Rousseau", { entryUsed: true, accessIds: ["acc-bs"], accessNames: ["Backstage"] }),
         glGuest("a1b2c3d4e5f60002", "Bruno", "MEIER", "Collège Rousseau", { accessIds: ["acc-bs"], accessNames: ["Backstage"] }),
         glGuest("a1b2c3d4e5f60006", "Eva", "BLANC", "Collège Rousseau"),
         glGuest("a1b2c3d4e5f60007", "Hugo", "LEMAIRE", "Les Amis", { accessIds: ["acc-vip"], accessNames: ["VIP"] }),
+        glGuest("a1b2c3d4e5f60008", "Ines", "ROCHAT", "Marco", { venueName: "" }),
       ],
     }] };
     await setDoc(org(`guestListPortal/${portalUid}`), {

@@ -58,7 +58,7 @@ object GuestListPortalProjectionBuilder {
                     put("venueName", grant.venueName.trim())
                     put("visibleUntil", TemporaryGuestPortalProjectionBuilder.visibleUntil(grant.eventDateMillis))
                     put("lists", JsonArray(
-                        members.map { it.temporaryArtistName.trim() to venueOf(it) }.distinct().map { (name, venue) ->
+                        members.map { it.temporaryArtistName.trim() to com.eventmanager.app.data.models.listVenueLabel(venueOf(it)) }.distinct().map { (name, venue) ->
                             buildJsonObject { put("name", name.take(label)); put("venueName", venue.take(label)) }
                         },
                     ))
@@ -73,7 +73,7 @@ object GuestListPortalProjectionBuilder {
                             put("firstName", g.name.trim())
                             put("lastName", g.lastNameAbbreviation.trim())
                             put("listName", g.temporaryArtistName.trim().take(label))
-                            put("venueName", venueOf(g).take(label))
+                            put("venueName", com.eventmanager.app.data.models.listVenueLabel(venueOf(g)).take(label))
                             put("accessIds", JsonArray(ids.map { JsonPrimitive(it) }))
                             put("accessNames", JsonArray(ids.mapNotNull { accessNames[it] }.map { JsonPrimitive(it) }))
                             put("entryUsed", g.temporaryEntryValidated)

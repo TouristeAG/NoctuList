@@ -617,7 +617,8 @@ service cloud.firestore {
     function validGuestListEdit(orgId) {
       let d = request.resource.data;
       return d.keys().hasOnly(['uid', 'email', 'grantId', 'eventDateMillis', 'action', 'guestKey', 'firstName',
-                               'lastName', 'listName', 'venueName', 'accessIds', 'status', 'createdAt'])
+                               'lastName', 'listName', 'venueName', 'accessIds', 'phone', 'contactEmail', 'notes',
+                               'status', 'createdAt'])
         && d.uid is string
         && guestListSessionOk(orgId, d.uid)
         && d.email == request.auth.token.get('email', '')
@@ -632,7 +633,12 @@ service cloud.firestore {
         && optionalPersonName(d.get('lastName', ''))
         && d.get('listName', '') is string && d.get('listName', '').size() <= 80
         && d.get('venueName', '') is string && d.get('venueName', '').size() <= 80
-        && d.get('accessIds', []) is list && d.get('accessIds', []).size() <= 20;
+        && d.get('accessIds', []) is list && d.get('accessIds', []).size() <= 20
+        // ADD only: contact of a new list and notes on the added guests, all optional.
+        && (d.get('phone', '') == '' || validPhone(d.get('phone', '')))
+        && d.get('contactEmail', '') is string && d.get('contactEmail', '').size() <= 254
+        && (d.get('contactEmail', '') == '' || d.get('contactEmail', '').matches('^[^@\\s]{1,64}@[^@\\s]{1,190}[.][^@\\s]{2,}$'))
+        && d.get('notes', '') is string && d.get('notes', '').size() <= 500;
     }
 
     match /orgs/{orgId}/guestListEdits/{editId} {

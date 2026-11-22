@@ -40,16 +40,18 @@ import {
   uploadBytes,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 import { EMULATOR_PORTS, isLocalDev, loadConfig, parseOrgPath } from "./firebase-env.js?v=portal-2";
-import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=guest-3";
-import { cachedQrEntries, clearQr, closeQrDialog, isStaleFor, missingIsFinal, openQrDialog, readCachedQr, storeQr } from "./portal-qr.js?v=guest-3";
+import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=guest-4";
+import { cachedQrEntries, clearQr, closeQrDialog, isStaleFor, missingIsFinal, openQrDialog, readCachedQr, storeQr } from "./portal-qr.js?v=guest-4";
 import {
   EMAIL_RE,
   authErrorKey,
   chooseProfile,
   guestListCounts,
   guestListGroups,
+  guestListAddEdits,
   guestListOnly,
   inviteRemaining,
+  MAX_GUEST_NOTES,
   profilesLayout,
   qrDialogClosesFor,
   visibleLists,
@@ -70,7 +72,7 @@ import {
   profileStoreKey,
   profilesSettled,
   toJpeg,
-} from "./portal-common.js?v=guest-3";
+} from "./portal-common.js?v=guest-4";
 
 const $ = (id) => document.getElementById(id);
 const VIEWS = ["view-loading", "view-disabled", "view-signin", "view-reset", "view-verify", "view-pending", "view-google", "view-dash", "view-offline"];
@@ -1905,54 +1907,145 @@ function tickedAccess(node) {
   return Array.from(node.querySelectorAll("input[type=checkbox]:checked")).map((c) => c.value);
 }
 
+/** The account's own phone and address, for the "Use mine" shortcuts. */
+function myContact() {
+  const phone = ["volunteer", "guest"].map((k) => String(pages[k]?.data?.phone || "").trim()).find(Boolean) || "";
+  return { phone, email: String(user?.email || "").trim().toLowerCase() };
+}
+
+/** A row of pill buttons where one is chosen; [onPick] gets the value. */
+function choiceRow(options, value, onPick) {
+  const row = el("div", { class: "choice-row", role: "radiogroup" });
+  const paint = (v) => row.querySelectorAll("button").forEach((b) => {
+    const on = b.dataset.value === v;
+    b.classList.toggle("on", on);
+    b.setAttribute("aria-checked", String(on));
+  });
+  options.forEach((o) => row.append(el("button", {
+    type: "button", class: "choice", role: "radio", "data-value": o.value,
+    onclick: () => { paint(o.value); onPick(o.value); },
+  }, o.icon ? icon(o.icon, 14) : null, el("span", { text: o.label }))));
+  paint(value);
+  return row;
+}
+
+/** An optional field with a "Use mine" shortcut, hidden when the account has no such value. */
+function fieldWithMine(labelKey, input, mine) {
+  const use = mine ? el("button", { type: "button", class: "use-mine", text: t("useMine"), onclick: () => { input.value = mine; input.focus(); } }) : null;
+  return el("label", { class: "field-mine" },
+    el("span", { class: "field-head" }, el("span", { text: t(labelKey) }), use),
+    input);
+}
+
 function openGuestListAdd(grant) {
   const lists = Array.isArray(grant.lists) ? grant.lists : [];
-  const venues = [...new Set([...lists.map((l) => l.venueName), ...(grant.accesses || []).map((a) => a.venueName)].filter(Boolean))];
+  const accesses = Array.isArray(grant.accesses) ? grant.accesses : [];
+  const venues = grant.venueName ? [] : [...new Set(accesses.map((a) => a.venueName).filter(Boolean))];
   const NEW = "__new__";
-  const listSelect = el("select", {},
-    ...lists.map((l, i) => el("option", { value: String(i), text: grant.venueName ? l.name : `${l.name} · ${l.venueName}` })),
-    el("option", { value: NEW, text: t("newList") }));
-  const newName = el("input", { maxlength: "80", placeholder: t("listNameLabel") });
-  const venueSelect = el("select", {}, ...venues.map((v) => el("option", { value: v, text: v })));
+  let choice = lists.length ? "0" : NEW;
+  let newVenue = "";
+  const target = () => {
+    if (choice === NEW) return { name: newName.value, venue: grant.venueName || newVenue, isNew: true };
+    const l = lists[Number(choice)];
+    return { name: l?.name || "", venue: l?.venueName || grant.venueName || "", isNew: false };
+  };
+
+  // List: the existing lists of the date, or a new one.
+  const newName = el("input", { maxlength: "80", autocomplete: "off", placeholder: t("listNameHint") });
+  const venuePick = venues.length
+    ? el("div", {}, el("span", { class: "sub-label", text: t("venueLabel") }),
+      choiceRow([{ value: "", label: t("allVenues") }, ...venues.map((v) => ({ value: v, label: v }))], "", (v) => { newVenue = v; refresh(); }))
+    : null;
   const newBox = el("div", { class: "gl-new" },
-    el("label", {}, el("span", { text: t("listNameLabel") }), newName),
-    grant.venueName ? null : el("label", {}, el("span", { text: t("venueLabel") }), venueSelect));
-  const names = el("textarea", { rows: "4", placeholder: t("guestNamesHint") });
-  const accessHolder = el("div", {});
+    el("label", {}, el("span", { text: t("listNameLabel") }), newName), venuePick);
+  const listPick = choiceRow([
+    ...lists.map((l, i) => ({ value: String(i), label: grant.venueName || !l.venueName ? l.name : `${l.name} · ${l.venueName}`, icon: "list" })),
+    { value: NEW, label: t("newList"), icon: "plus" },
+  ], choice, (v) => { choice = v; refresh(); if (v === NEW) newName.focus(); });
+
+  // People: one box each, with its own accesses.
+  const people = el("div", { class: "person-cards" });
+  const accessFor = (venue) => accesses.filter((a) => !venue || String(a.venueName || "").toLowerCase() === String(venue).toLowerCase());
+  const paintAccess = (card) => {
+    const holder = card.querySelector(".person-access");
+    const ticked = new Set(tickedAccess(holder));
+    clear(holder);
+    const offered = accessFor(target().venue);
+    if (!offered.length) return;
+    holder.append(el("span", { class: "sub-label", text: t("accessLabel") }),
+      el("div", { class: "chips" }, ...offered.map((a) => el("label", { class: "check-chip" },
+        el("input", { type: "checkbox", value: a.id, checked: ticked.has(a.id) }), el("span", { text: a.name })))));
+  };
+  const renumber = () => {
+    const cards = Array.from(people.children);
+    cards.forEach((c, i) => {
+      c.querySelector(".person-title").textContent = t("personN", { n: i + 1 });
+      c.querySelector(".person-remove").classList.toggle("hidden", cards.length === 1);
+    });
+    send.textContent = t(cards.length === 1 ? "addOneGuest" : "addNGuests", { n: cards.length });
+  };
+  const addPerson = () => {
+    const first = el("input", { maxlength: "60", autocomplete: "off", "data-role": "first" });
+    const card = el("div", { class: "person-card" },
+      el("div", { class: "person-head" },
+        el("span", { class: "person-title" }),
+        el("button", { type: "button", class: "icon-btn person-remove", "aria-label": t("removePerson"), text: "✕",
+          onclick: () => { card.remove(); renumber(); } })),
+      el("div", { class: "row-2" },
+        el("label", {}, el("span", { text: t("firstName") }), first),
+        el("label", {}, el("span", { text: t("lastNameOptional") }), el("input", { maxlength: "60", autocomplete: "off", "data-role": "last" }))),
+      el("div", { class: "person-access" }));
+    people.append(card);
+    paintAccess(card);
+    renumber();
+    first.focus();
+  };
+  const more = el("button", { type: "button", class: "ghost add-person", onclick: addPerson }, icon("plus", 16), el("span", { text: t("addPerson") }));
+
+  // Contact of a new list, with the account's own values one tap away.
+  const mine = myContact();
+  const phone = el("input", { type: "tel", maxlength: "32", autocomplete: "off", placeholder: t("optional") });
+  const email = el("input", { type: "email", maxlength: "254", autocomplete: "off", placeholder: t("optional") });
+  const contactBox = el("div", { class: "dialog-block" },
+    el("h3", { class: "block-title", text: t("listContact") }),
+    el("p", { class: "block-note", text: t("listContactNote") }),
+    fieldWithMine("phone", phone, mine.phone),
+    fieldWithMine("email", email, mine.email));
+  const notes = el("textarea", { rows: "3", maxlength: String(MAX_GUEST_NOTES), placeholder: t("guestNotesHint") });
+
   const { msg, say } = formMessage();
-  const send = el("button", { type: "submit", class: "primary", text: t("save") });
-  const current = () => {
-    if (listSelect.value === NEW) return { name: newName.value.trim(), venue: grant.venueName || venueSelect.value };
-    const l = lists[Number(listSelect.value)];
-    return { name: l?.name || "", venue: l?.venueName || grant.venueName || "" };
-  };
+  const send = el("button", { type: "submit", class: "primary" });
   const refresh = () => {
-    newBox.classList.toggle("hidden", listSelect.value !== NEW);
-    clear(accessHolder);
-    accessHolder.append(accessBoxes(grant, current().venue));
+    newBox.classList.toggle("hidden", choice !== NEW);
+    contactBox.classList.toggle("hidden", choice !== NEW);
+    Array.from(people.children).forEach(paintAccess);
   };
-  listSelect.addEventListener("change", refresh);
-  venueSelect.addEventListener("change", refresh);
-  if (!lists.length) listSelect.value = NEW;
-  const form = el("form", { novalidate: true },
-    el("label", {}, el("span", { text: t("listLabel") }), listSelect), newBox,
-    el("label", {}, el("span", { text: t("guestNamesLabel") }), names),
-    accessHolder, msg, send);
+  const form = el("form", { novalidate: true, class: "gl-add" },
+    el("p", { class: "gl-sheet-date" }, icon("calendar", 16), el("span", { text: grantTitle(grant) })),
+    el("div", { class: "dialog-block" }, el("h3", { class: "block-title", text: t("listLabel") }), listPick, newBox),
+    el("div", { class: "dialog-block" }, el("h3", { class: "block-title", text: t("guestsLabel") }), people, more),
+    contactBox,
+    el("div", { class: "dialog-block" }, el("label", {}, el("span", { text: t("notesOptional") }), notes)),
+    msg, send);
+  addPerson();
   refresh();
   const close = openSheet(t("addGuests"), form);
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const people = names.value.split("\n").map((s) => s.trim()).filter(Boolean);
-    const target = current();
-    if (!people.length || people.some((p) => cleanName(p) === null)) return say("error", "errName");
-    if (!target.name || !target.venue) return say("error", "guestListNeedsList");
+    const where = target();
+    const result = guestListAddEdits({
+      people: Array.from(people.children).map((card) => ({
+        firstName: card.querySelector("[data-role=first]").value,
+        lastName: card.querySelector("[data-role=last]").value,
+        accessIds: tickedAccess(card),
+      })),
+      listName: where.name, venueName: where.venue, newList: where.isNew,
+      phone: phone.value, contactEmail: email.value, notes: notes.value,
+    });
+    if (result.error) return say("error", result.error);
     send.disabled = true;
     try {
-      for (const person of people) {
-        await sendGuestListEdit(grant, {
-          action: "ADD", firstName: cleanName(person), listName: target.name, venueName: target.venue, accessIds: tickedAccess(accessHolder),
-        });
-      }
+      for (const edit of result.edits) await sendGuestListEdit(grant, edit);
       close();
     } catch (error) {
       console.warn("guest list add failed", error?.code);

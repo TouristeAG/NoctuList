@@ -81,6 +81,14 @@ class GuestListPortalProjectionBuilderTest {
     }
 
     @Test
+    fun aListWithoutVenueShowsNoVenue() {
+        val noVenue = temp("A1", "Ann", venue = "").copy(venueName = "BOTH")
+        val g = grantsOf(build(listOf(grant("G1")), listOf(noVenue))!!).single()
+        assertEquals("", g.getValue("lists").jsonArray.single().jsonObject.getValue("venueName").jsonPrimitive.content)
+        assertEquals("", g.getValue("guests").jsonArray.single().jsonObject.getValue("venueName").jsonPrimitive.content)
+    }
+
+    @Test
     fun listsAndAccessesOffered() {
         val p = build(listOf(grant("G1")), listOf(temp("A1", "Ann"), temp("B1", "Bob", list = "Friends", venue = "Terreau"), temp("C1", "Cy")))!!
         val g = grantsOf(p).single()

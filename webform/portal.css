@@ -672,3 +672,46 @@ dialog.qr-dialog .primary { margin-top: 14px; min-width: 160px; }
 .row-actions { display: flex; gap: 6px; }
 .gl-access { margin-top: 12px; }
 .gl-new { display: flex; flex-direction: column; gap: 4px; }
+
+/* "Add guests" sheet of a guest list: one box per person */
+.gl-add .gl-sheet-date {
+  display: flex; align-items: center; gap: 8px; margin: 10px 0 2px;
+  color: var(--muted); font-weight: 700; font-size: 0.9rem;
+}
+.gl-add .dialog-block { padding: 16px 0 4px; border-top: 1px solid var(--line); }
+.gl-add .dialog-block:first-of-type { border-top: 0; }
+.gl-add .block-title { margin: 0 0 10px; font-size: 0.98rem; font-weight: 800; color: var(--on); }
+.gl-add .block-note { margin: -4px 0 4px; color: var(--muted); font-size: 0.82rem; font-weight: 600; line-height: 1.4; }
+.gl-add .sub-label { display: block; margin: 12px 0 6px; font-size: 0.8rem; font-weight: 700; color: var(--muted); }
+.choice-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.choice {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: var(--radius-pill);
+  border: 1px solid var(--line-strong); background: var(--container);
+  color: var(--on); font: inherit; font-size: 0.88rem; font-weight: 700; cursor: pointer;
+}
+.choice .ico { width: auto; height: auto; background: none; color: inherit; border-radius: 0; }
+.choice:hover { border-color: var(--primary); }
+.choice.on { background: var(--primary-container); border-color: var(--primary); color: var(--on-primary-container); }
+.gl-add .gl-new { margin-top: 4px; }
+.person-cards { display: flex; flex-direction: column; gap: 12px; }
+.person-card { padding: 12px 14px 14px; border-radius: 16px; border: 1px solid var(--line); background: var(--container); }
+.person-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.person-title { font-weight: 800; font-size: 0.9rem; }
+.person-head .icon-btn { width: 30px; height: 30px; font-size: 0.75rem; }
+.person-card label { margin-top: 10px; }
+.person-card .chips { margin-top: 0; }
+.person-card .check-chip {
+  padding: 6px 12px; border-radius: var(--radius-pill);
+  border: 1px solid var(--line-strong); background: var(--card-solid); cursor: pointer;
+}
+.person-card .check-chip:has(input:checked) { border-color: var(--primary); background: var(--primary-container); color: var(--on-primary-container); }
+.gl-add .add-person { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%; margin-top: 12px; }
+.field-mine .field-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.use-mine {
+  padding: 2px 0; border: 0; background: none; color: var(--primary);
+  font: inherit; font-size: 0.8rem; font-weight: 800; cursor: pointer;
+}
+.use-mine:hover { text-decoration: underline; }
+.gl-add textarea { resize: vertical; min-height: 72px; }
+.gl-add > .primary { margin-top: 18px; width: 100%; }
