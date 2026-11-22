@@ -193,9 +193,10 @@ class CertificateReviewModel(
 
     fun preview(): CertAssembly? = bodyParagraphs().takeIf { it.isNotEmpty() }?.let { CertAssembly(it, footerParagraphs()) }
 
-    /** Where the certificate goes: the request's address, or the profile's in direct mode. */
+    /** Where the certificate goes: the profile's address (the server sends there), else the request's. */
     val recipient: String = when (target) {
-        is CertificateReviewTarget.Request -> target.request.email.trim()
+        is CertificateReviewTarget.Request ->
+            target.volunteer?.email?.trim()?.takeIf { it.isNotEmpty() } ?: target.request.email.trim()
         is CertificateReviewTarget.Direct -> target.volunteer.email.trim()
     }
 

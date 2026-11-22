@@ -178,9 +178,9 @@ PDF is made and mailed by the server, so without it nothing is sent.
 2. **Hosting and functions, together:** export the form site again and run
    `firebase deploy --only hosting,functions` from the exported folder. This also deploys the
    `onCertificateApprovalCreated` function, which sends a certificate once the team approves it.
-   The functions now depend on `pdf-lib` and `@pdf-lib/fontkit` and ship their fonts under `functions/assets`; Cloud Build
-   installs the dependencies from the lock file during the deploy. Deploying only one of the two
-   leaves the portal button and the server out of step.
+   The functions now depend on `pdf-lib` and `@pdf-lib/fontkit` and ship their fonts under
+   `functions/assets`; Cloud Build installs the dependencies from the lock file during the deploy.
+   Deploying only one of the two leaves the portal button and the server out of step.
 3. In NoctuList **Settings, Firebase, Volunteer portal**, turn on **Volunteer certificate**, then
    edit the texts, logo and signature in the certificate editor (five languages: fr, en, de, it,
    es). Turning the switch on before any template was saved opens the editor. Volunteers see the
@@ -191,8 +191,9 @@ PDF is made and mailed by the server, so without it nothing is sent.
 A volunteer asks from the portal. The team reviews the request in NoctuList, can edit the text, then
 approves it (the PDF is e-mailed to the volunteer) or refuses it with a note shown in the portal.
 Admins can also generate a certificate from a volunteer's panel. Two requests must be at least 10
-minutes apart. Nothing is sent without a request or an approval. The PDF is not stored; the approved text stays in
-Firestore only until the server has sent it.
+minutes apart. Nothing is sent without a request or an approval. The PDF is not stored; the
+approved text stays in Firestore until the server has sent it or, for a certificate generated from a
+volunteer's panel whose send failed, until an admin dismisses it (Dismiss) or sends it again.
 
 ### Optional: sign in with an association Google account
 

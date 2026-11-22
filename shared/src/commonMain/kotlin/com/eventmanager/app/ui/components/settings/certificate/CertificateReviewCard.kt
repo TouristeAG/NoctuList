@@ -71,7 +71,7 @@ fun rememberCertificateReviewActive(viewModel: EventManagerViewModel?): Boolean 
     if (viewModel == null) return false
     val portal by viewModel.volunteerPortalEnabled.collectAsState()
     val on by viewModel.volunteerPortalCertificateEnabled.collectAsState()
-    val saved = remember(portal, on) { viewModel.hasSavedCertificateTemplate() }
+    val saved by viewModel.certificateTemplateSaved.collectAsState()
     return portal && on && saved
 }
 
@@ -92,7 +92,7 @@ fun CertificateReviewCard(
     val volunteers by viewModel.volunteers.collectAsState()
     val scope = rememberCoroutineScope()
     var reviewing by remember { mutableStateOf<CertificateReviewTarget.Request?>(null) }
-    var flash by remember { mutableStateOf<String?>(null) }
+    var flash by remember { mutableStateOf<Pair<String, Boolean>?>(null) }
     val sentText = stringResource(Res.string.certificate_review_sent_to_server)
     val retryFailed = stringResource(Res.string.certificate_review_already_handled)
 
@@ -103,7 +103,7 @@ fun CertificateReviewCard(
         isPhone = isPhone,
         modifier = modifier,
         onOpen = { request -> reviewing = CertificateReviewTarget.Request(request, volunteerOfPortal(volunteers, request.portalUid)) },
-        onRetry = { request -> scope.launch { if (!viewModel.retryCertificateRequest(request.requestId)) flash = retryFailed } },
+        onRetry = { request -> scope.launch { if (!viewModel.retryCertificateRequest(request.requestId)) flash = retryFailed to true } },
         onDismissFailed = { send -> scope.launch { viewModel.dismissDirectCertificate(send.approvalId) } },
     )
 
@@ -112,20 +112,20 @@ fun CertificateReviewCard(
             target = target,
             viewModel = viewModel,
             onDismiss = { reviewing = null },
-            onSentToServer = { flash = sentText },
+            onSentToServer = { flash = sentText to false },
         )
     }
-    flash?.let { text ->
-        LaunchedEffect(text) {
+    flash?.let { shown ->
+        LaunchedEffect(shown) {
             delay(3_000)
             flash = null
         }
-        ShortToast(text)
+        ShortToast(shown.first, isError = shown.second)
     }
 }
 
 @Composable
-private fun ShortToast(text: String) {
+private fun ShortToast(text: String, isError: Boolean) {
     val density = LocalDensity.current
     Popup(
         alignment = Alignment.BottomCenter,
@@ -143,7 +143,7 @@ private fun ShortToast(text: String) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(if (isError) Icons.Default.ErrorOutline else Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
                 Text(text, style = MaterialTheme.typography.bodyMedium)
             }
         }

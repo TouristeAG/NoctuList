@@ -2846,6 +2846,11 @@ class EventManagerViewModel(
     val volunteerPortalQrEnabled: StateFlow<Boolean> = _volunteerPortalQrEnabled.asStateFlow()
     private val _volunteerPortalCertificateEnabled = MutableStateFlow(false)
 
+    private val _certificateTemplateSaved = MutableStateFlow(false)
+
+    /** A certificate template was saved (here or by sync); the certificate review is active only then. */
+    val certificateTemplateSaved: StateFlow<Boolean> = _certificateTemplateSaved.asStateFlow()
+
     /** Volunteers can ask for their certificate by e-mail in the portal. */
     val volunteerPortalCertificateEnabled: StateFlow<Boolean> = _volunteerPortalCertificateEnabled.asStateFlow()
 
@@ -2916,6 +2921,7 @@ class EventManagerViewModel(
         _volunteerPortalShowLogo.value = settingsManagerCached?.isVolunteerPortalShowLogo() != false
         _volunteerPortalQrEnabled.value = settingsManagerCached?.isVolunteerPortalQrEnabled() != false
         _volunteerPortalCertificateEnabled.value = settingsManagerCached?.isVolunteerPortalCertificateEnabled() == true
+        _certificateTemplateSaved.value = settingsManagerCached?.volunteerPortalCertificateTemplate() != null
         _volunteerPortalGoogleDomains.value = settingsManagerCached?.volunteerPortalGoogleDomains().orEmpty()
         _volunteerPortalGoogleAnyAccount.value = settingsManagerCached?.isVolunteerPortalGoogleAnyAccount() == true
         _volunteerPortalAutoAccess.value = settingsManagerCached?.isVolunteerPortalAutoAccess() == true
@@ -2974,6 +2980,7 @@ class EventManagerViewModel(
         val settings = settingsManagerCached ?: return
         if (getActiveBackendType() != BackendType.FIREBASE) return
         settings.saveVolunteerPortalCertificateTemplate(template)
+        _certificateTemplateSaved.value = settings.volunteerPortalCertificateTemplate() != null
         republishVolunteerPortal()
     }
 
@@ -3140,10 +3147,11 @@ class EventManagerViewModel(
     }
 
     /** The Google account signed in on this device when known, else the device's name. */
-    private fun certificateApprover(): String =
+    private suspend fun certificateApprover(): String =
         com.eventmanager.app.data.remote.FirebaseAuthBridge.currentUserEmail()?.trim()?.takeIf { it.isNotEmpty() }
             ?: certificateGmailAddress().takeIf { it.isNotEmpty() }
-            ?: com.eventmanager.app.platform.localDeviceName().trim().take(100)
+            // The host name lookup can block on desktop.
+            ?: withContext(Dispatchers.IO) { com.eventmanager.app.platform.localDeviceName().trim().take(100) }
 
     suspend fun approveCertificateRequest(
         requestId: String,

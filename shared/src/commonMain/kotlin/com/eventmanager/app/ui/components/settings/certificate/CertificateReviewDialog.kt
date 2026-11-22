@@ -168,7 +168,8 @@ internal fun CertificateReviewContent(
 
     var preview by remember { mutableStateOf<CertAssembly?>(null) }
     var ready by remember { mutableStateOf(false) }
-    var canSubmit by remember { mutableStateOf(false) }
+    // Read straight from the editors, not from the debounced preview: a quick click right after typing counts.
+    val canSubmit = if (model.isDirect) model.canSend() else model.canApprove()
     LaunchedEffect(model) {
         var first = true
         snapshotFlow { listOf(model.body.annotatedString, model.footer.annotatedString, model.fromDay, model.toDay, model.selectedTypes) }
@@ -176,7 +177,6 @@ internal fun CertificateReviewContent(
                 if (!first) delay(PREVIEW_DELAY_MS)
                 first = false
                 preview = model.preview()
-                canSubmit = if (model.isDirect) model.canSend() else model.canApprove()
                 ready = true
             }
     }
@@ -232,7 +232,7 @@ internal fun CertificateReviewContent(
                                 .padding(end = if (wide) 8.dp else 0.dp, top = 4.dp, bottom = 16.dp),
                             verticalArrangement = Arrangement.spacedBy(14.dp),
                         ) {
-                            CertificateReviewHeader(model, enabled = approvalId == null && !busy)
+                            CertificateReviewHeader(model, enabled = (approvalId == null || failed != null) && !busy)
                             if (!model.onlyRefusal) {
                                 if (!model.hasDraft) {
                                     Text(
@@ -352,7 +352,9 @@ internal fun CertificateReviewContent(
                                         }
                                         ApproveResult.ALREADY_HANDLED -> message = alreadyHandled
                                         ApproveResult.TOO_LARGE -> message = tooLong
-                                        ApproveResult.FAILED, null -> message = failedText
+                                        ApproveResult.FAILED -> message = failedText
+                                        // Nothing to approve (the text was emptied): nothing was called, nothing to report.
+                                        null -> Unit
                                     }
                                     busy = false
                                 }

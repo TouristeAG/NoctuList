@@ -2074,13 +2074,19 @@ class VolunteerPortalServiceTest {
     }
 
     @Test
-    fun approvalWriteFailureLeavesRequestApproved() = runBlocking {
+    fun approvalWriteFailureUndoesTheClaimWhenItCan() = runBlocking {
         val gateway = FakeGateway().apply { failApprovalWrites = true }
         val service = reviewService(gateway)
         gateway.docs[reviewKey] = reviewDoc("PENDING_REVIEW")
         assertEquals(ApproveResult.FAILED, service.approveCertificate(reviewId, listOf(paragraph), emptyList(), "T", signer, "a"))
-        assertEquals("APPROVED", gateway.docs[reviewKey]!!["status"])
+        val request = gateway.docs[reviewKey]!!
+        assertEquals("PENDING_REVIEW", request["status"])
+        assertTrue((request["approvalId"] as String?).isNullOrBlank())
+        assertEquals(null, request["approvedAt"])
         assertTrue(approvals(gateway).isEmpty())
+        // The admin can approve again at once.
+        gateway.failApprovalWrites = false
+        assertEquals(ApproveResult.SENT_TO_SERVER, service.approveCertificate(reviewId, listOf(paragraph), emptyList(), "T", signer, "a"))
     }
 
     @Test
@@ -2136,9 +2142,6 @@ class VolunteerPortalServiceTest {
         val id = assertNotNull(service.sendDirectCertificate(
             volunteer("V9", "lea@example.org"), listOf(paragraph), emptyList(), "T", signer, "a",
         ))
-        // A snapshot that does not list the new approval yet is not "sent".
-        gateway.listeners["certificateApprovals"]!!.invoke(emptyList())
-        assertEquals(DirectSendStatus.Pending, service.directSendStatus(id).first())
         gateway.push("certificateApprovals")
         assertEquals(DirectSendStatus.Pending, service.directSendStatus(id).first())
         gateway.docs["certificateApprovals/$id"] = gateway.docs["certificateApprovals/$id"]!! + mapOf("status" to "FAILED", "reason" to "SEND_FAILED")
@@ -2149,6 +2152,53 @@ class VolunteerPortalServiceTest {
         gateway.push("certificateApprovals")
         assertEquals(DirectSendStatus.Sent, service.directSendStatus(id).first())
         assertTrue(service.failedDirectSends.value.isEmpty())
+    }
+
+    @Test
+    fun directSendDeletedWithoutAnySnapshotOfItIsSent() = runBlocking {
+        val gateway = FakeGateway()
+        val service = reviewService(gateway)
+        val id = assertNotNull(service.sendDirectCertificate(
+            volunteer("V9", "lea@example.org"), listOf(paragraph), emptyList(), "T", signer, "a",
+        ))
+        // The server was quick: the first snapshot after the write no longer lists the approval.
+        gateway.listeners["certificateApprovals"]!!.invoke(emptyList())
+        assertEquals(DirectSendStatus.Sent, service.directSendStatus(id).first())
+    }
+
+    @Test
+    fun directSendNeverPickedUpFailsAfterFiveMinutes() = runBlocking {
+        val gateway = FakeGateway()
+        val service = reviewService(gateway)
+        val base = mapOf<String, Any?>("kind" to "DIRECT", "firstName" to "Léa", "lastName" to "M")
+        gateway.docs["certificateApprovals/old"] = base + ("approvedAt" to System.currentTimeMillis() - 6 * 60_000L)
+        gateway.docs["certificateApprovals/fresh"] = base + ("approvedAt" to System.currentTimeMillis() - 60_000L)
+        gateway.push("certificateApprovals")
+        assertEquals(listOf("old"), service.failedDirectSends.value.map { it.approvalId })
+        assertEquals(DirectSendStatus.Failed("SEND_FAILED"), service.directSendStatus("old").first())
+        assertEquals(DirectSendStatus.Pending, service.directSendStatus("fresh").first())
+    }
+
+    @Test
+    fun directSendStatusTurnsFailedWhenProcessingGetsOld() = runBlocking {
+        val gateway = FakeGateway()
+        var now = 10_000_000L
+        val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true, uid = UID)))
+        val service = VolunteerPortalService(
+            ORG, gateway, host, scope, authClientFactory = { FakeAuth(PortalAuthResult.Sent) },
+            clock = { now }, publishDebounceMs = 0, retryIntervalMs = 50,
+        )
+        service.start(MutableStateFlow(host.volunteers.toList()), MutableStateFlow(emptyList<Guest>()), MutableStateFlow(emptyList<Job>()),
+            MutableStateFlow(emptyList<AccountTransfer>()), MutableStateFlow(emptyList<JobTypeConfig>()))
+        gateway.docs["certificateApprovals/p"] = mapOf(
+            "kind" to "DIRECT", "firstName" to "Léa", "lastName" to "M", "status" to "PROCESSING", "processingAt" to now,
+        )
+        gateway.push("certificateApprovals")
+        assertEquals(DirectSendStatus.Pending, service.directSendStatus("p").first())
+        now += 6 * 60_000L
+        // The periodic loop bumps the tick; no new snapshot arrives.
+        val failed = withTimeout(5_000) { service.directSendStatus("p").first { it is DirectSendStatus.Failed } }
+        assertEquals(DirectSendStatus.Failed("SEND_FAILED"), failed)
     }
 
     @Test

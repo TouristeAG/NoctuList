@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -237,6 +238,7 @@ class VolunteerPortalService(
                 delay(retryIntervalMs)
                 refreshCertificateRequests()
                 refreshFailedDirectSends()
+                staleTick.update { it + 1 }
                 runCatchingLogged("retry") {
                     processSignups(latestSignupDocs)
                     processRequests(latestRequestDocs)
@@ -1769,6 +1771,8 @@ class VolunteerPortalService(
     /** Approval ids a snapshot has listed: only one of these disappearing means the server sent it. */
     private val seenApprovalIds: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
     private val _failedDirectSends = MutableStateFlow<List<FailedDirectSend>>(emptyList())
+    /** Bumped by the periodic loop so a send that gets stuck turns into Failed without any snapshot. */
+    private val staleTick = MutableStateFlow(0)
 
     /** Direct sends the server could not finish (or never finished), until dismissed. */
     val failedDirectSends: StateFlow<List<FailedDirectSend>> = _failedDirectSends.asStateFlow()
@@ -1783,15 +1787,25 @@ class VolunteerPortalService(
         _failedDirectSends.value = docs.entries
             .filter { it.value["kind"] == "DIRECT" }
             .mapNotNull { (id, data) ->
-                val status = data["status"]?.toString()
-                val reason = when {
-                    status == "FAILED" -> data["reason"]?.toString().orEmpty().ifBlank { CertificateReview.REASON_SEND_FAILED }
-                    status == "PROCESSING" && isOldTime(data["processingAt"], now) -> CertificateReview.REASON_SEND_FAILED
-                    else -> return@mapNotNull null
-                }
+                val reason = directFailureReason(data, now) ?: return@mapNotNull null
                 FailedDirectSend(id, "${data["firstName"] ?: ""} ${data["lastName"] ?: ""}".trim(), reason)
             }
             .sortedBy { it.approvalId }
+    }
+
+    /**
+     * Why a direct approval counts as failed, or null while it is still on its way: the server marked it
+     * FAILED, or it has been PROCESSING (or never picked up, no status at all) for over 5 minutes.
+     */
+    private fun directFailureReason(data: Map<String, Any?>, now: Long): String? {
+        val status = data["status"]?.toString().orEmpty()
+        return when {
+            status == "FAILED" -> data["reason"]?.toString().orEmpty().ifBlank { CertificateReview.REASON_SEND_FAILED }
+            status == "PROCESSING" && isOldTime(data["processingAt"], now) -> CertificateReview.REASON_SEND_FAILED
+            status.isBlank() && firestoreMillisOf(data["approvedAt"])?.let { now - it > CertificateReview.STUCK_MILLIS } == true ->
+                CertificateReview.REASON_SEND_FAILED
+            else -> null
+        }
     }
 
     private fun isOldTime(value: Any?, now: Long): Boolean {
@@ -1816,6 +1830,7 @@ class VolunteerPortalService(
         val approvalId = randomApprovalId()
         val now = clock()
         return mutex.withLock {
+            var claimed = false
             try {
                 gateway.claimDocument(
                     orgId,
@@ -1831,6 +1846,7 @@ class VolunteerPortalService(
                         "approvedAt" to now,
                     ),
                 ) ?: return@withLock ApproveResult.ALREADY_HANDLED
+                claimed = true
                 gateway.setPlainDocument(
                     orgId,
                     CERTIFICATE_APPROVALS,
@@ -1843,8 +1859,32 @@ class VolunteerPortalService(
                 throw e
             } catch (e: Exception) {
                 println("Portal: certificate approval failed: ${e.message}")
+                if (claimed) undoClaim(requestId, approvalId)
                 ApproveResult.FAILED
             }
+        }
+    }
+
+    /** Best effort: gives the request back for review after its approval could not be written, so the team can retry at once. */
+    private suspend fun undoClaim(requestId: String, approvalId: String) {
+        try {
+            gateway.claimDocument(
+                orgId,
+                PortalRequest.COLLECTION,
+                requestId,
+                claimable = {
+                    it["status"] == PortalRequest.STATUS_APPROVED && it["approvalId"] == approvalId
+                },
+                claimFields = mapOf(
+                    "status" to PortalRequest.STATUS_PENDING_REVIEW,
+                    "approvalId" to "",
+                    "approvedAt" to null,
+                ),
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            println("Portal: certificate claim undo failed: ${e.message}")
         }
     }
 
@@ -1929,6 +1969,8 @@ class VolunteerPortalService(
                     ) + approvalCommon(text, title, signer, approvedBy, clock()),
                     merge = false,
                 )
+                // From here a snapshot without the approval means the server sent it.
+                seenApprovalIds.add(approvalId)
                 approvalId
             } catch (e: CancellationException) {
                 throw e
@@ -1940,13 +1982,12 @@ class VolunteerPortalService(
     }
 
     /** Follows a direct send: the server deletes the approval once the mail left. */
-    fun directSendStatus(approvalId: String): Flow<DirectSendStatus> = approvalDocs.map { docs ->
+    fun directSendStatus(approvalId: String): Flow<DirectSendStatus> = combine(approvalDocs, staleTick) { docs, _ ->
+        val data = docs?.get(approvalId)
         when {
             docs == null -> DirectSendStatus.Pending
-            docs[approvalId] == null -> if (approvalId in seenApprovalIds) DirectSendStatus.Sent else DirectSendStatus.Pending
-            docs[approvalId]?.get("status") == "FAILED" ->
-                DirectSendStatus.Failed(docs[approvalId]?.get("reason")?.toString().orEmpty().ifBlank { CertificateReview.REASON_SEND_FAILED })
-            else -> DirectSendStatus.Pending
+            data == null -> if (approvalId in seenApprovalIds) DirectSendStatus.Sent else DirectSendStatus.Pending
+            else -> directFailureReason(data, clock())?.let { DirectSendStatus.Failed(it) } ?: DirectSendStatus.Pending
         }
     }.distinctUntilChanged()
 
