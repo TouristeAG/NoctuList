@@ -299,3 +299,23 @@ deux copies des règles (`firebase/` et `composeResources/files/`).
 - Manuel : éditeur sur desktop et Android, PDF reçu ouvert sur iPhone et sur ordinateur.
 
 Docs : CHANGELOG, FIREBASE_SETUP.md (règles v20, déploiement des functions avec hosting).
+
+## 11. Précisions ajoutées à la planification (choix de Claude)
+
+- **Période** : une variable {période} remplace {début}/{fin} dans les textes par défaut, pour
+  éviter les dates trop précises et les élisions (« de avril ») : « entre mars et octobre 2026 »,
+  « entre avril 2025 et août 2026 », « en mars 2026 » (et équivalents dans les 4 autres langues).
+  {début} et {fin} (mois + année) restent disponibles.
+- **Troisième variante** pour SHIFT et OTHER : « plusieurs jobs, un seul rôle » (le rôle entre
+  dans la phrase, la description suit). Les variantes sont donc `one`, `many`, `manyOneRole`, plus
+  le format de ligne `line`.
+- **Format** : tous les blocs sont des `{ one, many, manyOneRole, line }` ; les blocs fixes
+  (en-tête, titre, conclusion, lieu et date, pied de page) n'utilisent que `one`.
+- **Clés des variables** stockées en anglais (`firstName`, `lastName`, `association`, `period`,
+  `start`, `end`, `date`, `count`, `role`, `description`, `roles`, `place`, `today`) ; l'éditeur
+  affiche des libellés traduits.
+- {rôles} occupe seul son paragraphe ; ce paragraphe est remplacé par une ligne par rôle.
+  Un paragraphe vide après remplacement (par ex. {description} vide) disparaît.
+- **Langues de l'attestation** : les 5 langues du portail (fr, en, de, it, es), pas les 7 de l'app.
+- **Jour d'un job** : date civile à Genève de `Job.date` (pas de décalage `offsetHours`).
+- **Noms en capitales** : corrigés seulement s'ils n'ont aucune minuscule.
