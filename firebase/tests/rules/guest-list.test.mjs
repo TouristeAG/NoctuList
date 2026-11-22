@@ -115,6 +115,23 @@ describe("guestListEdits", () => {
     await assertFails(setDoc(doc(db, path("guestListEdits/c6")), add({ notes: 5 })));
   });
 
+  test("a decision on a guest request needs a granted date and the review key", async () => {
+    const db = portal("v1").firestore();
+    const decide = (over) => edit("v1", {
+      action: "ACCEPT", guestKey: undefined, reviewKey: "fedcba9876543210", firstName: "", accessIds: undefined,
+      people: [{ name: "Ann Lee", accessIds: ["bs"] }], ...over,
+    });
+    const clean = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined));
+    await assertSucceeds(setDoc(doc(db, path("guestListEdits/d1")), clean(decide({}))));
+    await assertSucceeds(setDoc(doc(db, path("guestListEdits/d2")), clean(decide({ action: "REJECT", people: [] }))));
+    await assertFails(setDoc(doc(db, path("guestListEdits/d3")), clean(decide({ reviewKey: undefined }))));
+    await assertFails(setDoc(doc(db, path("guestListEdits/d4")), clean(decide({ reviewKey: "NOT-HEX" }))));
+    await assertFails(setDoc(doc(db, path("guestListEdits/d5")), clean(decide({ eventDateMillis: DATE + 86_400_000 }))));
+    await assertFails(setDoc(doc(db, path("guestListEdits/d6")), clean(decide({ people: Array.from({ length: 101 }, () => ({ name: "A", accessIds: [] })) }))));
+    await assertFails(setDoc(doc(db, path("guestListEdits/d7")), clean(decide({ people: "Ann" }))));
+    await assertFails(setDoc(doc(portal("v2").firestore(), path("guestListEdits/d8")), clean(decide({}))));
+  });
+
   test("a linked Google session edits for its account", async () => {
     await setSetting("volunteer_portal_google_enabled", "true");
     await setSetting("volunteer_portal_google_domains", "asso.example");

@@ -1,5 +1,5 @@
 rules_version = '2';
-// NoctuList Firestore rules — NOCTULIST_RULES_VERSION = 19
+// NoctuList Firestore rules — NOCTULIST_RULES_VERSION = 20
 // Republish this exact file in Firebase Console → Firestore → Rules after every app update,
 // otherwise members that already exist cannot re-join their organization.
 service cloud.firestore {
@@ -618,17 +618,20 @@ service cloud.firestore {
       let d = request.resource.data;
       return d.keys().hasOnly(['uid', 'email', 'grantId', 'eventDateMillis', 'action', 'guestKey', 'firstName',
                                'lastName', 'listName', 'venueName', 'accessIds', 'phone', 'contactEmail', 'notes',
-                               'status', 'createdAt'])
+                               'status', 'createdAt', 'reviewKey', 'people'])
         && d.uid is string
         && guestListSessionOk(orgId, d.uid)
         && d.email == request.auth.token.get('email', '')
         && d.status == 'PENDING'
         && d.createdAt == request.time
-        && d.action in ['ADD', 'UPDATE', 'DELETE']
+        && d.action in ['ADD', 'UPDATE', 'DELETE', 'ACCEPT', 'REJECT']
         && d.grantId is string && d.grantId.size() <= 64
         && d.eventDateMillis is number
         && d.eventDateMillis in get(/databases/$(database)/documents/orgs/$(orgId)/guestListPortal/$(d.uid)).data.grantDates
-        && (d.action == 'ADD' || (d.guestKey is string && d.guestKey.matches('^[0-9a-f]{16}$')))
+        && (!(d.action in ['UPDATE', 'DELETE']) || (d.guestKey is string && d.guestKey.matches('^[0-9a-f]{16}$')))
+        // ACCEPT / REJECT: decision on a guest request; each person is rechecked by the device.
+        && (!(d.action in ['ACCEPT', 'REJECT']) || (d.reviewKey is string && d.reviewKey.matches('^[0-9a-f]{16}$')))
+        && d.get('people', []) is list && d.get('people', []).size() <= 100
         && optionalPersonName(d.get('firstName', ''))
         && optionalPersonName(d.get('lastName', ''))
         && d.get('listName', '') is string && d.get('listName', '').size() <= 80
