@@ -40,6 +40,7 @@ class SharedCertificateCasesTest {
             val association = case.str("association")
             val language = case.str("language")
             val override = case.jsonObject["template"]
+            assertTrue(override == null || case.jsonObject["place"] == null, "$name: a case with a template must not carry place")
             val template = if (override != null) {
                 assertNotNull(CertificateTemplate.parse(override.toString()), "$name: template")
             } else {

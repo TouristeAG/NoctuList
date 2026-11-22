@@ -140,11 +140,18 @@ object CertificateAssembler {
             if (ofCategory.isEmpty()) continue
             val key = category.name
 
+            // Mandates and the graphic identity read as a period: no count, and for mandates no date either.
             fun local(group: List<CertJob>, withType: CertJobType?): Map<String, String> {
                 val vars = global.toMutableMap()
-                vars["count"] = group.size.toString()
+                if (category != CertificateCategory.MANDATE && category != CertificateCategory.GRAPHIC_ASSOCIATION) {
+                    vars["count"] = group.size.toString()
+                }
                 vars["period"] = CertificateDates.period(group.first().day, group.last().day, lang)
-                if (group.size == 1) vars["date"] = CertificateDates.longDate(group.first().day, lang)
+                if (category == CertificateCategory.MANDATE) {
+                    vars["date"] = ""
+                } else if (group.size == 1) {
+                    vars["date"] = CertificateDates.longDate(group.first().day, lang)
+                }
                 if (withType != null) {
                     vars["role"] = withType.name
                     vars["description"] = withType.description
@@ -166,6 +173,7 @@ object CertificateAssembler {
                     else -> {
                         val vars = local(ofCategory, null)
                         val lines = byType.values
+                            // Name ties use String order (UTF-16 code units, no locale, no case folding).
                             .sortedWith(compareBy({ -it.size }, { it.first().jobTypeName }))
                             .flatMap { group ->
                                 val type = typeOf(group.first())

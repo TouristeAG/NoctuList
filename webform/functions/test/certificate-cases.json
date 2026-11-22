@@ -3,7 +3,6 @@
     "name": "single-shift",
     "language": "fr",
     "association": "Nova Events",
-    "place": "Genève",
     "person": {
       "firstName": "Camille",
       "lastName": "Martin",
@@ -41,13 +40,13 @@
         "Fait à Genève, le 15 juin 2026"
       ],
       "footer": []
-    }
+    },
+    "place": "Genève"
   },
   {
     "name": "many-shifts-one-role",
     "language": "fr",
     "association": "Nova Events",
-    "place": "Genève",
     "person": {
       "firstName": "Camille",
       "lastName": "Martin",
@@ -113,13 +112,13 @@
         "Fait à Genève, le 15 juin 2026"
       ],
       "footer": []
-    }
+    },
+    "place": "Genève"
   },
   {
     "name": "many-shifts-many-roles",
     "language": "fr",
     "association": "Nova Events",
-    "place": "Genève",
     "person": {
       "firstName": "Camille",
       "lastName": "Martin",
@@ -216,13 +215,13 @@
         "Fait à Genève, le 15 juin 2026"
       ],
       "footer": []
-    }
+    },
+    "place": "Genève"
   },
   {
     "name": "mandate-only",
     "language": "fr",
     "association": "Nova Events",
-    "place": "Genève",
     "person": {
       "firstName": "Camille",
       "lastName": "Martin",
@@ -264,13 +263,13 @@
         "Fait à Genève, le 15 juin 2026"
       ],
       "footer": []
-    }
+    },
+    "place": "Genève"
   },
   {
     "name": "mandate-one-month",
     "language": "fr",
     "association": "Nova Events",
-    "place": "Genève",
     "person": {
       "firstName": "Camille",
       "lastName": "Martin",
@@ -312,13 +311,13 @@
         "Fait à Genève, le 15 juin 2026"
       ],
       "footer": []
-    }
+    },
+    "place": "Genève"
   },
   {
     "name": "mandate-and-shifts",
     "language": "fr",
     "association": "Nova Events",
-    "place": "Genève",
     "person": {
       "firstName": "Camille",
       "lastName": "Martin",
@@ -371,13 +370,13 @@
         "Fait à Genève, le 15 juin 2026"
       ],
       "footer": []
-    }
+    },
+    "place": "Genève"
   },
   {
     "name": "meetings-only",
     "language": "fr",
     "association": "Nova Events",
-    "place": "Genève",
     "person": {
       "firstName": "Camille",
       "lastName": "Martin",
@@ -422,13 +421,13 @@
         "Fait à Genève, le 15 juin 2026"
       ],
       "footer": []
-    }
+    },
+    "place": "Genève"
   },
   {
     "name": "meeting-excluded",
     "language": "fr",
     "association": "Nova Events",
-    "place": "Genève",
     "person": {
       "firstName": "Camille",
       "lastName": "Martin",
@@ -478,13 +477,13 @@
         "Fait à Genève, le 15 juin 2026"
       ],
       "footer": []
-    }
+    },
+    "place": "Genève"
   },
   {
     "name": "deleted-type",
     "language": "fr",
     "association": "Nova Events",
-    "place": "Genève",
     "person": {
       "firstName": "Camille",
       "lastName": "Martin",
@@ -515,13 +514,13 @@
         "Fait à Genève, le 15 juin 2026"
       ],
       "footer": []
-    }
+    },
+    "place": "Genève"
   },
   {
     "name": "empty-description",
     "language": "fr",
     "association": "Nova Events",
-    "place": "Genève",
     "person": {
       "firstName": "Camille",
       "lastName": "Martin",
@@ -574,13 +573,13 @@
         "Fait à Genève, le 15 juin 2026"
       ],
       "footer": []
-    }
+    },
+    "place": "Genève"
   },
   {
     "name": "gender-male",
     "language": "fr",
     "association": "Nova Events",
-    "place": "Genève",
     "person": {
       "firstName": "Camille",
       "lastName": "Martin",
@@ -617,13 +616,13 @@
         "Fait à Genève, le 15 juin 2026"
       ],
       "footer": []
-    }
+    },
+    "place": "Genève"
   },
   {
     "name": "gender-nonbinary",
     "language": "fr",
     "association": "Nova Events",
-    "place": "Genève",
     "person": {
       "firstName": "Camille",
       "lastName": "Martin",
@@ -660,13 +659,13 @@
         "Fait à Genève, le 15 juin 2026"
       ],
       "footer": []
-    }
+    },
+    "place": "Genève"
   },
   {
     "name": "gender-unknown",
     "language": "fr",
     "association": "Nova Events",
-    "place": "Genève",
     "person": {
       "firstName": "Camille",
       "lastName": "Martin",
@@ -703,13 +702,13 @@
         "Fait à Genève, le 15 juin 2026"
       ],
       "footer": []
-    }
+    },
+    "place": "Genève"
   },
   {
     "name": "period-trimmed",
     "language": "fr",
     "association": "Nova Events",
-    "place": "Genève",
     "person": {
       "firstName": "Camille",
       "lastName": "Martin",
@@ -750,13 +749,13 @@
         "Fait à Genève, le 15 juin 2026"
       ],
       "footer": []
-    }
+    },
+    "place": "Genève"
   },
   {
     "name": "future-excluded",
     "language": "fr",
     "association": "Nova Events",
-    "place": "Genève",
     "person": {
       "firstName": "Camille",
       "lastName": "Martin",
@@ -797,13 +796,13 @@
         "Fait à Genève, le 15 juin 2026"
       ],
       "footer": []
-    }
+    },
+    "place": "Genève"
   },
   {
     "name": "nothing",
     "language": "fr",
     "association": "Nova Events",
-    "place": "Genève",
     "person": {
       "firstName": "Camille",
       "lastName": "Martin",
@@ -830,13 +829,13 @@
         "Réunion de comité"
       ]
     },
-    "expect": null
+    "expect": null,
+    "place": "Genève"
   },
   {
     "name": "nothing-in-range",
     "language": "fr",
     "association": "Nova Events",
-    "place": "Genève",
     "person": {
       "firstName": "Camille",
       "lastName": "Martin",
@@ -863,13 +862,13 @@
         "Bar"
       ]
     },
-    "expect": null
+    "expect": null,
+    "place": "Genève"
   },
   {
     "name": "no-place",
     "language": "fr",
     "association": "Nova Events",
-    "place": "",
     "person": {
       "firstName": "Camille",
       "lastName": "Martin",
@@ -905,13 +904,13 @@
         "Nous remercions chaleureusement Camille pour son engagement."
       ],
       "footer": []
-    }
+    },
+    "place": ""
   },
   {
     "name": "caps-name",
     "language": "fr",
     "association": "Nova Events",
-    "place": "Genève",
     "person": {
       "firstName": "MARIE-CLAIRE",
       "lastName": "DUPONT",
@@ -948,13 +947,13 @@
         "Fait à Genève, le 15 juin 2026"
       ],
       "footer": []
-    }
+    },
+    "place": "Genève"
   },
   {
     "name": "name-mixed-case-kept",
     "language": "fr",
     "association": "Nova Events",
-    "place": "Genève",
     "person": {
       "firstName": "Anna",
       "lastName": "van der Berg",
@@ -991,13 +990,13 @@
         "Fait à Genève, le 15 juin 2026"
       ],
       "footer": []
-    }
+    },
+    "place": "Genève"
   },
   {
     "name": "english",
     "language": "en",
     "association": "Nova Events",
-    "place": "Geneva",
     "person": {
       "firstName": "Camille",
       "lastName": "Martin",
@@ -1034,13 +1033,13 @@
         "Issued in Geneva, on 15 June 2026"
       ],
       "footer": []
-    }
+    },
+    "place": "Geneva"
   },
   {
     "name": "runs",
     "language": "fr",
     "association": "Nova Events",
-    "place": "Genève",
     "person": {
       "firstName": "Camille",
       "lastName": "Martin",
@@ -1175,13 +1174,13 @@
           }
         ]
       }
-    }
+    },
+    "place": "Genève"
   },
   {
     "name": "template-override",
     "language": "fr",
     "association": "Nova Events",
-    "place": "Genève",
     "person": {
       "firstName": "Camille",
       "lastName": "Martin",
@@ -1281,6 +1280,326 @@
               "runs": [
                 {
                   "text": "  "
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "name": "role-sort-tie",
+    "language": "fr",
+    "association": "Nova Events",
+    "person": {
+      "firstName": "Camille",
+      "lastName": "Martin",
+      "gender": "FEMALE"
+    },
+    "types": [
+      {
+        "name": "École",
+        "category": "SHIFT",
+        "description": ""
+      },
+      {
+        "name": "bar",
+        "category": "SHIFT",
+        "description": ""
+      },
+      {
+        "name": "Bar",
+        "category": "SHIFT",
+        "description": ""
+      }
+    ],
+    "jobs": [
+      {
+        "jobTypeName": "École",
+        "day": 20260124
+      },
+      {
+        "jobTypeName": "bar",
+        "day": 20260117
+      },
+      {
+        "jobTypeName": "Bar",
+        "day": 20260110
+      }
+    ],
+    "selection": {
+      "fromDay": 20260101,
+      "toDay": 20261231,
+      "todayDay": 20260615,
+      "jobTypes": [
+        "Bar",
+        "bar",
+        "École"
+      ]
+    },
+    "expect": {
+      "body": [
+        "Nova Events",
+        "Attestation de bénévolat",
+        "Nova Events atteste que Camille Martin s'est engagée bénévolement au sein de l'association en janvier 2026.",
+        "Camille a participé bénévolement à 3 événements de Nova Events en janvier 2026, dans les rôles suivants :",
+        "Bar",
+        "bar",
+        "École",
+        "Nous remercions chaleureusement Camille pour son engagement.",
+        "Fait à Genève, le 15 juin 2026"
+      ],
+      "footer": []
+    },
+    "place": "Genève",
+    "note": "Roles with equal counts are sorted by name in UTF-16 code-unit order (plain string comparison, no locale, no case folding): Bar, bar, École."
+  },
+  {
+    "name": "mandate-single-job",
+    "language": "fr",
+    "association": "Nova Events",
+    "person": {
+      "firstName": "Camille",
+      "lastName": "Martin",
+      "gender": "FEMALE"
+    },
+    "types": [
+      {
+        "name": "Co-présidence",
+        "category": "MANDATE",
+        "description": "Direction de l'association"
+      }
+    ],
+    "jobs": [
+      {
+        "jobTypeName": "Co-présidence",
+        "day": 20250110
+      }
+    ],
+    "selection": {
+      "fromDay": 20250101,
+      "toDay": 20251231,
+      "todayDay": 20260615,
+      "jobTypes": [
+        "Co-présidence"
+      ]
+    },
+    "expect": {
+      "body": [
+        "Nova Events",
+        "Attestation de bénévolat",
+        "Nova Events atteste que Camille Martin s'est engagée bénévolement au sein de l'association.",
+        "Camille a exercé le mandat de Co-présidence en janvier 2025.",
+        "Direction de l'association",
+        "Nous remercions chaleureusement Camille pour son engagement.",
+        "Fait à Genève, le 15 juin 2026"
+      ],
+      "footer": []
+    },
+    "place": "Genève"
+  },
+  {
+    "name": "mandate-several-types",
+    "language": "fr",
+    "association": "Nova Events",
+    "person": {
+      "firstName": "Camille",
+      "lastName": "Martin",
+      "gender": "FEMALE"
+    },
+    "types": [
+      {
+        "name": "Co-présidence",
+        "category": "MANDATE",
+        "description": "Direction de l'association"
+      },
+      {
+        "name": "Trésorerie",
+        "category": "MANDATE",
+        "description": ""
+      }
+    ],
+    "jobs": [
+      {
+        "jobTypeName": "Co-présidence",
+        "day": 20250110
+      },
+      {
+        "jobTypeName": "Co-présidence",
+        "day": 20250210
+      },
+      {
+        "jobTypeName": "Trésorerie",
+        "day": 20240601
+      },
+      {
+        "jobTypeName": "Trésorerie",
+        "day": 20241201
+      }
+    ],
+    "selection": {
+      "fromDay": 20240101,
+      "toDay": 20251231,
+      "todayDay": 20260615,
+      "jobTypes": [
+        "Co-présidence",
+        "Trésorerie"
+      ]
+    },
+    "expect": {
+      "body": [
+        "Nova Events",
+        "Attestation de bénévolat",
+        "Nova Events atteste que Camille Martin s'est engagée bénévolement au sein de l'association entre juin 2024 et février 2025.",
+        "Camille a exercé le mandat de Trésorerie entre juin et décembre 2024.",
+        "Camille a exercé le mandat de Co-présidence entre janvier et février 2025.",
+        "Direction de l'association",
+        "Nous remercions chaleureusement Camille pour son engagement.",
+        "Fait à Genève, le 15 juin 2026"
+      ],
+      "footer": []
+    },
+    "place": "Genève",
+    "note": "One mandate block per mandate type, ordered by first day."
+  },
+  {
+    "name": "caps-name-accent-apostrophe",
+    "language": "fr",
+    "association": "Nova Events",
+    "person": {
+      "firstName": "ÉLODIE",
+      "lastName": "D'ANGELO",
+      "gender": "FEMALE"
+    },
+    "types": [
+      {
+        "name": "Bar",
+        "category": "SHIFT",
+        "description": ""
+      }
+    ],
+    "jobs": [
+      {
+        "jobTypeName": "Bar",
+        "day": 20260312
+      }
+    ],
+    "selection": {
+      "fromDay": 20260101,
+      "toDay": 20261231,
+      "todayDay": 20260615,
+      "jobTypes": [
+        "Bar"
+      ]
+    },
+    "expect": {
+      "body": [
+        "Nova Events",
+        "Attestation de bénévolat",
+        "Nova Events atteste que Élodie D'Angelo s'est engagée bénévolement au sein de l'association.",
+        "Le 12 mars 2026, Élodie a participé bénévolement à un événement de Nova Events en tant que Bar.",
+        "Nous remercions chaleureusement Élodie pour son engagement.",
+        "Fait à Genève, le 15 juin 2026"
+      ],
+      "footer": []
+    },
+    "place": "Genève"
+  },
+  {
+    "name": "mandate-no-count-no-date",
+    "language": "fr",
+    "association": "Nova Events",
+    "person": {
+      "firstName": "Camille",
+      "lastName": "Martin",
+      "gender": "FEMALE"
+    },
+    "types": [
+      {
+        "name": "Co-présidence",
+        "category": "MANDATE",
+        "description": "Direction de l'association"
+      },
+      {
+        "name": "Affiches",
+        "category": "GRAPHIC_ASSOCIATION",
+        "description": ""
+      }
+    ],
+    "jobs": [
+      {
+        "jobTypeName": "Co-présidence",
+        "day": 20250110
+      },
+      {
+        "jobTypeName": "Affiches",
+        "day": 20250210
+      }
+    ],
+    "selection": {
+      "fromDay": 20250101,
+      "toDay": 20251231,
+      "todayDay": 20260615,
+      "jobTypes": [
+        "Co-présidence",
+        "Affiches"
+      ]
+    },
+    "expect": {
+      "body": [
+        "count=;date=;role=Co-présidence",
+        "count=;period=en février 2025"
+      ],
+      "footer": []
+    },
+    "note": "Mandate blocks get no count and no date; graphic association blocks get no count.",
+    "template": {
+      "version": 1,
+      "language": "fr",
+      "place": "Genève",
+      "blocks": {
+        "MANDATE": {
+          "one": [
+            {
+              "runs": [
+                {
+                  "text": "count="
+                },
+                {
+                  "var": "count"
+                },
+                {
+                  "text": ";date="
+                },
+                {
+                  "var": "date"
+                },
+                {
+                  "text": ";role="
+                },
+                {
+                  "var": "role"
+                }
+              ]
+            }
+          ]
+        },
+        "GRAPHIC_ASSOCIATION": {
+          "one": [
+            {
+              "runs": [
+                {
+                  "text": "count="
+                },
+                {
+                  "var": "count"
+                },
+                {
+                  "text": ";period="
+                },
+                {
+                  "var": "period"
                 }
               ]
             }
