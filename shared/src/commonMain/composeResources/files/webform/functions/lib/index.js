@@ -314,14 +314,14 @@ function parseDomains(raw) {
 }
 function accountAllowed(email, domains, anyAccount) {
   if (!anyAccount) return domainAllowed(email, domains);
-  const clean = kotlinTrim(email);
-  const at = clean.lastIndexOf("@");
-  return at >= 0 && clean.slice(at + 1) !== "";
+  const clean2 = kotlinTrim(email);
+  const at = clean2.lastIndexOf("@");
+  return at >= 0 && clean2.slice(at + 1) !== "";
 }
 function domainAllowed(email, domains) {
-  const clean = kotlinTrim(email).toLowerCase();
-  const at = clean.lastIndexOf("@");
-  const domain = at < 0 ? "" : clean.slice(at + 1);
+  const clean2 = kotlinTrim(email).toLowerCase();
+  const at = clean2.lastIndexOf("@");
+  const domain = at < 0 ? "" : clean2.slice(at + 1);
   return domain !== "" && !CONSUMER_DOMAINS.includes(domain) && domains.some((d) => kotlinTrim(d).toLowerCase() === domain);
 }
 function sameAddress(a, b) {
@@ -611,8 +611,8 @@ var LIFETIME_SECONDS = 3600;
 var REFRESH_MARGIN_MS = 6e4;
 var MAX_CODE = 80;
 var safePart = (s, fallback) => {
-  const clean = typeof s === "string" ? s.replace(/[^A-Za-z0-9_.-]/g, "").slice(0, 40) : "";
-  return clean === "" ? fallback : clean;
+  const clean2 = typeof s === "string" ? s.replace(/[^A-Za-z0-9_.-]/g, "").slice(0, 40) : "";
+  return clean2 === "" ? fallback : clean2;
 };
 var code = (c) => c.slice(0, MAX_CODE);
 async function jsonOf(r) {
@@ -1562,10 +1562,10 @@ function headerEnd(raw) {
 var REPLACED = /* @__PURE__ */ new Set(["from", "sender", "to", "cc", "bcc", "date", "message-id", "return-path"]);
 var CONTROL2 = /[\u0000-\u001F\u007F]+/g;
 function displayName(name) {
-  const clean = name.replace(CONTROL2, " ").trim();
-  if (clean === "") return "";
-  if (/^[\x20-\x7E]*$/.test(clean)) return `"${clean.replace(/["\\]/g, "\\$&")}"`;
-  return `=?UTF-8?B?${Buffer.from(clean, "utf8").toString("base64")}?=`;
+  const clean2 = name.replace(CONTROL2, " ").trim();
+  if (clean2 === "") return "";
+  if (/^[\x20-\x7E]*$/.test(clean2)) return `"${clean2.replace(/["\\]/g, "\\$&")}"`;
+  return `=?UTF-8?B?${Buffer.from(clean2, "utf8").toString("base64")}?=`;
 }
 function rewriteHeaders(raw, from, fromName, to, now) {
   const end = headerEnd(raw);
@@ -2178,6 +2178,342 @@ function assemble(template, association, person, types, jobs, selection) {
   return { body, footer: block("footer", (b) => b.one, global) };
 }
 
+// src/certificatePdf.ts
+import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+import fontkit from "@pdf-lib/fontkit";
+import { PDFDocument, rgb } from "pdf-lib";
+var SIZE_PT = { SMALL: 9, NORMAL: 11, LARGE: 14, TITLE: 22 };
+var LEADING = 1.4;
+var PARAGRAPH_GAP = 0.6;
+var BULLET_INDENT = 14;
+function tokenize(p) {
+  const out = [];
+  for (const r of p.runs) {
+    for (const part of r.text.split(/(\n|[^\S\n]+)/)) {
+      if (part === "") continue;
+      if (part === "\n") out.push({ br: true });
+      else out.push({ text: part, b: r.b, i: r.i, u: r.u, space: /^\s+$/.test(part) });
+    }
+  }
+  return out;
+}
+function layoutParagraphs(paragraphs, width, measure) {
+  const lines = [];
+  paragraphs.forEach((p, index) => {
+    const size = SIZE_PT[p.size];
+    const indent = p.bullet ? BULLET_INDENT : 0;
+    const avail = width - indent;
+    const rows = [];
+    const hardBreak = [];
+    let cur = [];
+    let curWidth = 0;
+    let pendingSpace = null;
+    const flush = (hard) => {
+      rows.push(cur);
+      hardBreak.push(hard);
+      cur = [];
+      curWidth = 0;
+      pendingSpace = null;
+    };
+    const add = (text, t) => {
+      const last = cur[cur.length - 1];
+      const merged = last && last.b === t.b && last.i === t.i && last.u === t.u ? last.text + text : null;
+      if (merged !== null) {
+        const w = measure(merged, t.b, t.i, size);
+        curWidth += w - last.width;
+        last.text = merged;
+        last.width = w;
+      } else {
+        const w = measure(text, t.b, t.i, size);
+        cur.push({ text, b: t.b, i: t.i, u: t.u, width: w });
+        curWidth += w;
+      }
+    };
+    for (const tok of tokenize(p)) {
+      if ("br" in tok) {
+        flush(true);
+        continue;
+      }
+      if (tok.space) {
+        if (cur.length > 0) pendingSpace = { text: tok.text, b: tok.b, i: tok.i, u: tok.u };
+        continue;
+      }
+      const spaceW = pendingSpace ? measure(pendingSpace.text, pendingSpace.b, pendingSpace.i, size) : 0;
+      const wordW = measure(tok.text, tok.b, tok.i, size);
+      if (curWidth + spaceW + wordW <= avail) {
+        if (pendingSpace) add(pendingSpace.text, pendingSpace);
+        pendingSpace = null;
+        add(tok.text, tok);
+        continue;
+      }
+      if (cur.length > 0) flush(false);
+      pendingSpace = null;
+      if (wordW <= avail) {
+        add(tok.text, tok);
+        continue;
+      }
+      let piece = "";
+      for (const ch of Array.from(tok.text)) {
+        if (piece !== "" && measure(piece + ch, tok.b, tok.i, size) > avail) {
+          add(piece, tok);
+          flush(false);
+          piece = "";
+        }
+        piece += ch;
+      }
+      if (piece !== "") add(piece, tok);
+    }
+    if (cur.length > 0 || rows.length === 0) flush(true);
+    rows.forEach((segs, r) => {
+      const isLast = r === rows.length - 1 || hardBreak[r];
+      const lineWidth = segs.reduce((s, x2) => s + x2.width, 0);
+      let x = indent;
+      if (p.align === "CENTER") x = indent + (avail - lineWidth) / 2;
+      else if (p.align === "RIGHT") x = indent + (avail - lineWidth);
+      lines.push({
+        x,
+        size,
+        gapBefore: r === 0 && index > 0 ? size * PARAGRAPH_GAP : 0,
+        bullet: p.bullet && r === 0,
+        justify: p.align === "JUSTIFY" && !isLast,
+        last: isLast,
+        segments: segs
+      });
+    });
+  });
+  return lines;
+}
+var FILES = {
+  "400": ["nunito-400.ttf"],
+  "700": ["nunito-700.ttf"],
+  "400i": ["nunito-latin-400-italic.woff", "nunito-latin-ext-400-italic.woff"],
+  "700i": ["nunito-latin-700-italic.woff", "nunito-latin-ext-700-italic.woff"]
+};
+var fontBytes = /* @__PURE__ */ new Map();
+function loadFile(name) {
+  let p = fontBytes.get(name);
+  if (!p) {
+    p = readFile(fileURLToPath(new URL(`../assets/${name}`, import.meta.url)));
+    fontBytes.set(name, p);
+  }
+  return p;
+}
+var faceKey = (b, i) => b ? i ? "700i" : "700" : i ? "400i" : "400";
+function pieces(face, text) {
+  const out = [];
+  for (const ch of Array.from(text)) {
+    const cp = ch.codePointAt(0);
+    let idx = face.has.findIndex((h) => h(cp));
+    if (idx < 0) idx = 0;
+    const last = out[out.length - 1];
+    if (last && last.font === face.fonts[idx]) last.text += ch;
+    else out.push({ font: face.fonts[idx], text: ch });
+  }
+  return out;
+}
+async function loadFaces(doc) {
+  doc.registerFontkit(fontkit);
+  const faces = {};
+  for (const key of Object.keys(FILES)) {
+    const fonts = [];
+    const has = [];
+    for (const name of FILES[key]) {
+      const bytes = await loadFile(name);
+      const kit = fontkit.create(bytes);
+      has.push((cp) => kit.hasGlyphForCodePoint(cp));
+      fonts.push(await doc.embedFont(bytes, { subset: true }));
+    }
+    faces[key] = { fonts, has };
+  }
+  return faces;
+}
+function clean(text, faces) {
+  let out = "";
+  for (const ch of Array.from(text)) {
+    const cp = ch.codePointAt(0);
+    if (ch === "\n" || /\s/.test(ch)) {
+      out += ch === "\n" ? "\n" : " ";
+    } else if (cp < 32 || cp >= 127 && cp < 160) {
+      continue;
+    } else if (faces["400"].has.some((h) => h(cp)) || faces["400i"].has.some((h) => h(cp))) {
+      out += ch;
+    } else {
+      out += "?";
+    }
+  }
+  return out;
+}
+var PAGE_W = 595.28;
+var PAGE_H = 841.89;
+var MARGIN = 70.87;
+var FOOTER_BASE = 38;
+var INK = rgb(0.1, 0.1, 0.12);
+var GREY = rgb(0.45, 0.45, 0.48);
+var RULE = rgb(0.75, 0.75, 0.78);
+var lineHeight = (l) => l.size * LEADING;
+async function embedImage(doc, bytes) {
+  if (!bytes || bytes.length === 0) return null;
+  try {
+    return await doc.embedPng(bytes);
+  } catch {
+    try {
+      return await doc.embedJpg(bytes);
+    } catch {
+      return null;
+    }
+  }
+}
+async function renderCertificatePdf(input) {
+  const doc = await PDFDocument.create();
+  doc.setTitle(input.title);
+  doc.setAuthor("");
+  doc.setProducer("");
+  doc.setCreator("");
+  doc.setSubject("");
+  doc.setKeywords([]);
+  const faces = await loadFaces(doc);
+  const measure = (text, b, i, size) => pieces(faces[faceKey(b, i)], text).reduce((s, p) => s + p.font.widthOfTextAtSize(p.text, size), 0);
+  const prep = (ps) => ps.map((p) => ({ ...p, runs: p.runs.map((r) => ({ ...r, text: clean(r.text, faces) })) }));
+  const textW = PAGE_W - 2 * MARGIN;
+  const paragraphs = prep(input.paragraphs);
+  const titleAt = paragraphs.findIndex((p) => p.size === "TITLE");
+  const headerCount = titleAt > 0 ? titleAt : 0;
+  const items = [];
+  const logo = await embedImage(doc, input.logoPng);
+  if (logo) {
+    const scale = Math.min(48 / logo.height, 200 / logo.width);
+    const w = logo.width * scale;
+    const h = logo.height * scale;
+    const align = paragraphs[0]?.align ?? "LEFT";
+    const x = align === "CENTER" ? (textW - w) / 2 : align === "RIGHT" ? textW - w : 0;
+    items.push({ kind: "image", image: logo, w, h, x, gapBefore: 0 });
+  }
+  const logoGap = logo ? 10 : 0;
+  const headerLines = layoutParagraphs(paragraphs.slice(0, headerCount), textW, measure);
+  headerLines.forEach((line, k) => {
+    items.push({ kind: "line", line: k === 0 && logo ? { ...line, gapBefore: logoGap } : line });
+  });
+  if (headerCount > 0) items.push({ kind: "rule", height: 22 });
+  for (const line of layoutParagraphs(paragraphs.slice(headerCount), textW, measure)) {
+    items.push({ kind: "line", line });
+  }
+  const sig = await embedImage(doc, input.signatureImage);
+  const signerLines = [];
+  const signerName = clean(input.signer.name, faces).trim();
+  const signerTitle = clean(input.signer.title, faces).trim();
+  const plain = (text, b) => ({
+    align: "RIGHT",
+    size: "NORMAL",
+    bullet: false,
+    runs: [{ text, b, i: false, u: false }]
+  });
+  if (signerName) signerLines.push(...layoutParagraphs([plain(signerName, true)], textW, measure));
+  if (signerTitle) signerLines.push(...layoutParagraphs([plain(signerTitle, false)], textW, measure));
+  if (sig || signerLines.length > 0) {
+    let imgItem = null;
+    if (sig) {
+      const scale = Math.min(120 / sig.width, 60 / sig.height);
+      const w = sig.width * scale;
+      imgItem = { kind: "image", image: sig, w, h: sig.height * scale, x: textW - w, gapBefore: 0 };
+    }
+    if (imgItem) items.push(imgItem);
+    items.push({ kind: "signer", lines: signerLines, gapBefore: 30, afterImage: imgItem !== null });
+  }
+  const footerLines = layoutParagraphs(
+    prep(input.footer).map((p) => ({ ...p, size: "SMALL" })),
+    textW,
+    measure
+  );
+  const footerH = footerLines.reduce((s, l) => s + lineHeight(l), 0);
+  const bottomLimit = FOOTER_BASE + footerH + (footerLines.length > 0 ? 18 : 0);
+  const top = PAGE_H - MARGIN;
+  const drawLine = (page2, line, topY, left, color = INK) => {
+    const baseline = topY - line.size * 1.08;
+    if (line.bullet) {
+      const bullet = faces["400"].has[0]("\u2022".codePointAt(0)) ? "\u2022" : "-";
+      page2.drawText(bullet, { x: left, y: baseline, size: line.size, font: faces["400"].fonts[0], color });
+    }
+    let spaceExtra = 0;
+    if (line.justify) {
+      const spaces = line.segments.reduce((n, s) => n + (s.text.match(/ /g)?.length ?? 0), 0);
+      const used = line.segments.reduce((s, x2) => s + x2.width, 0);
+      const target = textW - line.x;
+      if (spaces > 0 && used < target) spaceExtra = (target - used) / spaces;
+    }
+    let x = left + line.x;
+    for (const seg of line.segments) {
+      const face = faces[faceKey(seg.b, seg.i)];
+      const start = x;
+      const words = spaceExtra > 0 ? seg.text.split(/( )/) : [seg.text];
+      for (const word of words) {
+        if (word === "") continue;
+        for (const piece of pieces(face, word)) {
+          if (piece.text.trim() !== "") {
+            page2.drawText(piece.text, { x, y: baseline, size: line.size, font: piece.font, color });
+          }
+          x += piece.font.widthOfTextAtSize(piece.text, line.size);
+        }
+        if (word === " ") x += spaceExtra;
+      }
+      if (seg.u) {
+        page2.drawLine({ start: { x: start, y: baseline - 1.6 }, end: { x, y: baseline - 1.6 }, thickness: 0.6, color });
+      }
+    }
+  };
+  const drawFooter = (page2) => {
+    let y2 = FOOTER_BASE + footerH;
+    for (const l of footerLines) {
+      drawLine(page2, l, y2, MARGIN, GREY);
+      y2 -= lineHeight(l);
+    }
+  };
+  let page = doc.addPage([PAGE_W, PAGE_H]);
+  drawFooter(page);
+  let y = top;
+  const newPage = () => {
+    page = doc.addPage([PAGE_W, PAGE_H]);
+    drawFooter(page);
+    y = top;
+  };
+  for (const item of items) {
+    if (item.kind === "line") {
+      const h = item.line.gapBefore + lineHeight(item.line);
+      if (y - h < bottomLimit && y < top) newPage();
+      const gap = y === top ? 0 : item.line.gapBefore;
+      drawLine(page, item.line, y - gap, MARGIN);
+      y -= gap + lineHeight(item.line);
+    } else if (item.kind === "rule") {
+      const mid = item.height / 2;
+      if (y - item.height < bottomLimit && y < top) newPage();
+      page.drawLine({
+        start: { x: MARGIN, y: y - mid },
+        end: { x: PAGE_W - MARGIN, y: y - mid },
+        thickness: 0.5,
+        color: RULE
+      });
+      y -= item.height;
+    } else if (item.kind === "image") {
+      const next = items[items.indexOf(item) + 1];
+      const follow = next && next.kind === "signer" ? next.gapBefore + next.lines.reduce((s, l) => s + lineHeight(l), 0) : 0;
+      if (y - item.h - follow - (item.gapBefore + 30) < bottomLimit && y < top && next?.kind === "signer") newPage();
+      const gap = next?.kind === "signer" && y !== top ? 30 : item.gapBefore;
+      page.drawImage(item.image, { x: MARGIN + item.x, y: y - gap - item.h, width: item.w, height: item.h });
+      y -= gap + item.h + 4;
+    } else {
+      const afterImage = item.afterImage;
+      const h = item.lines.reduce((s, l) => s + lineHeight(l), 0);
+      if (!afterImage && y - h - item.gapBefore < bottomLimit && y < top) newPage();
+      if (!afterImage && y !== top) y -= item.gapBefore;
+      for (const l of item.lines) {
+        drawLine(page, l, y, MARGIN);
+        y -= lineHeight(l);
+      }
+    }
+  }
+  return doc.save();
+}
+
 // src/index.ts
 var REGION = defineString("REGION", { default: "europe-west1" });
 var GMAIL_USER = defineString("GMAIL_USER");
@@ -2271,6 +2607,7 @@ export {
   displayName2 as displayName,
   domainAllowed,
   gmailSendRaw,
+  layoutParagraphs,
   longDate,
   monthYear,
   onMailOutboxWritten,
@@ -2286,6 +2623,7 @@ export {
   parseSignup,
   parseTemplate,
   period,
+  renderCertificatePdf,
   rewriteHeaders,
   safeRecipient,
   sendMail,

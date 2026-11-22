@@ -19,6 +19,8 @@ export { parseOutbox, rewriteHeaders, onOutboxDocument, MAX_RAW_LENGTH } from ".
 export { delegatedToken, gmailSendRaw, MailSendError } from "./workspace";
 export { categoryOf, parseTemplate, defaultTemplate, dayOf, longDate, monthYear, period, displayName, assemble as assembleCertificate } from "./certificate";
 export type { Category, CertificateTemplate, CertAssembly, ResolvedParagraph, ResolvedRun, CertJob, CertJobType, CertPerson, CertSelection } from "./certificate";
+export { layoutParagraphs, renderCertificatePdf } from "./certificatePdf";
+export type { LaidLine, LaidSegment, CertificatePdfInput } from "./certificatePdf";
 export { domainAllowed, parseDomains } from "./google";
 
 const REGION = defineString("REGION", { default: "europe-west1" });
