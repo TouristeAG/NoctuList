@@ -2896,6 +2896,13 @@ class EventManagerViewModel(
     val portalAddressConflicts: StateFlow<Set<String>> = _portalAddressConflicts.asStateFlow()
     private var portalAddressConflictsJob: kotlinx.coroutines.Job? = null
 
+    private val _certificateRequests = MutableStateFlow<List<com.eventmanager.app.portal.certificate.CertificateReviewRequest>>(emptyList())
+    /** Certificate requests waiting for review or with a stuck send; empty when the portal service is off. */
+    val certificateRequests: StateFlow<List<com.eventmanager.app.portal.certificate.CertificateReviewRequest>> = _certificateRequests.asStateFlow()
+    private val _failedDirectSends = MutableStateFlow<List<com.eventmanager.app.portal.FailedDirectSend>>(emptyList())
+    val failedDirectSends: StateFlow<List<com.eventmanager.app.portal.FailedDirectSend>> = _failedDirectSends.asStateFlow()
+    private var certificateReviewJobs: List<kotlinx.coroutines.Job> = emptyList()
+
     private var volunteerPortalService: VolunteerPortalService? = null
     private var volunteerPortalServiceOrg: String = ""
 
@@ -3095,6 +3102,7 @@ class EventManagerViewModel(
             volunteerPortalServiceOrg = ""
             portalServerStatusJob?.cancel()
             _portalServerStatus.value = null
+            clearCertificateReview()
             return
         }
         if (volunteerPortalService != null && volunteerPortalServiceOrg == org) return
@@ -3102,6 +3110,7 @@ class EventManagerViewModel(
         // The previous organization's server status does not apply here, even if no service starts.
         portalServerStatusJob?.cancel()
         _portalServerStatus.value = null
+        clearCertificateReview()
         val gateway = photoRequestGateway() ?: return
         if (!gateway.isAvailable()) return
         val service = VolunteerPortalService(
@@ -3117,6 +3126,53 @@ class EventManagerViewModel(
         portalServerStatusJob = viewModelScope.launch { service.serverStatus.collect { _portalServerStatus.value = it } }
         portalAddressConflictsJob?.cancel()
         portalAddressConflictsJob = viewModelScope.launch { service.addressConflicts.collect { _portalAddressConflicts.value = it } }
+        certificateReviewJobs = listOf(
+            viewModelScope.launch { service.certificateRequests.collect { _certificateRequests.value = it } },
+            viewModelScope.launch { service.failedDirectSends.collect { _failedDirectSends.value = it } },
+        )
+    }
+
+    private fun clearCertificateReview() {
+        certificateReviewJobs.forEach { it.cancel() }
+        certificateReviewJobs = emptyList()
+        _certificateRequests.value = emptyList()
+        _failedDirectSends.value = emptyList()
+    }
+
+    private fun certificateApprover(): String = com.eventmanager.app.data.remote.FirebaseAuthBridge.currentUserEmail().orEmpty()
+
+    suspend fun approveCertificateRequest(
+        requestId: String,
+        body: List<com.eventmanager.app.portal.certificate.ResolvedParagraph>,
+        footer: List<com.eventmanager.app.portal.certificate.ResolvedParagraph>,
+        title: String,
+        signer: com.eventmanager.app.portal.certificate.CertSigner,
+    ): com.eventmanager.app.portal.ApproveResult {
+        val service = requirePortalService() ?: return com.eventmanager.app.portal.ApproveResult.FAILED
+        return service.approveCertificate(requestId, body, footer, title, signer, certificateApprover())
+    }
+
+    suspend fun refuseCertificateRequest(requestId: String, note: String): Boolean =
+        requirePortalService()?.refuseCertificate(requestId, note) ?: false
+
+    suspend fun retryCertificateRequest(requestId: String): Boolean =
+        requirePortalService()?.retryCertificate(requestId) ?: false
+
+    /** Writes a direct certificate for [volunteer]; returns the approval id to follow with [directCertificateStatus], or null. */
+    suspend fun sendDirectCertificate(
+        volunteer: Volunteer,
+        body: List<com.eventmanager.app.portal.certificate.ResolvedParagraph>,
+        footer: List<com.eventmanager.app.portal.certificate.ResolvedParagraph>,
+        title: String,
+        signer: com.eventmanager.app.portal.certificate.CertSigner,
+    ): String? = requirePortalService()?.sendDirectCertificate(volunteer, body, footer, title, signer, certificateApprover())
+
+    fun directCertificateStatus(approvalId: String): kotlinx.coroutines.flow.Flow<com.eventmanager.app.portal.DirectSendStatus> =
+        volunteerPortalService?.directSendStatus(approvalId)
+            ?: kotlinx.coroutines.flow.flowOf(com.eventmanager.app.portal.DirectSendStatus.Pending)
+
+    suspend fun dismissDirectCertificate(approvalId: String) {
+        volunteerPortalService?.dismissDirectSend(approvalId)
     }
 
     /**

@@ -64,7 +64,9 @@ import com.eventmanager.app.portal.certificate.CertificateAssembler
 import com.eventmanager.app.portal.certificate.CertificateDates
 import com.eventmanager.app.portal.certificate.CertificateDefaults
 import com.eventmanager.app.portal.certificate.CertificateTemplate
-import com.eventmanager.app.portal.certificate.certificateCategoryOf
+import com.eventmanager.app.portal.certificate.certificateJobTypes
+import com.eventmanager.app.portal.certificate.certificateJobs
+import com.eventmanager.app.portal.certificate.certificatePerson
 import com.eventmanager.app.resources.*
 import com.eventmanager.app.ui.components.DialogWindowFollowsScreenSize
 import kotlinx.coroutines.delay
@@ -97,9 +99,9 @@ internal fun certificatePreviewAssembly(
         CertificateSampleData.sample(template.language)
     } else {
         Triple(
-            CertPerson(volunteer.name, volunteer.lastNameAbbreviation, volunteer.gender?.name.orEmpty()),
-            jobTypes.map { CertJobType(it.name.trim(), certificateCategoryOf(it), it.description.trim()) },
-            jobsOf(volunteer).map { CertJob(it.jobTypeName.trim(), CertificateDates.dayOf(it.date)) },
+            certificatePerson(volunteer),
+            certificateJobTypes(jobTypes),
+            certificateJobs(jobsOf(volunteer)),
         )
     }
     val selection = CertSelection(

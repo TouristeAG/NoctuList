@@ -139,6 +139,8 @@ data class PortalRequest(
         const val STATUS_PROCESSING = "PROCESSING"
         const val STATUS_DONE = "DONE"
         const val STATUS_REJECTED = "REJECTED"
+        const val STATUS_PENDING_REVIEW = "PENDING_REVIEW"
+        const val STATUS_APPROVED = "APPROVED"
 
         /** A device that claimed a request and vanished frees it after this long. */
         const val PROCESSING_STALE_MILLIS: Long = 5L * 60 * 1000
@@ -164,6 +166,7 @@ object PortalInputValidator {
     private val CERTIFICATE_FIELDS = setOf(
         "uid", "type", "status", "requestedAt", "email", "from", "to", "jobTypes",
         "processingAt", "processingDevice", "processedAt", "reason",
+        "approvalId", "approvedAt", "note", "reviewAt",
     )
     private const val MAX_CERTIFICATE_TYPES = 50
     private const val MAX_CERTIFICATE_TYPE_NAME = 80
