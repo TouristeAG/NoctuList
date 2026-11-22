@@ -1832,6 +1832,8 @@ actual fun SettingsScreen(
             }
         }
     }
+    // The certificate editor links to the logo setting, which lives in Association.
+    var openAssociationRequested by remember { mutableStateOf(false) }
     // One set of sync bindings for the whole screen: the sync pages read it, and its org-admin
     // check also gates the institution-wide settings below (no second role check).
     val syncBindings = com.eventmanager.app.ui.components.settings.rememberSyncSettingsBindings(
@@ -1844,6 +1846,7 @@ actual fun SettingsScreen(
         signInFeedbackState = firebaseSignInFeedbackState,
         onStatusMessage = { uploadStatus = it },
         scope = coroutineScope,
+        onOpenLogoSettings = { openAssociationRequested = true },
         // Android signs in through the activity-result launcher when it can.
         onSignInOverride = {
             firebaseSignInFeedback = null
@@ -1889,6 +1892,12 @@ actual fun SettingsScreen(
     var showSyncSheetsSettings by remember { mutableStateOf(settingsManager.isCategorySyncSheetsExpanded()) }
     var showEmailSettings by remember { mutableStateOf(settingsManager.isCategoryEmailExpanded()) }
     var showAssociationSettings by remember { mutableStateOf(settingsManager.isCategoryAssociationExpanded()) }
+    LaunchedEffect(openAssociationRequested) {
+        if (!openAssociationRequested) return@LaunchedEffect
+        openAssociationRequested = false
+        showAssociationSettings = true
+        settingsManager.setCategoryAssociationExpanded(true)
+    }
     var showAppearanceSettings by remember { mutableStateOf(settingsManager.isCategoryAppearanceExpanded()) }
     var showLocalizationSettings by remember { mutableStateOf(settingsManager.isCategoryLocalizationExpanded()) }
     var showAnnouncementsSettings by remember { mutableStateOf(settingsManager.isCategoryAnnouncementsExpanded()) }

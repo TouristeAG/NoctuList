@@ -183,6 +183,8 @@ actual fun SettingsScreen(
     var uninstallDataInProgress by remember { mutableStateOf(false) }
     val cacheClearedMsg = stringResource(Res.string.app_cache_cleared)
 
+    // The certificate editor links to the logo setting, which lives in Association.
+    var openAssociationRequested by remember { mutableStateOf(false) }
     // One set of sync bindings for the whole screen: the sync pages read it, and its org-admin
     // check also gates the institution-wide settings below (no second role check).
     val syncBindings = com.eventmanager.app.ui.components.settings.rememberSyncSettingsBindings(
@@ -195,6 +197,7 @@ actual fun SettingsScreen(
         signInFeedbackState = firebaseSignInFeedbackState,
         onStatusMessage = { uploadStatus = it },
         scope = scope,
+        onOpenLogoSettings = { openAssociationRequested = true },
     )
     val isFirebaseOrgAdmin = syncBindings.isOrgAdmin
     val canEditInstitutionSettings = com.eventmanager.app.data.security.canEditSyncedInstitutionSettings(
@@ -244,6 +247,11 @@ actual fun SettingsScreen(
         )
     }
     val selectedNav = navItems.firstOrNull { it.id == selectedSection } ?: navItems.first()
+    LaunchedEffect(openAssociationRequested) {
+        if (!openAssociationRequested) return@LaunchedEffect
+        openAssociationRequested = false
+        if (navItems.any { it.id == DesktopSettingsNav.Association }) selectedSection = DesktopSettingsNav.Association
+    }
     LaunchedEffect(navItems.map { it.id }) {
         if (navItems.none { it.id == selectedSection }) {
             selectedSection = navItems.first().id

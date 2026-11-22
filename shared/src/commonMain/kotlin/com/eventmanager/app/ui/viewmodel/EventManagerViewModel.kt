@@ -2844,6 +2844,10 @@ class EventManagerViewModel(
     val volunteerPortalShowLogo: StateFlow<Boolean> = _volunteerPortalShowLogo.asStateFlow()
     private val _volunteerPortalQrEnabled = MutableStateFlow(true)
     val volunteerPortalQrEnabled: StateFlow<Boolean> = _volunteerPortalQrEnabled.asStateFlow()
+    private val _volunteerPortalCertificateEnabled = MutableStateFlow(false)
+
+    /** Volunteers can ask for their certificate by e-mail in the portal. */
+    val volunteerPortalCertificateEnabled: StateFlow<Boolean> = _volunteerPortalCertificateEnabled.asStateFlow()
 
     /** Volunteers may sign in with an association Google account (needs a verified domain). */
     val volunteerPortalGoogleEnabled: StateFlow<Boolean> = _volunteerPortalGoogleEnabled.asStateFlow()
@@ -2904,6 +2908,7 @@ class EventManagerViewModel(
         _volunteerPortalGoogleEnabled.value = settingsManagerCached?.isVolunteerPortalGoogleEnabled() == true
         _volunteerPortalShowLogo.value = settingsManagerCached?.isVolunteerPortalShowLogo() != false
         _volunteerPortalQrEnabled.value = settingsManagerCached?.isVolunteerPortalQrEnabled() != false
+        _volunteerPortalCertificateEnabled.value = settingsManagerCached?.isVolunteerPortalCertificateEnabled() == true
         _volunteerPortalGoogleDomains.value = settingsManagerCached?.volunteerPortalGoogleDomains().orEmpty()
         _volunteerPortalGoogleAnyAccount.value = settingsManagerCached?.isVolunteerPortalGoogleAnyAccount() == true
         _volunteerPortalAutoAccess.value = settingsManagerCached?.isVolunteerPortalAutoAccess() == true
@@ -2934,6 +2939,32 @@ class EventManagerViewModel(
         publishVolunteerPortalSettings()
         republishVolunteerPortal()
         backupInstitutionSettingsToSheets()
+    }
+
+    fun setVolunteerPortalCertificateEnabled(enabled: Boolean) {
+        val settings = settingsManagerCached ?: return
+        if (getActiveBackendType() != BackendType.FIREBASE) return
+        settings.setVolunteerPortalCertificateEnabled(enabled)
+        publishVolunteerPortalSettings()
+        republishVolunteerPortal()
+        backupInstitutionSettingsToSheets()
+    }
+
+    /** The saved certificate template, or the French default texts when none was ever saved. */
+    fun volunteerPortalCertificateTemplate(): com.eventmanager.app.portal.certificate.CertificateTemplate =
+        settingsManagerCached?.volunteerPortalCertificateTemplate()
+            ?: com.eventmanager.app.portal.certificate.CertificateDefaults.template("fr", certificateAssociationName())
+
+    fun certificateAssociationName(): String = settingsManagerCached?.getEmailAssociationName().orEmpty().trim()
+
+    /** The Gmail account of this device, shown as the default sending address of the certificate. */
+    fun certificateGmailAddress(): String = settingsManagerCached?.getGmailAccount().orEmpty().trim()
+
+    fun saveVolunteerPortalCertificateTemplate(template: com.eventmanager.app.portal.certificate.CertificateTemplate) {
+        val settings = settingsManagerCached ?: return
+        if (getActiveBackendType() != BackendType.FIREBASE) return
+        settings.saveVolunteerPortalCertificateTemplate(template)
+        republishVolunteerPortal()
     }
 
     fun setVolunteerPortalGoogleEnabled(enabled: Boolean) {
