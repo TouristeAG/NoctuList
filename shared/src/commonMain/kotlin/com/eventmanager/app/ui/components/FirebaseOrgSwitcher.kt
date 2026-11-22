@@ -316,7 +316,7 @@ private fun ScannerDarkOrgSwitcher(
     val isAllActive = isFirebaseOrgAllSentinel(activeOrgId)
     val active = configuredOrgs.firstOrNull { it.orgId == activeOrgId } ?: configuredOrgs.first()
     val activeColor = if (isAllActive) Color.White.copy(alpha = 0.7f) else Color(active.colorArgb)
-    val singleAbbrev = remember(active.orgId) { FirebaseOrgAbbreviation.abbreviate(active.orgId) }
+    val singleAbbrev = remember(active.label) { FirebaseOrgAbbreviation.abbreviate(active.label) }
     val allAbbrev = stringResource(Res.string.firebase_org_all).take(3)
     val abbrev = if (isAllActive) allAbbrev else singleAbbrev
 
@@ -442,7 +442,7 @@ private fun OrgDropdownMenu(
                                 .background(color),
                         )
                         Text(
-                            org.orgId,
+                            org.label,
                             fontWeight = if (org.orgId == activeOrgId) FontWeight.Bold else FontWeight.Normal,
                         )
                     }
@@ -469,7 +469,7 @@ private fun PosStyleOrgSwitcher(
     val isAllActive = isFirebaseOrgAllSentinel(activeOrgId)
     val active = configuredOrgs.firstOrNull { it.orgId == activeOrgId } ?: configuredOrgs.first()
     val orgAccent = if (isAllActive) MaterialTheme.colorScheme.primary else Color(active.colorArgb)
-    val singleAbbrev = remember(active.orgId) { FirebaseOrgAbbreviation.abbreviate(active.orgId) }
+    val singleAbbrev = remember(active.label) { FirebaseOrgAbbreviation.abbreviate(active.label) }
     val allAbbrev = stringResource(Res.string.firebase_org_all).take(3)
     val abbrev = if (isAllActive) allAbbrev else singleAbbrev
     val labelColor = when {

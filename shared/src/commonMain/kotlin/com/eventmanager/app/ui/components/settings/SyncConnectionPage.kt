@@ -87,6 +87,24 @@ import com.eventmanager.app.resources.sync_state_ready
 import com.eventmanager.app.ui.components.FirebaseAdminProjectConfigCard
 import com.eventmanager.app.ui.components.OrgColorSwatchRow
 import com.eventmanager.app.ui.components.firebaseConfiguredOrgsReady
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.RadioButton
+import com.eventmanager.app.resources.save
+import com.eventmanager.app.resources.sync_org_add_scope_device
+import com.eventmanager.app.resources.sync_org_add_scope_device_body
+import com.eventmanager.app.resources.sync_org_add_scope_org
+import com.eventmanager.app.resources.sync_org_add_scope_org_body
+import com.eventmanager.app.resources.sync_org_id_this_device_only
+import com.eventmanager.app.resources.sync_org_id_value
+import com.eventmanager.app.resources.sync_org_rename_cd
+import com.eventmanager.app.resources.sync_org_rename_hint_local
+import com.eventmanager.app.resources.sync_org_rename_hint_shared
+import com.eventmanager.app.resources.sync_org_rename_label
+import com.eventmanager.app.resources.sync_org_rename_title
+import com.eventmanager.app.resources.sync_org_this_device_only
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -126,11 +144,11 @@ fun SyncConnectionPage(b: SyncSettingsBindings, showTitle: Boolean = true) {
         val existing = b.configuredOrgs.filter { it.orgId.isNotBlank() }
         AddOrganisationDialog(
             existingOrgIds = existing.map { it.orgId },
+            // Only an org admin can push the org list, so only an admin gets the choice.
+            showScopeChoice = b.isOrgAdmin,
             onDismiss = { showAddOrgDialog = false },
-            onAdd = { orgId ->
-                val color = FirebaseConfiguredOrgCodec.nextAvailableColor(existing.map { it.colorArgb })
-                b.onConfiguredOrgsChange(existing + FirebaseConfiguredOrg(orgId = orgId, colorArgb = color))
-                b.onOrgIdCommitted(orgId)
+            onAdd = { orgId, shareWithOrg ->
+                b.onAddOrg(orgId, shareWithOrg)
                 showAddOrgDialog = false
             },
         )
@@ -215,11 +233,13 @@ private fun ConnectionStateBlock(
     }
 }
 
-/** The organisation shown in "Connecté à …": the one this device writes to. */
-private fun connectedOrgId(b: SyncSettingsBindings): String =
-    b.settingsManager.resolveWritableFirebaseOrgId().ifBlank {
+/** The organisation shown in "Connecté à …": the one this device writes to, by its name. */
+private fun connectedOrgId(b: SyncSettingsBindings): String {
+    val id = b.settingsManager.resolveWritableFirebaseOrgId().ifBlank {
         b.configuredOrgs.firstOrNull { FirebaseOrgBootstrap.isValidOrgId(it.orgId) }?.orgId.orEmpty()
     }
+    return b.configuredOrgs.firstOrNull { it.orgId == id }?.label ?: id
+}
 
 /** Large full-width entry to the Firebase setup assistant, as prominent as before. */
 @Composable
@@ -257,6 +277,7 @@ private fun OrganisationsBlock(b: SyncSettingsBindings, onAddOrganisation: () ->
     val title = stringResource(Res.string.firebase_configured_orgs_title)
     val orgs = b.configuredOrgs.filter { it.orgId.isNotBlank() }
     var orgToRemove by remember { mutableStateOf<String?>(null) }
+    var orgToRename by remember { mutableStateOf<FirebaseConfiguredOrg?>(null) }
 
     SettingsBlock(
         title = title,
@@ -264,9 +285,17 @@ private fun OrganisationsBlock(b: SyncSettingsBindings, onAddOrganisation: () ->
     ) {
         orgs.forEach { org ->
             val malformed = !FirebaseOrgBootstrap.isValidOrgId(org.orgId)
+            val renamed = org.label != org.orgId
             SettingsRow(
-                title = org.orgId,
-                subtitle = if (malformed) stringResource(Res.string.firebase_org_id_invalid) else null,
+                title = org.label,
+                // The ID is only repeated when the name differs from it.
+                subtitle = when {
+                    malformed -> stringResource(Res.string.firebase_org_id_invalid)
+                    renamed && org.localOnly -> stringResource(Res.string.sync_org_id_this_device_only, org.orgId)
+                    renamed -> stringResource(Res.string.sync_org_id_value, org.orgId)
+                    org.localOnly -> stringResource(Res.string.sync_org_this_device_only)
+                    else -> null
+                },
                 trailing = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         OrgColorButton(
@@ -277,6 +306,14 @@ private fun OrganisationsBlock(b: SyncSettingsBindings, onAddOrganisation: () ->
                                 )
                             },
                         )
+                        if (b.isOrgAdmin && !malformed) {
+                            IconButton(onClick = { orgToRename = org }) {
+                                Icon(
+                                    Icons.Outlined.Edit,
+                                    contentDescription = stringResource(Res.string.sync_org_rename_cd, org.label),
+                                )
+                            }
+                        }
                         // The last valid organisation cannot be removed, as before; a malformed
                         // ID can always be removed.
                         if (malformed || orgs.size > 1) {
@@ -292,6 +329,17 @@ private fun OrganisationsBlock(b: SyncSettingsBindings, onAddOrganisation: () ->
         SettingsRow(
             title = stringResource(Res.string.firebase_configured_org_add),
             onClick = onAddOrganisation,
+        )
+    }
+
+    orgToRename?.let { org ->
+        RenameOrganisationDialog(
+            org = org,
+            onDismiss = { orgToRename = null },
+            onRename = { name ->
+                b.onRenameOrg(org.orgId, name)
+                orgToRename = null
+            },
         )
     }
 
@@ -350,44 +398,114 @@ private fun OrgColorButton(colorArgb: Long, onColorSelected: (Long) -> Unit) {
 }
 
 /**
- * Small window to add an organisation, with the checks of the former inline list: the ID is
- * sanitised as typed, must be well formed and must not already be in the list.
+ * Changes the name an org is shown with. The org ID, which is also its Firestore path, stays.
+ * An empty name goes back to showing the ID.
  */
 @Composable
-fun AddOrganisationDialog(
-    existingOrgIds: List<String>,
+private fun RenameOrganisationDialog(
+    org: FirebaseConfiguredOrg,
     onDismiss: () -> Unit,
-    onAdd: (String) -> Unit,
+    onRename: (String) -> Unit,
 ) {
-    var value by remember { mutableStateOf("") }
-    val trimmed = value.trim()
-    val malformed = trimmed.isNotBlank() && !FirebaseOrgBootstrap.isValidOrgId(trimmed)
-    val duplicate = trimmed.isNotBlank() && existingOrgIds.any { it.trim() == trimmed }
-    val canAdd = trimmed.isNotBlank() && !malformed && !duplicate
-    val submit = { if (canAdd) onAdd(trimmed) }
-
+    var value by remember(org.orgId) { mutableStateOf(org.label) }
+    val submit = { onRename(value) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(Res.string.firebase_configured_org_add)) },
+        title = { Text(stringResource(Res.string.sync_org_rename_title)) },
         text = {
             OutlinedTextField(
                 value = value,
-                // Spaces and accents cannot appear in a Firestore path segment.
-                onValueChange = { value = FirebaseOrgBootstrap.sanitizeOrgId(it) },
-                label = { Text(stringResource(Res.string.firebase_org_id_label)) },
+                onValueChange = { value = it.take(FirebaseConfiguredOrgCodec.DISPLAY_NAME_MAX_LENGTH) },
+                label = { Text(stringResource(Res.string.sync_org_rename_label)) },
                 supportingText = {
-                    when {
-                        malformed -> Text(stringResource(Res.string.firebase_org_id_invalid))
-                        duplicate -> Text(stringResource(Res.string.firebase_configured_org_duplicate))
-                        else -> Text(stringResource(Res.string.firebase_org_id_hint))
-                    }
+                    Text(
+                        stringResource(
+                            if (org.localOnly) {
+                                Res.string.sync_org_rename_hint_local
+                            } else {
+                                Res.string.sync_org_rename_hint_shared
+                            },
+                            org.orgId,
+                        ),
+                    )
                 },
-                isError = malformed || duplicate,
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { submit() }),
                 modifier = Modifier.fillMaxWidth(),
             )
+        },
+        confirmButton = {
+            TextButton(onClick = { submit() }) { Text(stringResource(Res.string.save)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.cancel)) }
+        },
+    )
+}
+
+/**
+ * Small window to add an organisation, with the checks of the former inline list: the ID is
+ * sanitised as typed, must be well formed and must not already be in the list.
+ *
+ * With [showScopeChoice] (org admins), the admin picks whether the org stays on this device or
+ * goes into the org list every device of the current org receives. Without it, it stays here.
+ */
+@Composable
+fun AddOrganisationDialog(
+    existingOrgIds: List<String>,
+    onDismiss: () -> Unit,
+    onAdd: (orgId: String, shareWithOrg: Boolean) -> Unit,
+    showScopeChoice: Boolean = false,
+) {
+    var value by remember { mutableStateOf("") }
+    var shareWithOrg by remember { mutableStateOf(false) }
+    val trimmed = value.trim()
+    val malformed = trimmed.isNotBlank() && !FirebaseOrgBootstrap.isValidOrgId(trimmed)
+    val duplicate = trimmed.isNotBlank() && existingOrgIds.any { it.trim() == trimmed }
+    val canAdd = trimmed.isNotBlank() && !malformed && !duplicate
+    val submit = { if (canAdd) onAdd(trimmed, showScopeChoice && shareWithOrg) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(Res.string.firebase_configured_org_add)) },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = value,
+                    // Spaces and accents cannot appear in a Firestore path segment.
+                    onValueChange = { value = FirebaseOrgBootstrap.sanitizeOrgId(it) },
+                    label = { Text(stringResource(Res.string.firebase_org_id_label)) },
+                    supportingText = {
+                        when {
+                            malformed -> Text(stringResource(Res.string.firebase_org_id_invalid))
+                            duplicate -> Text(stringResource(Res.string.firebase_configured_org_duplicate))
+                            else -> Text(stringResource(Res.string.firebase_org_id_hint))
+                        }
+                    },
+                    isError = malformed || duplicate,
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { submit() }),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (showScopeChoice) {
+                    Column(modifier = Modifier.selectableGroup().padding(top = 8.dp)) {
+                        ScopeOption(
+                            selected = !shareWithOrg,
+                            title = stringResource(Res.string.sync_org_add_scope_device),
+                            body = stringResource(Res.string.sync_org_add_scope_device_body),
+                            onSelect = { shareWithOrg = false },
+                        )
+                        ScopeOption(
+                            selected = shareWithOrg,
+                            title = stringResource(Res.string.sync_org_add_scope_org),
+                            body = stringResource(Res.string.sync_org_add_scope_org_body),
+                            onSelect = { shareWithOrg = true },
+                        )
+                    }
+                }
+            }
         },
         confirmButton = {
             TextButton(onClick = { submit() }, enabled = canAdd) { Text(stringResource(Res.string.add)) }
@@ -435,4 +553,26 @@ fun FirebaseProjectDialog(b: SyncSettingsBindings, onDismiss: () -> Unit) {
             TextButton(onClick = onDismiss) { Text(stringResource(Res.string.close)) }
         },
     )
+}
+
+@Composable
+private fun ScopeOption(selected: Boolean, title: String, body: String, onSelect: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onSelect)
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        RadioButton(selected = selected, onClick = null)
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                body,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
 }

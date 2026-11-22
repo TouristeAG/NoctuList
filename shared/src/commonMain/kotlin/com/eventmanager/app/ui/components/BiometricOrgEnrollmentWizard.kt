@@ -48,7 +48,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.eventmanager.app.data.remote.FirebaseConfiguredOrg
-import com.eventmanager.app.data.remote.FirebaseOrgAbbreviation
 import com.eventmanager.app.data.sync.BiometricAdminOrgEnrollment
 import com.eventmanager.app.platform.PlatformContext
 import com.eventmanager.app.resources.Res
@@ -188,7 +187,7 @@ fun BiometricOrgEnrollmentWizard(
                                 Text(
                                     text = stringResource(
                                         Res.string.biometric_enrollment_org_verify_step,
-                                        FirebaseOrgAbbreviation.abbreviate(currentOrg.orgId),
+                                        currentOrg.label,
                                         verifyIndex + 1,
                                         selectedOrgs.size,
                                     ),
@@ -257,7 +256,7 @@ private fun OrgSelectionRow(
         )
         Spacer(Modifier.width(8.dp))
         Text(
-            text = FirebaseOrgAbbreviation.abbreviate(org.orgId),
+            text = org.label,
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = if (checked) FontWeight.SemiBold else FontWeight.Normal,
         )

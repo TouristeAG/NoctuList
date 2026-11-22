@@ -559,6 +559,30 @@ class EventManagerViewModel(
         settingsManagerCached?.setFirebaseConfiguredOrgs(orgs)
     }
 
+    /**
+     * Renames an org for display only: the Firestore ID (`orgs/{orgId}`) never changes, since the
+     * org's data and every device's listener live under it. A shared org's new name is pushed with
+     * the org list so every device of the org shows it. Org admins only; returns false otherwise.
+     */
+    suspend fun renameFirebaseOrg(orgId: String, newName: String): Boolean {
+        val settings = settingsManagerCached ?: return false
+        if (settings.getBackendType() != BackendType.FIREBASE) return false
+        if (!com.eventmanager.app.data.remote.FirebaseOrgAdminAccess.currentUserIsOrgAdmin(platformContext, settings)) {
+            return false
+        }
+        val shared = settings.renameFirebaseConfiguredOrg(orgId, newName)
+        if (shared) {
+            viewModelScope.launch {
+                try {
+                    syncCoordinator?.replicateFirebaseConfiguredOrgs()
+                } catch (e: Exception) {
+                    showSyncErrorIfNotSuppressed("Could not share the new organization name: ${e.message}")
+                }
+            }
+        }
+        return true
+    }
+
     fun provisionFirebaseOrg(orgId: String) {
         viewModelScope.launch {
             val settings = settingsManagerCached ?: return@launch

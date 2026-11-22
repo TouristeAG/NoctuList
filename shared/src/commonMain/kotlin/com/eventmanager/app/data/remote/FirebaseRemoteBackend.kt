@@ -440,7 +440,17 @@ class FirebaseRemoteBackend(
         }
         val rows = settingsManager.getInstitutionSettingRowsPendingRemotePush()
         if (rows.isEmpty()) return
+        val sharedOrgIds = FirebaseConfiguredOrgCodec
+            .sharedSubset(settingsManager.getFirebaseConfiguredOrgs())
+            .map { it.orgId.trim() }
         rows.forEach { row ->
+            // The shared org list only goes to an org it holds: an org kept on this device only
+            // has its own list, which this one must not overwrite. The row stays pending.
+            if (row.key == com.eventmanager.app.data.sync.InstitutionSettingsKeys.FIREBASE_CONFIGURED_ORGS &&
+                orgId.trim() !in sharedOrgIds
+            ) {
+                return@forEach
+            }
             upsert(
                 "institutionSettings",
                 row.key,
@@ -720,11 +730,16 @@ class FirebaseRemoteBackend(
         firestoreGateway.flushPendingWrites()
     }
 
-    /** Replicate multi-org list to every org where the user is Firebase org admin. */
+    /**
+     * Replicate the shared org list to every shared org where the user is Firebase org admin.
+     * Orgs added on this device only are neither in the list nor written to: their devices keep
+     * their own list.
+     */
     suspend fun replicateConfiguredOrgsToAllOrgs() {
         if (!firestoreGateway.isAvailable()) return
-        val orgs = settingsManager.getFirebaseConfiguredOrgs()
+        val orgs = FirebaseConfiguredOrgCodec.sharedSubset(settingsManager.getFirebaseConfiguredOrgs())
         if (orgs.isEmpty()) return
+        val encoded = FirebaseConfiguredOrgCodec.encodeShared(orgs) ?: return
         val uid = FirebaseAuthBridge.currentUserId()?.trim().orEmpty()
         if (uid.isBlank()) return
 
@@ -743,7 +758,7 @@ class FirebaseRemoteBackend(
         }
 
         val payload = mapOf(
-            "value" to FirebaseConfiguredOrgCodec.encode(orgs),
+            "value" to encoded,
             "lastModified" to System.currentTimeMillis(),
         )
         adminOrgs.forEach { entry ->
@@ -808,7 +823,7 @@ class FirebaseRemoteBackend(
             val lm = (change.data["lastModified"] as? Number)?.toLong()
                 ?: (change.data["lastModified"] as? String)?.toLongOrNull()
                 ?: System.currentTimeMillis()
-            settingsManager.applyInstitutionSettingFromRemote(change.documentId, value, lm)
+            settingsManager.applyInstitutionSettingFromRemote(change.documentId, value, lm, sourceOrgId = change.orgId)
             if (change.documentId == com.eventmanager.app.data.sync.InstitutionSettingsKeys.BACKEND_TYPE ||
                 change.documentId == com.eventmanager.app.data.sync.InstitutionSettingsKeys.BACKEND_MIGRATION_ID
             ) {

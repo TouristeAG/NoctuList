@@ -745,16 +745,40 @@ class SettingsManager(private val storage: AppStorage) {
     }
 
     fun setFirebaseConfiguredOrgs(orgs: List<com.eventmanager.app.data.remote.FirebaseConfiguredOrg>) {
-        val normalized = com.eventmanager.app.data.remote.FirebaseConfiguredOrgCodec.normalize(orgs)
-        storage.putString(
-            KEY_FIREBASE_CONFIGURED_ORGS,
-            com.eventmanager.app.data.remote.FirebaseConfiguredOrgCodec.encode(normalized),
-        )
-        touchInstitutionSettingLastModified(InstitutionSettingsKeys.FIREBASE_CONFIGURED_ORGS)
+        val codec = com.eventmanager.app.data.remote.FirebaseConfiguredOrgCodec
+        val normalized = codec.normalize(orgs)
+        val previousShared = runCatching {
+            codec.encodeShared(codec.decode(storage.getString(KEY_FIREBASE_CONFIGURED_ORGS, "").orEmpty()))
+        }.getOrNull()
+        storage.putString(KEY_FIREBASE_CONFIGURED_ORGS, codec.encode(normalized))
+        // Only a change to the shared orgs is pushed: adding, recolouring or renaming an org kept
+        // on this device only must not reach the other devices.
+        if (codec.encodeShared(normalized) != previousShared) {
+            touchInstitutionSettingLastModified(InstitutionSettingsKeys.FIREBASE_CONFIGURED_ORGS)
+        }
         val activeId = getFirebaseOrgId().trim()
         if (activeId.isBlank() || normalized.none { it.orgId == activeId }) {
             setFirebaseOrgId(normalized.first().orgId)
         }
+    }
+
+    /**
+     * Sets the display name of an org; the Firestore ID stays as it is. Returns true when the org
+     * is shared, so the caller pushes the list and every device of the org shows the new name.
+     */
+    fun renameFirebaseConfiguredOrg(orgId: String, newName: String): Boolean {
+        val current = getFirebaseConfiguredOrgs()
+        val target = current.firstOrNull { it.orgId == orgId.trim() } ?: return false
+        setFirebaseConfiguredOrgs(
+            com.eventmanager.app.data.remote.FirebaseConfiguredOrgCodec.rename(current, orgId, newName),
+        )
+        return !target.localOnly
+    }
+
+    /** Name shown for an org: its synced display name, or its ID. */
+    fun getFirebaseOrgLabel(orgId: String): String {
+        val trimmed = orgId.trim()
+        return getFirebaseConfiguredOrgs().firstOrNull { it.orgId == trimmed }?.label ?: trimmed
     }
 
     fun getFirebaseOrgColorArgb(orgId: String): Long {
@@ -1105,7 +1129,10 @@ class SettingsManager(private val storage: AppStorage) {
     }
 
     fun touchInstitutionSettingLastModified(key: String) {
-        setInstitutionSettingLastModified(key, System.currentTimeMillis())
+        // Strictly later than the last stamp: two edits in the same millisecond must still read
+        // as a change waiting to be pushed.
+        val now = System.currentTimeMillis()
+        setInstitutionSettingLastModified(key, maxOf(now, getInstitutionSettingLastModified(key) + 1))
     }
 
     /** Snapshot of all institution-synced settings for Google Sheets upload. */
@@ -1144,7 +1171,22 @@ class SettingsManager(private val storage: AppStorage) {
      * Apply a remote institution setting and its last-modified timestamp
      * without bumping the local timestamp to "now".
      */
-    fun applyInstitutionSettingFromRemote(key: String, value: String, lastModified: Long) {
+    /**
+     * [sourceOrgId] is the org the value was read from, when known: an org list read from an org
+     * kept on this device only, or one that does not hold its own org, is ignored (see
+     * [com.eventmanager.app.data.remote.FirebaseConfiguredOrgCodec.acceptsPushedList]).
+     */
+    fun applyInstitutionSettingFromRemote(
+        key: String,
+        value: String,
+        lastModified: Long,
+        sourceOrgId: String = "",
+    ) {
+        if (key == InstitutionSettingsKeys.FIREBASE_CONFIGURED_ORGS) {
+            val codec = com.eventmanager.app.data.remote.FirebaseConfiguredOrgCodec
+            val local = codec.decode(storage.getString(KEY_FIREBASE_CONFIGURED_ORGS, "").orEmpty())
+            if (!codec.acceptsPushedList(local, sourceOrgId, codec.decode(value))) return
+        }
         writeInstitutionSettingValue(key, value)
         setInstitutionSettingLastModified(key, lastModified)
         storage.putLong(KEY_INSTITUTION_SETTING_PUSHED_LM_PREFIX + key, lastModified)
@@ -1206,10 +1248,16 @@ class SettingsManager(private val storage: AppStorage) {
                 storage.getString("inst_val_" + InstitutionSettingsKeys.BACKEND_MIGRATION_BY, "") ?: ""
             InstitutionSettingsKeys.FIREBASE_ORG_ID ->
                 storage.getString("inst_val_" + InstitutionSettingsKeys.FIREBASE_ORG_ID, "").ifBlank { getFirebaseOrgId() }
+            // The shared orgs of this device; orgs added here only never leave it.
             InstitutionSettingsKeys.FIREBASE_CONFIGURED_ORGS ->
-                storage.getString("inst_val_" + InstitutionSettingsKeys.FIREBASE_CONFIGURED_ORGS, "").ifBlank {
-                    storage.getString(KEY_FIREBASE_CONFIGURED_ORGS, "").orEmpty()
-                }
+                runCatching {
+                    com.eventmanager.app.data.remote.FirebaseConfiguredOrgCodec.encodeShared(
+                        com.eventmanager.app.data.remote.FirebaseConfiguredOrgCodec.decode(
+                            storage.getString(KEY_FIREBASE_CONFIGURED_ORGS, "").orEmpty(),
+                        ),
+                    )
+                }.getOrNull()
+                    ?: storage.getString("inst_val_" + InstitutionSettingsKeys.FIREBASE_CONFIGURED_ORGS, "").orEmpty()
             InstitutionSettingsKeys.SHEETS_SPREADSHEET_ID_HINT ->
                 storage.getString("inst_val_" + InstitutionSettingsKeys.SHEETS_SPREADSHEET_ID_HINT, "") ?: ""
             InstitutionSettingsKeys.ALLOWED_EMAIL_DOMAINS ->
@@ -1323,13 +1371,15 @@ class SettingsManager(private val storage: AppStorage) {
             InstitutionSettingsKeys.FIREBASE_CONFIGURED_ORGS -> {
                 storage.putString("inst_val_" + InstitutionSettingsKeys.FIREBASE_CONFIGURED_ORGS, value)
                 if (value.isNotBlank()) {
-                    val parsed = com.eventmanager.app.data.remote.FirebaseConfiguredOrgCodec.decode(value)
+                    val codec = com.eventmanager.app.data.remote.FirebaseConfiguredOrgCodec
+                    val parsed = codec.decode(value)
                     if (parsed.isNotEmpty()) {
-                        val normalized = com.eventmanager.app.data.remote.FirebaseConfiguredOrgCodec.normalize(parsed)
-                        storage.putString(
-                            KEY_FIREBASE_CONFIGURED_ORGS,
-                            com.eventmanager.app.data.remote.FirebaseConfiguredOrgCodec.encode(normalized),
-                        )
+                        // Merge rather than replace: orgs added on this device only stay here.
+                        val local = codec.decode(storage.getString(KEY_FIREBASE_CONFIGURED_ORGS, "").orEmpty())
+                        val merged = runCatching { codec.mergeRemote(local, parsed) }.getOrNull()
+                        if (merged != null) {
+                            storage.putString(KEY_FIREBASE_CONFIGURED_ORGS, codec.encode(merged))
+                        }
                     }
                 }
             }

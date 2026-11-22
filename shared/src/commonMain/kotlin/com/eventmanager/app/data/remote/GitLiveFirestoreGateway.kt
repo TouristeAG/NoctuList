@@ -328,7 +328,7 @@ class GitLiveFirestoreGateway(
                         is String -> raw.toLongOrNull() ?: System.currentTimeMillis()
                         else -> System.currentTimeMillis()
                     }
-                    settingsManager?.applyInstitutionSettingFromRemote(doc.id, value, lm)
+                    settingsManager?.applyInstitutionSettingFromRemote(doc.id, value, lm, sourceOrgId = orgId)
                     continue
                 }
                 if (collection == "metadata") continue

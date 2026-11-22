@@ -13,6 +13,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import com.eventmanager.app.data.remote.BackendType
 import com.eventmanager.app.data.remote.FirebaseAuthResult
 import com.eventmanager.app.data.remote.FirebaseConfiguredOrg
+import com.eventmanager.app.data.remote.FirebaseConfiguredOrgCodec
 import com.eventmanager.app.data.remote.FirebaseMemberSignIn
 import com.eventmanager.app.data.remote.FirebaseOrgAdminAccess
 import com.eventmanager.app.data.remote.MemberRoleAdmin
@@ -25,6 +26,7 @@ import com.eventmanager.app.portal.DomainCheck
 import com.eventmanager.app.portal.PortalServerStatus
 import com.eventmanager.app.resources.Res
 import com.eventmanager.app.resources.sync_read_only_notice
+import com.eventmanager.app.resources.sync_org_rename_admin_only
 import com.eventmanager.app.resources.sync_signed_out_notice
 import com.eventmanager.app.resources.sync_team_domains_publish_failed
 import com.eventmanager.app.ui.viewmodel.EventManagerViewModel
@@ -42,6 +44,13 @@ class SyncSettingsBindings(
     val configuredOrgs: List<FirebaseConfiguredOrg>,
     val onConfiguredOrgsChange: (List<FirebaseConfiguredOrg>) -> Unit,
     val onOrgIdCommitted: (String) -> Unit,
+    /**
+     * Adds an org. [shareWithOrg] true puts it in the synced org list (every device of the org
+     * gets it); false keeps it on this device only. Only org admins are offered the choice.
+     */
+    val onAddOrg: (orgId: String, shareWithOrg: Boolean) -> Unit,
+    /** Sets an org's display name (org admins only); the Firestore ID stays as it is. */
+    val onRenameOrg: (orgId: String, newName: String) -> Unit,
     val authEmail: String?,
     val onSignIn: () -> Unit,
     val onSignOut: () -> Unit,
@@ -189,6 +198,7 @@ fun rememberSyncSettingsBindings(
     }
     var allowedEmailDomainsError by remember { mutableStateOf<String?>(null) }
     val domainsPublishFailed = stringResource(Res.string.sync_team_domains_publish_failed, "%1\$s")
+    val orgRenameRefused = stringResource(Res.string.sync_org_rename_admin_only)
 
     val sharedSignIn: () -> Unit = {
         scope.launch {
@@ -230,6 +240,23 @@ fun rememberSyncSettingsBindings(
             viewModel.updateFirebaseConfiguredOrgsLocal(it)
         },
         onOrgIdCommitted = viewModel::provisionFirebaseOrg,
+        onAddOrg = { orgId, shareWithOrg ->
+            val updated = addConfiguredOrg(configuredOrgs, orgId, shareWithOrg)
+            configuredOrgs = updated
+            viewModel.updateFirebaseConfiguredOrgsLocal(updated)
+            // Creates the org in Firestore when new, then pushes the shared list (local-only
+            // orgs are left out of it).
+            viewModel.provisionFirebaseOrg(orgId)
+        },
+        onRenameOrg = { orgId, newName ->
+            scope.launch {
+                if (viewModel.renameFirebaseOrg(orgId, newName)) {
+                    configuredOrgs = settingsManager.getFirebaseConfiguredOrgs()
+                } else {
+                    onStatusMessage(orgRenameRefused)
+                }
+            }
+        },
         authEmail = authEmail.ifBlank { null },
         onSignIn = onSignInOverride ?: sharedSignIn,
         onSignOut = {
@@ -344,3 +371,19 @@ internal fun syncPageNoticeText(b: SyncSettingsBindings): String? =
         SyncPageNotice.READ_ONLY -> stringResource(Res.string.sync_read_only_notice)
         null -> null
     }
+
+/**
+ * The org list after adding [orgId], with the next free colour. Admins choose whether it is
+ * shared with the org; everyone else adds it on this device only.
+ */
+internal fun addConfiguredOrg(
+    current: List<FirebaseConfiguredOrg>,
+    orgId: String,
+    shareWithOrg: Boolean,
+): List<FirebaseConfiguredOrg> {
+    val existing = current.filter { it.orgId.isNotBlank() }
+    val trimmed = orgId.trim()
+    if (trimmed.isBlank() || existing.any { it.orgId.trim() == trimmed }) return existing
+    val color = FirebaseConfiguredOrgCodec.nextAvailableColor(existing.map { it.colorArgb })
+    return existing + FirebaseConfiguredOrg(orgId = trimmed, colorArgb = color, localOnly = !shareWithOrg)
+}

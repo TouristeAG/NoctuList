@@ -61,7 +61,7 @@ fun AdminOrgPickerDialog(
                         ) {
                             OrgColorDot(orgId = org.orgId, viewModel = viewModel, size = 12.dp)
                             Text(
-                                text = org.orgId,
+                                text = org.label,
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold,
                             )
