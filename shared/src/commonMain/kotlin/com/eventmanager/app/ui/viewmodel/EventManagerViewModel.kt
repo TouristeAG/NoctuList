@@ -3505,6 +3505,42 @@ class EventManagerViewModel(
                 false
             }
         }
+        override suspend fun guestForms(): List<GuestForm> = _guestForms.value
+
+        /** The request as stored now, or null when it is gone or no longer awaits review. */
+        private suspend fun pendingGuestForm(form: GuestForm): GuestForm? =
+            (repository.getGuestFormByFormIdAndOrg(form.formId, form.firebaseOrgId) ?: repository.getGuestFormByFormId(form.formId))
+                ?.takeIf { it.statusValue == GuestFormStatus.PENDING_REVIEW }
+
+        override suspend fun acceptGuestFormFromPortal(
+            form: GuestForm,
+            people: List<ManualTemporaryGuestEntry>,
+            contactEmail: String,
+            phone: String,
+            notes: String,
+            reviewedBy: String,
+        ): Boolean {
+            if (rejectIfCrudSoftLocked("accepting a guest request from the portal")) return false
+            val current = pendingGuestForm(form) ?: return false
+            return acceptGuestForm(current, people, contactEmail, phone, notes, reviewedBy)
+        }
+
+        override suspend fun acceptGuestFormRemovalFromPortal(form: GuestForm, reviewedBy: String): Boolean {
+            if (rejectIfCrudSoftLocked("accepting a guest request from the portal")) return false
+            if (!isGuestFormFeaturesEnabled()) return false
+            val current = pendingGuestForm(form) ?: return false
+            acceptGuestFormRemoval(current, reviewedBy)
+            return true
+        }
+
+        override suspend fun rejectGuestFormFromPortal(form: GuestForm, reviewedBy: String): Boolean {
+            if (rejectIfCrudSoftLocked("refusing a guest request from the portal")) return false
+            if (!isGuestFormFeaturesEnabled()) return false
+            val current = pendingGuestForm(form) ?: return false
+            rejectGuestForm(current, reviewedBy)
+            return true
+        }
+
         override fun portalGoogleEnabled(): Boolean = settingsManagerCached?.isVolunteerPortalGoogleEnabled() == true
         override fun portalGoogleDomains(): List<String> = settingsManagerCached?.volunteerPortalGoogleDomains().orEmpty()
         override fun portalGoogleAnyAccount(): Boolean = settingsManagerCached?.isVolunteerPortalGoogleAnyAccount() == true

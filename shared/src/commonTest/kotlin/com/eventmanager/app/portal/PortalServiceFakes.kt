@@ -105,6 +105,42 @@ internal class FakeHost(initial: List<Volunteer>) : VolunteerPortalHost {
     }
     override suspend fun deleteTemporaryGuest(guest: Guest): Boolean = guests.removeAll { it.nanoId == guest.nanoId }
     override fun dateOffsetHours() = dateOffset
+    var portalValidate = false
+    override fun portalValidateEnabled() = portalValidate
+    val forms = mutableListOf<com.eventmanager.app.data.models.GuestForm>()
+    override suspend fun guestForms() = forms.toList()
+    data class AcceptedReview(
+        val form: com.eventmanager.app.data.models.GuestForm,
+        val people: List<com.eventmanager.app.data.models.ManualTemporaryGuestEntry>,
+        val contactEmail: String,
+        val phone: String,
+        val notes: String,
+        val reviewedBy: String,
+    )
+    val acceptedReviews = mutableListOf<AcceptedReview>()
+    val rejectedReviews = mutableListOf<Pair<com.eventmanager.app.data.models.GuestForm, String>>()
+    val removedReviews = mutableListOf<Pair<com.eventmanager.app.data.models.GuestForm, String>>()
+    var acceptResult = true
+    override suspend fun acceptGuestFormFromPortal(
+        form: com.eventmanager.app.data.models.GuestForm,
+        people: List<com.eventmanager.app.data.models.ManualTemporaryGuestEntry>,
+        contactEmail: String,
+        phone: String,
+        notes: String,
+        reviewedBy: String,
+    ): Boolean {
+        if (!acceptResult) return false
+        acceptedReviews += AcceptedReview(form, people, contactEmail, phone, notes, reviewedBy)
+        return true
+    }
+    override suspend fun acceptGuestFormRemovalFromPortal(form: com.eventmanager.app.data.models.GuestForm, reviewedBy: String): Boolean {
+        removedReviews += form to reviewedBy
+        return true
+    }
+    override suspend fun rejectGuestFormFromPortal(form: com.eventmanager.app.data.models.GuestForm, reviewedBy: String): Boolean {
+        rejectedReviews += form to reviewedBy
+        return true
+    }
     override fun institutionLogoPng() = ""
     override fun profilePhotosEnabled() = true
     override fun portalGoogleEnabled() = googleEnabled

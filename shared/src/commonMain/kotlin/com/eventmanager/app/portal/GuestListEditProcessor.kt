@@ -1,11 +1,14 @@
 package com.eventmanager.app.portal
 
 import com.eventmanager.app.data.models.Guest
+import com.eventmanager.app.data.models.GuestForm
+import com.eventmanager.app.data.models.GuestFormRequestKind
 import com.eventmanager.app.data.models.ManualTemporaryGuestBatch
 import com.eventmanager.app.data.models.ManualTemporaryGuestEntry
 import com.eventmanager.app.data.models.Volunteer
 import com.eventmanager.app.data.models.listVenueKey
 import com.eventmanager.app.data.models.listVenueLabel
+import com.eventmanager.app.data.models.requestKindValue
 import com.eventmanager.app.data.models.temporaryEntryValidated
 import com.eventmanager.app.data.utils.DateTimeUtils
 
@@ -26,16 +29,40 @@ data class GuestListEdit(
     val phone: String = "",
     val contactEmail: String = "",
     val notes: String = "",
+    /** ACCEPT / REJECT: the pending request, as published on the guest list page. */
+    val reviewKey: String = "",
+    /** ACCEPT of an added request: the people as corrected on the portal. */
+    val people: List<ManualTemporaryGuestEntry> = emptyList(),
 ) {
     companion object {
         const val COLLECTION = "guestListEdits"
         const val ADD = "ADD"
         const val UPDATE = "UPDATE"
         const val DELETE = "DELETE"
+        const val ACCEPT = "ACCEPT"
+        const val REJECT = "REJECT"
+        private val REVIEWS = setOf(ACCEPT, REJECT)
         private val UID = Regex("^[A-Za-z0-9]{6,128}$")
         private val GUEST_KEY = Regex("^[0-9a-f]{16}$")
 
         const val MAX_NOTES = 500
+        const val MAX_PEOPLE = 100
+        const val MAX_ACCESS = 20
+
+        private fun accessIds(v: Any?): List<String>? =
+            (v as? List<*>).orEmpty().mapNotNull { (it as? String)?.trim()?.takeIf { s -> s.isNotEmpty() } }
+                .takeIf { it.size <= MAX_ACCESS }
+
+        /** Null when one person has a name the rules refuse; a blank name is kept and dropped on accept. */
+        private fun people(v: Any?): List<ManualTemporaryGuestEntry>? {
+            val raw = (v as? List<*>).orEmpty()
+            if (raw.size > MAX_PEOPLE) return null
+            return raw.map { item ->
+                val person = item as? Map<*, *> ?: return null
+                val name = optionalName(person["name"]) ?: return null
+                ManualTemporaryGuestEntry(name, (accessIds(person["accessIds"]) ?: return null).toSet())
+            }
+        }
 
         private fun blank(v: Any?): Boolean = (v as? String).orEmpty().trim().isEmpty()
 
@@ -45,14 +72,16 @@ data class GuestListEdit(
         /** Null when the document does not have the shape the rules allow. */
         fun parse(id: String, data: Map<String, Any?>): GuestListEdit? {
             val uid = (data["uid"] as? String)?.takeIf { UID.matches(it) } ?: return null
-            val action = (data["action"] as? String)?.takeIf { it in setOf(ADD, UPDATE, DELETE) } ?: return null
+            val action = (data["action"] as? String)?.takeIf { it in setOf(ADD, UPDATE, DELETE) + REVIEWS } ?: return null
             val date = (data["eventDateMillis"] as? Number)?.toLong()?.takeIf { it > 0 } ?: return null
             val key = (data["guestKey"] as? String).orEmpty()
-            if (action != ADD && !GUEST_KEY.matches(key)) return null
+            if (action != ADD && action !in REVIEWS && !GUEST_KEY.matches(key)) return null
+            val reviewKey = (data["reviewKey"] as? String).orEmpty()
+            if (action in REVIEWS && !GUEST_KEY.matches(reviewKey)) return null
+            val people = if (action in REVIEWS) people(data["people"]) ?: return null else emptyList()
             val first = optionalName(data["firstName"]) ?: return null
             val last = optionalName(data["lastName"]) ?: return null
-            val access = (data["accessIds"] as? List<*>).orEmpty().mapNotNull { (it as? String)?.trim()?.takeIf { s -> s.isNotEmpty() } }
-            if (access.size > 20) return null
+            val access = accessIds(data["accessIds"]) ?: return null
             val phone = if (blank(data["phone"])) "" else PortalInputValidator.cleanPhone(data["phone"]) ?: return null
             val contactEmail = if (blank(data["contactEmail"])) "" else PortalInputValidator.cleanEmail(data["contactEmail"]) ?: return null
             val notes = (data["notes"] as? String).orEmpty().trim()
@@ -63,6 +92,7 @@ data class GuestListEdit(
                 listName = (data["listName"] as? String).orEmpty().trim().take(80),
                 venueName = (data["venueName"] as? String).orEmpty().trim().take(80),
                 accessIds = access, phone = phone, contactEmail = contactEmail, notes = notes,
+                reviewKey = if (action in REVIEWS) reviewKey else "", people = people,
             )
         }
     }
@@ -78,17 +108,49 @@ class GuestListEditProcessor(
 ) {
     private fun day(millis: Long) = DateTimeUtils.getStartOfDayWithOffset(millis, 0)
 
-    suspend fun apply(edit: GuestListEdit, volunteers: List<Volunteer>, guests: List<Guest>): Pair<String, String> {
+    suspend fun apply(
+        edit: GuestListEdit,
+        volunteers: List<Volunteer>,
+        guests: List<Guest>,
+        forms: List<GuestForm> = emptyList(),
+    ): Pair<String, String> {
         val now = clock()
-        val grants = volunteers.filter { it.portalEnabled && it.portalUid == edit.uid }.map { it.guestListGrantsJson } +
-            guests.filter { it.portalEnabled && it.portalUid == edit.uid }.map { it.guestListGrantsJson }
-        val grant = grants.flatMap { GuestListGrants.decode(it) }
-            .firstOrNull { it.id == edit.grantId && it.isActive(now, host.dateOffsetHours()) && day(it.eventDateMillis) == day(edit.eventDateMillis) }
-            ?: return REJECTED to "NO_GRANT"
+        val review = edit.action == GuestListEdit.ACCEPT || edit.action == GuestListEdit.REJECT
+        if (review && !host.portalValidateEnabled()) return REJECTED to "DISABLED"
+        // Each profile of the account with the grants it carries, and the name it goes by.
+        val holders = volunteers.filter { it.portalEnabled && it.portalUid == edit.uid }
+            .map { "${it.name} ${it.lastNameAbbreviation}".trim() to it.guestListGrantsJson } +
+            guests.filter { it.portalEnabled && it.portalUid == edit.uid }
+                .map { "${it.name} ${it.lastNameAbbreviation}".trim() to it.guestListGrantsJson }
+        val (holderName, grant) = holders.firstNotNullOfOrNull { (name, json) ->
+            GuestListGrants.decode(json)
+                .firstOrNull { it.id == edit.grantId && it.isActive(now, host.dateOffsetHours()) && day(it.eventDateMillis) == day(edit.eventDateMillis) }
+                ?.let { name to it }
+        } ?: return REJECTED to "NO_GRANT"
         return when (edit.action) {
             GuestListEdit.ADD -> add(edit, grant, guests)
+            GuestListEdit.ACCEPT, GuestListEdit.REJECT -> decide(edit, grant, forms, holderName)
             else -> change(edit, grant, guests, now)
         }
+    }
+
+    /** ACCEPT or REJECT of a pending guest request the grant covers (spec guest list review §6.2). */
+    private suspend fun decide(edit: GuestListEdit, grant: GuestListGrant, forms: List<GuestForm>, holderName: String): Pair<String, String> {
+        val form = GuestListReviews.covered(grant, forms, "").firstOrNull { GuestListReviews.reviewKey(it) == edit.reviewKey }
+            ?: return REJECTED to "NOT_PENDING"
+        val reviewedBy = "$REVIEWED_BY_PREFIX$holderName"
+        if (edit.action == GuestListEdit.REJECT) {
+            return if (host.rejectGuestFormFromPortal(form, reviewedBy)) DONE to "" else REJECTED to "SAVE_FAILED"
+        }
+        if (form.requestKindValue == GuestFormRequestKind.REMOVE) {
+            return if (host.acceptGuestFormRemovalFromPortal(form, reviewedBy)) DONE to "" else REJECTED to "SAVE_FAILED"
+        }
+        val people = edit.people
+            .map { ManualTemporaryGuestEntry(it.name.trim(), accessesFor(form.venueName, it.accessIds.toList())) }
+            .filter { it.name.isNotEmpty() }
+        if (people.isEmpty()) return REJECTED to "INVALID"
+        val ok = host.acceptGuestFormFromPortal(form, people, edit.contactEmail, edit.phone, edit.notes, reviewedBy)
+        return if (ok) DONE to "" else REJECTED to "OVER_LIMIT"
     }
 
     /** Accesses of [venue] among [ids]; a list without venue ("" or "BOTH") takes those of every venue. */
@@ -150,5 +212,6 @@ class GuestListEditProcessor(
     companion object {
         const val DONE = "DONE"
         const val REJECTED = "REJECTED"
+        const val REVIEWED_BY_PREFIX = "Plateforme · "
     }
 }

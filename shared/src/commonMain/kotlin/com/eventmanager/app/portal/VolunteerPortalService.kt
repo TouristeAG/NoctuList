@@ -79,6 +79,28 @@ interface VolunteerPortalHost {
     /** Deletes one temporary guest. */
     suspend fun deleteTemporaryGuest(guest: Guest): Boolean = false
 
+    /** Every guest form on this device, for decisions sent from the guest list page. */
+    suspend fun guestForms(): List<GuestForm> = emptyList()
+
+    /**
+     * Accepts a pending added request with the people, contact and notes sent from the portal.
+     * False when it would go past a limit or is no longer pending.
+     */
+    suspend fun acceptGuestFormFromPortal(
+        form: GuestForm,
+        people: List<com.eventmanager.app.data.models.ManualTemporaryGuestEntry>,
+        contactEmail: String,
+        phone: String,
+        notes: String,
+        reviewedBy: String,
+    ): Boolean = false
+
+    /** Accepts a pending removal request. False when it is no longer pending. */
+    suspend fun acceptGuestFormRemovalFromPortal(form: GuestForm, reviewedBy: String): Boolean = false
+
+    /** Refuses a pending request. False when it is no longer pending. */
+    suspend fun rejectGuestFormFromPortal(form: GuestForm, reviewedBy: String): Boolean = false
+
     suspend fun volunteers(): List<Volunteer>
     /** Inserts a new volunteer through the normal save + sync pipeline (with its optional photo). */
     suspend fun createVolunteer(volunteer: Volunteer, photo: ByteArray?): Volunteer?
@@ -725,6 +747,7 @@ class VolunteerPortalService(
                 edit,
                 host.volunteers().filter { it.firebaseOrgId.isBlank() || it.firebaseOrgId == orgId },
                 orgGuests(),
+                host.guestForms().filter { it.firebaseOrgId.isBlank() || it.firebaseOrgId == orgId },
             )
         }
         gateway.setPlainDocument(
