@@ -29,6 +29,11 @@ object InstitutionSettingsKeys {
     const val FIREBASE_ORG_ID = "firebase_org_id"
     /** JSON list of [{orgId, colorArgb}] — multi-org Firebase config (synced across devices). */
     const val FIREBASE_CONFIGURED_ORGS = "firebase_configured_orgs"
+    /**
+     * JSON list of [com.eventmanager.app.data.remote.FirebaseOrgInvitation]: orgs an admin added
+     * for every device of this org, with what a device needs to join them. Firebase only.
+     */
+    const val FIREBASE_ORG_INVITATIONS = "firebase_org_invitations"
     const val SHEETS_SPREADSHEET_ID_HINT = "sheets_spreadsheet_id_hint"
     /** Client Firebase options for peer follow (includes institution Web OAuth client; not Gmail). */
     const val FIREBASE_PROJECT_ID = "firebase_project_id"
@@ -210,6 +215,7 @@ object InstitutionSettingsKeys {
         EMAIL_ASSOCIATION_NAME,
         ALLOWED_EMAIL_DOMAINS,
         FIREBASE_CONFIGURED_ORGS,
+        FIREBASE_ORG_INVITATIONS,
         PROFILE_PHOTOS_ENABLED,
         ANNOUNCEMENTS_NON_ADMIN_SEND_ENABLED,
         POS_SUBCATEGORIES,
@@ -233,6 +239,8 @@ object InstitutionSettingsKeys {
      * round-trip would blank them out for an organization that switches backends.
      */
     val FIREBASE_ONLY_KEYS: Set<String> = setOf(
+        // Holds the secret that lets a member join another org: never in a spreadsheet.
+        FIREBASE_ORG_INVITATIONS,
         POS_SUBCATEGORIES,
         DRIVE_IMPORT_ENABLED,
         VOLUNTEER_PORTAL_ENABLED,

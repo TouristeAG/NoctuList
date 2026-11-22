@@ -308,7 +308,7 @@ internal class DesktopFirestoreGateway(
                         is String -> raw.toLongOrNull() ?: System.currentTimeMillis()
                         else -> System.currentTimeMillis()
                     }
-                    settingsManager?.applyInstitutionSettingFromRemote(docId, value, lm)
+                    settingsManager?.applyInstitutionSettingFromRemote(docId, value, lm, sourceOrgId = orgId)
                     continue
                 }
                 if (collection == "metadata") continue
