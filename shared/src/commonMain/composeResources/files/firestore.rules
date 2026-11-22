@@ -1,5 +1,5 @@
 rules_version = '2';
-// NoctuList Firestore rules — NOCTULIST_RULES_VERSION = 20
+// NoctuList Firestore rules — NOCTULIST_RULES_VERSION = 21
 // Republish this exact file in Firebase Console → Firestore → Rules after every app update,
 // otherwise members that already exist cannot re-join their organization.
 service cloud.firestore {
@@ -765,6 +765,9 @@ service cloud.firestore {
         // A claim older than 5 minutes was abandoned: the volunteer may send the request again.
         && (resource.data.status != 'PROCESSING'
              || request.time.toMillis() > resource.data.processingAt + 300000)
+        // A certificate request the team is reviewing or sending cannot be rewritten at all.
+        && !(resource.data.type == 'CERTIFICATE_EMAIL'
+             && resource.data.status in ['PENDING_REVIEW', 'APPROVED', 'PROCESSING'])
         && validPortalRequest(orgId, requestId)
         && request.time > resource.data.requestedAt
              + duration.value(portalRequestDelayMinutes(request.resource.data.type), 'm');
@@ -773,6 +776,52 @@ service cloud.firestore {
              || request.time.toMillis() > resource.data.processingAt + 300000)
         && validUnverifiedTempNameRequest(orgId, requestId)
         && request.time > resource.data.requestedAt + duration.value(1, 'm');
+    }
+
+    // Certificates a team member approved (REQUEST) or generated from a volunteer's panel (DIRECT).
+    // Members create, read and delete them; the Functions (Admin SDK) add status/reason and delete
+    // them after sending. The portal never touches them. The text size (body + footer JSON) is
+    // checked by the Functions, which a rules list cannot do.
+    function validCertificateApprovalCommon(d) {
+      return d.body is list
+        && d.footer is list
+        && d.title is string && d.title.size() <= 500
+        && d.approvedBy is string && d.approvedBy.size() <= 254
+        && (d.approvedAt is timestamp || d.approvedAt is number)
+        && d.signer is map
+        && d.signer.keys().hasOnly(['name', 'title', 'imageBase64'])
+        && d.signer.keys().hasAll(['name', 'title', 'imageBase64'])
+        && d.signer.name is string && d.signer.name.size() <= 200
+        && d.signer.title is string && d.signer.title.size() <= 200
+        && d.signer.imageBase64 is string && d.signer.imageBase64.size() <= 200000;
+    }
+
+    function validCertificateApproval(orgId, approvalId) {
+      let d = request.resource.data;
+      return validCertificateApprovalCommon(d)
+        && (
+          (d.keys().hasOnly(['kind', 'requestId', 'body', 'footer', 'title', 'signer', 'approvedBy', 'approvedAt'])
+            && d.keys().hasAll(['kind', 'requestId', 'body', 'footer', 'title', 'signer', 'approvedBy', 'approvedAt'])
+            && d.kind == 'REQUEST'
+            && d.requestId is string
+            && d.requestId.matches('^[A-Za-z0-9_-]{1,128}_CERTIFICATE_EMAIL$')
+            && get(/databases/$(database)/documents/orgs/$(orgId)/portalRequests/$(d.requestId)).data.status == 'APPROVED'
+            && get(/databases/$(database)/documents/orgs/$(orgId)/portalRequests/$(d.requestId)).data.get('approvalId', '') == approvalId)
+          || (d.keys().hasOnly(['kind', 'email', 'firstName', 'lastName', 'body', 'footer', 'title', 'signer', 'approvedBy', 'approvedAt'])
+            && d.keys().hasAll(['kind', 'email', 'firstName', 'lastName', 'body', 'footer', 'title', 'signer', 'approvedBy', 'approvedAt'])
+            && d.kind == 'DIRECT'
+            && d.email is string
+            && d.email.size() <= 254
+            && d.email.matches('^[^@ \\t\\r\\n]+@[^@ \\t\\r\\n]+\\.[^@ \\t\\r\\n]+$')
+            && d.firstName is string && d.firstName.size() <= 100
+            && d.lastName is string && d.lastName.size() <= 100)
+        );
+    }
+
+    match /orgs/{orgId}/certificateApprovals/{approvalId} {
+      allow read, delete: if isMember(orgId);
+      allow create: if isMember(orgId) && validCertificateApproval(orgId, approvalId);
+      allow update: if false;
     }
 
     function canSendGoogleClaim(orgId, googleUid) {
@@ -857,7 +906,13 @@ service cloud.firestore {
         && document[0] != 'metadata'
         && document[0] != 'institutionSettings'
         && document[0] != 'portalServer'
-        && document[0] != 'mailOutbox';
+        && document[0] != 'mailOutbox'
+        && document[0] != 'certificateApprovals'
+        // The note a team member leaves when refusing a certificate request is read by the volunteer.
+        && (document[0] != 'portalRequests'
+             || request.method == 'delete'
+             || !('note' in request.resource.data)
+             || (request.resource.data.note is string && request.resource.data.note.size() <= 300));
     }
   }
 }

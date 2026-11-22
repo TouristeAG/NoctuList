@@ -1,9 +1,10 @@
 // Security rules for the volunteer certificate request (CERTIFICATE_EMAIL) — run with `npm run test:rules`.
+import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, test } from "node:test";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { assertFails, assertSucceeds, initializeTestEnvironment } from "@firebase/rules-unit-testing";
-import { Timestamp, doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { Timestamp, deleteDoc, doc, getDoc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 
 const here = (p) => fileURLToPath(new URL(p, import.meta.url));
 const ORG = "org-a";
@@ -128,7 +129,7 @@ describe("CERTIFICATE_EMAIL portal request", () => {
     }));
     await assertSucceeds(setDoc(doc(db, REQUEST), certificate()));
   });
-  test("a stale PROCESSING claim can be sent again, a fresh one cannot", async () => {
+  test("a PROCESSING certificate claim cannot be sent again, stale or not (the team resets it)", async () => {
     const db = portal().firestore();
     const claimed = (processingAt) => seed((sdb) => setDoc(doc(sdb, REQUEST), {
       ...certificate(), requestedAt: Timestamp.fromMillis(Date.now() - 60 * 60 * 1000),
@@ -137,7 +138,7 @@ describe("CERTIFICATE_EMAIL portal request", () => {
     await claimed(Date.now() - 60 * 1000);
     await assertFails(setDoc(doc(db, REQUEST), certificate()));
     await claimed(Date.now() - 10 * 60 * 1000);
-    await assertSucceeds(setDoc(doc(db, REQUEST), certificate()));
+    await assertFails(setDoc(doc(db, REQUEST), certificate()));
   });
   test("owner reads its own request, others cannot", async () => {
     await seed((db) => setDoc(doc(db, REQUEST), { ...certificate(), requestedAt: Timestamp.now() }));
@@ -152,5 +153,129 @@ describe("CERTIFICATE_EMAIL portal request", () => {
     await assertFails(getDoc(doc(portal("vol1").firestore(), path("portalMail/certificate"))));
     await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), path("portalMail/certificate"))));
     await assertSucceeds(getDoc(doc(staff().firestore(), path("portalMail/certificate"))));
+  });
+});
+
+const APPROVAL = (id) => path(`certificateApprovals/${id}`);
+const REQ_ID = "vol1_CERTIFICATE_EMAIL";
+
+const seedRequest = (status, extra = {}) => seed((db) => setDoc(doc(db, REQUEST), {
+  ...certificate(), requestedAt: Timestamp.fromMillis(Date.now() - 60 * 60 * 1000), status, ...extra,
+}));
+const seedMember = () => seed((db) => setDoc(doc(db, path("members/admin1")), { role: "ADMIN" }));
+
+const paragraphs = [{ align: "LEFT", size: "NORMAL", bullet: false, runs: [{ text: "Hello", b: false, i: false, u: false }] }];
+function approvalCommon(extra = {}) {
+  return {
+    body: paragraphs,
+    footer: [],
+    title: "Certificate",
+    signer: { name: "Jane Doe", title: "President", imageBase64: "" },
+    approvedBy: "admin1@team.example",
+    approvedAt: Timestamp.now(),
+    ...extra,
+  };
+}
+const requestApproval = (id, extra = {}) => ({ kind: "REQUEST", requestId: REQ_ID, ...approvalCommon(), ...extra });
+const directApproval = (extra = {}) => ({
+  kind: "DIRECT", email: "ana@mail.example", firstName: "Ana", lastName: "Roe", ...approvalCommon(), ...extra,
+});
+
+describe("admin review of certificate requests", () => {
+  test("portal cannot rewrite a request in review", async () => {
+    const db = portal().firestore();
+    for (const status of ["PENDING_REVIEW", "APPROVED", "PROCESSING"]) {
+      await seedRequest(status, { processingAt: Date.now() - 60 * 60 * 1000, processingDevice: "dev", approvedAt: Date.now() });
+      await assertFails(setDoc(doc(db, REQUEST), certificate()));
+    }
+    await seedRequest("REJECTED", { reason: "REFUSED", note: "no", processedAt: Date.now() });
+    await assertSucceeds(setDoc(doc(db, REQUEST), certificate()));
+  });
+  test("portal reads its refused request and note", async () => {
+    await seedRequest("REJECTED", { reason: "REFUSED", note: "Not enough shifts", processedAt: Date.now() });
+    const snap = await assertSucceeds(getDoc(doc(portal().firestore(), REQUEST)));
+    assert(snap.data().note === "Not enough shifts");
+    await seedRequest("PENDING_REVIEW");
+    await assertSucceeds(getDoc(doc(portal().firestore(), REQUEST)));
+  });
+  test("member approves a request in review", async () => {
+    await seedMember();
+    await seedRequest("PENDING_REVIEW", { reviewAt: Date.now(), processedAt: Date.now() });
+    await assertSucceeds(updateDoc(doc(staff().firestore(), REQUEST), {
+      status: "APPROVED", approvalId: "ap1", approvedAt: Date.now(), processingDevice: "dev1", processingAt: Date.now(),
+    }));
+  });
+  test("member refuses with a note", async () => {
+    await seedMember();
+    await seedRequest("PENDING_REVIEW");
+    await assertSucceeds(updateDoc(doc(staff().firestore(), REQUEST), {
+      status: "REJECTED", reason: "REFUSED", note: "x".repeat(300), processedAt: Date.now(),
+    }));
+  });
+  test("note over 300 is refused", async () => {
+    await seedMember();
+    await seedRequest("PENDING_REVIEW");
+    await assertFails(updateDoc(doc(staff().firestore(), REQUEST), {
+      status: "REJECTED", reason: "REFUSED", note: "x".repeat(301), processedAt: Date.now(),
+    }));
+    await assertFails(updateDoc(doc(staff().firestore(), REQUEST), {
+      status: "REJECTED", reason: "REFUSED", note: 42, processedAt: Date.now(),
+    }));
+  });
+  test("member resets a stale approval to review", async () => {
+    await seedMember();
+    for (const status of ["APPROVED", "PROCESSING"]) {
+      await seedRequest(status, { approvalId: "ap1", approvedAt: Date.now() - 600000, processingAt: Date.now() - 600000 });
+      await assertSucceeds(updateDoc(doc(staff().firestore(), REQUEST), { status: "PENDING_REVIEW", reason: "SEND_FAILED" }));
+    }
+  });
+  test("approval needs an APPROVED request with the same id", async () => {
+    await seedMember();
+    const db = staff().firestore();
+    await seedRequest("PENDING_REVIEW", { approvalId: "ap1" });
+    await assertFails(setDoc(doc(db, APPROVAL("ap1")), requestApproval()));
+    await seedRequest("APPROVED", { approvalId: "other" });
+    await assertFails(setDoc(doc(db, APPROVAL("ap1")), requestApproval()));
+    await seedRequest("APPROVED", { approvalId: "ap1" });
+    await assertSucceeds(setDoc(doc(db, APPROVAL("ap1")), requestApproval()));
+    await assertFails(setDoc(doc(db, APPROVAL("ap2")), requestApproval("x", { requestId: "nobody_CERTIFICATE_EMAIL" })));
+    await assertFails(setDoc(doc(db, APPROVAL("ap3")), requestApproval("x", { footer: "text" })));
+  });
+  test("portal cannot read or write certificateApprovals", async () => {
+    await seedMember();
+    await seed((db) => setDoc(doc(db, APPROVAL("ap1")), directApproval()));
+    await seedRequest("APPROVED", { approvalId: "ap2" });
+    const db = portal().firestore();
+    await assertFails(getDoc(doc(db, APPROVAL("ap1"))));
+    await assertFails(setDoc(doc(db, APPROVAL("ap2")), requestApproval()));
+    await assertFails(setDoc(doc(db, APPROVAL("ap4")), directApproval()));
+    await assertFails(deleteDoc(doc(db, APPROVAL("ap1"))));
+    await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), APPROVAL("ap1"))));
+  });
+  test("members read and delete approvals but cannot edit them", async () => {
+    await seedMember();
+    await seed((db) => setDoc(doc(db, APPROVAL("ap1")), directApproval()));
+    const db = staff().firestore();
+    await assertSucceeds(getDoc(doc(db, APPROVAL("ap1"))));
+    await assertFails(updateDoc(doc(db, APPROVAL("ap1")), { title: "Other" }));
+    await assertSucceeds(deleteDoc(doc(db, APPROVAL("ap1"))));
+  });
+  test("member creates a direct approval", async () => {
+    await seedMember();
+    const db = staff().firestore();
+    await assertSucceeds(setDoc(doc(db, APPROVAL("d1")), directApproval()));
+    await assertSucceeds(setDoc(doc(db, APPROVAL("d2")), directApproval({ approvedAt: Date.now() })));
+    await assertFails(setDoc(doc(db, APPROVAL("d3")), directApproval({ email: "not an address" })));
+    await assertFails(setDoc(doc(db, APPROVAL("d4")), directApproval({ signer: { name: "a", title: "b", imageBase64: "x".repeat(200001) } })));
+    const { firstName, ...noName } = directApproval();
+    await assertFails(setDoc(doc(db, APPROVAL("d5")), noName));
+    await assertFails(setDoc(doc(db, APPROVAL("d6")), { ...directApproval(), kind: "OTHER" }));
+  });
+  test("direct approval with an extra field is refused", async () => {
+    await seedMember();
+    const db = staff().firestore();
+    await assertFails(setDoc(doc(db, APPROVAL("d1")), directApproval({ volunteerId: "abc" })));
+    await assertFails(setDoc(doc(db, APPROVAL("d2")), directApproval({ status: "PROCESSING" })));
+    await assertFails(setDoc(doc(db, APPROVAL("d3")), directApproval({ requestId: REQ_ID })));
   });
 });
