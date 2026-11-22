@@ -263,4 +263,28 @@ class CertificateReviewDialogTest {
         val sending = request.copy(requestId = "C_CERTIFICATE_EMAIL", status = "APPROVED")
         assertEquals(listOf(other), newCertificateRequests(known, listOf(request, other, sending)))
     }
+
+    @Test
+    fun serverClaimThenReviewGivesOneToastAndNoSendingRow() {
+        fun doc(status: String, extra: Map<String, Any?> = emptyMap()) = listOf(
+            "PortalUid000000000000001_CERTIFICATE_EMAIL" to (mapOf<String, Any?>(
+                "uid" to "PortalUid000000000000001", "type" to "CERTIFICATE_EMAIL", "status" to status, "email" to "lea@example.org",
+                "from" to "2026-01-01", "to" to "2026-12-31", "jobTypes" to listOf("Bar"), "requestedAt" to 1_000L,
+            ) + extra),
+        )
+        val steps = listOf(
+            doc("PENDING"),
+            doc("PROCESSING", mapOf("processingAt" to 2_000L, "processingDevice" to "server")),
+            doc("PENDING_REVIEW"),
+        )
+        var seen = emptySet<String>()
+        var toasts = 0
+        for (step in steps) {
+            val list = com.eventmanager.app.portal.certificate.certificateReviewRequests(step, 3_000L)
+            assertTrue(list.none { it.status == "PROCESSING" || it.status == "APPROVED" })
+            toasts += newCertificateRequests(seen, list).size
+            seen = list.map { it.requestId }.toSet()
+        }
+        assertEquals(1, toasts)
+    }
 }

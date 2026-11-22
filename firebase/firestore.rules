@@ -765,9 +765,12 @@ service cloud.firestore {
         // A claim older than 5 minutes was abandoned: the volunteer may send the request again.
         && (resource.data.status != 'PROCESSING'
              || request.time.toMillis() > resource.data.processingAt + 300000)
-        // A certificate request the team is reviewing or sending cannot be rewritten at all.
+        // A certificate request the team is reviewing or sending cannot be rewritten at all. A claim
+        // the server made before any review (PROCESSING without approvalId) is not one of those.
         && !(resource.data.type == 'CERTIFICATE_EMAIL'
-             && resource.data.status in ['PENDING_REVIEW', 'APPROVED', 'PROCESSING'])
+             && (resource.data.status in ['PENDING_REVIEW', 'APPROVED']
+                 || (resource.data.status == 'PROCESSING'
+                     && resource.data.get('approvalId', '') != '')))
         && validPortalRequest(orgId, requestId)
         && request.time > resource.data.requestedAt
              + duration.value(portalRequestDelayMinutes(request.resource.data.type), 'm');

@@ -129,11 +129,22 @@ describe("CERTIFICATE_EMAIL portal request", () => {
     }));
     await assertSucceeds(setDoc(doc(db, REQUEST), certificate()));
   });
-  test("a PROCESSING certificate claim cannot be sent again, stale or not (the team resets it)", async () => {
+  test("a PROCESSING claim before review (no approvalId) is resent after 5 minutes, not before", async () => {
+    const db = portal().firestore();
+    const claimed = (processingAt, extra = {}) => seed((sdb) => setDoc(doc(sdb, REQUEST), {
+      ...certificate(), requestedAt: Timestamp.fromMillis(Date.now() - 60 * 60 * 1000),
+      status: "PROCESSING", processingAt, processingDevice: "server", ...extra,
+    }));
+    await claimed(Date.now() - 60 * 1000);
+    await assertFails(setDoc(doc(db, REQUEST), certificate()));
+    await claimed(Date.now() - 10 * 60 * 1000);
+    await assertSucceeds(setDoc(doc(db, REQUEST), certificate()));
+  });
+  test("a PROCESSING claim with an approvalId cannot be sent again, stale or not (the team resets it)", async () => {
     const db = portal().firestore();
     const claimed = (processingAt) => seed((sdb) => setDoc(doc(sdb, REQUEST), {
       ...certificate(), requestedAt: Timestamp.fromMillis(Date.now() - 60 * 60 * 1000),
-      status: "PROCESSING", processingAt, processingDevice: "dev",
+      status: "PROCESSING", processingAt, processingDevice: "server", approvalId: "ap1",
     }));
     await claimed(Date.now() - 60 * 1000);
     await assertFails(setDoc(doc(db, REQUEST), certificate()));
@@ -185,7 +196,7 @@ describe("admin review of certificate requests", () => {
   test("portal cannot rewrite a request in review", async () => {
     const db = portal().firestore();
     for (const status of ["PENDING_REVIEW", "APPROVED", "PROCESSING"]) {
-      await seedRequest(status, { processingAt: Date.now() - 60 * 60 * 1000, processingDevice: "dev", approvedAt: Date.now() });
+      await seedRequest(status, { processingAt: Date.now() - 60 * 60 * 1000, processingDevice: "dev", approvedAt: Date.now(), approvalId: "ap1" });
       await assertFails(setDoc(doc(db, REQUEST), certificate()));
     }
     await seedRequest("REJECTED", { reason: "REFUSED", note: "no", processedAt: Date.now() });

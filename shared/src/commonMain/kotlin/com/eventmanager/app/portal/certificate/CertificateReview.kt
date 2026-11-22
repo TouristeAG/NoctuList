@@ -52,7 +52,7 @@ fun certificateJobTypes(configs: List<JobTypeConfig>): List<CertJobType> =
 fun certificateJobs(jobs: List<Job>): List<CertJob> =
     jobs.map { CertJob(it.jobTypeName.trim(), CertificateDates.dayOf(it.date)) }
 
-/** Requests that still need a device, oldest first. Anything unreadable is left out. */
+/** Requests that still need a device, oldest first. Anything unreadable, or still with the server before review, is left out. */
 fun certificateReviewRequests(docs: List<Pair<String, Map<String, Any?>>>, now: Long): List<CertificateReviewRequest> =
     docs.mapNotNull { (id, data) ->
         val status = data["status"]?.toString().orEmpty()
@@ -60,6 +60,8 @@ fun certificateReviewRequests(docs: List<Pair<String, Map<String, Any?>>>, now: 
             status != CertificateReview.STATUS_APPROVED &&
             status != CertificateReview.STATUS_PROCESSING
         ) return@mapNotNull null
+        // The server's own claim (PENDING to PROCESSING, before any review) carries no approvalId: it is not a send.
+        if (status == CertificateReview.STATUS_PROCESSING && data["approvalId"]?.toString().orEmpty().isBlank()) return@mapNotNull null
         val request = PortalInputValidator.parseRequest(id, data) ?: return@mapNotNull null
         if (request.type != PortalRequestType.CERTIFICATE_EMAIL) return@mapNotNull null
         val stuck = when (status) {

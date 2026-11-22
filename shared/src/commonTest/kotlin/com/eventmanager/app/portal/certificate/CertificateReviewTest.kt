@@ -46,13 +46,24 @@ class CertificateReviewTest {
         val list = certificateReviewRequests(
             listOf(
                 doc(uid1, "APPROVED", now - 900_000, mapOf("approvedAt" to now - 6 * 60_000L)),
-                doc(uid2, "PROCESSING", now - 900_000, mapOf("processingAt" to now - 60_000L, "reason" to "SEND_FAILED")),
+                doc(uid2, "PROCESSING", now - 900_000, mapOf("processingAt" to now - 60_000L, "reason" to "SEND_FAILED", "approvalId" to "a2")),
             ),
             now,
         )
         assertTrue(list.first { it.portalUid == uid1 }.stuck)
         assertTrue(!list.first { it.portalUid == uid2 }.stuck)
         assertEquals("SEND_FAILED", list.first { it.portalUid == uid2 }.lastReason)
+    }
+
+    @Test
+    fun serverClaimBeforeReviewIsNotASend() {
+        // The server's own claim: PROCESSING, processingDevice "server", no approvalId.
+        val claim = doc(uid1, "PROCESSING", now - 900_000, mapOf("processingAt" to now - 6 * 60_000L, "processingDevice" to "server"))
+        assertTrue(certificateReviewRequests(listOf(claim), now).isEmpty())
+        val blank = doc(uid1, "PROCESSING", now - 900_000, mapOf("processingAt" to now, "approvalId" to ""))
+        assertTrue(certificateReviewRequests(listOf(blank), now).isEmpty())
+        val sending = doc(uid1, "PROCESSING", now - 900_000, mapOf("processingAt" to now, "approvalId" to "a1"))
+        assertEquals(listOf("PROCESSING"), certificateReviewRequests(listOf(sending), now).map { it.status })
     }
 
     @Test
