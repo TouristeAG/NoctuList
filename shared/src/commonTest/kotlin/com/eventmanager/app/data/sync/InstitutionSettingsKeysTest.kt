@@ -25,6 +25,16 @@ class InstitutionSettingsKeysTest {
         )
     }
 
+    @Test
+    fun guestFormPortalValidateSyncsOverFirebaseButNotSheets() {
+        assertTrue(InstitutionSettingsKeys.GUEST_FORMS_PORTAL_VALIDATE_ENABLED in InstitutionSettingsKeys.ALL)
+        assertFalse(
+            InstitutionSettingsKeys.isSyncedToSheets(
+                InstitutionSettingsKeys.GUEST_FORMS_PORTAL_VALIDATE_ENABLED,
+            ),
+        )
+    }
+
     /** Still pushed to Firebase devices, but a Sheets round-trip must not blank the catalogue. */
     @Test
     fun posSubcategoriesSyncOverFirebaseButNotSheets() {

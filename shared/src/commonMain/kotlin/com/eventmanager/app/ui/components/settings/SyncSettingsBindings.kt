@@ -95,6 +95,8 @@ class SyncSettingsBindings(
     val onGuestFormsEnabledChange: (Boolean) -> Unit,
     val guestFormsBilleterieValidateEnabled: Boolean,
     val onGuestFormsBilleterieValidateEnabledChange: (Boolean) -> Unit,
+    val guestFormsPortalValidateEnabled: Boolean,
+    val onGuestFormsPortalValidateEnabledChange: (Boolean) -> Unit,
     val guestFormSiteOrigin: String,
     /** False on the Sheets backend, where temporary guests have no credit accounts. */
     val temporaryGuestCreditsAvailable: Boolean,
@@ -196,6 +198,7 @@ fun rememberSyncSettingsBindings(
     val profilePhotosEnabled by viewModel.profilePhotosUploadEnabled.collectAsState()
     val guestFormsEnabled by viewModel.guestFormsEnabled.collectAsState()
     val guestFormsBilleterieValidateEnabled by viewModel.guestFormsBilleterieValidateEnabled.collectAsState()
+    val guestFormsPortalValidateEnabled by viewModel.guestFormsPortalValidateEnabled.collectAsState()
     val temporaryGuestCreditsEnabled by viewModel.temporaryGuestCreditsEnabled.collectAsState()
     val volunteerPortalEnabled by viewModel.volunteerPortalEnabled.collectAsState()
     val volunteerPortalGoogleEnabled by viewModel.volunteerPortalGoogleEnabled.collectAsState()
@@ -392,6 +395,8 @@ fun rememberSyncSettingsBindings(
         onGuestFormsEnabledChange = { viewModel.setGuestFormsEnabled(it) },
         guestFormsBilleterieValidateEnabled = guestFormsBilleterieValidateEnabled,
         onGuestFormsBilleterieValidateEnabledChange = { viewModel.setGuestFormsBilleterieValidateEnabled(it) },
+        guestFormsPortalValidateEnabled = guestFormsPortalValidateEnabled,
+        onGuestFormsPortalValidateEnabledChange = { viewModel.setGuestFormsPortalValidateEnabled(it) },
         guestFormSiteOrigin = viewModel.guestFormSiteOrigin(),
         temporaryGuestCreditsAvailable = viewModel.isTemporaryGuestFeaturesEnabled(),
         temporaryGuestCreditsEnabled = temporaryGuestCreditsEnabled,

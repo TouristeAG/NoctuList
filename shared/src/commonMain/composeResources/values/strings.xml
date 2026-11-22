@@ -2580,6 +2580,7 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="sync_online_features_title">Features</string>
     <string name="sync_online_guest_forms">Guest list forms</string>
     <string name="sync_online_billeterie_validates">The box office approves the forms</string>
+    <string name="sync_online_portal_validates">The portal approves the forms</string>
     <string name="sync_online_portal_link">Portal link</string>
     <string name="sync_online_logo_hint">The logo set in Settings, Association</string>
     <string name="sync_online_use_domain">Use %1$s</string>

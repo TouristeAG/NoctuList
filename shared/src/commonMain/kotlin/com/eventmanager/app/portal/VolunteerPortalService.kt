@@ -58,6 +58,9 @@ interface VolunteerPortalHost {
     /** Temporary guests have their own space in the portal. */
     fun temporaryGuestPortalEnabled(): Boolean = false
 
+    /** A portal user with guest list access may accept or refuse pending guest forms. */
+    fun portalValidateEnabled(): Boolean = false
+
     /** Temporary guest credits are turned on. */
     fun temporaryGuestCreditsEnabled(): Boolean = false
 

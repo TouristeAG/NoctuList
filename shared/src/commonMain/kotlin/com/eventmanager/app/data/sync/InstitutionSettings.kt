@@ -83,6 +83,12 @@ object InstitutionSettingsKeys {
      */
     const val GUEST_FORMS_BILLETERIE_VALIDATE_ENABLED = "guest_forms_billeterie_validate_enabled"
 
+    /**
+     * When on, a portal user with guest list access can accept or refuse pending forms.
+     * Off by default (Firebase backend only, synced across org devices).
+     */
+    const val GUEST_FORMS_PORTAL_VALIDATE_ENABLED = "guest_forms_portal_validate_enabled"
+
     /** Overrides the derived `https://<projectId>.web.app` origin when a custom domain is used. */
     const val GUEST_FORM_BASE_URL = "guest_form_base_url"
 
@@ -137,6 +143,7 @@ object InstitutionSettingsKeys {
     val GUEST_FORM_KEYS: List<String> = listOf(
         GUEST_FORMS_ENABLED,
         GUEST_FORMS_BILLETERIE_VALIDATE_ENABLED,
+        GUEST_FORMS_PORTAL_VALIDATE_ENABLED,
         GUEST_FORM_BASE_URL,
         INSTITUTION_LOGO_PNG,
     )

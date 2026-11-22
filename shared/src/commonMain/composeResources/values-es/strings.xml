@@ -2556,6 +2556,7 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="sync_online_features_title">Funciones</string>
     <string name="sync_online_guest_forms">Formularios de lista de invitados</string>
     <string name="sync_online_billeterie_validates">La taquilla valida los formularios</string>
+    <string name="sync_online_portal_validates">La plataforma valida los formularios</string>
     <string name="sync_online_portal_link">Enlace del portal</string>
     <string name="sync_online_logo_hint">El logotipo definido en Ajustes, Asociación</string>
     <string name="sync_online_use_domain">Usar %1$s</string>

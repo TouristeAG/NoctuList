@@ -2577,6 +2577,7 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="sync_online_features_title">Fonctions</string>
     <string name="sync_online_guest_forms">Formulaires de guestlist</string>
     <string name="sync_online_billeterie_validates">La billetterie valide les formulaires</string>
+    <string name="sync_online_portal_validates">La plateforme valide les formulaires</string>
     <string name="sync_online_portal_link">Lien du portail</string>
     <string name="sync_online_logo_hint">Le logo défini dans Paramètres, Association</string>
     <string name="sync_online_use_domain">Utiliser %1$s</string>

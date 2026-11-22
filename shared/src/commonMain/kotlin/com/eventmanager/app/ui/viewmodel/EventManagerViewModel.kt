@@ -1137,6 +1137,14 @@ class EventManagerViewModel(
     val guestFormsBilleterieValidateEnabled: StateFlow<Boolean> =
         _guestFormsBilleterieValidateEnabled.asStateFlow()
 
+    private val _guestFormsPortalValidateEnabled = MutableStateFlow(
+        settingsManagerCached?.isGuestFormsPortalValidateEnabled() == true,
+    )
+
+    /** When true, a portal user with guest list access may accept or refuse pending public forms. */
+    val guestFormsPortalValidateEnabled: StateFlow<Boolean> =
+        _guestFormsPortalValidateEnabled.asStateFlow()
+
     private val _institutionLogoPng = MutableStateFlow(
         settingsManagerCached?.getInstitutionLogoPng().orEmpty(),
     )
@@ -1153,6 +1161,8 @@ class EventManagerViewModel(
         _guestFormsEnabled.value = isGuestFormFeaturesEnabled()
         _guestFormsBilleterieValidateEnabled.value =
             settingsManagerCached?.isGuestFormsBilleterieValidateEnabled() == true
+        _guestFormsPortalValidateEnabled.value =
+            settingsManagerCached?.isGuestFormsPortalValidateEnabled() == true
         _institutionLogoPng.value = settingsManagerCached?.getInstitutionLogoPng().orEmpty()
     }
 
@@ -1169,6 +1179,16 @@ class EventManagerViewModel(
         if (getActiveBackendType() != BackendType.FIREBASE) return
         settings.setGuestFormsBilleterieValidateEnabled(enabled)
         publishGuestFormSettings()
+        backupInstitutionSettingsToSheets()
+    }
+
+    fun setGuestFormsPortalValidateEnabled(enabled: Boolean) {
+        val settings = settingsManagerCached ?: return
+        if (getActiveBackendType() != BackendType.FIREBASE) return
+        settings.setGuestFormsPortalValidateEnabled(enabled)
+        publishGuestFormSettings()
+        publishVolunteerPortalSettings()
+        republishVolunteerPortal()
         backupInstitutionSettingsToSheets()
     }
 
@@ -3450,6 +3470,7 @@ class EventManagerViewModel(
         override fun portalQrEnabled() = settingsManagerCached?.isVolunteerPortalQrEnabled() != false
         override fun guestPortalEnabled(): Boolean = settingsManagerCached?.isGuestPortalEnabled() == true
         override fun temporaryGuestPortalEnabled(): Boolean = settingsManagerCached?.isTemporaryGuestPortalEnabled() == true
+        override fun portalValidateEnabled(): Boolean = settingsManagerCached?.isGuestFormsPortalValidateEnabled() == true
         override fun temporaryGuestCreditsEnabled(): Boolean = settingsManagerCached?.isTemporaryGuestCreditsEnabled() == true
         override fun venueAccessNames(): Map<String, String> =
             settingsManagerCached?.getTemporaryGuestVenueAccesses().orEmpty().associate { it.id to it.name }

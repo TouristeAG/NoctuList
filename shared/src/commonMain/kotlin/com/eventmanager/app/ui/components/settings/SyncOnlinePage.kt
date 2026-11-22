@@ -121,6 +121,13 @@ private fun FeaturesBlock(b: SyncSettingsBindings, canEdit: Boolean) {
                     enabled = canEdit,
                     onCheckedChange = b.onGuestFormsBilleterieValidateEnabledChange,
                 )
+                SettingsSwitchRow(
+                    title = stringResource(Res.string.sync_online_portal_validates),
+                    subtitle = null,
+                    checked = b.guestFormsPortalValidateEnabled,
+                    enabled = canEdit && b.temporaryGuestPortalEnabled,
+                    onCheckedChange = b.onGuestFormsPortalValidateEnabledChange,
+                )
             },
         )
         SettingsDivider()
