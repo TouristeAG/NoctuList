@@ -100,6 +100,82 @@ class VolunteerPortalServiceTest {
     }
 
     @Test
+    fun leavesCertificateEmailToTheServer() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true, uid = UID)))
+        startedService(gateway, host)
+        val key = "portalRequests/${UID}_CERTIFICATE_EMAIL"
+        gateway.docs[key] = mapOf(
+            "uid" to UID, "type" to "CERTIFICATE_EMAIL", "status" to "PENDING", "email" to "lea@example.org",
+            "from" to 20260101, "to" to 20261231, "jobTypes" to listOf("Bar"),
+            "requestedAt" to System.currentTimeMillis() - 150_000,
+        )
+        gateway.push("portalRequests")
+        assertEquals("PENDING", gateway.docs[key]!!["status"])
+        assertTrue(host.mailed.isEmpty())
+    }
+
+    private fun startCertificate(gateway: FakeGateway, host: FakeHost, volunteers: MutableStateFlow<List<Volunteer>>) =
+        service(gateway, host).also {
+            it.start(volunteers, MutableStateFlow(emptyList<Guest>()), MutableStateFlow(emptyList()), MutableStateFlow(emptyList()),
+                MutableStateFlow(listOf(JobTypeConfig(name = "Bar", description = "Behind the bar"), JobTypeConfig(name = "  ", description = "x"))))
+        }
+
+    @Test
+    fun publishesTheCertificateTemplateWhenOn() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(volunteer("SECRETID123", "lea@example.org", enabled = true, uid = UID))).apply { certificateOn = true }
+        startCertificate(gateway, host, MutableStateFlow(host.volunteers.toList()))
+        withTimeout(5_000) { while (gateway.docs["portalMail/certificate"] == null) delay(20) }
+        val doc = gateway.docs["portalMail/certificate"]!!
+        assertIs<Map<*, *>>(doc["template"])
+        assertEquals("fr", (doc["template"] as Map<*, *>)["language"])
+        assertEquals("Asso", doc["association"])
+        assertEquals("", doc["logoBase64"])
+        assertEquals(
+            listOf(mapOf("name" to "Bar", "category" to "SHIFT", "description" to "Behind the bar")),
+            doc["jobTypes"],
+        )
+        assertTrue(doc["updatedAt"] is Long)
+        assertFalse(doc.toString().contains("SECRETID123"))
+    }
+
+    @Test
+    fun deletesTheCertificateTemplateWhenTurnedOff() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(emptyList()).apply { certificateOn = true }
+        val volunteers = MutableStateFlow(host.volunteers.toList())
+        startCertificate(gateway, host, volunteers)
+        withTimeout(5_000) { while (gateway.docs["portalMail/certificate"] == null) delay(20) }
+        host.certificateOn = false
+        volunteers.value = listOf(volunteer("V9", "z@example.org"))
+        withTimeout(5_000) { while ("portalMail/certificate" !in gateway.deleted) delay(20) }
+        assertNull(gateway.docs["portalMail/certificate"])
+        assertFalse(host.loadPublishedHashes().keys.any { it.endsWith("#certificate") })
+        volunteers.value = listOf(volunteer("V8", "y@example.org"))
+        delay(300)
+        assertEquals(1, gateway.deleted.count { it == "portalMail/certificate" }, "deleted once")
+    }
+
+    @Test
+    fun republishesTheCertificateTemplateOnlyOnChange() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(emptyList()).apply { certificateOn = true }
+        val volunteers = MutableStateFlow(host.volunteers.toList())
+        startCertificate(gateway, host, volunteers)
+        withTimeout(5_000) { while (gateway.docs["portalMail/certificate"] == null) delay(20) }
+        volunteers.value = listOf(volunteer("V9", "z@example.org"))
+        delay(300)
+        volunteers.value = listOf(volunteer("V8", "y@example.org"))
+        delay(300)
+        assertEquals(1, gateway.writes.count { it == "portalMail/certificate" })
+        host.certTemplate = com.eventmanager.app.portal.certificate.CertificateDefaults.template("en", "Asso")
+        volunteers.value = listOf(volunteer("V7", "x@example.org"))
+        withTimeout(5_000) { while (gateway.writes.count { it == "portalMail/certificate" } < 2) delay(20) }
+        assertEquals("en", (gateway.docs["portalMail/certificate"]!!["template"] as Map<*, *>)["language"])
+    }
+
+    @Test
     fun oldRequestIsProcessedByDevice() = runBlocking {
         val gateway = FakeGateway()
         val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true, uid = UID)))

@@ -114,6 +114,10 @@ internal class FakeHost(initial: List<Volunteer>) : VolunteerPortalHost {
     override fun portalGoogleAnyAccount() = googleAny
     override fun portalGoogleAddressTemplate() = googleTemplate
     override fun portalQrEnabled() = qrEnabled
+    var certificateOn = false
+    var certTemplate: com.eventmanager.app.portal.certificate.CertificateTemplate? = null
+    override fun certificateEnabled() = certificateOn
+    override fun certificateTemplate() = certTemplate
     override suspend fun volunteers() = volunteers.toList()
     override suspend fun createVolunteer(volunteer: Volunteer, photo: ByteArray?): Volunteer {
         created += volunteer

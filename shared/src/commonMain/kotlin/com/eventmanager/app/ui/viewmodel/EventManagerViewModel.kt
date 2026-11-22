@@ -3297,6 +3297,9 @@ class EventManagerViewModel(
             if (settingsManagerCached?.isVolunteerPortalShowLogo() == false) "" else settingsManagerCached?.getInstitutionLogoPng().orEmpty()
         override fun profilePhotosEnabled(): Boolean = isProfilePhotoUploadEnabled()
         override fun portalQrEnabled() = settingsManagerCached?.isVolunteerPortalQrEnabled() != false
+        override fun certificateEnabled(): Boolean = settingsManagerCached?.isVolunteerPortalCertificateEnabled() == true
+        override fun certificateTemplate() = settingsManagerCached?.volunteerPortalCertificateTemplate()
+        override fun certificateLogoPng(): String = settingsManagerCached?.getInstitutionLogoPng().orEmpty()
         override fun guestPortalEnabled(): Boolean = settingsManagerCached?.isGuestPortalEnabled() == true
         override fun temporaryGuestPortalEnabled(): Boolean = settingsManagerCached?.isTemporaryGuestPortalEnabled() == true
         override fun temporaryGuestCreditsEnabled(): Boolean = settingsManagerCached?.isTemporaryGuestCreditsEnabled() == true

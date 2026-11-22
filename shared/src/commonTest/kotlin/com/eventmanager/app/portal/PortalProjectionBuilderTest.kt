@@ -84,6 +84,7 @@ class PortalProjectionBuilderTest {
         at: Long = now,
         configs: List<JobTypeConfig> = emptyList(),
         googleLinkAllowed: Boolean = false,
+        certificateEnabled: Boolean = false,
     ) = PortalProjectionInput(
         volunteer = v,
         jobs = jobs,
@@ -95,9 +96,40 @@ class PortalProjectionBuilderTest {
         photoVersion = "abc",
         mustSetPassword = false,
         googleLinkAllowed = googleLinkAllowed,
+        certificateEnabled = certificateEnabled,
         now = at,
         offsetHours = 0,
     )
+
+    @Test
+    fun pageListsEveryPastJobTypeWithItsDays() {
+        val jobs = (1..50).map { job(-it.toLong(), "Bar") } + (51..70).map { job(-it.toLong(), "Entrée") } + job(4, "Bar")
+        val root = Json.parseToJsonElement(
+            PortalProjectionBuilder.build(input(jobs = jobs, certificateEnabled = true)).payload,
+        ).jsonObject
+        val types = root["certificate"]!!.jsonObject["types"]!!.jsonArray
+        assertEquals(2, types.size)
+        assertEquals(70, types.sumOf { it.jsonObject["days"]!!.jsonArray.size })
+        // Types by first day: Entrée starts 70 days ago, Bar 50 days ago.
+        assertEquals(listOf("Entrée", "Bar"), types.map { it.jsonObject["name"]!!.jsonPrimitive.content })
+        assertEquals("OTHER", types[0].jsonObject["category"]!!.jsonPrimitive.content)
+        val days = types[1].jsonObject["days"]!!.jsonArray.map { it.jsonPrimitive.int }
+        assertEquals(days.sorted().distinct(), days)
+        assertTrue(days.all { it in 20_000_000..29_999_999 })
+    }
+
+    @Test
+    fun pageHasNoCertificateFieldWhenOff() {
+        val root = Json.parseToJsonElement(PortalProjectionBuilder.build(input()).payload).jsonObject
+        assertFalse("certificate" in root)
+    }
+
+    @Test
+    fun pageCertificateNeverContainsTheVolunteerId() {
+        val payload = PortalProjectionBuilder.build(input(certificateEnabled = true)).payload
+        val certificate = Json.parseToJsonElement(payload).jsonObject["certificate"].toString()
+        assertFalse(certificate.contains(secretId))
+    }
 
     @Test
     fun neverPublishesWalletIdNfcOrPhotoPaths() {

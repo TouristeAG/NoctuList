@@ -27,7 +27,17 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
+import com.eventmanager.app.portal.certificate.CertificateDefaults
+import com.eventmanager.app.portal.certificate.certificateCategoryOf
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.longOrNull
 import kotlin.coroutines.cancellation.CancellationException
 
 /** What the portal service needs from the app (persistence, sync, photos, e-mail). */
@@ -51,6 +61,12 @@ interface VolunteerPortalHost {
 
     /** Non-admin volunteers get their own QR code in the portal. */
     fun portalQrEnabled(): Boolean = true
+    /** The volunteer certificate is switched on; the server renders and mails it, never a device. */
+    fun certificateEnabled(): Boolean = false
+    /** The saved certificate template, or null when none was ever saved. */
+    fun certificateTemplate(): com.eventmanager.app.portal.certificate.CertificateTemplate? = null
+    /** Institution logo (PNG, base64) for the certificate letterhead; empty when there is none. */
+    fun certificateLogoPng(): String = ""
 
     /** Permanent guests have their own space in the portal. */
     fun guestPortalEnabled(): Boolean = false
@@ -1363,12 +1379,13 @@ class VolunteerPortalService(
         runCatching { gateway.deleteDocument(orgId, BRANDING_COLLECTION, BRANDING_DOC) }
         runCatching { gateway.deleteDocument(orgId, MAIL_COLLECTION, MAIL_DOC) }
         runCatching { gateway.deleteDocument(orgId, MAIL_COLLECTION, GUEST_MAIL_DOC) }
+        runCatching { gateway.deleteDocument(orgId, MAIL_COLLECTION, CERTIFICATE_DOC) }
         // Failed QR deletes stay so the next publish retries them.
         host.savePublishedHashes(
             host.loadPublishedHashes().filterKeys {
                 (!it.startsWith("$orgId/") || it.endsWith(QR_SUFFIX) || it.endsWith(GuestPortalPublisher.GUEST_QR_SUFFIX) ||
                     it.endsWith(GuestPortalPublisher.TEMP_QR_SUFFIX)) && it != brandingKey && it != mailKey &&
-                    it != guestMailKey
+                    it != guestMailKey && it != certificateKey
             },
         )
     }
@@ -1423,7 +1440,9 @@ class VolunteerPortalService(
         val hashes = host.loadPublishedHashes().toMutableMap()
         publishBranding(hashes)
         publishMailTemplate(hashes)
+        publishCertificate(hashes, snapshot.configs)
         val googleLinkAllowed = googleLoginOn()
+        val certificateOn = host.certificateEnabled()
         val linked = snapshot.volunteers.filter {
             it.portalEnabled && it.portalUid.isNotBlank() &&
                 (it.firebaseOrgId.isBlank() || it.firebaseOrgId == orgId)
@@ -1455,6 +1474,7 @@ class VolunteerPortalService(
                     photoVersion = hashes[photoKey] ?: "",
                     mustSetPassword = false,
                     googleLinkAllowed = googleLinkAllowed,
+                    certificateEnabled = certificateOn,
                     now = now,
                     offsetHours = host.dateOffsetHours(),
                 ),
@@ -1626,6 +1646,63 @@ class VolunteerPortalService(
         }
     }
 
+    private val certificateKey get() = "$orgId#certificate"
+
+    /**
+     * The certificate template and job types for the server, which renders and mails the PDF. Removed
+     * (once) when the option is off. Same hash rule as the mail templates.
+     */
+    private suspend fun publishCertificate(hashes: MutableMap<String, String>, configs: List<JobTypeConfig>) {
+        if (!host.certificateEnabled()) {
+            if (hashes[certificateKey] == null) return
+            try {
+                gateway.deleteDocument(orgId, MAIL_COLLECTION, CERTIFICATE_DOC)
+                hashes.remove(certificateKey)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                println("Portal: certificate template delete failed: ${e.message}")
+            }
+            return
+        }
+        val association = host.associationName().trim()
+        val template = host.certificateTemplate() ?: CertificateDefaults.template("fr", association)
+        val logo = host.certificateLogoPng().trim().let { if (it.length <= MAX_CERTIFICATE_LOGO_CHARS) it else "" }
+        val data: Map<String, Any?> = mapOf(
+            "template" to jsonToPlain(Json.parseToJsonElement(template.toJson())),
+            "association" to association.take(80),
+            "logoBase64" to logo,
+            "jobTypes" to configs
+                .map { Triple(it.name.trim(), certificateCategoryOf(it).name, it.description.trim()) }
+                .filter { it.first.isNotEmpty() }
+                .distinctBy { it.first }
+                .sortedBy { it.first }
+                .map { (name, category, description) -> mapOf("name" to name, "category" to category, "description" to description) },
+        )
+        val hash = PortalProjectionBuilder.sha256(data.toString())
+        if (hashes[certificateKey] == hash) return
+        try {
+            gateway.setPlainDocument(orgId, MAIL_COLLECTION, CERTIFICATE_DOC, data + ("updatedAt" to clock()), merge = false)
+            hashes[certificateKey] = hash
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            println("Portal: certificate template publish failed: ${e.message}")
+        }
+    }
+
+    private fun jsonToPlain(element: JsonElement): Any? = when (element) {
+        is JsonNull -> null
+        is JsonObject -> element.mapValues { jsonToPlain(it.value) }
+        is JsonArray -> element.map { jsonToPlain(it) }
+        is JsonPrimitive -> when {
+            element.isString -> element.content
+            element.booleanOrNull != null -> element.booleanOrNull
+            element.longOrNull != null -> element.longOrNull
+            else -> element.doubleOrNull
+        }
+    }
+
     private fun photoVersionOf(volunteer: Volunteer): String =
         photoVersion(host.profilePhotosEnabled(), volunteer.profilePhotoUrl, volunteer.profilePhotoPath)
 
@@ -1690,6 +1767,9 @@ class VolunteerPortalService(
         const val MAIL_COLLECTION = "portalMail"
         const val MAIL_DOC = "default"
         const val GUEST_MAIL_DOC = "guest"
+        const val CERTIFICATE_DOC = "certificate"
+        /** Template limit (the logo is the bulk of it). */
+        private const val MAX_CERTIFICATE_LOGO_CHARS = 400_000
         private const val QR_SUFFIX = "#qr"
         /** QR hash value meaning "this device deleted the QR doc". */
         internal const val QR_TOMBSTONE = "-"

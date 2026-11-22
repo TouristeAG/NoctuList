@@ -10,6 +10,8 @@ import com.eventmanager.app.data.models.NovaJobType
 import com.eventmanager.app.data.models.Volunteer
 import com.eventmanager.app.data.models.affectsAccountLedger
 import com.eventmanager.app.data.utils.DateTimeUtils
+import com.eventmanager.app.portal.certificate.CertificateDates
+import com.eventmanager.app.portal.certificate.certificateCategoryOf
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -39,6 +41,8 @@ data class PortalProjectionInput(
     val mustSetPassword: Boolean,
     /** Google sign-in is on with at least one verified domain: the page may offer "link my Google account". */
     val googleLinkAllowed: Boolean = false,
+    /** The certificate is on: the page gets every past job type with its days. */
+    val certificateEnabled: Boolean = false,
     val now: Long,
     val offsetHours: Int,
 )
@@ -119,8 +123,29 @@ object PortalProjectionBuilder {
             put("googleEmail", googleEmail)
             put("googleLinkedBy", volunteer.portalGoogleLinkedBy.trim())
             put("googleLinkAvailable", input.googleLinkAllowed && googleEmail.isEmpty())
+            if (input.certificateEnabled) put("certificate", certificateJson(pastJobs, configsByName))
         }.toString()
         return PortalProjection(payload = payload, contentHash = sha256(payload))
+    }
+
+    /** Every past job (no cap), grouped by job type: sorted unique days as YYYYMMDD, types by first day. Never ids. */
+    private fun certificateJson(pastJobs: List<Job>, configsByName: Map<String, JobTypeConfig>): JsonObject {
+        val daysByType = pastJobs
+            .filter { it.jobTypeName.trim().isNotEmpty() }
+            .groupBy({ it.jobTypeName.trim() }, { CertificateDates.dayOf(it.date) })
+            .mapValues { (_, days) -> days.distinct().sorted() }
+        val types = daysByType.entries.sortedWith(compareBy({ it.value.first() }, { it.key }))
+        return buildJsonObject {
+            put("types", buildJsonArray {
+                types.forEach { (name, days) ->
+                    add(buildJsonObject {
+                        put("name", name)
+                        put("category", certificateCategoryOf(configsByName[name]).name)
+                        put("days", buildJsonArray { days.forEach { add(JsonPrimitive(it)) } })
+                    })
+                }
+            })
+        }
     }
 
     private fun shiftJson(job: Job, configsByName: Map<String, JobTypeConfig>, gains: List<Benefit>): JsonObject {
