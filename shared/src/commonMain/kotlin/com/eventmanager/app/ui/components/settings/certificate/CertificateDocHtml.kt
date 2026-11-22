@@ -143,26 +143,50 @@ object CertificateDocHtml {
             linkHref = null
             linkRun = null
             linkText = StringBuilder()
+            val forms = if (href.startsWith(GENDER_PREFIX)) {
+                href.removePrefix(GENDER_PREFIX).split("|").map { it.replace("%7C", "|").replace("%7c", "|").replace("%25", "%") }
+            } else {
+                emptyList()
+            }
+            val link: CertRun?
+            val label: String
             when {
                 href.startsWith(VAR_PREFIX) && href.length > VAR_PREFIX.length -> {
-                    runs += base.copy(variable = href.removePrefix(VAR_PREFIX))
-                    addCarried(base, shown)
+                    val key = href.removePrefix(VAR_PREFIX)
+                    link = base.copy(variable = key)
+                    label = "{$key}"
                 }
-                href.startsWith(GENDER_PREFIX) -> {
-                    val forms = href.removePrefix(GENDER_PREFIX).split("|").map { it.replace("%7C", "|").replace("%7c", "|").replace("%25", "%") }
-                    if (forms.size == 3) {
-                        runs += base.copy(gender = forms)
-                        addCarried(base, shown)
-                    } else if (shown.isNotEmpty()) runs += base.copy(text = shown)
+                href.startsWith(GENDER_PREFIX) && forms.size == 3 -> {
+                    link = base.copy(gender = forms)
+                    label = forms.joinToString("/")
                 }
-                shown.isNotEmpty() -> runs += base.copy(text = shown)
+                else -> {
+                    appendText(shown, base)
+                    return
+                }
+            }
+            // Text typed next to the label ends up inside the link: it is kept as plain text around it.
+            val at = shown.indexOf(label)
+            if (at < 0) {
+                runs += link
+                appendText(shown, base)
+            } else {
+                appendText(shown.substring(0, at), base)
+                runs += link
+                appendText(shown.substring(at + label.length), base)
             }
         }
 
-        /** Spaces written after a link's label are real text that follows the link. */
-        private fun addCarried(base: CertRun, shown: String) {
-            val tail = shown.takeLastWhile { it.isWhitespace() }
-            if (tail.isNotEmpty()) runs += CertRun(text = tail, b = base.b, i = base.i, u = base.u)
+        private fun appendText(text: String, base: CertRun) {
+            if (text.isEmpty()) return
+            val last = runs.lastOrNull()
+            if (last != null && last.variable.isEmpty() && last.gender.isEmpty() &&
+                last.b == base.b && last.i == base.i && last.u == base.u
+            ) {
+                runs[runs.lastIndex] = last.copy(text = last.text + text)
+            } else {
+                runs += CertRun(text = text, b = base.b, i = base.i, u = base.u)
+            }
         }
 
         fun finish() {
@@ -170,6 +194,13 @@ object CertificateDocHtml {
             if (!open) return
             open = false
             val px = blockPx ?: firstPx
+            // An empty paragraph is not kept: the editor loses it and the PDF skips it.
+            if (runs.all { it.text.isEmpty() && it.variable.isEmpty() && it.gender.isEmpty() }) {
+                runs.clear()
+                firstPx = null
+                blockPx = null
+                return
+            }
             paragraphs += CertParagraph(
                 align = align,
                 size = if (px == null) CertSize.NORMAL else sizeFromPx(px),

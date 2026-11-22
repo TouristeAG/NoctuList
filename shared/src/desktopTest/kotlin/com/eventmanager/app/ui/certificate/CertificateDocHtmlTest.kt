@@ -93,4 +93,38 @@ class CertificateDocHtmlTest {
             }
         }
     }
+
+    @Test
+    fun emptyEditorParagraphsAreDroppedOnRead() {
+        val doc = CertificateDocHtml.fromHtml("""<p>a</p><p></p><p style="text-align: center;"><br></p><br><p>b</p>""")
+        assertEquals(listOf("a", "b"), doc.map { it.runs.single().text })
+    }
+
+    @Test
+    fun textTypedInsideALinkLabelIsKept() {
+        val doc = CertificateDocHtml.fromHtml(
+            """<p><a href="var:firstName">{firstName}, bonjour</a> et <a href="gender:a|b|c">x a/b/c</a><a href="var:k">label changé</a></p>""",
+        )
+        assertEquals(
+            listOf(
+                CertRun(variable = "firstName"),
+                CertRun(text = ", bonjour et x "),
+                CertRun(gender = listOf("a", "b", "c")),
+                CertRun(variable = "k"),
+                CertRun(text = "label changé"),
+            ),
+            doc.single().runs,
+        )
+    }
+
+    @Test
+    fun typingAfterALinkInTheEditorKeepsTheText() {
+        val state = RichTextState()
+        state.setHtml(CertificateDocHtml.toHtml(listOf(CertParagraph(runs = listOf(CertRun(variable = "firstName"))))))
+        state.selection = androidx.compose.ui.text.TextRange(state.annotatedString.text.length)
+        state.addTextAfterSelection("zz")
+        val text = CertificateDocHtml.fromHtml(state.toHtml()).single().runs
+        assertEquals(true, text.any { it.variable == "firstName" })
+        assertEquals("zz", text.filter { it.variable.isEmpty() }.joinToString("") { it.text })
+    }
 }
