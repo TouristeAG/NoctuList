@@ -2408,7 +2408,7 @@ USB रीडर प्लग इन करें या ब्लूटूथ A
     <string name="certificate_reset">डिफ़ॉल्ट टेक्स्ट वापस लाएँ</string>
     <string name="certificate_reset_confirm">प्रमाणपत्र और ई-मेल के टेक्स्ट डिफ़ॉल्ट पर लौट आते हैं। स्थान, हस्ताक्षरकर्ता और पते वैसे ही रहते हैं।</string>
     <string name="certificate_reset_action">वापस लाएँ</string>
-    <string name="certificate_language_changed">तारीखें अब %1$s में लिखी जाती हैं। टेक्स्ट जैसे हैं वैसे ही रहते हैं।</string>
+    <string name="certificate_language_changed">तारीखें अब चुनी हुई भाषा में लिखी जाती हैं। टेक्स्ट जैसे हैं वैसे ही रहते हैं।</string>
     <string name="certificate_language_load_defaults">डिफ़ॉल्ट टेक्स्ट लें</string>
     <string name="certificate_language_keep">टेक्स्ट रखें</string>
     <string name="certificate_too_large">प्रमाणपत्र सहेजने के लिए बहुत भारी है (400,000 से ज़्यादा अक्षर)। हल्की हस्ताक्षर छवि या छोटे टेक्स्ट से काम चलेगा।</string>

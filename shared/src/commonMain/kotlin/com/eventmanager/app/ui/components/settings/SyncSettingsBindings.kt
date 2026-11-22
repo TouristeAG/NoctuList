@@ -390,6 +390,7 @@ class CertificateEditorHost(
     val jobTypes get() = viewModel.jobTypeConfigs
     val logo get() = viewModel.institutionLogoPng
     fun template() = viewModel.volunteerPortalCertificateTemplate()
+    fun hasSavedTemplate() = viewModel.hasSavedCertificateTemplate()
     fun associationName() = viewModel.certificateAssociationName()
     fun gmailAddress() = viewModel.certificateGmailAddress()
     fun save(template: com.eventmanager.app.portal.certificate.CertificateTemplate) =

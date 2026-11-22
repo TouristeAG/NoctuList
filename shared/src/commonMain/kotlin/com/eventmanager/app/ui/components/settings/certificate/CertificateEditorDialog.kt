@@ -322,10 +322,10 @@ internal fun CertificateEditorContent(
         }
     }
 
-    languageChanged?.let { lang ->
+    if (languageChanged != null) {
         AlertDialog(
             onDismissRequest = { languageChanged = null },
-            text = { Text(stringResource(Res.string.certificate_language_changed, CERTIFICATE_LANGUAGE_NAMES[lang].orEmpty())) },
+            text = { Text(stringResource(Res.string.certificate_language_changed)) },
             confirmButton = {
                 TextButton(onClick = {
                     model.loadDefaultTexts()

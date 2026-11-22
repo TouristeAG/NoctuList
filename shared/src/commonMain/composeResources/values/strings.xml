@@ -2418,7 +2418,7 @@ Place a card on the reader and test again to read a UID.</string>
     <string name="certificate_reset">Restore the default texts</string>
     <string name="certificate_reset_confirm">The certificate and e-mail texts go back to the defaults. The place, the signer and the addresses are kept.</string>
     <string name="certificate_reset_action">Restore</string>
-    <string name="certificate_language_changed">Dates are now written in %1$s. The texts stay as they are.</string>
+    <string name="certificate_language_changed">The dates now follow the language you chose. The texts stay as they are.</string>
     <string name="certificate_language_load_defaults">Use the default texts</string>
     <string name="certificate_language_keep">Keep the texts</string>
     <string name="certificate_too_large">The certificate is too heavy to save (over 400,000 characters). A lighter signature image or shorter texts will fit.</string>

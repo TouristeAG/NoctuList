@@ -27,7 +27,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
-import com.eventmanager.app.portal.certificate.CertificateDefaults
 import com.eventmanager.app.portal.certificate.certificateCategoryOf
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -1442,7 +1441,7 @@ class VolunteerPortalService(
         publishMailTemplate(hashes)
         publishCertificate(hashes, snapshot.configs)
         val googleLinkAllowed = googleLoginOn()
-        val certificateOn = host.certificateEnabled()
+        val certificateOn = certificateActive()
         val linked = snapshot.volunteers.filter {
             it.portalEnabled && it.portalUid.isNotBlank() &&
                 (it.firebaseOrgId.isBlank() || it.firebaseOrgId == orgId)
@@ -1649,11 +1648,19 @@ class VolunteerPortalService(
     private val certificateKey get() = "$orgId#certificate"
 
     /**
+     * The certificate is offered only when the option is on and a template was saved: without one the
+     * server would render a certificate with no date line and no signer, and a device that lacks the
+     * template could overwrite a good published one.
+     */
+    private fun certificateActive(): Boolean = host.certificateEnabled() && host.certificateTemplate() != null
+
+    /**
      * The certificate template and job types for the server, which renders and mails the PDF. Removed
-     * (once) when the option is off. Same hash rule as the mail templates.
+     * (once) when the option is off or no template was saved. Same hash rule as the mail templates.
      */
     private suspend fun publishCertificate(hashes: MutableMap<String, String>, configs: List<JobTypeConfig>) {
-        if (!host.certificateEnabled()) {
+        val template = host.certificateTemplate()
+        if (!host.certificateEnabled() || template == null) {
             if (hashes[certificateKey] == null) return
             try {
                 gateway.deleteDocument(orgId, MAIL_COLLECTION, CERTIFICATE_DOC)
@@ -1666,7 +1673,6 @@ class VolunteerPortalService(
             return
         }
         val association = host.associationName().trim()
-        val template = host.certificateTemplate() ?: CertificateDefaults.template("fr", association)
         val logo = host.certificateLogoPng().trim().let { if (it.length <= MAX_CERTIFICATE_LOGO_CHARS) it else "" }
         val data: Map<String, Any?> = mapOf(
             "template" to jsonToPlain(Json.parseToJsonElement(template.toJson())),

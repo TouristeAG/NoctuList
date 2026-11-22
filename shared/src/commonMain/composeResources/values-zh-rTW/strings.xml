@@ -2403,7 +2403,7 @@
     <string name="certificate_reset">恢復預設文字</string>
     <string name="certificate_reset_confirm">證明和郵件文字將恢復為預設內容。地點、簽署人和地址保持不變。</string>
     <string name="certificate_reset_action">恢復</string>
-    <string name="certificate_language_changed">日期現在以 %1$s 書寫。文字保持不變。</string>
+    <string name="certificate_language_changed">日期現在會跟隨所選語言。文字保持不變。</string>
     <string name="certificate_language_load_defaults">使用預設文字</string>
     <string name="certificate_language_keep">保留文字</string>
     <string name="certificate_too_large">證明太大，無法儲存（超過 400,000 個字元）。請使用更小的簽名圖片或更短的文字。</string>

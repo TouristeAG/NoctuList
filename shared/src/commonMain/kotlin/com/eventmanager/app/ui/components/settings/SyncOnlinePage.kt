@@ -238,7 +238,10 @@ private fun PortalOptions(b: SyncSettingsBindings, canEdit: Boolean) {
     PortalGoogleOptions(b, canEdit)
 }
 
-/** The volunteer certificate: one switch, and a button that opens the editor (usable while the switch is off). */
+/**
+ * The volunteer certificate: one switch, and a button that opens the editor (usable while the switch is off).
+ * Turning the switch on before any template was saved opens the editor.
+ */
 @Composable
 private fun CertificateOptions(b: SyncSettingsBindings, canEdit: Boolean) {
     var editing by remember { mutableStateOf(false) }
@@ -247,7 +250,11 @@ private fun CertificateOptions(b: SyncSettingsBindings, canEdit: Boolean) {
         subtitle = null,
         checked = b.volunteerPortalCertificateEnabled,
         enabled = canEdit,
-        onCheckedChange = b.onVolunteerPortalCertificateEnabledChange,
+        onCheckedChange = { on ->
+            b.onVolunteerPortalCertificateEnabledChange(on)
+            // Volunteers only get the certificate once a template is saved: ask for it right away.
+            if (on && !b.certificateEditor.hasSavedTemplate()) editing = true
+        },
     )
     TextButton(
         onClick = { editing = true },

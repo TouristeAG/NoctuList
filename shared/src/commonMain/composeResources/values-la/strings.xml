@@ -2408,7 +2408,7 @@ Placez carte in lecteur et testez ad novus pro lire UID.</string>
     <string name="certificate_reset">Textus praefinitos restituere</string>
     <string name="certificate_reset_confirm">Textus testimonii et epistulae ad praefinitos redeunt. Locus, subscriptor et inscriptiones servantur.</string>
     <string name="certificate_reset_action">Restituere</string>
-    <string name="certificate_language_changed">Dies nunc lingua %1$s scribuntur. Textus manent ut sunt.</string>
+    <string name="certificate_language_changed">Dies nunc linguam electam sequuntur. Textus manent ut sunt.</string>
     <string name="certificate_language_load_defaults">Textus praefinitos sumere</string>
     <string name="certificate_language_keep">Textus servare</string>
     <string name="certificate_too_large">Testimonium nimis grave est ut servetur (plus quam 400 000 litterae). Levior imago subscriptionis aut breviores textus convenient.</string>

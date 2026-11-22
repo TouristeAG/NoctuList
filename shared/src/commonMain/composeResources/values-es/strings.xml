@@ -2403,7 +2403,7 @@ Coloque una tarjeta en el lector y vuelva a probar para leer un UID.</string>
     <string name="certificate_reset">Restablecer los textos predeterminados</string>
     <string name="certificate_reset_confirm">Los textos del certificado y del correo vuelven a los predeterminados. Se conservan el lugar, el firmante y las direcciones.</string>
     <string name="certificate_reset_action">Restablecer</string>
-    <string name="certificate_language_changed">Las fechas se escriben ahora en %1$s. Los textos se quedan como están.</string>
+    <string name="certificate_language_changed">Las fechas siguen ahora el idioma elegido. Los textos se quedan como están.</string>
     <string name="certificate_language_load_defaults">Usar los textos predeterminados</string>
     <string name="certificate_language_keep">Conservar los textos</string>
     <string name="certificate_too_large">El certificado pesa demasiado para guardarlo (más de 400 000 caracteres). Una imagen de firma más ligera o textos más cortos cabrán.</string>

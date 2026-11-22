@@ -2955,6 +2955,9 @@ class EventManagerViewModel(
         settingsManagerCached?.volunteerPortalCertificateTemplate()
             ?: com.eventmanager.app.portal.certificate.CertificateDefaults.template("fr", certificateAssociationName())
 
+    /** A template was saved: the certificate is offered to volunteers only then. */
+    fun hasSavedCertificateTemplate(): Boolean = settingsManagerCached?.volunteerPortalCertificateTemplate() != null
+
     fun certificateAssociationName(): String = settingsManagerCached?.getEmailAssociationName().orEmpty().trim()
 
     /** The Gmail account of this device, shown as the default sending address of the certificate. */

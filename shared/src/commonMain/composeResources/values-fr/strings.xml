@@ -2415,7 +2415,7 @@ Placez une carte sur le lecteur et testez à nouveau pour lire un UID.</string>
     <string name="certificate_reset">Rétablir les textes par défaut</string>
     <string name="certificate_reset_confirm">Les textes de l'attestation et de l'e-mail reviennent aux textes par défaut. Le lieu, le signataire et les adresses sont gardés.</string>
     <string name="certificate_reset_action">Rétablir</string>
-    <string name="certificate_language_changed">Les dates sont maintenant écrites en %1$s. Les textes restent tels quels.</string>
+    <string name="certificate_language_changed">Les dates suivent maintenant la langue choisie. Les textes restent tels quels.</string>
     <string name="certificate_language_load_defaults">Reprendre les textes par défaut</string>
     <string name="certificate_language_keep">Garder les textes</string>
     <string name="certificate_too_large">L'attestation est trop lourde pour être enregistrée (plus de 400 000 caractères). Une image de signature plus légère ou des textes plus courts passeront.</string>

@@ -15,6 +15,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -121,10 +123,30 @@ class VolunteerPortalServiceTest {
                 MutableStateFlow(listOf(JobTypeConfig(name = "Bar", description = "Behind the bar"), JobTypeConfig(name = "  ", description = "x"))))
         }
 
+    private fun savedTemplate() = com.eventmanager.app.portal.certificate.CertificateDefaults.template("fr", "Asso")
+
+    @Test
+    fun doesNotPublishTheCertificateWithoutASavedTemplate() = runBlocking {
+        val gateway = FakeGateway()
+        val host = FakeHost(listOf(volunteer("V1", "lea@example.org", enabled = true, uid = UID))).apply { certificateOn = true }
+        val volunteers = MutableStateFlow(host.volunteers.toList())
+        startCertificate(gateway, host, volunteers)
+        withTimeout(5_000) { while (gateway.docs["volunteerPortal/$UID"] == null) delay(20) }
+        val payload = Json.parseToJsonElement(gateway.docs["volunteerPortal/$UID"]!!["payload"] as String).jsonObject
+        assertFalse("certificate" in payload, "no certificate link without a saved template")
+        assertNull(gateway.docs["portalMail/certificate"])
+        assertTrue(gateway.writes.none { it == "portalMail/certificate" })
+        host.certTemplate = savedTemplate()
+        volunteers.value = listOf(volunteer("V2", "lea@example.org", enabled = true, uid = UID))
+        withTimeout(5_000) { while (gateway.docs["portalMail/certificate"] == null) delay(20) }
+        val saved = Json.parseToJsonElement(gateway.docs["volunteerPortal/$UID"]!!["payload"] as String).jsonObject
+        assertTrue("certificate" in saved)
+    }
+
     @Test
     fun publishesTheCertificateTemplateWhenOn() = runBlocking {
         val gateway = FakeGateway()
-        val host = FakeHost(listOf(volunteer("SECRETID123", "lea@example.org", enabled = true, uid = UID))).apply { certificateOn = true }
+        val host = FakeHost(listOf(volunteer("SECRETID123", "lea@example.org", enabled = true, uid = UID))).apply { certificateOn = true; certTemplate = savedTemplate() }
         startCertificate(gateway, host, MutableStateFlow(host.volunteers.toList()))
         withTimeout(5_000) { while (gateway.docs["portalMail/certificate"] == null) delay(20) }
         val doc = gateway.docs["portalMail/certificate"]!!
@@ -143,7 +165,7 @@ class VolunteerPortalServiceTest {
     @Test
     fun deletesTheCertificateTemplateWhenTurnedOff() = runBlocking {
         val gateway = FakeGateway()
-        val host = FakeHost(emptyList()).apply { certificateOn = true }
+        val host = FakeHost(emptyList()).apply { certificateOn = true; certTemplate = savedTemplate() }
         val volunteers = MutableStateFlow(host.volunteers.toList())
         startCertificate(gateway, host, volunteers)
         withTimeout(5_000) { while (gateway.docs["portalMail/certificate"] == null) delay(20) }
@@ -151,7 +173,8 @@ class VolunteerPortalServiceTest {
         volunteers.value = listOf(volunteer("V9", "z@example.org"))
         withTimeout(5_000) { while ("portalMail/certificate" !in gateway.deleted) delay(20) }
         assertNull(gateway.docs["portalMail/certificate"])
-        assertFalse(host.loadPublishedHashes().keys.any { it.endsWith("#certificate") })
+        // The hashes are saved once the whole republish pass is done, after the delete.
+        withTimeout(5_000) { while (host.loadPublishedHashes().keys.any { it.endsWith("#certificate") }) delay(20) }
         volunteers.value = listOf(volunteer("V8", "y@example.org"))
         delay(300)
         assertEquals(1, gateway.deleted.count { it == "portalMail/certificate" }, "deleted once")
@@ -160,7 +183,7 @@ class VolunteerPortalServiceTest {
     @Test
     fun republishesTheCertificateTemplateOnlyOnChange() = runBlocking {
         val gateway = FakeGateway()
-        val host = FakeHost(emptyList()).apply { certificateOn = true }
+        val host = FakeHost(emptyList()).apply { certificateOn = true; certTemplate = savedTemplate() }
         val volunteers = MutableStateFlow(host.volunteers.toList())
         startCertificate(gateway, host, volunteers)
         withTimeout(5_000) { while (gateway.docs["portalMail/certificate"] == null) delay(20) }
