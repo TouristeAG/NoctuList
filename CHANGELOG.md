@@ -4,6 +4,17 @@ All notable changes to NoctuList are documented here. Version numbers follow [Se
 
 ---
 
+## 3.2.1 — 2026-11-23
+
+Optional update: devices on 3.2.0 keep working.
+
+### Changes
+
+- **Unique entries next to a free entry.** When a volunteer has a free entry, the portal shows their unique entries under the perks as a reserve for later, in a quieter banner, instead of at the top as if they were needed to get in. The free entry shows its companions, and each unique entry shows its own.
+- **Noctuspace.** The portal installed as a web app on a phone is now called Noctuspace.
+
+---
+
 ## 3.2.0 — 2026-11-23
 
 Mandatory update: devices on 3.1.0 or older must update before they can be used.
