@@ -15,15 +15,15 @@
     <string name="shifts_sheet_label">Shifts Sheet</string>
     <string name="volunteer_guest_list_sheet_label">Volunteer Guest List Sheet</string>
     <!-- Read-only banner written to the volunteer benefit guest list Google Sheet (K1:M5, K6:M6); language follows app setting -->
-    <string name="volunteer_guest_sheet_banner_title">DO NOT EDIT â Volunteer benefit guest list (read-only)</string>
+    <string name="volunteer_guest_sheet_banner_title">DO NOT EDIT — Volunteer benefit guest list (read-only)</string>
     <string name="volunteer_guest_sheet_banner_l2">Do not modify this sheet.</string>
     <string name="volunteer_guest_sheet_banner_l3">Changes made here are not saved by the app.</string>
     <string name="volunteer_guest_sheet_banner_l4">This tab only lists volunteers who currently have guest-list benefits from the app.</string>
-    <string name="volunteer_guest_sheet_banner_l5">The app refreshes this tabâif the app is not used, it is no longer up to date.</string>
+    <string name="volunteer_guest_sheet_banner_l5">The app refreshes this tab—if the app is not used, it is no longer up to date.</string>
     <string name="volunteer_guest_sheet_last_updated">Last updated: %1$s</string>
     <!-- Epoch helper panel written to Google Sheets (formulas + titles); language follows app setting -->
-    <string name="sheet_epoch_calc_title_ms_to_date">Timestamp (ms) â date/time</string>
-    <string name="sheet_epoch_calc_title_date_to_ms">Date/time â timestamp (ms)</string>
+    <string name="sheet_epoch_calc_title_ms_to_date">Timestamp (ms) → date/time</string>
+    <string name="sheet_epoch_calc_title_date_to_ms">Date/time → timestamp (ms)</string>
     <string name="sheet_epoch_calc_hint_ms">Type epoch ms here (e.g. 1776711088094)</string>
     <string name="sheet_epoch_calc_hint_datetime">Pick or type a date/time cell</string>
     <string name="temp_guest_list_sheet_label">Temp Guest List Sheet</string>
@@ -99,7 +99,7 @@
     <string name="update_available_message">A newer version of this app is available. Would you like to update now?</string>
     <string name="update_now">Update now</string>
     <string name="later">Later</string>
-    <string name="up_to_date_title">Youâre up to date</string>
+    <string name="up_to_date_title">You’re up to date</string>
     <string name="up_to_date_message">You already have the latest version installed.</string>
     <string name="update_error_title">Update check failed</string>
     <string name="update_error_message">Could not check for updates: %s</string>
@@ -123,12 +123,12 @@
     <string name="language_title">Language</string>
     <string name="language_description">Select your preferred language</string>
     <string name="language_english">English</string>
-    <string name="language_french">FranÃ§ais</string>
-    <string name="language_spanish">EspaÃ±ol</string>
-    <string name="language_chinese">ç¹é«ä¸­æ</string>
-    <string name="language_chinese_simplified">ç®ä½ä¸­æ</string>
+    <string name="language_french">Français</string>
+    <string name="language_spanish">Español</string>
+    <string name="language_chinese">繁體中文</string>
+    <string name="language_chinese_simplified">简体中文</string>
     <string name="language_latin">Latina</string>
-    <string name="language_hindi">à¤¹à¤¿à¤¨à¥à¤¦à¥</string>
+    <string name="language_hindi">हिन्दी</string>
     
     <!-- Theme Settings -->
     <string name="theme_title">Theme</string>
@@ -216,8 +216,8 @@
     <string name="benefit_system_label">Benefit System</string>
     <string name="stellar_config_label">Shift Type Configuration</string>
     <string name="manual_rewards_config_label">Manual Rewards Configuration</string>
-    <string name="manual_rewards_warning_orion_automatic_enabled">Automatic Orion benefits are enabled for this shift type! They stack with manual rewardsâswitch to Stellar and turn off Orion Job if that was not intended.</string>
-    <string name="manual_rewards_warning_nova_stellar_automatic_enabled">Automatic Nova / Galaxie (shift job) benefits are enabled! They stack with manual rewardsâswitch to Stellar and turn off Shift Job if that was not intended.</string>
+    <string name="manual_rewards_warning_orion_automatic_enabled">Automatic Orion benefits are enabled for this shift type! They stack with manual rewards—switch to Stellar and turn off Orion Job if that was not intended.</string>
+    <string name="manual_rewards_warning_nova_stellar_automatic_enabled">Automatic Nova / Galaxie (shift job) benefits are enabled! They stack with manual rewards—switch to Stellar and turn off Shift Job if that was not intended.</string>
     <string name="shift_job_label">Shift Job (Nova / Galaxie)</string>
     <string name="orion_job_label">Orion Job (Committee / Coordination)</string>
     <string name="requires_shift_time_label">Required can/can\'t enjoy evening setting</string>
@@ -231,24 +231,24 @@
     <string name="future_entry_invites_label">Invites per future entry (friends)</string>
     <string name="future_entry_invites_helper">Used for the &quot;+n inv.&quot; shown on future single-use entries.</string>
     <string name="future_single_use_entries_with_invites_summary">Future single-use entries: %1$d (+%2$d inv.)</string>
-    <string name="future_event_entries_remaining_n">ðï¸ %d Future event entries (single use)</string>
-    <string name="future_entry_remaining_with_invites">ðï¸ %1$d entry left (+%2$d inv.)</string>
-    <string name="future_entries_remaining_with_invites">ðï¸ %1$d entries left (+%2$d inv.)</string>
-    <string name="future_entry_solo">ðï¸ %d entry left (solo)</string>
-    <string name="future_entries_solo">ðï¸ %d entries left (solo)</string>
+    <string name="future_event_entries_remaining_n">🎟️ %d Future event entries (single use)</string>
+    <string name="future_entry_remaining_with_invites">🎟️ %1$d entry left (%2$s)</string>
+    <string name="future_entries_remaining_with_invites">🎟️ %1$d entries left (%2$s)</string>
+    <string name="future_entry_solo">🎟️ %d entry left (solo)</string>
+    <string name="future_entries_solo">🎟️ %d entries left (solo)</string>
     <string name="other_notes_label">Other Notes</string>
     <string name="other_notes_placeholder">Additional notes…</string>
     <string name="update_shift_type">Update Shift Type</string>
     <string name="stellar_benefits_info_title">Perks cheat sheet</string>
     <string name="benefits_help_dialog_title">Perks cheat sheet</string>
-    <string name="benefits_help_dialog_subtitle">Collectif Nocturne Â· 2026-27</string>
+    <string name="benefits_help_dialog_subtitle">Collectif Nocturne · 2026-27</string>
     <string name="benefits_help_intro">Match the shift to what actually happened. Stellar = auto; Manual = you type it.</string>
     <string name="benefits_help_tab_modes">Modes</string>
     <string name="benefits_help_tab_nova">Shift types</string>
     <string name="benefits_help_tab_extras">Bonuses &amp; timing</string>
-    <string name="benefits_help_app_stellar">Shift job on â pick a Nova type\nOrion job on â mandate year (Veteran the year after)\nDrinks, guest list, future entries â calculated for you</string>
+    <string name="benefits_help_app_stellar">Shift job on → pick a Nova type\nOrion job on → mandate year (Veteran the year after)\nDrinks, guest list, future entries → calculated for you</string>
     <string name="benefits_help_app_manual">You enter the duration, the account credit, the discount, accompanying guests, and extras\nFor one-offs outside the usual grid\nDon\'t double-count the same real shift if it\'s already Stellar</string>
-    <string name="benefits_help_section_profité_title">ProfitÃ© / non-profité</string>
+    <string name="benefits_help_section_profité_title">Profité / non-profité</string>
     <string name="benefits_help_section_profité_body">Default shift only, when “enjoy evening” is on.\nNot about entry: it is whether the shift hours still let the person enjoy the night or not.\nOther Nova types: this toggle is hidden.</string>
     <string name="benefits_help_section_nova_title">Nova perks (shift job)</string>
     <string name="benefits_help_nova_profité_title">Default shift - profité</string>
@@ -267,7 +267,7 @@
     <string name="benefits_help_nova_gd_event_rationale">Same vibe as photo/video that night.</string>
     <string name="benefits_help_nova_gd_event_perks">Free entry + 1 guest - event night\n50\u0025 bar - event night\n2 free drinks (~10 CHF) - event night\n1 seasonal free entry + 1 guest</string>
     <string name="benefits_help_nova_gd_asso_title">Graphic designer - association-wide</string>
-    <string name="benefits_help_nova_gd_asso_rationale">Not tied to one party â more drinks, no bar \u0025.</string>
+    <string name="benefits_help_nova_gd_asso_rationale">Not tied to one party → more drinks, no bar \u0025.</string>
     <string name="benefits_help_nova_gd_asso_perks">2 seasonal free entries + 1 guest each\n4 free drinks (~20 CHF)</string>
     <string name="benefits_help_section_galaxie_title">Galaxie</string>
     <string name="benefits_help_section_galaxie_body">3 contributions in the same calendar month (shifts + meetings)\nOrion: meetings don\'t count toward the 3\nThat month: free entry everywhere + 50\u0025 bar + 1 extra drink\nStacks with normal shift perks</string>
@@ -276,9 +276,9 @@
     <string name="benefits_help_section_veteran_title">Veteran</string>
     <string name="benefits_help_section_veteran_body">Year after Orion\nStill: free entry + 50\u0025 bar\nWallet stops when the mandate ends</string>
     <string name="benefits_help_section_timing_title">When the app turns perks on</string>
-    <string name="benefits_help_section_timing_body">Night-of perks = that venue\'s event day (Settings â day-change time)\nFuture entries unlock from the same moment\nOrion / Galaxie / Veteran use longer windows</string>
+    <string name="benefits_help_section_timing_body">Night-of perks = that venue\'s event day (Settings → day-change time)\nFuture entries unlock from the same moment\nOrion / Galaxie / Veteran use longer windows</string>
     <string name="benefits_help_footer_title">Heads-up</string>
-    <string name="benefits_help_footer_bullets">ProfitÃ© / non-profité - whether shift hours let you enjoy the night or not (not about entry)\nThe 50\u0025 bar rate tracks Lightspeed prices\nGalaxie stacks with shift perks</string>
+    <string name="benefits_help_footer_bullets">Profité / non-profité - whether shift hours let you enjoy the night or not (not about entry)\nThe 50\u0025 bar rate tracks Lightspeed prices\nGalaxie stacks with shift perks</string>
     <string name="nova_job_type_label">Nova Benefits Type</string>
     <string name="nova_type_default_shift">Default shift</string>
     <string name="nova_type_meeting">Meeting</string>
@@ -316,7 +316,7 @@
     <string name="sales_discount_label">Discount applies</string>
     <string name="sales_required_rank_label">Minimal required rank</string>
     <string name="sales_rank_none_required">No rank needed</string>
-    <string name="sales_item_summary_line">CHF %1$.2f â¢ Discount: %2$s â¢ Min rank: %3$s</string>
+    <string name="sales_item_summary_line">CHF %1$.2f • Discount: %2$s • Min rank: %3$s</string>
     <string name="search_venues_placeholder">Search venues...</string>
     <string name="venues_count">%1$d of %2$d venues</string>
     <string name="venue_name">Venue Name</string>
@@ -351,7 +351,7 @@
     <string name="temp_guest_tab_tonight">Tonight</string>
     <string name="temp_guest_range_label">Range</string>
     <string name="temp_guest_range_three_days">+/- 3 days</string>
-    <string name="temp_guest_range_three_days_short">Â±3d</string>
+    <string name="temp_guest_range_three_days_short">±3d</string>
     <string name="temp_guest_range_one_week">1 week</string>
     <string name="temp_guest_range_one_week_short">1w</string>
     <string name="temp_guest_range_two_weeks">2 weeks</string>
@@ -420,7 +420,7 @@
     <string name="inactive">Inactive</string>
     
     <!-- Cleanup Dialog -->
-    <string name="warning">â ï¸ Warning:</string>
+    <string name="warning">⚠️ Warning:</string>
     <string name="cleanup_warning" formatted="false">This action will permanently delete %d volunteer%s and all their associated job records. This cannot be undone!</string>
     <string name="delete_volunteers" formatted="false">Delete %d Volunteer%s</string>
     <string name="cancel">Cancel</string>
@@ -432,7 +432,7 @@
     <string name="delete_volunteer_shift_count_other">This volunteer has %d shifts recorded.</string>
     <string name="delete_volunteer_also_delete_shifts_one">Also delete the %d shift</string>
     <string name="delete_volunteer_also_delete_shifts_other">Also delete all %d shifts</string>
-    <string name="delete_volunteer_warning">â ï¸ Warning: This action cannot be undone!</string>
+    <string name="delete_volunteer_warning">⚠️ Warning: This action cannot be undone!</string>
     <string name="delete_volunteer_graph_warning">Note: Suspending a volunteer will affect the home page statistics graphs. Deleting their shifts will have an even greater impact on the accuracy of the graphs.</string>
     
     <!-- Upload Status Messages -->
@@ -493,13 +493,13 @@
     <!-- Sync Status -->
     <string name="syncing">Syncing...</string>
     <string name="last_update_just_now">just now</string>
-    <string name="last_update_never_brief">â</string>
+    <string name="last_update_never_brief">—</string>
     <string name="last_update_seconds_ago">%d sec ago</string>
     <string name="last_update_min_sec_ago">%1$dmin %2$ds ago</string>
     <string name="last_update_hour_min_ago">%1$dh %2$dm ago</string>
     <string name="last_update_days_ago">%dd ago</string>
-    <string name="last_update_line">Update Â· %s</string>
-    <string name="last_update_none_line">Update Â· â</string>
+    <string name="last_update_line">Update · %s</string>
+    <string name="last_update_none_line">Update · —</string>
     <string name="sync_pill_minutes_ago">%dmin ago</string>
     <string name="sync_pill_hours_ago">%dh ago</string>
     <string name="sync_pill_hours_minutes_ago">%1$dh %2$dmin ago</string>
@@ -577,11 +577,11 @@
     <string name="setup_language_title">Choose Your Language</string>
     <string name="setup_language_description">Select the language you\'d like to use in the app</string>
     <string name="setup_theme_title">Pick a Theme</string>
-    <string name="setup_theme_description">Choose how the app looks â you can always change this later in Settings</string>
+    <string name="setup_theme_description">Choose how the app looks — you can always change this later in Settings</string>
     <string name="setup_color_profile_title">Color profile</string>
     <string name="setup_color_profile_description">Choose accent colors. System follows your wallpaper on supported devices.</string>
     <string name="setup_layout_size_title">Layout size</string>
-    <string name="setup_layout_size_description">Adjust how large the interface appears â you can fine-tune this anytime in Settings.</string>
+    <string name="setup_layout_size_description">Adjust how large the interface appears — you can fine-tune this anytime in Settings.</string>
     <string name="setup_layout_nvidia_hint">On NVIDIA tablets, 107% is often a better fit for this display.</string>
     <string name="setup_layout_use_recommended">Use 107%</string>
     <string name="setup_spreadsheet_title">Google Sheets ID</string>
@@ -590,7 +590,7 @@
     <string name="setup_json_key_title">Service Account Key</string>
     <string name="setup_json_key_description">Upload the JSON key file for your Google service account to enable synchronization</string>
     <string name="setup_sheets_title">Sheet Names</string>
-    <string name="setup_sheets_description">Configure the names of each sheet in your Google Spreadsheet â defaults are pre-filled</string>
+    <string name="setup_sheets_description">Configure the names of each sheet in your Google Spreadsheet — defaults are pre-filled</string>
     <string name="setup_wizard_first_sync_title">First sync</string>
     <string name="setup_wizard_first_sync_message">Downloading your event data from Google Sheets…</string>
     <string name="setup_wizard_first_sync_error_title">First sync failed</string>
@@ -682,17 +682,19 @@
     <string name="benefits_overview_totals_section">Totals</string>
     <string name="benefits_overview_ranks_section">By rank</string>
     <string name="benefits_overview_line_50_bar">50%% bar: %d</string>
-    <string name="benefits_overview_line_free_entry">Free entry: %1$d Â· %2$d inv.</string>
+    <string name="benefits_overview_line_free_entry">Free entry: %1$d · %2$d inv.</string>
     <string name="benefits_overview_line_extraordinary">Extra: %d</string>
-    <string name="benefits_overview_line_future_tickets">Tickets: %1$d Â· %2$d inv.</string>
-    <string name="current_benefits">â¨ Current Benefits</string>
+    <string name="benefits_overview_line_future_tickets">Tickets: %1$d · %2$d inv.</string>
+    <string name="current_benefits">✨ Current Benefits</string>
     <string name="days_left">%d days left</string>
     <string name="expires_soon">Expires soon</string>
-    <string name="free_entry">â Free Entry</string>
-    <string name="friend_invitation">ð¥ Friend Invitation</string>
-    <string name="drink_tokens">ðº %d Drink Tokens</string>
-    <string name="bar_discount">ð° %d%% Bar Discount</string>
-    <string name="extraordinary_benefits">ð Extraordinary Benefits</string>
+    <string name="free_entry">✅ Free Entry</string>
+    <string name="companions_one">+1 companion</string>
+    <string name="companions_many">+%1$d companions</string>
+    <string name="friend_invitation">👥 Friend Invitation</string>
+    <string name="drink_tokens">🍺 %d Drink Tokens</string>
+    <string name="bar_discount">💰 %d%% Bar Discount</string>
+    <string name="extraordinary_benefits">💎 Extraordinary Benefits</string>
     
     <!-- Shifts Screen -->
     <string name="shifts_title">Shifts</string>
@@ -765,8 +767,8 @@
     <string name="scan_with_usb_reader">Scan with external reader</string>
     <string name="usb_reader_waiting_card_short">Waiting card...</string>
     <string name="scanner_ble_reader_footer_label">Bluetooth reader (ACR1255U-J1)</string>
-    <string name="scanner_ble_reader_footer_connected">Active link â ready to scan</string>
-    <string name="scanner_ble_reader_footer_disconnected">No active link â wake the reader (button) or wait for reconnect</string>
+    <string name="scanner_ble_reader_footer_connected">Active link — ready to scan</string>
+    <string name="scanner_ble_reader_footer_disconnected">No active link — wake the reader (button) or wait for reconnect</string>
     <string name="scanner_ble_reader_footer_reading">Reading card…</string>
     <string name="nfc_not_supported_device">This device does not support NFC scanning.</string>
     <string name="nfc_unavailable_no_usb_hint">This device has no NFC, and no external reader is connected (USB or Bluetooth).</string>
@@ -962,7 +964,7 @@
     <string name="people_counter_title">People Counter</string>
     <string name="people_counter_hint">Track guest attendance</string>
     <string name="people_counter_hint_tap_plus_minus">Tap +/- to adjust count</string>
-    <string name="people_counter_hint_long_press">Long press Â±10 people</string>
+    <string name="people_counter_hint_long_press">Long press ±10 people</string>
     <string name="people_counter_reset">Reset Counter</string>
     <string name="people_counter_priority">Priority</string>
     <string name="people_counter_sheet_synced">Counter last updated</string>
@@ -1021,7 +1023,7 @@
     <string name="total">Total</string>
     
     <!-- Sync Error Messages -->
-    <string name="sync_error_title">â ï¸ Sync Error</string>
+    <string name="sync_error_title">⚠️ Sync Error</string>
     <string name="sync_error_occurred">An error occurred during synchronization</string>
     <string name="sync_not_synced_title">App Not Synced</string>
     <string name="sync_not_synced_message">The application is no longer synchronized. Please use the resync button to update your data.</string>
@@ -1031,15 +1033,15 @@
     <string name="sync_error_dont_tell_today">Don\'t tell me again today</string>
     
     <!-- Device Time/Date Error -->
-    <string name="sync_error_device_time_title">â° Device Time/Date Incorrect</string>
+    <string name="sync_error_device_time_title">⏰ Device Time/Date Incorrect</string>
     <string name="sync_error_device_time_message">Your device\'s time or date is incorrect. Google Sheets API requires accurate time synchronization to work properly.</string>
     <string name="sync_error_device_time_solution">How to fix:\n\n1. Go to Settings\n2. Look for \"Date &amp; Time\" or \"System\"\n3. Enable \"Automatic date &amp; time\" or \"Set time automatically\"\n4. If not available, manually set the correct date and time\n5. Restart the app and try syncing again\n\nCommon on older tablets – please check your device settings!</string>
     <string name="sync_error_device_time_open_settings">Open Settings</string>
     
     <!-- Sleep/Resume Sync Warning -->
-    <string name="sync_warning_sleep_resume_title">â ï¸ App Not Synced</string>
+    <string name="sync_warning_sleep_resume_title">⚠️ App Not Synced</string>
     <string name="sync_warning_sleep_resume_message">The app is not synced anymore. Please sync it by pressing the resync button at the bottom.</string>
-    <string name="sync_error_sleep_resume_detail">ð± Your device was sleeping, so a new sync is needed. Press the resync button at the bottom of the page.</string>
+    <string name="sync_error_sleep_resume_detail">📱 Your device was sleeping, so a new sync is needed. Press the resync button at the bottom of the page.</string>
     
     <!-- Specific Sync Error Types -->
     <string name="sync_error_rate_limit">Rate limit exceeded. Please wait 1–2 minutes before trying again.</string>
@@ -1069,15 +1071,15 @@
     
     <!-- Sync Error Dialog Labels -->
     <string name="sync_error_details_label">Error Details:</string>
-    <string name="sync_error_what_to_do">ð¡ What to do:</string>
+    <string name="sync_error_what_to_do">💡 What to do:</string>
     
     <!-- Sync Error Advice Messages -->
-    <string name="sync_advice_rate_limit">â¢ Wait 1–2 minutes before retrying\nâ¢ The app will automatically retry with backoff\nâ¢ Consider reducing sync frequency in settings</string>
-    <string name="sync_advice_authentication">â¢ Check your service account key file\nâ¢ Verify the key is uploaded in Settings\nâ¢ Re-upload the key if needed</string>
-    <string name="sync_advice_permission">â¢ Share your spreadsheet with the service account email\nâ¢ Grant Editor access to the service account\nâ¢ Check the account email in your service key file</string>
-    <string name="sync_advice_network">â¢ Check your internet connection\nâ¢ Verify Wi-Fi or mobile data is enabled\nâ¢ Try again when connection is stable\nâ¢ Make sure you\'re not in airplane mode</string>
-    <string name="sync_advice_not_found">â¢ Check the Spreadsheet ID in Settings\nâ¢ Verify the sheet names exist\nâ¢ Ensure the spreadsheet is accessible</string>
-    <string name="sync_advice_generic">â¢ Try the sync again\nâ¢ Check your Google Sheets settings\nâ¢ Visit Settings to verify your configuration</string>
+    <string name="sync_advice_rate_limit">• Wait 1–2 minutes before retrying\n• The app will automatically retry with backoff\n• Consider reducing sync frequency in settings</string>
+    <string name="sync_advice_authentication">• Check your service account key file\n• Verify the key is uploaded in Settings\n• Re-upload the key if needed</string>
+    <string name="sync_advice_permission">• Share your spreadsheet with the service account email\n• Grant Editor access to the service account\n• Check the account email in your service key file</string>
+    <string name="sync_advice_network">• Check your internet connection\n• Verify Wi-Fi or mobile data is enabled\n• Try again when connection is stable\n• Make sure you\'re not in airplane mode</string>
+    <string name="sync_advice_not_found">• Check the Spreadsheet ID in Settings\n• Verify the sheet names exist\n• Ensure the spreadsheet is accessible</string>
+    <string name="sync_advice_generic">• Try the sync again\n• Check your Google Sheets settings\n• Visit Settings to verify your configuration</string>
 
     <!-- Seasonal Fun -->
     <string name="seasonal_fun_title">Seasonal Fun</string>
@@ -1097,7 +1099,7 @@
     <string name="app_icon_white">White</string>
     <string name="app_icon_black">Black</string>
     <string name="app_icon_brown">Brown</string>
-    <string name="app_icon_creme_black">CrÃ¨me &amp; Black</string>
+    <string name="app_icon_creme_black">Crème &amp; Black</string>
     <string name="app_icon_dark_blue">Dark Blue</string>
     <string name="app_icon_dark_legacy">Dark Legacy</string>
     <string name="app_icon_dark_turquoise">Dark Turquoise</string>
@@ -1107,13 +1109,13 @@
     <string name="app_icon_light_violet">Light Violet</string>
     <string name="app_icon_orange">Orange</string>
     <string name="app_icon_pink">Pink</string>
-    <string name="app_icon_selected">â Selected</string>
+    <string name="app_icon_selected">✓ Selected</string>
     <string name="app_icon_auto_adapt_title">Auto-Adapt Icon Based on System Theme</string>
     <string name="app_icon_auto_adapt_description">Automatically switch between light and dark icons based on your system theme</string>
     <string name="app_icon_white_applied">White icon applied.</string>
     <string name="app_icon_black_applied">Black icon applied.</string>
     <string name="app_icon_brown_applied">Brown icon applied.</string>
-    <string name="app_icon_creme_black_applied">CrÃ¨me &amp; Black icon applied.</string>
+    <string name="app_icon_creme_black_applied">Crème &amp; Black icon applied.</string>
     <string name="app_icon_dark_blue_applied">Dark Blue icon applied.</string>
     <string name="app_icon_dark_legacy_applied">Dark Legacy icon applied.</string>
     <string name="app_icon_dark_turquoise_applied">Dark Turquoise icon applied.</string>
@@ -1171,16 +1173,16 @@
     <string name="easter_egg_scroll">Scroll!</string>
     <string name="easter_egg_wendol_village">Wendol Village</string>
     <string name="easter_egg_catculus">Catculus</string>
-    <string name="arcade_title">â ARCADE â</string>
-    <string name="arcade_subtitle">â¶ INSERT FUN â</string>
+    <string name="arcade_title">★ ARCADE ★</string>
+    <string name="arcade_subtitle">▶ INSERT FUN ◀</string>
     <string name="arcade_pick_game">PICK A GAME!</string>
-    <string name="arcade_credits_title">â CREATOR CREDITS â</string>
+    <string name="arcade_credits_title">★ CREATOR CREDITS ★</string>
     <string name="arcade_exit">[ ESC ] EXIT</string>
-    <string name="arcade_credit_wendol_village">Wendol Village â a js13kGames 2024 game by @sanojian.</string>
-    <string name="arcade_credit_scroll">ðScroll! â TypeScript game using Web Components for JS13K. Â© 2019 Zeev Katz. All rights reserved.</string>
-    <string name="arcade_credit_hextris">Hextris â An addictive puzzle game inspired by Tetris. hextris.io Â· By Logan Engstrom, Garrett Finucane, Noah Moroze &amp; Michael Yang.</string>
-    <string name="arcade_credit_pizza_undelivery">Pizza Undelivery â A game made for the 2019 js13kGames competition. nilsgawlik.github.io/js13k2019/ Â· @nikigawlik</string>
-    <string name="arcade_credit_catculus">Catculus â a js13kGames 2025 game by @anttihaavikko.</string>
+    <string name="arcade_credit_wendol_village">Wendol Village — a js13kGames 2024 game by @sanojian.</string>
+    <string name="arcade_credit_scroll">👆Scroll! — TypeScript game using Web Components for JS13K. © 2019 Zeev Katz. All rights reserved.</string>
+    <string name="arcade_credit_hextris">Hextris — An addictive puzzle game inspired by Tetris. hextris.io · By Logan Engstrom, Garrett Finucane, Noah Moroze &amp; Michael Yang.</string>
+    <string name="arcade_credit_pizza_undelivery">Pizza Undelivery — A game made for the 2019 js13kGames competition. nilsgawlik.github.io/js13k2019/ · @nikigawlik</string>
+    <string name="arcade_credit_catculus">Catculus — a js13kGames 2025 game by @anttihaavikko.</string>
     
     <!-- Entry Validation -->
     <string name="validate_entry">Validate Entry</string>
@@ -1232,7 +1234,7 @@
     <string name="admin_setup_create_volunteer_desc">Fill in the details for the new admin volunteer</string>
     <string name="admin_setup_access_title">How will you sign in?</string>
     <string name="admin_setup_access_desc">How would you like to log in as the first admin?</string>
-    <string name="admin_setup_access_explained">Pick one option below.\n\nâ¢ QR code â shows a code you scan from the welcome screen. Good for sharing with another organizer or phone.\n\nâ¢ NFC card â links a card or tag you tap on this device for quick admin access.</string>
+    <string name="admin_setup_access_explained">Pick one option below.\n\n• QR code — shows a code you scan from the welcome screen. Good for sharing with another organizer or phone.\n\n• NFC card — links a card or tag you tap on this device for quick admin access.</string>
     <string name="admin_setup_created_line">%1$s was added as an administrator.</string>
     <string name="admin_setup_done_title">You\'re all set</string>
     <string name="admin_setup_done_message">%1$s can open admin mode from the welcome screen using the option you chose. You can add or change methods later in the app.</string>
@@ -1309,8 +1311,8 @@
     <string name="ble_reader_show_acr_only">Show ACR readers only</string>
     <string name="ble_reader_unnamed">Unnamed device</string>
     <string name="ble_reader_bonded_label">bonded</string>
-    <string name="ble_reader_row_subtitle">%1$s Â· %2$s</string>
-    <string name="ble_reader_row_subtitle_bonded">%1$s Â· %2$s Â· already paired</string>
+    <string name="ble_reader_row_subtitle">%1$s · %2$s</string>
+    <string name="ble_reader_row_subtitle_bonded">%1$s · %2$s · already paired</string>
     <string name="ble_reader_bluetooth_off">Bluetooth is off. Turn it on to scan for readers.</string>
     <string name="ble_reader_bluetooth_unavailable">Bluetooth is unavailable on this device.</string>
     <string name="ble_reader_scan_permission_denied">Bluetooth scan permission is required.</string>
@@ -1341,16 +1343,16 @@
     <string name="rate_limit_read_requests">Read requests</string>
     <string name="rate_limit_read_value">300 per minute per project</string>
     <string name="rate_limit_retry_sync">Retry Sync</string>
-    <string name="rate_limit_tips_body">â¢ Use manual sync instead of auto-sync during peak usage
-â¢ Sync less frequently if you\'re hitting limits often
-â¢ Check your Google Cloud Console for quota usage</string>
+    <string name="rate_limit_tips_body">• Use manual sync instead of auto-sync during peak usage
+• Sync less frequently if you\'re hitting limits often
+• Check your Google Cloud Console for quota usage</string>
     <string name="rate_limit_tips_title">Tips:</string>
     <string name="rate_limit_too_many_requests">Too Many Requests</string>
     <string name="rate_limit_wait_message">You\'ve hit the Google Sheets API rate limit. Please wait 1-2 minutes before trying again.</string>
     <string name="rate_limit_what_to_do">What to do:</string>
     <string name="rate_limit_write_requests">Write requests</string>
     <string name="rate_limit_write_value">300 per minute per project</string>
-    <string name="theme_hue_label">Hue (rainbow): %1$dÂ°</string>
+    <string name="theme_hue_label">Hue (rainbow): %1$d°</string>
     <string name="theme_luminosity_label">Brightness: %1$d%%</string>
     <string name="theme_saturation_label">Saturation: %1$d%%</string>
 

@@ -4403,193 +4403,7 @@ actual fun SettingsScreen(
 
     // Update result dialog
     if (showUpdateResultDialog) {
-        val updateResult = viewModel.updateCheckState.collectAsState().value
-        val downloadState = viewModel.updateDownloadState.collectAsState().value
-        
-        when (updateResult) {
-            is com.eventmanager.app.data.update.UpdateCheckResult.UpdateAvailable -> {
-                val manifest = updateResult.manifest
-                val isRequired = updateResult.isRequired
-                
-                // Show download progress if downloading
-                when (downloadState) {
-                    is com.eventmanager.app.data.update.DownloadState.Downloading -> {
-                        AlertDialog(
-                            onDismissRequest = { },
-                            title = {
-                                Text(text = context.getString(R.string.downloading_update))
-                            },
-                            text = {
-                                Column {
-                                    LinearProgressIndicator(
-                                        progress = { downloadState.progress / 100f },
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = context.getString(R.string.download_progress, downloadState.progress),
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                }
-                            },
-                            confirmButton = {}
-                        )
-                    }
-                    is com.eventmanager.app.data.update.DownloadState.Downloaded -> {
-                        AlertDialog(
-                            onDismissRequest = if (isRequired) { {} } else { { showUpdateResultDialog = false } },
-                            properties = if (isRequired) {
-                                DialogProperties(
-                                    dismissOnBackPress = false,
-                                    dismissOnClickOutside = false
-                                )
-                            } else {
-                                DialogProperties()
-                            },
-                            title = {
-                                Text(text = context.getString(R.string.download_complete))
-                            },
-                            text = {
-                                Text(text = context.getString(R.string.update_available_message))
-                            },
-                            confirmButton = {
-                                TextButton(onClick = {
-                                    viewModel.installUpdate(downloadState.filePath)
-                                    showUpdateResultDialog = false
-                                }) {
-                                    Text(context.getString(R.string.install_update))
-                                }
-                            },
-                            dismissButton = if (!isRequired) {
-                                {
-                                    TextButton(onClick = { showUpdateResultDialog = false }) {
-                                        Text(context.getString(R.string.later))
-                                    }
-                                }
-                            } else null
-                        )
-                    }
-                    is com.eventmanager.app.data.update.DownloadState.Error -> {
-                        AlertDialog(
-                            onDismissRequest = if (isRequired) { {} } else { { showUpdateResultDialog = false } },
-                            title = {
-                                Text(text = context.getString(R.string.download_error_title))
-                            },
-                            text = {
-                                Text(text = context.getString(R.string.download_error_message, downloadState.message))
-                            },
-                            confirmButton = {
-                                TextButton(onClick = { showUpdateResultDialog = false }) {
-                                    Text(context.getString(R.string.ok))
-                                }
-                            }
-                        )
-                    }
-                    else -> {
-                        // Show update available dialog
-                        AlertDialog(
-                            onDismissRequest = if (isRequired) { {} } else { { showUpdateResultDialog = false } },
-                            title = {
-                                Text(text = context.getString(R.string.update_available_title, manifest.latestVersionName))
-                            },
-                            text = {
-                                Text(
-                                    text = manifest.changelogShort
-                                        ?: if (isRequired) {
-                                            context.getString(R.string.update_required_message)
-                                        } else {
-                                            context.getString(R.string.update_available_message)
-                                        }
-                                )
-                            },
-                            confirmButton = {
-                                TextButton(onClick = {
-                                    // Start download instead of opening browser
-                                    val downloadUrl = manifest.downloadUrl
-                                    if (downloadUrl != null) {
-                                        viewModel.downloadUpdate(downloadUrl)
-                                    } else {
-                                        // Fallback to browser if no download URL
-                                        val targetUrl = manifest.storeUrl
-                                            ?: settingsManager.getUpdateStoreUrl()
-                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(targetUrl))
-                                        context.startActivity(intent)
-                                        showUpdateResultDialog = false
-                                    }
-                                }) {
-                                    Text(context.getString(R.string.update_now))
-                                }
-                            },
-                            dismissButton = {
-                                if (!isRequired) {
-                                    TextButton(onClick = { showUpdateResultDialog = false }) {
-                                        Text(context.getString(R.string.later))
-                                    }
-                                }
-                            }
-                        )
-                    }
-                }
-            }
-            is com.eventmanager.app.data.update.UpdateCheckResult.NoUpdate -> {
-                AlertDialog(
-                    onDismissRequest = { showUpdateResultDialog = false },
-                    title = {
-                        Text(text = context.getString(R.string.up_to_date_title))
-                    },
-                    text = {
-                        Text(text = context.getString(R.string.up_to_date_message))
-                    },
-                    confirmButton = {
-                        TextButton(onClick = { showUpdateResultDialog = false }) {
-                            Text(context.getString(R.string.ok))
-                        }
-                    }
-                )
-            }
-            is com.eventmanager.app.data.update.UpdateCheckResult.Error -> {
-                AlertDialog(
-                    onDismissRequest = { showUpdateResultDialog = false },
-                    title = {
-                        Text(text = context.getString(R.string.update_error_title))
-                    },
-                    text = {
-                        Text(text = context.getString(R.string.update_error_message, updateResult.message))
-                    },
-                    confirmButton = {
-                        TextButton(onClick = { showUpdateResultDialog = false }) {
-                            Text(context.getString(R.string.ok))
-                        }
-                    }
-                )
-            }
-            else -> {
-                // Still loading or no result yet: simple loading dialog
-                AlertDialog(
-                    onDismissRequest = { showUpdateResultDialog = false },
-                    title = {
-                        Text(text = context.getString(R.string.checking_for_updates_title))
-                    },
-                    text = {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                strokeWidth = 2.dp
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(text = context.getString(R.string.checking_for_updates_message))
-                        }
-                    },
-                    confirmButton = {
-                        TextButton(onClick = { showUpdateResultDialog = false }) {
-                            Text(context.getString(R.string.cancel))
-                        }
-                    }
-                )
-            }
-        }
+        UpdateResultDialog(viewModel = viewModel, onDismiss = { showUpdateResultDialog = false })
     }
     
     // Instructions Dialog
@@ -5120,4 +4934,202 @@ fun UpdateSourcesDialog(
             }
         }
     )
+}
+
+// Lives outside SettingsScreen on purpose: that composable is so large that its compiled method
+// crashed on Android (null Composer in endReplaceGroup). Move blocks out of it rather than into it.
+@Composable
+private fun UpdateResultDialog(
+    viewModel: EventManagerViewModel,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+    val settingsManager = remember { settingsManagerFor(context) }
+    val updateResult = viewModel.updateCheckState.collectAsState().value
+    val downloadState = viewModel.updateDownloadState.collectAsState().value
+    
+    when (updateResult) {
+        is com.eventmanager.app.data.update.UpdateCheckResult.UpdateAvailable -> {
+            val manifest = updateResult.manifest
+            val isRequired = updateResult.isRequired
+            
+            // Show download progress if downloading
+            when (downloadState) {
+                is com.eventmanager.app.data.update.DownloadState.Downloading -> {
+                    AlertDialog(
+                        onDismissRequest = { },
+                        title = {
+                            Text(text = context.getString(R.string.downloading_update))
+                        },
+                        text = {
+                            Column {
+                                LinearProgressIndicator(
+                                    progress = { downloadState.progress / 100f },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = context.getString(R.string.download_progress, downloadState.progress),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        },
+                        confirmButton = {}
+                    )
+                }
+                is com.eventmanager.app.data.update.DownloadState.Downloaded -> {
+                    AlertDialog(
+                        onDismissRequest = if (isRequired) { {} } else { { onDismiss() } },
+                        properties = if (isRequired) {
+                            DialogProperties(
+                                dismissOnBackPress = false,
+                                dismissOnClickOutside = false
+                            )
+                        } else {
+                            DialogProperties()
+                        },
+                        title = {
+                            Text(text = context.getString(R.string.download_complete))
+                        },
+                        text = {
+                            Text(text = context.getString(R.string.update_available_message))
+                        },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                viewModel.installUpdate(downloadState.filePath)
+                                onDismiss()
+                            }) {
+                                Text(context.getString(R.string.install_update))
+                            }
+                        },
+                        dismissButton = if (!isRequired) {
+                            {
+                                TextButton(onClick = { onDismiss() }) {
+                                    Text(context.getString(R.string.later))
+                                }
+                            }
+                        } else null
+                    )
+                }
+                is com.eventmanager.app.data.update.DownloadState.Error -> {
+                    AlertDialog(
+                        onDismissRequest = if (isRequired) { {} } else { { onDismiss() } },
+                        title = {
+                            Text(text = context.getString(R.string.download_error_title))
+                        },
+                        text = {
+                            Text(text = context.getString(R.string.download_error_message, downloadState.message))
+                        },
+                        confirmButton = {
+                            TextButton(onClick = { onDismiss() }) {
+                                Text(context.getString(R.string.ok))
+                            }
+                        }
+                    )
+                }
+                else -> {
+                    // Show update available dialog
+                    AlertDialog(
+                        onDismissRequest = if (isRequired) { {} } else { { onDismiss() } },
+                        title = {
+                            Text(text = context.getString(R.string.update_available_title, manifest.latestVersionName))
+                        },
+                        text = {
+                            Text(
+                                text = manifest.changelogShort
+                                    ?: if (isRequired) {
+                                        context.getString(R.string.update_required_message)
+                                    } else {
+                                        context.getString(R.string.update_available_message)
+                                    }
+                            )
+                        },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                // Start download instead of opening browser
+                                val downloadUrl = manifest.downloadUrl
+                                if (downloadUrl != null) {
+                                    viewModel.downloadUpdate(downloadUrl)
+                                } else {
+                                    // Fallback to browser if no download URL
+                                    val targetUrl = manifest.storeUrl
+                                        ?: settingsManager.getUpdateStoreUrl()
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(targetUrl))
+                                    context.startActivity(intent)
+                                    onDismiss()
+                                }
+                            }) {
+                                Text(context.getString(R.string.update_now))
+                            }
+                        },
+                        dismissButton = {
+                            if (!isRequired) {
+                                TextButton(onClick = { onDismiss() }) {
+                                    Text(context.getString(R.string.later))
+                                }
+                            }
+                        }
+                    )
+                }
+            }
+        }
+        is com.eventmanager.app.data.update.UpdateCheckResult.NoUpdate -> {
+            AlertDialog(
+                onDismissRequest = { onDismiss() },
+                title = {
+                    Text(text = context.getString(R.string.up_to_date_title))
+                },
+                text = {
+                    Text(text = context.getString(R.string.up_to_date_message))
+                },
+                confirmButton = {
+                    TextButton(onClick = { onDismiss() }) {
+                        Text(context.getString(R.string.ok))
+                    }
+                }
+            )
+        }
+        is com.eventmanager.app.data.update.UpdateCheckResult.Error -> {
+            AlertDialog(
+                onDismissRequest = { onDismiss() },
+                title = {
+                    Text(text = context.getString(R.string.update_error_title))
+                },
+                text = {
+                    Text(text = context.getString(R.string.update_error_message, updateResult.message))
+                },
+                confirmButton = {
+                    TextButton(onClick = { onDismiss() }) {
+                        Text(context.getString(R.string.ok))
+                    }
+                }
+            )
+        }
+        else -> {
+            // Still loading or no result yet: simple loading dialog
+            AlertDialog(
+                onDismissRequest = { onDismiss() },
+                title = {
+                    Text(text = context.getString(R.string.checking_for_updates_title))
+                },
+                text = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(text = context.getString(R.string.checking_for_updates_message))
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { onDismiss() }) {
+                        Text(context.getString(R.string.cancel))
+                    }
+                }
+            )
+        }
+    }
 }

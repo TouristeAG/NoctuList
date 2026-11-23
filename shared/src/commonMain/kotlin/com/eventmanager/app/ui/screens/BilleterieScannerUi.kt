@@ -1,5 +1,6 @@
 package com.eventmanager.app.ui.screens
 
+import com.eventmanager.app.ui.utils.entryPerkText
 import com.eventmanager.app.ui.components.KeepScreenAwakeToggle
 import com.eventmanager.app.ui.components.KeepAwakeSpace
 import androidx.compose.animation.core.Animatable
@@ -1313,16 +1314,7 @@ fun BilleterieDuplicateUidPickerDialog(
 @Composable
 fun buildBilleterieScannerPerkTexts(benefit: Benefit, excludeFreeEntry: Boolean): List<String> =
     listOfNotNull(
-        if (!excludeFreeEntry && benefit.freeEntry) stringResource(Res.string.free_entry) else null,
-        if (benefit.friendInvitation) {
-            if (benefit.inviteCount > 1) {
-                stringResource(Res.string.invites_n, benefit.inviteCount)
-            } else {
-                stringResource(Res.string.friend_invitation)
-            }
-        } else {
-            null
-        },
+        entryPerkText(benefit, includeFreeEntry = !excludeFreeEntry),
         if (benefit.drinkTokens > 0) stringResource(Res.string.drink_tokens, benefit.drinkTokens) else null,
         if (benefit.barDiscount > 0) stringResource(Res.string.bar_discount, benefit.barDiscount) else null,
         if (benefit.extraordinaryBenefits) stringResource(Res.string.extraordinary_benefits) else null,

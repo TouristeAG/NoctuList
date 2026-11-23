@@ -232,8 +232,8 @@
     <string name="future_entry_invites_helper">भविष्य की एकल-उपयोग प्रविष्टियों पर दिखाए गए "+n inv." के लिए उपयोग किया जाता है।</string>
     <string name="future_single_use_entries_with_invites_summary">भविष्य की एकल-उपयोग प्रविष्टियाँ: %1$d (+%2$d आमंत्रण)</string>
     <string name="future_event_entries_remaining_n">🎟️ %d भविष्य की घटना प्रविष्टियाँ (एकल उपयोग)</string>
-    <string name="future_entry_remaining_with_invites">🎟️ %1$d प्रविष्टि शेष (+%2$d आमंत्रण)</string>
-    <string name="future_entries_remaining_with_invites">🎟️ %1$d प्रविष्टियाँ शेष (+%2$d आमंत्रण)</string>
+    <string name="future_entry_remaining_with_invites">🎟️ %1$d प्रविष्टि शेष (%2$s)</string>
+    <string name="future_entries_remaining_with_invites">🎟️ %1$d प्रविष्टियाँ शेष (%2$s)</string>
     <string name="future_entry_solo">🎟️ %d प्रविष्टि बाएँ (एकल)</string>
     <string name="future_entries_solo">🎟️ %d प्रविष्टियाँ शेष (एकल)</string>
     <string name="other_notes_label">अन्य नोट्स</string>
@@ -689,6 +689,8 @@
     <string name="days_left">%d दिन बचे हैं</string>
     <string name="expires_soon">जल्द ही समाप्त हो रहा है</string>
     <string name="free_entry">✅ निःशुल्क प्रवेश</string>
+    <string name="companions_one">+1 साथी</string>
+    <string name="companions_many">+%1$d साथी</string>
     <string name="friend_invitation">👥मित्र निमंत्रण</string>
     <string name="drink_tokens">🍺 %d ड्रिंक टोकन</string>
     <string name="bar_discount">💰 %d%% बार डिस्काउंट</string>

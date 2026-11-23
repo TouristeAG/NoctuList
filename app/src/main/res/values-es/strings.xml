@@ -235,8 +235,8 @@
     <string name="future_entry_invites_helper">Se usa para el « +n inv. » mostrado en las entradas futuras de un solo uso.</string>
     <string name="future_single_use_entries_with_invites_summary">Entradas futuras de un solo uso: %1$d (+%2$d inv.)</string>
     <string name="future_event_entries_remaining_n">🎟️ %d Entradas a evento (un solo uso)</string>
-    <string name="future_entry_remaining_with_invites">🎟️ %1$d entrada restante (+%2$d inv.)</string>
-    <string name="future_entries_remaining_with_invites">🎟️ %1$d entradas restantes (+%2$d inv.)</string>
+    <string name="future_entry_remaining_with_invites">🎟️ %1$d entrada restante (%2$s)</string>
+    <string name="future_entries_remaining_with_invites">🎟️ %1$d entradas restantes (%2$s)</string>
     <string name="future_entry_solo">🎟️ %d entrada restante (solo)</string>
     <string name="future_entries_solo">🎟️ %d entradas restantes (solo)</string>
     <string name="other_notes_label">Otras notas</string>
@@ -651,6 +651,8 @@
     <string name="days_left">%d días restantes</string>
     <string name="expires_soon">Expira pronto</string>
     <string name="free_entry">✅ Entrada gratis</string>
+    <string name="companions_one">+1 acompañante</string>
+    <string name="companions_many">+%1$d acompañantes</string>
     <string name="friend_invitation">👥 Invitación de amigo</string>
     <string name="drink_tokens">🍺 %d fichas de bebida</string>
     <string name="bar_discount">💰 %d%% descuento en bar</string>

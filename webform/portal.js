@@ -40,7 +40,7 @@ import {
   uploadBytes,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 import { EMULATOR_PORTS, isLocalDev, loadConfig, parseOrgPath } from "./firebase-env.js?v=portal-2";
-import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=merge-1";
+import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=companions-1";
 import {
   canSend,
   certificateNotice,
@@ -1318,6 +1318,11 @@ function benefitSummary(list, payload) {
   }), { freeEntry: false, friendInvitation: false, inviteCount: 0, drinkTokens: 0, barDiscount: 0, guestListAccess: false, validUntil: 0 });
 }
 
+/** "+1 companion" / "+3 companions": the people who come in with the volunteer. */
+function companionsText(n) {
+  return n === 1 ? t("companionsOne") : t("companionsMany", { n });
+}
+
 /** One line of "Right now": what the volunteer gets, then how much when it is counted. */
 function perkRow(label, value = "") {
   return el("li", {},
@@ -1333,7 +1338,7 @@ function benefitsTile(view) {
   // Invitations come with the unique entries: shown together, not as a separate perk.
   const invites = s ? Number(s.inviteCount) || (s.friendInvitation ? 1 : 0) : 0;
   if (entries > 0) {
-    const title = invites > 0 ? `${t("uniqueEntries")} (${t("withInvites", { n: invites })})` : t("uniqueEntries");
+    const title = invites > 0 ? `${t("uniqueEntries")} (${companionsText(invites)})` : t("uniqueEntries");
     card.append(el("div", { class: "entries-banner" },
       el("div", { class: "entries-count", text: String(entries) }),
       el("div", {},
@@ -1343,8 +1348,10 @@ function benefitsTile(view) {
   // Drink tokens stay out: the bar applies them, the volunteer has nothing to do with the number.
   const perks = [];
   if (s && list.length) {
-    if (s.freeEntry) perks.push(perkRow(t("perkFreeEntry")));
-    if (invites > 0 && entries <= 0) perks.push(perkRow(t("perkInvites"), `+${invites}`));
+    // Without unique entries, the +n people come in with the free entry: "Free entry (+2 companions)".
+    const companions = invites > 0 && entries <= 0 ? companionsText(invites) : "";
+    if (s.freeEntry) perks.push(perkRow(companions ? `${t("perkFreeEntry")} (${companions})` : t("perkFreeEntry")));
+    else if (companions) perks.push(perkRow(companions));
     if (Number(s.barDiscount) > 0) perks.push(perkRow(t("perkBarDiscount"), `${s.barDiscount} %`));
     // Free entry already gets you in: the guest list only matters without it.
     if (s.guestListAccess && !s.freeEntry) perks.push(perkRow(t("perkGuestList")));
@@ -1365,9 +1372,9 @@ function benefitsTile(view) {
 function gainsText(b) {
   const parts = [];
   const invites = Number(b.inviteCount) || (b.friendInvitation ? 1 : 0);
-  // The +n guests come in with the free entry: "Free entry (+2)".
-  if (b.freeEntry) parts.push(invites > 0 ? `${t("perkFreeEntry")} (+${invites})` : t("perkFreeEntry"));
-  else if (invites > 0) parts.push(`+${invites} ${t("perkInvites")}`);
+  // The +n people come in with the free entry: "Free entry (+2 companions)".
+  if (b.freeEntry) parts.push(invites > 0 ? `${t("perkFreeEntry")} (${companionsText(invites)})` : t("perkFreeEntry"));
+  else if (invites > 0) parts.push(companionsText(invites));
   if (Number(b.drinkTokens) > 0) parts.push(`${b.drinkTokens} ${t("perkDrinks")}`);
   if (Number(b.barDiscount) > 0) parts.push(`${b.barDiscount} % ${t("perkBarDiscount")}`);
   if (b.guestListAccess && !b.freeEntry) parts.push(t("perkGuestList"));

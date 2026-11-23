@@ -3,7 +3,7 @@
 // on every iOS version). Firestore, Auth and Storage requests are never touched.
 // The helpers below are plain functions so the unit tests can load this file in a Node vm.
 
-const CACHE = "portal-v11";
+const CACHE = "portal-v12";
 const SHELL = "/portal.html";
 const FIREBASE_CDN = "https://www.gstatic.com/firebasejs/";
 /** Pinned SDK version: its files never change, so they are served from the cache first. */

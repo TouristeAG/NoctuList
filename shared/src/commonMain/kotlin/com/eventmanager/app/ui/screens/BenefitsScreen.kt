@@ -861,8 +861,7 @@ fun BenefitCard(
                     verticalArrangement = Arrangement.spacedBy(if (isCompact) 4.dp else 8.dp)
                 ) {
                     listOfNotNull(
-                        if (benefitForPerkList.freeEntry) stringResource(Res.string.free_entry) else null,
-                        if (benefitForPerkList.friendInvitation) stringResource(Res.string.friend_invitation) else null,
+                        entryPerkText(benefitForPerkList),
                         if (benefitForPerkList.drinkTokens > 0) stringResource(Res.string.drink_tokens, benefitForPerkList.drinkTokens) else null,
                         if (benefitForPerkList.barDiscount > 0) stringResource(Res.string.bar_discount, benefitForPerkList.barDiscount) else null,
                         if (benefitForPerkList.extraordinaryBenefits) stringResource(Res.string.extraordinary_benefits) else null
@@ -900,8 +899,8 @@ fun BenefitCard(
                                 )
                                 Spacer(modifier = Modifier.width(if (isCompact) 6.dp else 8.dp))
                                 val label = if (group.invites > 0) {
-                                    if (group.remaining == 1) stringResource(Res.string.future_entry_remaining_with_invites, group.remaining, group.invites)
-                                    else stringResource(Res.string.future_entries_remaining_with_invites, group.remaining, group.invites)
+                                    if (group.remaining == 1) stringResource(Res.string.future_entry_remaining_with_invites, group.remaining, companionsText(group.invites))
+                                    else stringResource(Res.string.future_entries_remaining_with_invites, group.remaining, companionsText(group.invites))
                                 } else {
                                     if (group.remaining == 1) stringResource(Res.string.future_entry_solo, group.remaining)
                                     else stringResource(Res.string.future_entries_solo, group.remaining)

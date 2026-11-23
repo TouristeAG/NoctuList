@@ -4,26 +4,37 @@ All notable changes to NoctuList are documented here. Version numbers follow [Se
 
 ---
 
-## Unreleased
+## 3.2.0 — 2026-11-23
+
+Mandatory update: devices on 3.1.0 or older must update before they can be used.
 
 ### Features
 
 - **Guest portal.** Permanent guests get their own web space, and temporary guest groups get a shared space opened and closed from the app. Both are controlled by two Firebase settings. The "Add guest" dialog has a "create access" switch for permanent guests, guests can sign up and send requests from the site, and an account can link several profiles. Closing a group space keeps its account so reopening reuses it.
 - **Volunteer portal access without an e-mail.** Opening access no longer sends a mail; the first password is shown once.
 - **One address, one portal account.** A volunteer, a permanent guest and the contact of temporary guest lists who share an address get one account with all their profiles; the lists they manage show under their own profile. A cut access stays cut.
-- **Guest lists on the portal.** One card per guest with access, balance, emergency contact and QR; lists show until 8:00 the morning after the event. The contact can correct a guest's name.
+- **Guest lists on the portal.** One card per guest with access, balance, emergency contact and QR; lists show until the day changes after the event, following the synced day-change offset. The contact can correct a guest's name.
 - **Full guest list access.** From a profile's portal access card, "Manage guest list access" gives a volunteer, a permanent guest or a list contact the whole temporary guest list of a date, for every venue or one. The person sees it in their space (who entered, accesses, contacts) and adds, edits or removes guests directly; a NoctuList device applies the changes. Current access and history are listed apart.
 - **Invitations from the portal.** The admin opens invitations event by event, with a maximum number of people and a maximum per access. Additions and removals are reviewed like guest form answers.
 - **Approving guest requests from the portal.** A new setting, "The portal approves the forms", lets a person with guest list access review guest requests from the portal. Pending requests sit at the top of the guest list section with the whole request shown; the person corrects it, then accepts or refuses it. A NoctuList device applies the result.
 - **Volunteer certificate.** Volunteers can ask for a certificate of their volunteer work from the portal and receive it as a PDF by e-mail. The team reviews each request before it is sent: it can edit the text, then approve it or refuse it with a note the volunteer sees in the portal. Admins can also generate a certificate from a volunteer's panel. The association edits the default texts, logo and signature in Settings, Firebase, Volunteer portal, in five languages, and switches the option on there. Volunteers see the request only once a template is saved. Publish the Firestore rules (version 21); the new function onCertificateApprovalCreated is deployed with `firebase deploy --only hosting,functions`. Update every device: older versions reject the new request type, so this release is mandatory.
+- **Firebase orgs: names and invitations.** An org has a synced display name that admins change from the Connexion page; the org ID stays the Firestore path. When adding an org, the admin chooses "Only on this device" or "On every device of the org". In the second case every device of the current org gets a popup, with an optional message, and joins the new org in one tap without scanning its QR code.
+- **Sales item settings: filters, search and sorting.** Status, category and venue filters stay in view, the other filters (sub-category, deposit, discount, required rank, price range) sit under "More filters". The venue filter follows the POS rule. Search also matches emoji and sub-category, and the list sorts by name, price, last change or active first.
+- **Keep the screen on** in the POS, the ticketing, the guest list and the scanner, with a toggle on each screen (Android and desktop).
+- **"+n companions"** replaces "invitations" wherever a benefit lets people come in with the volunteer: "Free entry (+2 companions)" in the app, the scanner and the portal.
+- Translations of the setup assistant and the Google rule strings into Spanish, Traditional and Simplified Chinese, Latin and Hindi.
 
 ### Fixes
 
 - The volunteer QR code read through a Google account in domain mode exceeded the Firestore document-access limit (12 of 10); the rules helpers now use get-only reads.
 - The portal re-reads its pages for about 3 minutes after a link request is accepted, without closing an open QR code.
+- The association logo is no longer lost when a sync brings back the older server value before the logo reached Firestore. Pending settings are pushed again after each full sync.
+- Android no longer crashes when the update check dialog opens from Settings.
+- Android in English showed broken characters in about sixty texts ("FranÃ§ais", emoji in benefits and sync messages).
 
 ### Upgrade notes
 
+- **Update every device** (mandatory update).
 - **Firestore rules:** version 21 (publish again). Storage rules unchanged.
 - **Hosting and functions:** export the form site again and run `firebase deploy --only hosting,functions`, at the same time as the rules. The functions add the `onCertificateApprovalCreated` function (certificate sending), the `pdf-lib` and `@pdf-lib/fontkit` dependencies and their fonts; Cloud Build installs them from the lock file on deploy. The old functions drop guest signups and name requests.
 - **Database:** Room migrations 53 to 57 (guest portal fields, `temporaryPortalEmail`, portal invite fields and `portalRevoked`, then guest list access grants).

@@ -1,5 +1,7 @@
 package com.eventmanager.app.ui.components
 
+import com.eventmanager.app.ui.utils.companionsText
+import com.eventmanager.app.ui.utils.entryPerkText
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -196,13 +198,7 @@ actual fun VolunteerBenefitsPanel(
 
             DesktopSectionCard(stringResource(Res.string.benefit_details), Icons.AutoMirrored.Filled.List) {
                 val perkLines = buildList {
-                    if (benefitForPerks.freeEntry) add(stringResource(Res.string.free_entry))
-                    if (benefitForPerks.friendInvitation || benefitForPerks.inviteCount > 0) {
-                        add(
-                            if (benefitForPerks.inviteCount > 1) stringResource(Res.string.invites_n, benefitForPerks.inviteCount)
-                            else stringResource(Res.string.friend_invitation)
-                        )
-                    }
+                    entryPerkText(benefitForPerks)?.let { add(it) }
                     if (benefitForPerks.drinkTokens > 0) add(stringResource(Res.string.drink_tokens, benefitForPerks.drinkTokens))
                     if (benefitForPerks.barDiscount > 0) add(stringResource(Res.string.bar_discount, benefitForPerks.barDiscount))
                     if (benefitForPerks.extraordinaryBenefits) add(stringResource(Res.string.extraordinary_benefits))
@@ -242,7 +238,7 @@ actual fun VolunteerBenefitsPanel(
                     Text(stringResource(Res.string.future_entries_group_label_solo, futureGroups.sumOf { it.totalRemaining }), fontWeight = FontWeight.SemiBold)
                     futureGroups.forEach { group ->
                         val label = if (group.invites > 0) {
-                            stringResource(Res.string.future_entries_remaining_with_invites, group.totalRemaining, group.invites)
+                            stringResource(Res.string.future_entries_remaining_with_invites, group.totalRemaining, companionsText(group.invites))
                         } else {
                             stringResource(Res.string.future_entries_solo, group.totalRemaining)
                         }
@@ -251,7 +247,7 @@ actual fun VolunteerBenefitsPanel(
                     if (!readOnly && futureEntriesByShift.isNotEmpty()) {
                         Spacer(Modifier.height(6.dp))
                         futureEntriesByShift.forEach { entry ->
-                            val invLabel = if (entry.invites > 0) "(+${entry.invites} inv.)" else "(solo)"
+                            val invLabel = if (entry.invites > 0) "(${companionsText(entry.invites)})" else "(solo)"
                             val shiftTime = shiftTimeLabelIfRelevant(entry.job, jobTypeConfigs)
                             val descriptor = if (shiftTime != null) "${entry.job.jobTypeName} • $shiftTime" else entry.job.jobTypeName
                             Text(

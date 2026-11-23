@@ -73,6 +73,22 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 
+/** "+1 companion" / "+3 companions": the people who come in with the volunteer. */
+private fun companionsLine(context: android.content.Context, count: Int): String =
+    if (count == 1) context.getString(R.string.companions_one)
+    else context.getString(R.string.companions_many, count)
+
+/** "Free entry (+2 companions)", "Free entry" or "+2 companions"; null when the benefit has neither. */
+private fun entryPerkLine(context: android.content.Context, benefit: Benefit): String? {
+    val companions = com.eventmanager.app.data.utils.GuestListOccupancy.friendInvitesFromBenefit(benefit)
+    return when {
+        benefit.freeEntry && companions > 0 -> "${context.getString(R.string.free_entry)} (${companionsLine(context, companions)})"
+        benefit.freeEntry -> context.getString(R.string.free_entry)
+        companions > 0 -> "👥 ${companionsLine(context, companions)}"
+        else -> null
+    }
+}
+
 private data class ShiftEntryInfo(val job: Job, val rankLabel: String, val remaining: Int, val invites: Int)
 
 @Composable
@@ -90,8 +106,8 @@ private fun FutureEntrySelectionBlock(
     futureEntryGroupsByInvites.forEach { group ->
         val isSelected = group.invites == selectedFutureEntryGroupInvites
         val label = if (group.invites > 0) {
-            if (group.totalRemaining == 1) context.getString(R.string.future_entry_remaining_with_invites, group.totalRemaining, group.invites)
-            else context.getString(R.string.future_entries_remaining_with_invites, group.totalRemaining, group.invites)
+            if (group.totalRemaining == 1) context.getString(R.string.future_entry_remaining_with_invites, group.totalRemaining, companionsLine(context, group.invites))
+            else context.getString(R.string.future_entries_remaining_with_invites, group.totalRemaining, companionsLine(context, group.invites))
         } else {
             if (group.totalRemaining == 1) context.getString(R.string.future_entry_solo, group.totalRemaining)
             else context.getString(R.string.future_entries_solo, group.totalRemaining)
@@ -144,7 +160,7 @@ private fun FutureEntrySelectionBlock(
                 .fillMaxWidth()
         ) {
             futureEntriesByShiftAndRank.forEach { entry ->
-                val invLabel = if (entry.invites > 0) "(+${entry.invites} inv.)" else "(solo)"
+                val invLabel = if (entry.invites > 0) "(${companionsLine(context, entry.invites)})" else "(solo)"
                 val shiftTimeLabel = context.shiftTimeLabelIfRelevant(entry.job, jobTypeConfigs)
                 val jobDescriptor = if (shiftTimeLabel != null) {
                     "${entry.job.jobTypeName} • $shiftTimeLabel"
@@ -680,11 +696,7 @@ actual fun VolunteerBenefitsPanel(
                                                 modifier = Modifier.padding(start = 8.dp, top = 4.dp)
                                             ) {
                                                 listOfNotNull(
-                                                    if (activeBenefit.freeEntry) context.getString(R.string.free_entry) else null,
-                                                    if (activeBenefit.friendInvitation) {
-                                                        if (activeBenefit.inviteCount > 1) context.getString(R.string.invites_n, activeBenefit.inviteCount)
-                                                        else context.getString(R.string.friend_invitation)
-                                                    } else null,
+                                                    entryPerkLine(context, activeBenefit),
                                                     if (activeBenefit.drinkTokens > 0) context.getString(R.string.drink_tokens, activeBenefit.drinkTokens) else null,
                                                     if (activeBenefit.barDiscount > 0) context.getString(R.string.bar_discount, activeBenefit.barDiscount) else null,
                                                     if (activeBenefit.extraordinaryBenefits) context.getString(R.string.extraordinary_benefits) else null
@@ -734,11 +746,7 @@ actual fun VolunteerBenefitsPanel(
                                         verticalArrangement = Arrangement.spacedBy(if (isPhone) 4.dp else 8.dp)
                                     ) {
                                         listOfNotNull(
-                                            if (benefitForPerkList.freeEntry) context.getString(R.string.free_entry) else null,
-                                            if (benefitForPerkList.friendInvitation) {
-                                                if (benefitForPerkList.inviteCount > 1) context.getString(R.string.invites_n, benefitForPerkList.inviteCount)
-                                                else context.getString(R.string.friend_invitation)
-                                            } else null,
+                                            entryPerkLine(context, benefitForPerkList),
                                             if (benefitForPerkList.drinkTokens > 0) context.getString(R.string.drink_tokens, benefitForPerkList.drinkTokens) else null,
                                             if (benefitForPerkList.barDiscount > 0) context.getString(R.string.bar_discount, benefitForPerkList.barDiscount) else null,
                                             if (benefitForPerkList.extraordinaryBenefits) context.getString(R.string.extraordinary_benefits) else null

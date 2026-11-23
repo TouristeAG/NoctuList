@@ -264,8 +264,8 @@
     <string name="future_entry_invites_helper">Used for the &quot;+n inv.&quot; shown on future single-use entries.</string>
     <string name="future_single_use_entries_with_invites_summary">Future single-use entries: %1$d (+%2$d inv.)</string>
     <string name="future_event_entries_remaining_n">🎟️ %1$d Future event entries (single use)</string>
-    <string name="future_entry_remaining_with_invites">🎟️ %1$d entry left (+%2$d inv.)</string>
-    <string name="future_entries_remaining_with_invites">🎟️ %1$d entries left (+%2$d inv.)</string>
+    <string name="future_entry_remaining_with_invites">🎟️ %1$d entry left (%2$s)</string>
+    <string name="future_entries_remaining_with_invites">🎟️ %1$d entries left (%2$s)</string>
     <string name="future_entry_solo">🎟️ %1$d entry left (solo)</string>
     <string name="future_entries_solo">🎟️ %1$d entries left (solo)</string>
     <string name="other_notes_label">Other Notes</string>
@@ -890,6 +890,8 @@
     <string name="days_left">%1$d days left</string>
     <string name="expires_soon">Expires soon</string>
     <string name="free_entry">✅ Free Entry</string>
+    <string name="companions_one">+1 companion</string>
+    <string name="companions_many">+%1$d companions</string>
     <string name="friend_invitation">👥 Friend Invitation</string>
     <string name="drink_tokens">🍺 %1$d Drink Tokens</string>
     <string name="bar_discount">💰 %1$d% Bar Discount</string>

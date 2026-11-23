@@ -232,8 +232,8 @@
     <string name="future_entry_invites_helper">Adhibitum ad &quot;+n inv.&quot; in futuris introitibus semel usurpandis ostendendum.</string>
     <string name="future_single_use_entries_with_invites_summary">Introituss futures ad usage unique: %1$d (+%2$d inv.)</string>
     <string name="future_event_entries_remaining_n">🎟️ %d Introituss eventus (usage unique)</string>
-    <string name="future_entry_remaining_with_invites">🎟️ %1$d introitus restante (+%2$d inv.)</string>
-    <string name="future_entries_remaining_with_invites">🎟️ %1$d introituss restantes (+%2$d inv.)</string>
+    <string name="future_entry_remaining_with_invites">🎟️ %1$d introitus restante (%2$s)</string>
+    <string name="future_entries_remaining_with_invites">🎟️ %1$d introituss restantes (%2$s)</string>
     <string name="future_entry_solo">🎟️ %d introitus restante (seul)</string>
     <string name="future_entries_solo">🎟️ %d introituss restantes (seul)</string>
     <string name="other_notes_label">Aliuds remarques</string>
@@ -689,6 +689,8 @@
     <string name="days_left">%d dies restants</string>
     <string name="expires_soon">Exspirat mox</string>
     <string name="free_entry">✅ Introitus gratuite</string>
+    <string name="companions_one">+1 comes</string>
+    <string name="companions_many">+%1$d comites</string>
     <string name="friend_invitation">👥 Invitatio d\'une amie</string>
     <string name="drink_tokens">🍺 %d jetons boissonusus</string>
     <string name="bar_discount">💰 %d%% discountio ad bar</string>

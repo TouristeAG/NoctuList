@@ -262,8 +262,8 @@
     <string name="future_entry_invites_helper">该数值用于未来一次性入场显示的“+n inv.”。</string>
     <string name="future_single_use_entries_with_invites_summary">未来一次性入场：%1$d（+%2$d inv.）</string>
     <string name="future_event_entries_remaining_n">🎟️ %1$d 次未来活动入场（一次性）</string>
-    <string name="future_entry_remaining_with_invites">🎟️ 剩余 %1$d 次入场 (+%2$d 邀请)</string>
-    <string name="future_entries_remaining_with_invites">🎟️ 剩余 %1$d 次入场 (+%2$d 邀请)</string>
+    <string name="future_entry_remaining_with_invites">🎟️ 剩余 %1$d 次入场 (%2$s)</string>
+    <string name="future_entries_remaining_with_invites">🎟️ 剩余 %1$d 次入场 (%2$s)</string>
     <string name="future_entry_solo">🎟️ 剩余 %1$d 次入场（单人）</string>
     <string name="future_entries_solo">🎟️ 剩余 %1$d 次入场（单人）</string>
     <string name="other_notes_label">其他备注</string>
@@ -752,6 +752,8 @@
     <string name="days_left">剩余 %1$d 天</string>
     <string name="expires_soon">即将到期</string>
     <string name="free_entry">✅ 免费入场</string>
+    <string name="companions_one">+1 位同伴</string>
+    <string name="companions_many">+%1$d 位同伴</string>
     <string name="friend_invitation">👥 朋友邀请</string>
     <string name="drink_tokens">🍺 %1$d 个饮料券</string>
     <string name="bar_discount">💰 %1$d% 酒吧折扣</string>
