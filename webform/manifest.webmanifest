@@ -1,7 +1,7 @@
 {
   "id": "/v/",
-  "name": "Mon espace",
-  "short_name": "Mon espace",
+  "name": "Noctuspace",
+  "short_name": "Noctuspace",
   "description": "Tes avantages, ton porte-monnaie et ton QR code au même endroit.",
   "lang": "fr",
   "start_url": "/v/",
