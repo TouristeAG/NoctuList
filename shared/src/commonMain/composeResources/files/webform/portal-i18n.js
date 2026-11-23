@@ -205,6 +205,9 @@ const T = {
     perkBarDiscount: "Bar discount",
     perkGuestList: "Guest list",
     uniqueEntriesHint: "To use at a coming event.",
+    uniqueEntriesExtra: "Unique entries in reserve",
+    uniqueEntriesExtraHintOne: "Your free entry already gets you in. On top of that you have {n} unique entry in reserve, no need to use it to get in.",
+    uniqueEntriesExtraHint: "Your free entry already gets you in. On top of that you have {n} unique entries in reserve, no need to use them to get in.",
     untilShort: "until {date}",
     // Google sign-in
     signInGoogle: "Sign in with Google",
@@ -528,6 +531,9 @@ const T = {
     perkBarDiscount: "Réduction au bar",
     perkGuestList: "Guestlist",
     uniqueEntriesHint: "À utiliser lors d'un prochain événement.",
+    uniqueEntriesExtra: "Entrées uniques en réserve",
+    uniqueEntriesExtraHintOne: "Ton entrée gratuite te donne déjà accès. En plus, tu as actuellement {n} entrée unique en réserve, pas besoin de l'utiliser pour entrer.",
+    uniqueEntriesExtraHint: "Ton entrée gratuite te donne déjà accès. En plus, tu as actuellement {n} entrées uniques en réserve, pas besoin de les utiliser pour entrer.",
     untilShort: "jusqu'au {date}",
     // Google sign-in
     signInGoogle: "Se connecter avec Google",
@@ -851,6 +857,9 @@ const T = {
     perkBarDiscount: "Descuento en la barra",
     perkGuestList: "Lista de invitados",
     uniqueEntriesHint: "Para usar en un próximo evento.",
+    uniqueEntriesExtra: "Entradas únicas en reserva",
+    uniqueEntriesExtraHintOne: "Tu entrada gratuita ya te da acceso. Además, ahora tienes {n} entrada única en reserva, no hace falta usarla para entrar.",
+    uniqueEntriesExtraHint: "Tu entrada gratuita ya te da acceso. Además, ahora tienes {n} entradas únicas en reserva, no hace falta usarlas para entrar.",
     untilShort: "hasta el {date}",
     // Google sign-in
     signInGoogle: "Iniciar sesión con Google",
@@ -1174,6 +1183,9 @@ const T = {
     perkBarDiscount: "Rabatt an der Bar",
     perkGuestList: "Gästeliste",
     uniqueEntriesHint: "Für ein kommendes Event.",
+    uniqueEntriesExtra: "Einzeleintritte in Reserve",
+    uniqueEntriesExtraHintOne: "Mit deinem freien Eintritt kommst du sowieso rein. Zusätzlich hast du gerade {n} Einzeleintritt in Reserve, du musst ihn zum Reinkommen nicht verwenden.",
+    uniqueEntriesExtraHint: "Mit deinem freien Eintritt kommst du sowieso rein. Zusätzlich hast du gerade {n} Einzeleintritte in Reserve, du musst sie zum Reinkommen nicht verwenden.",
     untilShort: "bis {date}",
     // Google sign-in
     signInGoogle: "Mit Google anmelden",
@@ -1497,6 +1509,9 @@ const T = {
     perkBarDiscount: "Sconto al bar",
     perkGuestList: "Lista ospiti",
     uniqueEntriesHint: "Da usare a un prossimo evento.",
+    uniqueEntriesExtra: "Ingressi singoli di riserva",
+    uniqueEntriesExtraHintOne: "Il tuo ingresso gratuito ti fa già entrare. In più hai al momento {n} ingresso singolo di riserva, non serve usarlo per entrare.",
+    uniqueEntriesExtraHint: "Il tuo ingresso gratuito ti fa già entrare. In più hai al momento {n} ingressi singoli di riserva, non serve usarli per entrare.",
     untilShort: "fino al {date}",
     // Google sign-in
     signInGoogle: "Accedi con Google",

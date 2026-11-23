@@ -40,7 +40,7 @@ import {
   uploadBytes,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 import { EMULATOR_PORTS, isLocalDev, loadConfig, parseOrgPath } from "./firebase-env.js?v=portal-2";
-import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=companions-1";
+import { applyStaticI18n, bindLanguageSelect, currentLang, locale, t } from "./portal-i18n.js?v=entries-1";
 import {
   canSend,
   certificateNotice,
@@ -1330,31 +1330,46 @@ function perkRow(label, value = "") {
     value ? el("span", { class: "perk-amount", text: value }) : null);
 }
 
+/** "Free entry (+2 companions)": the people who come in are written next to the entry. */
+function freeEntryLabel(n) {
+  const companions = Math.max(0, Number(n) || 0);
+  return companions > 0 ? `${t("perkFreeEntry")} (${companionsText(companions)})` : t("perkFreeEntry");
+}
+
+function entriesBanner(entries, invites, freeEntry) {
+  const titleKey = freeEntry ? "uniqueEntriesExtra" : "uniqueEntries";
+  const title = invites > 0 ? `${t(titleKey)} (${companionsText(invites)})` : t(titleKey);
+  // With a free entry the volunteer gets in anyway: the entries are a reserve, not a ticket.
+  const hint = freeEntry
+    ? t(entries === 1 ? "uniqueEntriesExtraHintOne" : "uniqueEntriesExtraHint", { n: entries })
+    : t("uniqueEntriesHint");
+  return el("div", { class: `entries-banner${freeEntry ? " extra" : ""}` },
+    el("div", { class: "entries-count", text: String(entries) }),
+    el("div", {},
+      el("div", { class: "entries-title", text: title }),
+      el("div", { class: "entries-hint", text: hint })));
+}
+
 function benefitsTile(view) {
   const card = tile("benefits", t("benefits"), "gift");
   const list = view.benefits;
   const entries = view.entries;
   const s = view.summary;
-  // Invitations come with the unique entries: shown together, not as a separate perk.
+  const freeEntry = Boolean(s && list.length && s.freeEntry);
+  // People who come in with the free entry (or with nothing else, when there is no free entry).
   const invites = s ? Number(s.inviteCount) || (s.friendInvitation ? 1 : 0) : 0;
-  if (entries > 0) {
-    const title = invites > 0 ? `${t("uniqueEntries")} (${companionsText(invites)})` : t("uniqueEntries");
-    card.append(el("div", { class: "entries-banner" },
-      el("div", { class: "entries-count", text: String(entries) }),
-      el("div", {},
-        el("div", { class: "entries-title", text: title }),
-        el("div", { class: "entries-hint", text: t("uniqueEntriesHint") }))));
-  }
+  // People who come in with each unique entry. Older pages do not publish them: the summary count stood in.
+  const perEntry = Math.max(0, ...list.map((b) => Number(b.futureEntryInvites) || 0));
+  const entryInvites = perEntry || (freeEntry ? 0 : invites);
+  if (entries > 0 && !freeEntry) card.append(entriesBanner(entries, entryInvites, false));
   // Drink tokens stay out: the bar applies them, the volunteer has nothing to do with the number.
   const perks = [];
   if (s && list.length) {
-    // Without unique entries, the +n people come in with the free entry: "Free entry (+2 companions)".
-    const companions = invites > 0 && entries <= 0 ? companionsText(invites) : "";
-    if (s.freeEntry) perks.push(perkRow(companions ? `${t("perkFreeEntry")} (${companions})` : t("perkFreeEntry")));
-    else if (companions) perks.push(perkRow(companions));
+    if (freeEntry) perks.push(perkRow(freeEntryLabel(invites)));
+    else if (invites > 0 && entries <= 0) perks.push(perkRow(companionsText(invites)));
     if (Number(s.barDiscount) > 0) perks.push(perkRow(t("perkBarDiscount"), `${s.barDiscount} %`));
     // Free entry already gets you in: the guest list only matters without it.
-    if (s.guestListAccess && !s.freeEntry) perks.push(perkRow(t("perkGuestList")));
+    if (s.guestListAccess && !freeEntry) perks.push(perkRow(t("perkGuestList")));
   }
   if (perks.length) {
     const until = Number(s.validUntil) || Math.max(0, ...list.map((b) => Number(b.validUntil) || 0));
@@ -1365,6 +1380,8 @@ function benefitsTile(view) {
   } else if (!entries) {
     card.append(el("p", { class: "empty", text: t("noBenefits") }));
   }
+  // Below the rest: the free entry is what gets the volunteer in, the entries stay for later.
+  if (entries > 0 && freeEntry) card.append(entriesBanner(entries, entryInvites, true));
   return card;
 }
 
@@ -1373,7 +1390,7 @@ function gainsText(b) {
   const parts = [];
   const invites = Number(b.inviteCount) || (b.friendInvitation ? 1 : 0);
   // The +n people come in with the free entry: "Free entry (+2 companions)".
-  if (b.freeEntry) parts.push(invites > 0 ? `${t("perkFreeEntry")} (${companionsText(invites)})` : t("perkFreeEntry"));
+  if (b.freeEntry) parts.push(freeEntryLabel(invites));
   else if (invites > 0) parts.push(companionsText(invites));
   if (Number(b.drinkTokens) > 0) parts.push(`${b.drinkTokens} ${t("perkDrinks")}`);
   if (Number(b.barDiscount) > 0) parts.push(`${b.barDiscount} % ${t("perkBarDiscount")}`);
